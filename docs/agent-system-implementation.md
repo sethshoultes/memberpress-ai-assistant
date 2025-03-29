@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-The Agent System will be built using a modular, extensible architecture following object-oriented principles. This document outlines the technical implementation details for developers.
+The Agent System will be built using a modular, extensible architecture following object-oriented principles, and enhanced with the OpenAI Agents SDK. This document outlines the technical implementation details for developers.
 
 ```
 +---------------------+       +-------------------+
@@ -17,15 +17,22 @@ The Agent System will be built using a modular, extensible architecture followin
 |  Memory System      |<----->|  Agent            |<----->|  Tool Registry    |
 |  (Context Storage)  |       |  Orchestrator     |       |                   |
 |                     |       |                   |       +---------+---------+
-+---------------------+       +-------------------+                 |
-                                       |                           |
-                                       v                           v
-                              +--------+----------+       +--------+---------+
-                              |                   |       |                  |
-                              |  Specialized      |       |  Tool            |
-                              |  Agents           |       |  Implementations |
-                              |                   |       |                  |
-                              +-------------------+       +------------------+
++---------------------+       +---+------------+--+                 |
+                                  |            ^                    |
+                                  v            |                    v
+                      +-----------+------------+----+     +--------+---------+
+                      |                             |     |                  |
+                      |  OpenAI Agents SDK Layer    |     |  Tool            |
+                      |  (Handoffs, Running Agents) |     |  Implementations |
+                      |                             |     |                  |
+                      +------------+----------------+     +------------------+
+                                   |
+                                   v
+                        +----------+-----------+
+                        |                      |
+                        |  Specialized Agents  |
+                        |                      |
+                        +----------------------+
 ```
 
 ## Directory Structure
@@ -42,6 +49,12 @@ memberpress-ai-assistant/
 │   │   │   ├── class-mpai-security-agent.php
 │   │   │   ├── class-mpai-analytics-agent.php
 │   │   │   └── class-mpai-memberpress-agent.php
+│   │   ├── sdk/
+│   │   │   ├── class-mpai-sdk-integration.php
+│   │   │   ├── class-mpai-sdk-agent-adapter.php
+│   │   │   ├── class-mpai-sdk-tool-adapter.php
+│   │   │   ├── class-mpai-sdk-handoff-manager.php
+│   │   │   └── class-mpai-sdk-runner.php
 │   │   └── interfaces/
 │   │       └── interface-mpai-agent.php
 │   ├── tools/
@@ -56,31 +69,52 @@ memberpress-ai-assistant/
 │   ├── memory/
 │   │   ├── class-mpai-memory-manager.php
 │   │   ├── class-mpai-context-store.php
+│   │   ├── class-mpai-conversation-history.php
 │   │   └── class-mpai-user-preferences.php
 │   ├── api/
 │   │   ├── class-mpai-rest-controller.php
-│   │   └── class-mpai-agent-endpoints.php
+│   │   ├── class-mpai-agent-endpoints.php
+│   │   └── class-mpai-sdk-endpoints.php
 │   └── utils/
 │       ├── class-mpai-security.php
 │       ├── class-mpai-logger.php
-│       └── class-mpai-task-scheduler.php
+│       ├── class-mpai-task-scheduler.php
+│       └── class-mpai-py-bridge.php
 ├── admin/
 │   ├── class-mpai-agent-settings.php
 │   └── views/
 │       ├── agent-dashboard.php
-│       └── agent-settings.php
+│       ├── agent-settings.php
+│       └── sdk-settings.php
 ├── assets/
 │   ├── js/
 │   │   ├── agent-interface.js
-│   │   └── agent-settings.js
+│   │   ├── agent-settings.js
+│   │   └── sdk-dashboard.js
 │   └── css/
 │       ├── agent-interface.css
-│       └── agent-dashboard.css
-└── templates/
-    └── agent-result-templates/
-        ├── content-result.php
-        ├── system-result.php
-        └── security-result.php
+│       ├── agent-dashboard.css
+│       └── sdk-interface.css
+├── templates/
+│   └── agent-result-templates/
+│       ├── content-result.php
+│       ├── system-result.php
+│       └── security-result.php
+└── sdk/
+    ├── requirements.txt
+    ├── agent_definitions/
+    │   ├── content_agent.py
+    │   ├── system_agent.py
+    │   ├── security_agent.py
+    │   ├── analytics_agent.py
+    │   └── memberpress_agent.py
+    ├── tool_integrations/
+    │   ├── wp_cli_tools.py
+    │   ├── memberpress_tools.py
+    │   └── content_tools.py
+    └── config/
+        ├── agent_config.py
+        └── tool_config.py
 ```
 
 ## Core Classes
@@ -117,6 +151,18 @@ class MPAI_Agent_Orchestrator {
     private $logger;
     
     /**
+     * SDK Integration instance
+     * @var MPAI_SDK_Integration|null
+     */
+    private $sdk_integration = null;
+    
+    /**
+     * Whether to use the OpenAI Agents SDK
+     * @var bool
+     */
+    private $use_sdk = false;
+    
+    /**
      * Constructor
      */
     public function __construct() {
@@ -124,8 +170,55 @@ class MPAI_Agent_Orchestrator {
         $this->tool_registry = new MPAI_Tool_Registry();
         $this->logger = new MPAI_Logger();
         
+        // Initialize SDK if available
+        $this->use_sdk = $this->initialize_sdk();
+        
         // Register core agents
         $this->register_core_agents();
+    }
+    
+    /**
+     * Initialize the OpenAI Agents SDK integration
+     * 
+     * @return bool Whether the SDK initialization was successful
+     */
+    private function initialize_sdk() {
+        try {
+            // Check if the SDK is enabled in settings
+            $sdk_enabled = get_option('mpai_enable_openai_sdk', false);
+            
+            if (!$sdk_enabled) {
+                $this->logger->info("OpenAI Agents SDK integration is disabled in settings");
+                return false;
+            }
+            
+            // Check if the bridge class exists
+            if (!class_exists('MPAI_SDK_Integration')) {
+                $this->logger->error("SDK Integration class not found");
+                return false;
+            }
+            
+            // Initialize the SDK integration
+            $this->sdk_integration = new MPAI_SDK_Integration(
+                $this->tool_registry,
+                $this->memory_manager,
+                $this->logger
+            );
+            
+            // Check if initialization was successful
+            if (!$this->sdk_integration->is_initialized()) {
+                $this->logger->error("Failed to initialize SDK integration: " . $this->sdk_integration->get_error());
+                return false;
+            }
+            
+            $this->logger->info("OpenAI Agents SDK integration initialized successfully");
+            return true;
+        } catch (Exception $e) {
+            $this->logger->error("Error initializing SDK: " . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+            return false;
+        }
     }
     
     /**
@@ -142,6 +235,18 @@ class MPAI_Agent_Orchestrator {
         }
         
         $this->agents[$agent_id] = $agent_instance;
+        
+        // If SDK is enabled, register the agent with the SDK integration
+        if ($this->use_sdk && $this->sdk_integration) {
+            try {
+                $this->sdk_integration->register_agent($agent_id, $agent_instance);
+                $this->logger->info("Agent {$agent_id} registered with SDK integration");
+            } catch (Exception $e) {
+                $this->logger->warning("Failed to register agent {$agent_id} with SDK: " . $e->getMessage());
+                // Continue even if SDK registration fails
+            }
+        }
+        
         return true;
     }
     
@@ -157,6 +262,89 @@ class MPAI_Agent_Orchestrator {
             // Get user context
             $user_context = $this->memory_manager->get_context($user_id);
             
+            // Log the request
+            $this->logger->info("Processing request", [
+                'user_id' => $user_id,
+                'message' => $user_message,
+                'using_sdk' => $this->use_sdk,
+            ]);
+            
+            // If SDK is enabled and properly initialized, use it for processing
+            if ($this->use_sdk && $this->sdk_integration) {
+                return $this->process_with_sdk($user_message, $user_id, $user_context);
+            }
+            
+            // Otherwise use the traditional processing method
+            return $this->process_with_traditional_method($user_message, $user_id, $user_context);
+        } catch (Exception $e) {
+            $this->logger->error("Error processing request: " . $e->getMessage(), [
+                'user_message' => $user_message,
+                'user_id' => $user_id,
+                'exception' => $e,
+            ]);
+            
+            return [
+                'success' => false,
+                'message' => "Sorry, I couldn't process that request: " . $e->getMessage(),
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+    
+    /**
+     * Process a request using the OpenAI Agents SDK
+     *
+     * @param string $user_message The natural language request
+     * @param int $user_id User ID
+     * @param array $user_context User context data
+     * @return array Response data
+     */
+    private function process_with_sdk($user_message, $user_id, $user_context) {
+        try {
+            // Use the SDK integration to process the request
+            $sdk_result = $this->sdk_integration->process_request(
+                $user_message,
+                $user_id,
+                $user_context
+            );
+            
+            // Update memory with results
+            $this->memory_manager->update_context(
+                $user_id,
+                ['sdk_processed' => true, 'original_message' => $user_message],
+                $sdk_result
+            );
+            
+            // Log the successful completion
+            $this->logger->info("Successfully processed request with SDK", [
+                'user_id' => $user_id,
+                'agent' => isset($sdk_result['agent']) ? $sdk_result['agent'] : 'unknown',
+            ]);
+            
+            return $sdk_result;
+        } catch (Exception $e) {
+            $this->logger->error("Error processing with SDK: " . $e->getMessage(), [
+                'user_message' => $user_message,
+                'user_id' => $user_id,
+                'exception' => $e,
+            ]);
+            
+            // Fall back to traditional method if SDK processing fails
+            $this->logger->info("Falling back to traditional processing method");
+            return $this->process_with_traditional_method($user_message, $user_id, $user_context);
+        }
+    }
+    
+    /**
+     * Process a request using the traditional method (without SDK)
+     *
+     * @param string $user_message The natural language request
+     * @param int $user_id User ID
+     * @param array $user_context User context data
+     * @return array Response data
+     */
+    private function process_with_traditional_method($user_message, $user_id, $user_context) {
+        try {
             // Analyze intent
             $intent_data = $this->determine_intent($user_message, $user_context);
             
@@ -186,17 +374,13 @@ class MPAI_Agent_Orchestrator {
                 'agent' => $primary_agent_id,
             ];
         } catch (Exception $e) {
-            $this->logger->error("Error processing request: " . $e->getMessage(), [
+            $this->logger->error("Error processing with traditional method: " . $e->getMessage(), [
                 'user_message' => $user_message,
                 'user_id' => $user_id,
                 'exception' => $e,
             ]);
             
-            return [
-                'success' => false,
-                'message' => "Sorry, I couldn't process that request: " . $e->getMessage(),
-                'error' => $e->getMessage(),
-            ];
+            throw $e; // Re-throw to be caught by the main process_request method
         }
     }
     
@@ -315,6 +499,9 @@ class MPAI_Agent_Orchestrator {
                 'name' => $agent->get_name(),
                 'description' => $agent->get_description(),
                 'capabilities' => $agent->get_capabilities(),
+                'sdk_enabled' => $this->use_sdk && 
+                                 $this->sdk_integration && 
+                                 $this->sdk_integration->is_agent_sdk_enabled($agent_id),
             ];
         }
         
@@ -1484,3 +1671,570 @@ class MPAI_Agent_Endpoints extends WP_REST_Controller {
 - Performance optimization
 - Security review
 - Documentation
+
+## OpenAI Agents SDK Integration
+
+The OpenAI Agents SDK provides powerful capabilities for enhancing our existing agent system. This section outlines how we'll directly integrate these capabilities while preserving all existing functionality.
+
+### SDK Integration Architecture
+
+```
++------------------------------+
+|                              |
+|  Enhanced Agent System       |
+|                              |
+|  +-------------------------+ |
+|  |                         | |
+|  |  OpenAI Agents SDK      | |
+|  |  Integration            | |
+|  |                         | |
+|  +-------------------------+ |
+|                              |
+|  +-------------------------+ |
+|  |                         | |
+|  |  Existing Functionality | |
+|  |  (Fully Preserved)      | |
+|  |                         | |
+|  +-------------------------+ |
+|                              |
++------------------------------+
+```
+
+### Implementation Principles
+
+1. **Preserve ALL Functionality**: Maintain EVERY existing feature and capability
+2. **Direct Integration**: Integrate SDK directly without optional toggles
+3. **Exact Feature Parity**: Create identical functionality where needed for compatibility
+4. **Enhanced Capabilities**: Add SDK features to extend current functionality
+5. **Simple Implementation**: Avoid overcomplicating with unnecessary abstraction layers
+
+### Core SDK Integration Components
+
+#### 1. SDK Integration Class
+
+```php
+/**
+ * Main SDK integration class
+ */
+class MPAI_SDK_Integration {
+    /**
+     * Whether SDK is properly initialized
+     * @var bool
+     */
+    private $is_initialized = false;
+    
+    /**
+     * Error message if initialization failed
+     * @var string
+     */
+    private $error = '';
+    
+    /**
+     * Tool registry instance
+     * @var MPAI_Tool_Registry
+     */
+    private $tool_registry;
+    
+    /**
+     * Memory manager instance
+     * @var MPAI_Memory_Manager
+     */
+    private $memory_manager;
+    
+    /**
+     * Logger instance
+     * @var MPAI_Logger
+     */
+    private $logger;
+    
+    /**
+     * Python bridge instance
+     * @var MPAI_Py_Bridge
+     */
+    private $py_bridge;
+    
+    /**
+     * SDK agents registry
+     * @var array
+     */
+    private $sdk_agents = [];
+    
+    /**
+     * Constructor
+     * 
+     * @param MPAI_Tool_Registry $tool_registry Tool registry
+     * @param MPAI_Memory_Manager $memory_manager Memory manager
+     * @param MPAI_Logger $logger Logger
+     */
+    public function __construct($tool_registry, $memory_manager, $logger) {
+        $this->tool_registry = $tool_registry;
+        $this->memory_manager = $memory_manager;
+        $this->logger = $logger;
+        
+        // Initialize the Python bridge
+        $this->py_bridge = new MPAI_Py_Bridge($logger);
+        
+        // Attempt initialization
+        $this->initialize();
+    }
+    
+    /**
+     * Initialize the SDK
+     * 
+     * @return bool Success status
+     */
+    private function initialize() {
+        try {
+            // Check Python environment
+            if (!$this->py_bridge->verify_environment()) {
+                $this->error = 'Python environment verification failed';
+                return false;
+            }
+            
+            // Check SDK installation
+            if (!$this->py_bridge->verify_sdk_installation()) {
+                $this->error = 'OpenAI Agents SDK not installed or incompatible version';
+                return false;
+            }
+            
+            // Initialize SDK configuration
+            $sdk_init_result = $this->py_bridge->execute_script('initialize_sdk.py');
+            
+            if (!$sdk_init_result['success']) {
+                $this->error = 'SDK initialization failed: ' . $sdk_init_result['error'];
+                return false;
+            }
+            
+            $this->is_initialized = true;
+            return true;
+        } catch (Exception $e) {
+            $this->error = 'SDK initialization exception: ' . $e->getMessage();
+            $this->logger->error('SDK initialization failed', [
+                'exception' => $e,
+            ]);
+            return false;
+        }
+    }
+    
+    /**
+     * Process a request using the SDK
+     * 
+     * @param string $message User message
+     * @param int $user_id User ID
+     * @param array $context Context data
+     * @return array Processing result
+     */
+    public function process_request($message, $user_id, $context = []) {
+        if (!$this->is_initialized) {
+            throw new Exception('SDK not initialized');
+        }
+        
+        try {
+            // Prepare context for SDK
+            $sdk_context = $this->prepare_sdk_context($context);
+            
+            // Process with SDK
+            $process_result = $this->py_bridge->execute_script(
+                'process_request.py',
+                [
+                    'message' => $message,
+                    'user_id' => $user_id,
+                    'context' => $sdk_context,
+                ]
+            );
+            
+            if (!$process_result['success']) {
+                throw new Exception('SDK processing failed: ' . $process_result['error']);
+            }
+            
+            // Parse and enhance the result
+            return $this->parse_sdk_result($process_result['data']);
+        } catch (Exception $e) {
+            $this->logger->error('Exception processing request with SDK', [
+                'message' => $message,
+                'user_id' => $user_id,
+                'exception' => $e,
+            ]);
+            throw $e;
+        }
+    }
+}
+```
+
+#### 2. Python Bridge
+
+```php
+/**
+ * Bridge between PHP and Python for SDK integration
+ */
+class MPAI_Py_Bridge {
+    /**
+     * Python executable path
+     * @var string
+     */
+    private $python_path;
+    
+    /**
+     * SDK scripts directory
+     * @var string
+     */
+    private $scripts_dir;
+    
+    /**
+     * Logger instance
+     * @var MPAI_Logger
+     */
+    private $logger;
+    
+    /**
+     * Constructor
+     * 
+     * @param MPAI_Logger $logger Logger
+     */
+    public function __construct($logger) {
+        $this->logger = $logger;
+        $this->python_path = $this->detect_python_path();
+        $this->scripts_dir = MPAI_PLUGIN_DIR . 'sdk/';
+    }
+    
+    /**
+     * Execute a Python script with parameters
+     * 
+     * @param string $script_name Script name in SDK directory
+     * @param array $params Parameters to pass to script
+     * @return array Execution result
+     */
+    public function execute_script($script_name, $params = []) {
+        $script_path = $this->scripts_dir . $script_name;
+        
+        if (!file_exists($script_path)) {
+            return [
+                'success' => false,
+                'error' => 'Script not found: ' . $script_name,
+            ];
+        }
+        
+        // Convert params to JSON
+        $params_json = json_encode($params);
+        
+        // Write params to temp file to avoid command line length issues
+        $params_file = $this->scripts_dir . 'tmp/params_' . uniqid() . '.json';
+        if (!is_dir(dirname($params_file))) {
+            mkdir(dirname($params_file), 0755, true);
+        }
+        file_put_contents($params_file, $params_json);
+        
+        // Build command
+        $command = sprintf(
+            '%s %s %s',
+            escapeshellarg($this->python_path),
+            escapeshellarg($script_path),
+            escapeshellarg($params_file)
+        );
+        
+        // Execute
+        $result = $this->execute_command($command);
+        
+        // Clean up params file
+        @unlink($params_file);
+        
+        if (!$result['success']) {
+            return $result;
+        }
+        
+        // Parse output as JSON
+        $data = json_decode($result['output'], true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return [
+                'success' => false,
+                'error' => 'Failed to parse script output as JSON',
+                'output' => $result['output'],
+            ];
+        }
+        
+        return [
+            'success' => true,
+            'data' => $data,
+        ];
+    }
+}
+```
+
+#### 3. Agent Orchestrator SDK Integration
+
+The Agent Orchestrator will be enhanced to support SDK functionality while maintaining backward compatibility:
+
+```php
+/**
+ * Process a request
+ *
+ * @param string $user_message The natural language request
+ * @param int $user_id User ID
+ * @param array $user_context User context data
+ * @return array Response data
+ */
+public function process_request($user_message, $user_id, $user_context = []) {
+    try {
+        $this->logger->info("Processing request", [
+            'user_id' => $user_id,
+            'message' => $user_message
+        ]);
+        
+        // Use the OpenAI Agents SDK for processing
+        $sdk_result = $this->sdk_integration->process_request(
+            $user_message,
+            $user_id,
+            $user_context
+        );
+        
+        // Update memory with results
+        $this->memory_manager->update_context(
+            $user_id,
+            ['original_message' => $user_message],
+            $sdk_result
+        );
+        
+        // Log the successful completion
+        $this->logger->info("Successfully processed request", [
+            'user_id' => $user_id,
+            'agent' => isset($sdk_result['agent']) ? $sdk_result['agent'] : 'unknown',
+        ]);
+        
+        return $sdk_result;
+    } catch (Exception $e) {
+        $this->logger->error("Error processing request: " . $e->getMessage(), [
+            'user_message' => $user_message,
+            'user_id' => $user_id,
+            'exception' => $e,
+        ]);
+        
+        // Handle the error but preserve expected response format
+        return [
+            'success' => false,
+            'message' => "Sorry, I couldn't process that request: " . $e->getMessage(),
+            'error' => $e->getMessage(),
+        ];
+    }
+}
+```
+
+### SDK Python Implementation
+
+The Python implementation will include several key components:
+
+#### 1. SDK Directory Structure
+
+```
+sdk/
+├── requirements.txt           # Python dependencies
+├── check_sdk.py               # Verifies SDK installation
+├── initialize_sdk.py          # Initializes SDK configuration
+├── register_agent.py          # Registers agent with SDK
+├── process_request.py         # Processes user requests
+├── run_agent.py               # Runs agent tasks
+├── handoff.py                 # Manages agent handoffs
+├── config/
+│   ├── config.json            # Main configuration
+│   ├── agent_definitions/     # Agent definitions
+│   └── tool_definitions/      # Tool definitions
+├── tools/                     # Tool implementations
+├── agents/                    # Agent implementations
+├── extensions/                # SDK extensions
+└── tmp/                       # Temporary files directory
+```
+
+#### 2. Agent Handoff Implementation
+
+Agent handoffs allow one specialized agent to transfer control to another agent when needed:
+
+```python
+def handle_agent_handoff(from_agent_id, to_agent_id, user_message, context):
+    """Handle handoff from one agent to another"""
+    try:
+        # Load agent definitions
+        config_dir = Path(__file__).parent / "config"
+        
+        # Get the source and target agent definitions
+        from_agent_def = get_agent_definition(config_dir, from_agent_id)
+        to_agent_def = get_agent_definition(config_dir, to_agent_id)
+        
+        if not from_agent_def or not to_agent_def:
+            return {
+                "success": False,
+                "error": f"Missing agent definition for handoff"
+            }
+            
+        # Create handoff context
+        handoff_context = {
+            "from_agent": from_agent_id,
+            "original_message": user_message,
+            "context": context,
+            "handoff_reason": "specialized_capability_needed"
+        }
+        
+        # Process with the target agent
+        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        
+        # Create a runner for the target agent
+        runner = Runner(client=client)
+        
+        # Add the target agent with its tools
+        agent_tools = get_agent_tools(config_dir, to_agent_id)
+        
+        assistant = client.beta.assistants.create(
+            name=to_agent_def.get("name", "Agent"),
+            instructions=to_agent_def.get("instructions", ""),
+            model=to_agent_def.get("model", "gpt-4o"),
+            tools=agent_tools
+        )
+        
+        # Create handoff message
+        handoff_message = f"""
+        [HANDOFF FROM {from_agent_id.upper()}]
+        
+        Original user request: {user_message}
+        
+        Handoff reason: This request requires your specialized capabilities.
+        
+        Context: {json.dumps(context, indent=2)}
+        
+        Please handle this request with your expertise.
+        """
+        
+        # Run the agent with the handoff message
+        thread = client.beta.threads.create()
+        
+        client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=handoff_message
+        )
+        
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant.id
+        )
+        
+        # Poll until complete
+        while run.status in ["queued", "in_progress"]:
+            time.sleep(1)
+            run = client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+        
+        # Get result
+        messages = client.beta.threads.messages.list(
+            thread_id=thread.id
+        )
+        
+        # Extract assistant's response
+        response = None
+        for msg in messages.data:
+            if msg.role == "assistant":
+                response = msg.content[0].text.value
+                break
+        
+        # Clean up
+        client.beta.assistants.delete(assistant.id)
+        
+        return {
+            "success": True,
+            "agent_id": to_agent_id,
+            "response": response,
+            "run_id": run.id,
+            "thread_id": thread.id,
+            "handoff_context": handoff_context
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+```
+
+### SDK Configuration 
+
+The SDK will be integrated directly into the system:
+
+```php
+/**
+ * Register SDK settings
+ */
+public function register_sdk_settings() {
+    add_settings_section(
+        'mpai_sdk_settings',
+        'OpenAI Agents SDK Configuration',
+        [$this, 'render_sdk_settings_section'],
+        'mpai_settings'
+    );
+    
+    add_settings_field(
+        'mpai_python_path',
+        'Python Executable Path',
+        [$this, 'render_python_path_field'],
+        'mpai_settings',
+        'mpai_sdk_settings'
+    );
+    
+    register_setting(
+        'mpai_settings',
+        'mpai_python_path',
+        [
+            'type' => 'string',
+            'default' => '',
+            'sanitize_callback' => 'sanitize_text_field',
+        ]
+    );
+}
+```
+
+### Implementation Timeline
+
+The SDK integration will be implemented directly and efficiently:
+
+1. **Week 1: Core Integration**
+   - Set up Python bridge
+   - Create SDK directory structure
+   - Implement core integration layer
+
+2. **Week 2: Agent Implementation**
+   - Connect all agents to SDK
+   - Implement all tool mappings
+   - Ensure exact feature parity
+
+3. **Week 3: Advanced Features**
+   - Implement agent handoffs
+   - Add running agents capability
+   - Add multi-agent workflows
+
+4. **Week 4: Testing & Deployment**
+   - Comprehensive testing
+   - Performance optimization
+   - Final verification of feature parity
+
+### Technical Requirements
+
+- PHP 7.4+ (8.0+ recommended)
+- Python 3.8+
+- OpenAI API key with appropriate permissions
+- OpenAI Agents SDK
+- Server with Python execution capability
+
+### Security Considerations
+
+1. **API Key Protection**
+   - Store keys securely using WordPress methods
+   - Never expose keys in logs or error messages
+
+2. **Command Execution Protection**
+   - Validate and sanitize all inputs to Python bridge
+   - Use allowlist for permitted script calls
+   - Restrict script execution to known directory
+
+3. **Error Handling**
+   - Graceful fallbacks if SDK fails
+   - Comprehensive logging
+   - User-friendly error messages
