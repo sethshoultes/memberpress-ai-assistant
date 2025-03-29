@@ -29,6 +29,19 @@ if (isset($_POST['mpai_save_settings']) && check_admin_referer('mpai_settings_no
         update_option('mpai_memberpress_api_key', sanitize_text_field($_POST['mpai_memberpress_api_key']));
     }
     
+    // Chat Interface Settings
+    update_option('mpai_enable_chat', isset($_POST['mpai_enable_chat']) ? '1' : '0');
+    
+    if (isset($_POST['mpai_chat_position'])) {
+        update_option('mpai_chat_position', sanitize_text_field($_POST['mpai_chat_position']));
+    }
+    
+    update_option('mpai_show_on_all_pages', isset($_POST['mpai_show_on_all_pages']) ? '1' : '0');
+    
+    if (isset($_POST['mpai_welcome_message'])) {
+        update_option('mpai_welcome_message', wp_kses_post($_POST['mpai_welcome_message']));
+    }
+    
     // CLI Commands
     update_option('mpai_enable_cli_commands', isset($_POST['mpai_enable_cli_commands']) ? '1' : '0');
     
@@ -43,6 +56,8 @@ if (isset($_POST['mpai_save_settings']) && check_admin_referer('mpai_settings_no
     }
     
     // Advanced Settings
+    update_option('mpai_use_agent_system', isset($_POST['mpai_use_agent_system']) ? '1' : '0');
+    
     if (isset($_POST['mpai_temperature'])) {
         update_option('mpai_temperature', floatval($_POST['mpai_temperature']));
     }
@@ -269,6 +284,18 @@ settings_errors('mpai_messages');
 
             <div id="tab-advanced" class="mpai-settings-tab" style="display: none;">
                 <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="mpai_use_agent_system"><?php _e('Agent System', 'memberpress-ai-assistant'); ?></label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="mpai_use_agent_system" id="mpai_use_agent_system" value="1" <?php checked(get_option('mpai_use_agent_system', false)); ?> />
+                                <?php _e('Enable the advanced agent system', 'memberpress-ai-assistant'); ?>
+                            </label>
+                            <p class="description"><?php _e('The agent system uses specialized AI agents for different tasks like content creation and system management.', 'memberpress-ai-assistant'); ?></p>
+                        </td>
+                    </tr>
                     <tr>
                         <th scope="row">
                             <label for="mpai_temperature"><?php _e('Temperature', 'memberpress-ai-assistant'); ?></label>

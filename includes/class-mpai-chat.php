@@ -222,8 +222,17 @@ class MPAI_Chat {
         try {
             error_log('MPAI: Processing chat message: ' . $message);
             
-            // We don't need to verify tables exist here anymore since the main class handles it,
-            // and tables are created during plugin activation. This simplifies the code flow.
+            // Check if agent system is enabled
+            $use_agent_system = get_option('mpai_use_agent_system', false);
+            
+            if ($use_agent_system && class_exists('MPAI_Agent_Orchestrator')) {
+                // Use the agent system if enabled and available
+                error_log('MPAI: Using agent system for message processing');
+                return $this->process_message_with_agents($message);
+            }
+            
+            // Otherwise use the traditional conversation approach
+            error_log('MPAI: Using traditional conversation for message processing');
             
             // Initialize conversation if empty
             if (empty($this->conversation)) {
@@ -435,6 +444,40 @@ class MPAI_Chat {
         }
         
         return false;
+    }
+    
+    /**
+     * Process a message using the agent system
+     *
+     * @param string $message User message
+     * @return array Response data
+     */
+    private function process_message_with_agents($message) {
+        // Initialize the agent orchestrator
+        $orchestrator = new MPAI_Agent_Orchestrator();
+        
+        // Process the request
+        $result = $orchestrator->process_request($message);
+        
+        // Save the message and response to database
+        if (isset($result['message'])) {
+            $this->save_message($message, $result['message']);
+        }
+        
+        if ($result['success']) {
+            return array(
+                'success' => true,
+                'message' => $result['message'],
+                'raw_response' => $result['message'],
+                'agent' => isset($result['agent']) ? $result['agent'] : 'unknown'
+            );
+        } else {
+            return array(
+                'success' => false,
+                'message' => isset($result['message']) ? $result['message'] : 'Unknown error occurred',
+                'error' => isset($result['error']) ? $result['error'] : 'Unknown error'
+            );
+        }
     }
 
     /**

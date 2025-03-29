@@ -41,6 +41,9 @@ $welcome_message = get_option('mpai_welcome_message', 'Hi there! I\'m your Membe
             <?php esc_html_e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?>
         </div>
         <div class="mpai-chat-actions">
+            <button id="mpai-chat-expand" class="mpai-chat-action-button mpai-chat-expand">
+                <span class="dashicons dashicons-editor-expand"></span>
+            </button>
             <button id="mpai-chat-minimize" class="mpai-chat-action-button mpai-chat-minimize">
                 <span class="dashicons dashicons-minus"></span>
             </button>
@@ -64,18 +67,28 @@ $welcome_message = get_option('mpai_welcome_message', 'Hi there! I\'m your Membe
         <form id="mpai-chat-form" class="mpai-chat-form">
             <div class="mpai-chat-input-container">
                 <textarea id="mpai-chat-input" class="mpai-chat-input" placeholder="<?php esc_attr_e('Type your message here...', 'memberpress-ai-assistant'); ?>" rows="1"></textarea>
+                <button type="button" id="mpai-chat-cli" class="mpai-chat-tool-button" title="<?php esc_attr_e('CLI Commands', 'memberpress-ai-assistant'); ?>">
+                    <span class="dashicons dashicons-admin-tools"></span>
+                </button>
                 <button type="submit" id="mpai-chat-submit" class="mpai-chat-submit">
                     <span class="dashicons dashicons-arrow-right-alt2"></span>
                 </button>
             </div>
         </form>
         <div class="mpai-chat-footer-info">
-            <span class="mpai-chat-branding">
-                <?php esc_html_e('Powered by MemberPress AI', 'memberpress-ai-assistant'); ?>
-            </span>
-            <button id="mpai-chat-clear" class="mpai-chat-clear">
-                <?php esc_html_e('Clear conversation', 'memberpress-ai-assistant'); ?>
-            </button>
+            <div class="mpai-chat-footer-left">
+                <span class="mpai-chat-branding">
+                    <?php esc_html_e('Powered by MemberPress AI', 'memberpress-ai-assistant'); ?>
+                </span>
+            </div>
+            <div class="mpai-chat-footer-right">
+                <button id="mpai-chat-export" class="mpai-chat-action-link" title="<?php esc_attr_e('Export conversation', 'memberpress-ai-assistant'); ?>">
+                    <span class="dashicons dashicons-download"></span>
+                </button>
+                <button id="mpai-chat-clear" class="mpai-chat-clear">
+                    <?php esc_html_e('Clear conversation', 'memberpress-ai-assistant'); ?>
+                </button>
+            </div>
         </div>
     </div>
 </div>

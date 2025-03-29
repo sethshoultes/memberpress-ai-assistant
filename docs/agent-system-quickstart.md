@@ -1,8 +1,18 @@
-# MemberPress AI Agent System: Quick Start Guide
+# MemberPress AI Assistant: Agent System Quick Start Guide
 
 ## Overview
 
-The MemberPress AI Agent System gives you powerful AI assistants that can help manage your WordPress site and MemberPress installation through natural language commands. This quick start guide will help you get up and running with the agent system in minutes.
+The MemberPress AI Assistant now includes a powerful agent system that uses specialized AI agents to handle different types of tasks. This quick start guide will help you understand and start using the agent system features.
+
+## What Are Agents?
+
+Agents are specialized AI assistants that focus on specific domains or tasks:
+
+- **Content Agent**: Creates and manages WordPress content
+- **System Agent**: Handles WordPress system administration tasks
+- **MemberPress Agent**: Manages MemberPress-specific functionality
+
+The agent system automatically determines which agent is best suited to handle your request and routes it appropriately.
 
 ## Installation and Setup
 
@@ -10,19 +20,17 @@ The MemberPress AI Agent System gives you powerful AI assistants that can help m
    - WordPress 5.8+
    - MemberPress 1.9.0+
    - PHP 7.4+ (8.0+ recommended)
-   - WP-CLI installed on your server
+   - Valid OpenAI API key
 
 2. **Configure API Access**
    - Navigate to MemberPress > AI Assistant > Settings
    - Enter your OpenAI API key
-   - Select your preferred model (GPT-4 recommended)
+   - Select your preferred model (GPT-4o recommended)
    - Save settings
 
 3. **Enable Agent System**
-   - Go to MemberPress > AI Assistant > Agent Settings
-   - Toggle "Enable Agent System" to ON
-   - Select which agents you want to activate
-   - Configure security settings
+   - Go to MemberPress > AI Assistant > Settings > Advanced
+   - Check "Enable the advanced agent system"
    - Save changes
 
 ## Your First Interaction

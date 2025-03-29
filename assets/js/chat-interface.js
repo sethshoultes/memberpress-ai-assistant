@@ -17,6 +17,7 @@
         const $chatClose = $('#mpai-chat-close');
         const $chatClear = $('#mpai-chat-clear');
         const $chatSubmit = $('#mpai-chat-submit');
+        const $chatExpand = $('#mpai-chat-expand');
 
         /**
          * Function to open the chat
@@ -47,6 +48,26 @@
         function minimizeChat() {
             $chatContainer.fadeOut(300);
             $chatToggle.fadeIn(300);
+        }
+        
+        /**
+         * Function to toggle expanded chat view
+         */
+        function toggleExpandChat() {
+            $chatContainer.toggleClass('mpai-chat-expanded');
+            
+            if ($chatContainer.hasClass('mpai-chat-expanded')) {
+                $chatExpand.find('span').removeClass('dashicons-editor-expand').addClass('dashicons-editor-contract');
+            } else {
+                $chatExpand.find('span').removeClass('dashicons-editor-contract').addClass('dashicons-editor-expand');
+            }
+            
+            // Store expanded state
+            localStorage.setItem('mpaiChatExpanded', $chatContainer.hasClass('mpai-chat-expanded') ? 'true' : 'false');
+            
+            // Adjust input height and scroll to bottom
+            adjustInputHeight();
+            setTimeout(scrollToBottom, 100);
         }
 
         /**
@@ -418,6 +439,11 @@
         $chatMinimize.on('click', function() {
             minimizeChat();
         });
+        
+        // Toggle expanded view when the expand button is clicked
+        $chatExpand.on('click', function() {
+            toggleExpandChat();
+        });
 
         // Send message when the form is submitted
         $chatForm.on('submit', function(e) {
@@ -453,6 +479,12 @@
             $chatContainer.css('display', 'flex').hide().fadeIn(300);
             $chatToggle.hide();
             $chatInput.focus();
+        }
+        
+        // Set expanded state if it was expanded in previous session
+        if (localStorage.getItem('mpaiChatExpanded') === 'true') {
+            $chatContainer.addClass('mpai-chat-expanded');
+            $chatExpand.find('span').removeClass('dashicons-editor-expand').addClass('dashicons-editor-contract');
         }
         
         // Log that initialization is complete

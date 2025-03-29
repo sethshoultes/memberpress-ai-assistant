@@ -133,6 +133,40 @@ class MemberPress_AI_Assistant {
         if (defined('WP_CLI') && WP_CLI) {
             require_once MPAI_PLUGIN_DIR . 'includes/cli/class-mpai-cli-commands.php';
         }
+        
+        // Agent System - Base Classes
+        if ($this->is_agent_system_enabled()) {
+            // Tool System
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/class-mpai-base-tool.php';
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/class-mpai-tool-registry.php';
+            
+            // Agent System
+            require_once MPAI_PLUGIN_DIR . 'includes/agents/interface-mpai-agent.php';
+            require_once MPAI_PLUGIN_DIR . 'includes/agents/class-mpai-base-agent.php';
+            require_once MPAI_PLUGIN_DIR . 'includes/agents/class-mpai-agent-orchestrator.php';
+            
+            // Memory System
+            require_once MPAI_PLUGIN_DIR . 'includes/memory/class-mpai-memory-manager.php';
+            
+            // Tool Implementations
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-openai-tool.php';
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-wordpress-tool.php';
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-wp-cli-tool.php';
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-memberpress-tool.php';
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-filesystem-tool.php';
+            
+            // Agent Implementations
+            require_once MPAI_PLUGIN_DIR . 'includes/agents/specialized/class-mpai-content-agent.php';
+        }
+    }
+    
+    /**
+     * Check if agent system is enabled
+     *
+     * @return bool Whether agent system is enabled
+     */
+    private function is_agent_system_enabled() {
+        return get_option('mpai_use_agent_system', false);
     }
 
     /**
@@ -192,6 +226,11 @@ class MemberPress_AI_Assistant {
         ));
         register_setting('mpai_options', 'mpai_welcome_message', array(
             'sanitize_callback' => 'wp_kses_post',
+        ));
+        register_setting('mpai_options', 'mpai_use_agent_system', array(
+            'sanitize_callback' => function($value) {
+                return (bool) $value;
+            },
         ));
     }
 
@@ -664,7 +703,8 @@ class MemberPress_AI_Assistant {
             'enable_chat' => true,
             'chat_position' => 'bottom-right',
             'show_on_all_pages' => true,
-            'welcome_message' => 'Hi there! I\'m your MemberPress AI Assistant. How can I help you today?'
+            'welcome_message' => 'Hi there! I\'m your MemberPress AI Assistant. How can I help you today?',
+            'use_agent_system' => false
         );
         
         foreach ($default_options as $option => $value) {
