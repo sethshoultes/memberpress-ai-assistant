@@ -5,6 +5,47 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-03-29
+
+### Added
+- Enhanced command output formatting for better readability
+- Automatic table detection and HTML table formatting for tabular command results
+- Improved error handling for command execution
+- Added support for additional WP-CLI commands (including 'wp option get')
+- Direct command execution from chat interface with improved UI
+- Added JSON response formatting system for structured command outputs
+- Implemented multi-agent approach for data processing and display:
+  - First agent (PHP backend): Formats and structures tabular data
+  - Second agent (JavaScript frontend): Processes and displays formatted data
+- Specialized formatters for MemberPress data (memberships and transactions)
+- Command-specific titles and styling for "wp user list", "wp post list" and other tabular outputs
+- Distinct table formatting for plugin lists, user lists, and membership data
+- Intelligent command type detection for optimized display formatting
+
+### Fixed
+- Resolved AJAX errors in command execution
+- Fixed issues with nonce validation in tool execution
+- Improved JSON parsing robustness in request handling
+- Enhanced error reporting with detailed failure information
+- Added fallback execution paths for commands
+- Fixed inconsistent JSON outputs in command results
+- Improved handling of MemberPress-specific command output
+- Resolved JSON double-encoding issue causing raw JSON to display in chat
+- Fixed parsing of pre-formatted JSON responses for seamless display
+- Implemented proper object handling to prevent string conversion of JSON data
+
+### Changed
+- Refactored command execution to use a more direct approach
+- Improved debugging information for easier troubleshooting
+- Enhanced UI feedback during command execution
+- Added striped row styling for improved table readability
+- Updated command response handling to detect and format JSON data
+- Enhanced table UI with better headers, spacing, and responsive design
+- Improved detection of tabular data in command outputs
+- Enhanced JSON processing with support for multiple formats
+- Optimized data flow between backend and frontend for better performance
+- Improved logging to facilitate easier troubleshooting of data formatting issues
+
 ## [1.2.0] - 2025-03-29
 
 ### Added

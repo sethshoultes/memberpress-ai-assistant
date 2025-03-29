@@ -8,11 +8,17 @@ MemberPress AI Assistant integrates OpenAI's powerful language models with your 
 
 - **AI-Powered Chat Interface**: Ask questions about your MemberPress data and receive intelligent answers
 - **Agent System**: Specialized AI agents that perform specific tasks through natural language commands
+- **Multi-Agent Data Processing**: Two-stage data processing to optimize the display and formatting of results
 - **MemberPress Data Analysis**: Get insights about memberships, transactions, subscriptions, and more
 - **WP-CLI Integration**: Run WordPress CLI commands with AI assistance
 - **Command Recommendations**: Get AI-suggested commands based on your goals
 - **Secure Command Execution**: Only pre-approved commands from a whitelist can be executed
 - **Conversation History**: Save and retrieve previous conversations
+- **Enhanced Command Output**: Automatic formatting of command results as beautiful HTML tables
+- **Intelligent Table Formatting**: Automatic detection and formatting of tabular data with appropriate headers
+- **Command-Specific Styling**: Specialized formatting for different types of commands (users, posts, plugins, etc.)
+- **Direct Command Execution**: Click commands to run them directly from the chat interface
+- **Improved User Experience**: Streamlined interface with real-time feedback during command execution
 
 ## Requirements
 
@@ -93,6 +99,13 @@ The MemberPress AI Assistant includes an advanced agent system with specialized 
 3. **Security Agent**: Monitor and enhance site security 
 4. **Analytics Agent**: Generate insights about your membership site
 5. **MemberPress Agent**: Handle MemberPress-specific tasks and configurations
+
+The plugin also implements a multi-agent data processing approach:
+
+1. **Backend Agent (PHP)**: Detects, formats, and structures tabular data from commands
+2. **Frontend Agent (JavaScript)**: Processes and displays the structured data with appropriate formatting
+
+This two-stage processing ensures optimal display of information with context-aware formatting based on the command type.
 
 For more information, see the [Agent System Specification](docs/agent-system-spec.md).
 

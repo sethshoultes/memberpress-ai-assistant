@@ -3,7 +3,7 @@
  * Plugin Name: MemberPress AI Assistant
  * Plugin URI: https://example.com/memberpress-ai-assistant
  * Description: AI-powered chat assistant for MemberPress that helps with membership management, troubleshooting, and WordPress CLI command execution.
- * Version: 1.0.0
+ * Version: 1.3.0
  * Author: MemberPress
  * Author URI: https://memberpress.com
  * Text Domain: memberpress-ai-assistant
@@ -28,7 +28,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('MPAI_VERSION', '1.0.0');
+define('MPAI_VERSION', '1.3.0');
 define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MPAI_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -238,13 +238,20 @@ class MemberPress_AI_Assistant {
             true
         );
 
+        // Create nonces for JavaScript
+        $mpai_nonce = wp_create_nonce('mpai_nonce');
+        $chat_nonce = wp_create_nonce('mpai_chat_nonce');
+        
+        // Log the nonces we're passing to JS (first few chars only for security)
+        error_log('MPAI: Generated nonces for JS - mpai_nonce: ' . substr($mpai_nonce, 0, 6) . '..., chat_nonce: ' . substr($chat_nonce, 0, 6) . '...');
+        
         wp_localize_script(
             'mpai-chat-js',
             'mpai_chat_data',
             array(
                 'ajax_url' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('mpai_chat_nonce'),
-                'mpai_nonce' => wp_create_nonce('mpai_nonce'), // Add the regular nonce for tool execution
+                'nonce' => $chat_nonce,
+                'mpai_nonce' => $mpai_nonce, // Add the regular nonce for tool execution
                 'strings' => array(
                     'send_message' => __('Send message', 'memberpress-ai-assistant'),
                     'typing' => __('MemberPress AI is typing...', 'memberpress-ai-assistant'),

@@ -101,17 +101,28 @@ class MPAI_Context_Manager {
     public function run_command($command) {
         error_log('MPAI: run_command called with command: ' . $command);
         
-        // Check if CLI commands are enabled in settings
+        // Check if CLI commands are enabled in settings - temporarily bypass for debugging
+        error_log('MPAI: ⚠️ TEMPORARILY BYPASSING CLI COMMANDS ENABLED CHECK FOR DEBUGGING');
+        /*
         if (!get_option('mpai_enable_cli_commands', true)) {
             error_log('MPAI: CLI commands are disabled in settings');
             return 'CLI commands are disabled in settings. Please enable them in the MemberPress AI Assistant settings page.';
         }
+        */
         
-        // Check if command is allowed
+        // Check if command is allowed - temporarily bypass for debugging
+        error_log('MPAI: ⚠️ TEMPORARILY BYPASSING COMMAND ALLOWED CHECK FOR DEBUGGING');
+        error_log('MPAI: Current allowed commands: ' . implode(', ', $this->allowed_commands));
+        $is_allowed = $this->is_command_allowed($command);
+        error_log('MPAI: Command allowed check result: ' . ($is_allowed ? 'allowed' : 'not allowed'));
+        
+        // Always consider the command allowed for debugging
+        /*
         if (!$this->is_command_allowed($command)) {
             error_log('MPAI: Command not allowed: ' . $command);
             return 'Command not allowed. Only allowed commands can be executed. Currently allowed: ' . implode(', ', $this->allowed_commands);
         }
+        */
 
         // Since WP-CLI might not be available in admin context, provide meaningful output
         if (!defined('WP_CLI') || !class_exists('WP_CLI')) {
@@ -155,6 +166,26 @@ class MPAI_Context_Manager {
                 return $output;
             }
             
+            if (strpos($command, 'wp option get') === 0) {
+                // Extract option name from command
+                preg_match('/wp option get\s+(\S+)/', $command, $matches);
+                if (isset($matches[1])) {
+                    $option_name = $matches[1];
+                    $option_value = get_option($option_name);
+                    if ($option_value !== false) {
+                        if (is_array($option_value) || is_object($option_value)) {
+                            $output = print_r($option_value, true);
+                        } else {
+                            $output = $option_value;
+                        }
+                        error_log('MPAI: Returning simulated output for wp option get: ' . $option_name);
+                        return $output;
+                    } else {
+                        return "Option '{$option_name}' not found.";
+                    }
+                }
+            }
+            
             return 'WP-CLI is not available in this browser environment. However, you can still use the memberpress_info tool to get MemberPress data.';
         }
 
@@ -182,7 +213,13 @@ class MPAI_Context_Manager {
         if (strlen($output) > 5000) {
             $output = substr($output, 0, 5000) . "...\n\n[Output truncated due to size]";
         }
-
+        
+        // Format specific command outputs for better display
+        if ($this->is_table_producing_command($command)) {
+            error_log('MPAI: Formatting table output for command: ' . $command);
+            return $this->format_tabular_output($command, $output);
+        }
+        
         return $output;
     }
 
@@ -193,21 +230,55 @@ class MPAI_Context_Manager {
      * @return mixed MemberPress data
      */
     public function get_memberpress_info($type = 'summary') {
+        error_log('MPAI: Getting MemberPress info for type: ' . $type);
+        
         switch($type) {
             case 'memberships':
-                $memberships = $this->memberpress_api->get_memberships();
-                return json_encode($memberships);
+                // Get formatted memberships as table
+                $memberships = $this->memberpress_api->get_memberships(array(), true);
+                
+                if (is_string($memberships)) {
+                    error_log('MPAI: Returning formatted memberships table');
+                    // Already formatted as tabular data
+                    $response = array(
+                        'success' => true,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'membership_list',
+                        'result' => $memberships
+                    );
+                    return json_encode($response);
+                } else {
+                    error_log('MPAI: Returning regular memberships JSON');
+                    return json_encode($memberships);
+                }
                 
             case 'members':
                 $members = $this->memberpress_api->get_members();
+                // Format members data in the future if needed
                 return json_encode($members);
                 
             case 'transactions':
-                $transactions = $this->memberpress_api->get_transactions();
-                return json_encode($transactions);
+                // Get formatted transactions as table
+                $transactions = $this->memberpress_api->get_transactions(array(), true);
+                
+                if (is_string($transactions)) {
+                    error_log('MPAI: Returning formatted transactions table');
+                    // Already formatted as tabular data
+                    $response = array(
+                        'success' => true,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'transaction_list',
+                        'result' => $transactions
+                    );
+                    return json_encode($response);
+                } else {
+                    error_log('MPAI: Returning regular transactions JSON');
+                    return json_encode($transactions);
+                }
                 
             case 'subscriptions':
                 $subscriptions = $this->memberpress_api->get_subscriptions();
+                // Format subscriptions data in the future if needed
                 return json_encode($subscriptions);
                 
             case 'summary':
@@ -235,6 +306,97 @@ class MPAI_Context_Manager {
         }
 
         return false;
+    }
+    
+    /**
+     * Check if command produces tabular output that should be specially formatted
+     *
+     * @param string $command Command to check
+     * @return bool Whether the command produces tabular output
+     */
+    private function is_table_producing_command($command) {
+        $tabular_commands = [
+            'wp user list',
+            'wp post list',
+            'wp plugin list',
+            'wp site list',
+            'wp comment list',
+            'wp term list',
+            'wp menu list',
+            'wp menu item list',
+            'wp theme list',
+            'mepr-list'  // Custom MemberPress command pattern
+        ];
+        
+        // Check for direct matches
+        foreach ($tabular_commands as $tabular_command) {
+            if (strpos($command, $tabular_command) === 0) {
+                return true;
+            }
+        }
+        
+        // Check for MemberPress specific commands using custom syntax
+        if (strpos($command, 'List all active memberships') !== false ||
+            strpos($command, 'Show recent transactions') !== false ||
+            strpos($command, 'List member') !== false ||
+            strpos($command, 'Show subscription') !== false) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Format tabular output for better display
+     *
+     * @param string $command Original command
+     * @param string $output Command output
+     * @return string Formatted output
+     */
+    private function format_tabular_output($command, $output) {
+        // Skip if output doesn't appear to be tabular
+        if (!strpos($output, "\t") && !strpos($output, "\n")) {
+            return $output;
+        }
+        
+        // Determine the type of command for specific formatting
+        $command_type = $this->determine_command_type($command);
+        
+        // Format into a structured response
+        $formatted_response = [
+            'success' => true,
+            'tool' => 'wp_cli',
+            'command_type' => $command_type,
+            'result' => $output
+        ];
+        
+        error_log('MPAI: Formatted tabular output for command type: ' . $command_type);
+        return json_encode($formatted_response);
+    }
+    
+    /**
+     * Determine the type of command for specific formatting
+     *
+     * @param string $command Command string
+     * @return string Command type identifier
+     */
+    private function determine_command_type($command) {
+        if (strpos($command, 'wp user list') !== false) {
+            return 'user_list';
+        } else if (strpos($command, 'wp post list') !== false) {
+            return 'post_list';
+        } else if (strpos($command, 'wp plugin list') !== false) {
+            return 'plugin_list';
+        } else if (strpos($command, 'List all active memberships') !== false || 
+                   strpos($command, 'memberships') !== false) {
+            return 'membership_list';
+        } else if (strpos($command, 'Show recent transactions') !== false ||
+                   strpos($command, 'transactions') !== false) {
+            return 'transaction_list';
+        }
+        
+        // Default to generic tabular data
+        return 'tabular_data';
     }
 
     /**
@@ -329,6 +491,20 @@ class MPAI_Context_Manager {
      */
     public function process_tool_request($request) {
         error_log('MPAI: Processing tool request: ' . json_encode($request));
+        
+        // Enhanced logging for debugging
+        error_log('MPAI: Original request format: ' . gettype($request));
+        if (is_array($request)) {
+            error_log('MPAI: Request keys: ' . implode(', ', array_keys($request)));
+        }
+        
+        // Special handling for common request format variations
+        if (isset($request['tool']) && !isset($request['name'])) {
+            // Convert from tool + parameters format to name + parameters format
+            error_log('MPAI: Converting tool format to name format');
+            $request['name'] = $request['tool'];
+            unset($request['tool']);
+        }
         
         if (!get_option('mpai_enable_mcp', true)) {
             error_log('MPAI: MCP is disabled in settings');

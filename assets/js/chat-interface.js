@@ -129,17 +129,19 @@
             console.log('MPAI: Processing tool calls in response');
             
             // Match JSON blocks that look like tool calls
-            // Support both formats:
-            // 1. ```json\n{...}\n```
-            // 2. {tool: ..., parameters: ...}
+            // Support multiple formats:
+            // 1. ```json\n{...}\n``` - Standard code block with JSON
+            // 2. ```json-object\n{...}\n``` - Special marker for pre-parsed JSON that shouldn't be double-encoded
+            // 3. {tool: ..., parameters: ...} - Direct JSON in text
             const jsonBlockRegex = /```json\n({[\s\S]*?})\n```/g;
+            const jsonObjectBlockRegex = /```json-object\n({[\s\S]*?})\n```/g;
             const directJsonRegex = /\{[\s\S]*?"tool"[\s\S]*?"parameters"[\s\S]*?\}/g;
             
             let match;
             let processedResponse = response;
             let matches = [];
             
-            // Find all tool call matches from JSON blocks
+            // Find all tool call matches from standard JSON blocks
             while ((match = jsonBlockRegex.exec(response)) !== null) {
                 try {
                     console.log('MPAI: Found JSON block', match[1]);
@@ -158,6 +160,28 @@
                     }
                 } catch (e) {
                     console.error('MPAI: Error parsing potential tool call in JSON block:', e);
+                }
+            }
+            
+            // Find all tool call matches from JSON object blocks (specially marked pre-parsed JSON)
+            while ((match = jsonObjectBlockRegex.exec(response)) !== null) {
+                try {
+                    console.log('MPAI: Found JSON-object block (pre-parsed)', match[1]);
+                    const jsonData = JSON.parse(match[1]);
+                    
+                    // Only process if it looks like a tool call (has tool and parameters properties)
+                    // and isn't already a tool result (no success or error properties)
+                    if (jsonData.tool && jsonData.parameters && 
+                        !jsonData.hasOwnProperty('success') && !jsonData.hasOwnProperty('error')) {
+                        console.log('MPAI: Valid tool call in JSON-object block', jsonData);
+                        matches.push({
+                            fullMatch: match[0],
+                            jsonStr: match[1],
+                            jsonData: jsonData
+                        });
+                    }
+                } catch (e) {
+                    console.error('MPAI: Error parsing potential tool call in JSON-object block:', e);
                 }
             }
             
@@ -241,13 +265,18 @@
                 parameters: jsonData.parameters
             };
             
+            console.log('MPAI: Tool request being sent:', toolRequest);
+            
+            // Add raw format for debugging
+            console.log('MPAI: Raw tool_request parameter:', JSON.stringify(toolRequest));
+            
             $.ajax({
                 url: mpai_chat_data.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'mpai_execute_tool',
                     tool_request: JSON.stringify(toolRequest),
-                    mpai_nonce: mpai_chat_data.mpai_nonce || mpai_chat_data.nonce
+                    nonce: mpai_chat_data.nonce // Try using the regular nonce instead
                 },
                 success: function(response) {
                     console.log('MPAI: Tool execution response', response);
@@ -262,25 +291,206 @@
                         $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-success');
                         $status.html('Success');
                         
-                        // Format the result based on type
+                        // Format the result based on type and tool
                         let resultContent = '';
-                        if (typeof response.data.result === 'string') {
+                        
+                        // Get tool name to decide how to format
+                        const toolName = response.data.tool || jsonData.tool;
+                        
+                        // Check if it's a wp_cli tool result
+                        if (toolName === 'wp_cli') {
+                            // Check if the result is a JSON string first
+                            let jsonResult = null;
                             try {
-                                // Try to parse it as JSON first (for pretty display)
-                                const parsedJson = JSON.parse(response.data.result);
-                                resultContent = JSON.stringify(parsedJson, null, 2);
+                                if (typeof response.data.result === 'string' && 
+                                    response.data.result.trim().startsWith('{') && 
+                                    response.data.result.trim().endsWith('}')) {
+                                    jsonResult = JSON.parse(response.data.result);
+                                    console.log('MPAI: Found JSON in wp_cli result', jsonResult);
+                                }
                             } catch (e) {
-                                // Not JSON, display as is
-                                resultContent = response.data.result;
+                                console.log('MPAI: Not valid JSON, continuing with normal processing');
+                            }
+                            
+                            // Process JSON results if found
+                            if (jsonResult !== null && jsonResult.result) {
+                                console.log('MPAI: Processing JSON result with embedded result property');
+                                
+                                // Get command type for specific formatting
+                                const commandType = jsonResult.command_type || 'generic';
+                                console.log('MPAI: Command type:', commandType);
+                                
+                                // Special handling for all tabular formats
+                                if (typeof jsonResult.result === 'string' && 
+                                    jsonResult.result.includes('\t') && 
+                                    jsonResult.result.includes('\n')) {
+                                    
+                                    // Format as table - this handles formatted lists from the original JSON
+                                    const rows = jsonResult.result.trim().split('\n');
+                                    
+                                    // Generate title based on command type
+                                    let tableTitle = '';
+                                    switch(commandType) {
+                                        case 'user_list':
+                                            tableTitle = '<h3>WordPress Users</h3>';
+                                            break;
+                                        case 'post_list':
+                                            tableTitle = '<h3>WordPress Posts</h3>';
+                                            break;
+                                        case 'plugin_list':
+                                            tableTitle = '<h3>WordPress Plugins</h3>';
+                                            break;
+                                        case 'membership_list':
+                                            tableTitle = '<h3>MemberPress Memberships</h3>';
+                                            break;
+                                        case 'transaction_list':
+                                            tableTitle = '<h3>MemberPress Transactions</h3>';
+                                            break;
+                                        default:
+                                            // No title for generic tables
+                                            break;
+                                    }
+                                    
+                                    let tableHtml = '<div class="mpai-result-table">';
+                                    if (tableTitle) {
+                                        tableHtml += tableTitle;
+                                    }
+                                    tableHtml += '<table>';
+                                    
+                                    rows.forEach((row, index) => {
+                                        const cells = row.split('\t');
+                                        
+                                        if (index === 0) {
+                                            // Header row
+                                            tableHtml += '<thead><tr>';
+                                            cells.forEach(cell => {
+                                                tableHtml += `<th>${cell}</th>`;
+                                            });
+                                            tableHtml += '</tr></thead><tbody>';
+                                        } else {
+                                            // Data row
+                                            tableHtml += '<tr>';
+                                            cells.forEach(cell => {
+                                                tableHtml += `<td>${cell}</td>`;
+                                            });
+                                            tableHtml += '</tr>';
+                                        }
+                                    });
+                                    
+                                    tableHtml += '</tbody></table></div>';
+                                    resultContent = tableHtml;
+                                } else {
+                                    // Generic JSON result formatting
+                                    resultContent = `<pre class="mpai-command-result"><code>${jsonResult.result || 'No output'}</code></pre>`;
+                                }
+                            }
+                            // Standard tab-separated processing (for non-JSON results)
+                            else if (typeof response.data.result === 'string' && 
+                                response.data.result.includes('\t') && 
+                                response.data.result.includes('\n')) {
+                                
+                                // Format as table
+                                const rows = response.data.result.trim().split('\n');
+                                let tableHtml = '<div class="mpai-result-table"><table>';
+                                
+                                rows.forEach((row, index) => {
+                                    const cells = row.split('\t');
+                                    
+                                    if (index === 0) {
+                                        // Header row
+                                        tableHtml += '<thead><tr>';
+                                        cells.forEach(cell => {
+                                            tableHtml += `<th>${cell}</th>`;
+                                        });
+                                        tableHtml += '</tr></thead><tbody>';
+                                    } else {
+                                        // Data row
+                                        tableHtml += '<tr>';
+                                        cells.forEach(cell => {
+                                            tableHtml += `<td>${cell}</td>`;
+                                        });
+                                        tableHtml += '</tr>';
+                                    }
+                                });
+                                
+                                tableHtml += '</tbody></table></div>';
+                                resultContent = tableHtml;
+                            } else {
+                                // For other WP CLI results, format with a monospace font
+                                resultContent = `<pre class="mpai-command-result"><code>${response.data.result || 'No output'}</code></pre>`;
+                            }
+                        } 
+                        // Check if it's memberpress_info
+                        else if (toolName === 'memberpress_info') {
+                            try {
+                                // Try to parse as JSON and format as info card
+                                let data;
+                                if (typeof response.data.result === 'string') {
+                                    data = JSON.parse(response.data.result);
+                                } else {
+                                    data = response.data.result;
+                                }
+                                
+                                // Create a nice summary display
+                                let infoHtml = '<div class="mpai-info-card">';
+                                
+                                // Add a title based on the type
+                                const type = jsonData.parameters && jsonData.parameters.type ? 
+                                    jsonData.parameters.type : 'summary';
+                                
+                                infoHtml += `<h4 class="mpai-info-title">MemberPress ${type.charAt(0).toUpperCase() + type.slice(1)}</h4>`;
+                                infoHtml += '<div class="mpai-info-content">';
+                                
+                                // Format the data based on what we have
+                                if (Array.isArray(data)) {
+                                    // For arrays (like memberships, members, etc.)
+                                    infoHtml += '<ul>';
+                                    data.forEach(item => {
+                                        if (item.title) {
+                                            infoHtml += `<li><strong>${item.title}</strong>`;
+                                            if (item.id) infoHtml += ` (ID: ${item.id})`;
+                                            infoHtml += '</li>';
+                                        } else if (item.name || item.display_name) {
+                                            infoHtml += `<li><strong>${item.name || item.display_name}</strong>`;
+                                            if (item.email) infoHtml += ` (${item.email})`;
+                                            infoHtml += '</li>';
+                                        } else {
+                                            infoHtml += `<li>${JSON.stringify(item)}</li>`;
+                                        }
+                                    });
+                                    infoHtml += '</ul>';
+                                } else if (typeof data === 'object') {
+                                    // For objects with key-value pairs
+                                    infoHtml += '<table class="mpai-info-table">';
+                                    Object.entries(data).forEach(([key, value]) => {
+                                        infoHtml += '<tr>';
+                                        infoHtml += `<th>${key.replace(/_/g, ' ')}</th>`;
+                                        infoHtml += `<td>${typeof value === 'object' ? JSON.stringify(value) : value}</td>`;
+                                        infoHtml += '</tr>';
+                                    });
+                                    infoHtml += '</table>';
+                                } else {
+                                    // Fallback for simple values
+                                    infoHtml += `<p>${data}</p>`;
+                                }
+                                
+                                infoHtml += '</div></div>';
+                                resultContent = infoHtml;
+                            } catch (e) {
+                                // If parsing fails, fall back to simpler formatting
+                                resultContent = `<pre class="mpai-command-result"><code>${response.data.result || 'No data available'}</code></pre>`;
                             }
                         } else {
-                            // Object or other type
-                            resultContent = JSON.stringify(response.data, null, 2);
+                            // For other tools, use a simpler format
+                            if (typeof response.data.result === 'string') {
+                                resultContent = `<pre class="mpai-command-result"><code>${response.data.result}</code></pre>`;
+                            } else {
+                                resultContent = `<pre class="mpai-command-result"><code>${JSON.stringify(response.data.result, null, 2)}</code></pre>`;
+                            }
                         }
                         
                         // Display the result
-                        const resultHtml = `<pre><code>${resultContent}</code></pre>`;
-                        $result.html(resultHtml);
+                        $result.html(resultContent);
                     } else {
                         // Update status to error
                         $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-error');
@@ -389,6 +599,9 @@
             }
             
             try {
+                // Store any wp commands so we can make them clickable
+                const wpCommands = [];
+                
                 // Wrap all replacement operations in try/catch to prevent cascading failures
                 
                 try {
@@ -396,6 +609,21 @@
                     content = content.replace(/```([\s\S]*?)```/g, function(match, p1) {
                         // Clean up the code content
                         p1 = p1.trim();
+                        
+                        // Extract WP-CLI commands from code blocks
+                        if (p1.match(/^(sh|bash|shell|command|cmd|wp|wordpress)\b/i)) {
+                            // This is likely a command block
+                            const lines = p1.split('\n');
+                            for (let line of lines) {
+                                // Look for WP CLI commands
+                                const wpCliMatch = line.match(/^(wp\s+.*?)(\s*#.*)?$/);
+                                if (wpCliMatch) {
+                                    const command = wpCliMatch[1].trim();
+                                    wpCommands.push(command);
+                                }
+                            }
+                        }
+                        
                         return '<div class="code-container"><pre><code>' + p1.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre></div>';
                     });
                 } catch (e) {
@@ -483,8 +711,26 @@
                 }
                 
                 try {
-                    // Convert `code` to <code>code</code> (excluding what's already in code blocks)
+                    // Special handling for inline WP CLI commands - make them runnable
+                    content = content.replace(/`(wp\s+[^`]+)`/g, function(match, p1) {
+                        const command = p1.trim();
+                        wpCommands.push(command);
+                        return '<code class="mpai-runnable-command" data-command="' + 
+                            command.replace(/"/g, '&quot;') + 
+                            '">' + p1.replace(/</g, '&lt;').replace(/>/g, '&gt;') + 
+                            ' <span class="mpai-run-indicator">▶</span></code>';
+                    });
+                } catch (e) {
+                    console.error('Error processing wp commands:', e);
+                }
+                
+                try {
+                    // Convert `code` to <code>code</code> (excluding what's already processed for WP commands)
                     content = content.replace(/`([^`]+)`/g, function(match, p1) {
+                        if (p1.trim().startsWith('wp ')) {
+                            // Already processed as a WP command
+                            return match;
+                        }
                         return '<code>' + p1.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code>';
                     });
                 } catch (e) {
@@ -496,6 +742,35 @@
                     content = content.replace(/\n/g, '<br>');
                 } catch (e) {
                     console.error('Error processing line breaks:', e);
+                }
+                
+                // If we found any WP commands, add a toolbar to the message
+                if (wpCommands.length > 0) {
+                    console.log('MPAI: Found WP commands in message:', wpCommands);
+                    
+                    // Add a toolbar at the top
+                    let toolbarHtml = '<div class="mpai-command-toolbar">';
+                    
+                    // If we have more than one command, add a dropdown
+                    if (wpCommands.length === 1) {
+                        toolbarHtml += '<button class="mpai-run-suggested-command" data-command="' + 
+                            wpCommands[0].replace(/"/g, '&quot;') + 
+                            '">Run Command: ' + wpCommands[0] + '</button>';
+                    } else if (wpCommands.length > 1) {
+                        toolbarHtml += '<select class="mpai-command-select">';
+                        toolbarHtml += '<option value="">Select a command...</option>';
+                        
+                        wpCommands.forEach((cmd, index) => {
+                            toolbarHtml += '<option value="' + index + '">' + cmd + '</option>';
+                        });
+                        
+                        toolbarHtml += '</select>';
+                        toolbarHtml += '<button class="mpai-run-selected-command" disabled>Run Selected Command</button>';
+                    }
+                    
+                    toolbarHtml += '</div>';
+                    
+                    content = toolbarHtml + content;
                 }
                 
                 return content;
@@ -660,6 +935,291 @@
             adjustInputHeight();
         });
 
+        // Command Runner
+        const $commandRunner = $('#mpai-command-runner');
+        const $runCommandBtn = $('#mpai-run-command');
+        const $commandInput = $('#mpai-command-input');
+        const $commandExecute = $('#mpai-command-execute');
+        const $commandCancel = $('#mpai-command-cancel');
+        const $commandClose = $('#mpai-command-close');
+        
+        // Show command runner when the Run Command button is clicked
+        $runCommandBtn.on('click', function() {
+            $commandRunner.slideDown(300);
+            $commandInput.focus();
+        });
+        
+        // Hide command runner
+        function hideCommandRunner() {
+            $commandRunner.slideUp(300);
+            $commandInput.val('');
+        }
+        
+        // Set up command close/cancel buttons
+        $commandClose.on('click', hideCommandRunner);
+        $commandCancel.on('click', hideCommandRunner);
+        
+        // Handle clicks on runnable commands in the chat messages
+        $(document).on('click', '.mpai-runnable-command', function() {
+            const command = $(this).data('command');
+            if (command) {
+                $commandInput.val(command);
+                $commandRunner.slideDown(300);
+            }
+        });
+        
+        // Handle clicks on the suggested command button in the toolbar
+        $(document).on('click', '.mpai-run-suggested-command', function() {
+            const command = $(this).data('command');
+            if (command) {
+                // Execute the command directly
+                executeWpCommand(command);
+            }
+        });
+        
+        // Handle command selection in dropdown
+        $(document).on('change', '.mpai-command-select', function() {
+            const index = $(this).val();
+            const $runBtn = $(this).siblings('.mpai-run-selected-command');
+            
+            if (index !== '') {
+                // Enable run button
+                $runBtn.prop('disabled', false);
+            } else {
+                // Disable run button
+                $runBtn.prop('disabled', true);
+            }
+        });
+        
+        // Handle clicks on the run selected command button
+        $(document).on('click', '.mpai-run-selected-command', function() {
+            if ($(this).prop('disabled')) {
+                return;
+            }
+            
+            const $select = $(this).siblings('.mpai-command-select');
+            const index = $select.val();
+            
+            if (index !== '') {
+                const command = $select.find('option:selected').text();
+                executeWpCommand(command);
+            }
+        });
+        
+        // Function to execute a WP command
+        function executeWpCommand(command) {
+            // Add a message showing what command we're running
+            addMessageToChat('user', 'Run command: `' + command + '`');
+            
+            // Show typing indicator 
+            showTypingIndicator();
+            
+            // Log what we're executing
+            console.log('MPAI: Executing WP command:', command);
+            
+            // Try a direct AJAX approach instead of using the tool call mechanism
+            // This is a fallback approach that might work differently
+            
+            // Create a simpler tool request
+            const simpleToolRequest = {
+                "name": "wp_cli",
+                "parameters": {
+                    "command": command
+                }
+            };
+            
+            console.log('MPAI: Sending direct AJAX request with simplified format');
+            
+            // Add a temporary processing message
+            const processingMessageId = 'processing-' + Date.now();
+            addMessageToChat('assistant', `<div id="${processingMessageId}">Running command \`${command}\`...<br><div class="mpai-loading-dots"><span></span><span></span><span></span></div></div>`);
+            
+            // Make the AJAX request
+            $.ajax({
+                url: mpai_chat_data.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'mpai_run_command', // Use the simpler endpoint
+                    command: command,
+                    context: '',
+                    nonce: mpai_chat_data.nonce
+                },
+                success: function(response) {
+                    console.log('MPAI: Command execution response:', response);
+                    
+                    // Replace the processing message
+                    const $processingMessage = $('#' + processingMessageId);
+                    
+                    if (response.success) {
+                        let resultContent = '';
+                        let outputData = response.data && response.data.output ? response.data.output : 'No output available';
+                        
+                        // First try to parse the output as JSON (for our new format)
+                        let commandType = 'generic';
+                        try {
+                            console.log('MPAI: Examining output data type:', typeof outputData);
+                            console.log('MPAI: Output data preview:', typeof outputData === 'string' 
+                                ? outputData.substring(0, 100) + '...' 
+                                : outputData);
+                            
+                            // Try to parse the output as JSON first (if it's a string)
+                            if (typeof outputData === 'string' && 
+                                (outputData.trim().startsWith('{') && outputData.trim().endsWith('}'))) {
+                                console.log('MPAI: Found JSON string in command execution response');
+                                const jsonOutput = JSON.parse(outputData);
+                                
+                                // Check if it has the new tool response format
+                                if (jsonOutput.success && jsonOutput.tool === 'wp_cli' && jsonOutput.result) {
+                                    console.log('MPAI: Processing structured tool response from command');
+                                    // Extract the command type if available
+                                    if (jsonOutput.command_type) {
+                                        commandType = jsonOutput.command_type;
+                                        console.log('MPAI: Command type from JSON:', commandType);
+                                    }
+                                    outputData = jsonOutput.result;
+                                }
+                            } 
+                            // Check if the output is already a parsed JSON object (direct pass-through case)
+                            else if (typeof outputData === 'object' && outputData !== null) {
+                                console.log('MPAI: Output is already a parsed JSON object');
+                                // Use it as is, but extract relevant data if it follows our format
+                                if (outputData.success && outputData.tool === 'wp_cli' && outputData.result) {
+                                    if (outputData.command_type) {
+                                        commandType = outputData.command_type;
+                                        console.log('MPAI: Command type from direct object:', commandType);
+                                    }
+                                    outputData = outputData.result;
+                                }
+                            } else {
+                                console.log('MPAI: Output does not appear to be JSON or an object, using as-is');
+                            }
+                        } catch (e) {
+                            console.log('MPAI: Error while processing output data:', e);
+                            // Continue with the original output
+                        }
+                        
+                        // Add detailed logging for debugging
+                        console.log('MPAI: Final output data type:', typeof outputData);
+                        console.log('MPAI: Final command type:', commandType);
+                        console.log('MPAI: Final output data preview:', typeof outputData === 'string' 
+                            ? outputData.substring(0, 100) + '...' 
+                            : outputData);
+                        
+                        // Format the output if it looks like a table
+                        if (outputData && typeof outputData === 'string' && 
+                            outputData.includes('\t') && outputData.includes('\n')) {
+                            
+                            // Generate title based on command type
+                            let tableTitle = '';
+                            switch(commandType) {
+                                case 'user_list':
+                                    tableTitle = '<h3>WordPress Users</h3>';
+                                    break;
+                                case 'post_list':
+                                    tableTitle = '<h3>WordPress Posts</h3>';
+                                    break;
+                                case 'plugin_list':
+                                    tableTitle = '<h3>WordPress Plugins</h3>';
+                                    break;
+                                case 'membership_list':
+                                    tableTitle = '<h3>MemberPress Memberships</h3>';
+                                    break;
+                                case 'transaction_list':
+                                    tableTitle = '<h3>MemberPress Transactions</h3>';
+                                    break;
+                                default:
+                                    // Generic title for regular commands
+                                    tableTitle = '<h3>Command Results</h3>';
+                                    break;
+                            }
+                            
+                            // Format as table
+                            const rows = outputData.trim().split('\n');
+                            let tableHtml = '<div class="mpai-result-table">';
+                            
+                            // Add title
+                            if (tableTitle) {
+                                tableHtml += tableTitle;
+                            }
+                            
+                            tableHtml += '<table>';
+                            
+                            rows.forEach((row, index) => {
+                                const cells = row.split('\t');
+                                
+                                if (index === 0) {
+                                    // Header row
+                                    tableHtml += '<thead><tr>';
+                                    cells.forEach(cell => {
+                                        tableHtml += `<th>${cell}</th>`;
+                                    });
+                                    tableHtml += '</tr></thead><tbody>';
+                                } else {
+                                    // Data row
+                                    tableHtml += '<tr>';
+                                    cells.forEach((cell, cellIndex) => {
+                                        tableHtml += `<td>${cell}</td>`;
+                                    });
+                                    tableHtml += '</tr>';
+                                }
+                            });
+                            
+                            tableHtml += '</tbody></table></div>';
+                            resultContent = `<div class="command-success">${tableHtml}</div>`;
+                        } else {
+                            // Just show the raw output
+                            resultContent = `<strong>Command executed successfully:</strong><br><pre><code>${outputData || 'No output'}</code></pre>`;
+                        }
+                        
+                        $processingMessage.html(resultContent);
+                    } else {
+                        // Error executing command
+                        $processingMessage.html(`<strong>Error executing command:</strong><br><pre><code>${response.message || 'Unknown error'}</code></pre>`);
+                    }
+                    
+                    // Scroll to bottom to show results
+                    setTimeout(scrollToBottom, 100);
+                },
+                error: function(xhr, status, error) {
+                    console.error('MPAI: AJAX error executing command:', error);
+                    console.error('MPAI: AJAX status:', status);
+                    console.error('MPAI: AJAX response status code:', xhr.status);
+                    console.error('MPAI: AJAX response text:', xhr.responseText);
+                    
+                    // Replace the processing message with error
+                    const $processingMessage = $('#' + processingMessageId);
+                    $processingMessage.html(`<strong>Error executing command:</strong><br><pre><code>AJAX error: ${error} (Status: ${xhr.status})</code></pre>`);
+                    
+                    // Scroll to bottom to show error
+                    setTimeout(scrollToBottom, 100);
+                }
+            });
+            
+            // Hide typing indicator after setting up the request
+            hideTypingIndicator();
+        }
+        
+        // Handle clicking on a command item in the command list
+        $(document).on('click', '.mpai-command-item', function(e) {
+            e.preventDefault();
+            
+            const command = $(this).data('command');
+            
+            if (!command) {
+                return;
+            }
+            
+            // Hide command runner
+            hideCommandRunner();
+            
+            // Add the command to the chat input
+            $chatInput.val(command);
+            
+            // Focus the input and adjust its height
+            $chatInput.focus();
+            adjustInputHeight();
+        });
+        
         // Initialize
         adjustInputHeight();
         

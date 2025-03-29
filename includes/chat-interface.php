@@ -61,6 +61,32 @@ $welcome_message = get_option('mpai_welcome_message', 'Hi there! I\'m your Membe
     </div>
     
     <div class="mpai-chat-footer">
+        <div id="mpai-command-runner" class="mpai-command-runner" style="display: none;">
+            <div class="mpai-command-header">
+                <h4><?php esc_html_e('Common Commands', 'memberpress-ai-assistant'); ?></h4>
+                <button type="button" id="mpai-command-close" class="mpai-command-close">
+                    <span class="dashicons dashicons-no-alt"></span>
+                </button>
+            </div>
+            <div class="mpai-command-body">
+                <div class="mpai-command-list">
+                    <h5><?php esc_html_e('WordPress', 'memberpress-ai-assistant'); ?></h5>
+                    <ul>
+                        <li><a href="#" class="mpai-command-item" data-command="wp plugin list">wp plugin list</a></li>
+                        <li><a href="#" class="mpai-command-item" data-command="wp user list">wp user list</a></li>
+                        <li><a href="#" class="mpai-command-item" data-command="wp post list">wp post list</a></li>
+                    </ul>
+                    
+                    <h5><?php esc_html_e('MemberPress', 'memberpress-ai-assistant'); ?></h5>
+                    <ul>
+                        <li><a href="#" class="mpai-command-item" data-command="List all active memberships">List all active memberships</a></li>
+                        <li><a href="#" class="mpai-command-item" data-command="Show recent transactions">Show recent transactions</a></li>
+                        <li><a href="#" class="mpai-command-item" data-command="Summarize membership data">Summarize membership data</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
         <form id="mpai-chat-form" class="mpai-chat-form">
             <div class="mpai-chat-input-container">
                 <textarea id="mpai-chat-input" class="mpai-chat-input" placeholder="<?php esc_attr_e('Type your message here...', 'memberpress-ai-assistant'); ?>" rows="1"></textarea>
@@ -73,6 +99,9 @@ $welcome_message = get_option('mpai_welcome_message', 'Hi there! I\'m your Membe
             <span class="mpai-chat-branding">
                 <?php esc_html_e('Powered by MemberPress AI', 'memberpress-ai-assistant'); ?>
             </span>
+            <button id="mpai-run-command" class="mpai-run-command" title="<?php esc_attr_e('Run Command', 'memberpress-ai-assistant'); ?>">
+                <span class="dashicons dashicons-admin-tools"></span>
+            </button>
             <button id="mpai-chat-clear" class="mpai-chat-clear">
                 <?php esc_html_e('Clear conversation', 'memberpress-ai-assistant'); ?>
             </button>
