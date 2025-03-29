@@ -5,6 +5,19 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-03-29
+
+### Added
+- Implemented Agent System with modular architecture
+- Created MemberPress Agent for specialized MemberPress operations
+- Developed Tool Registry and WP-CLI Tool for command execution
+- Added test utilities for agent system verification
+- Enhanced CLI commands to use the agent system:
+  - `wp mpai process` for natural language request processing
+  - `wp mpai mepr` for direct MemberPress command execution
+- Updated existing CLI commands to leverage agent system when available
+- Created comprehensive project specification
+
 ## [1.1.0] - 2025-03-28
 
 ### Added
