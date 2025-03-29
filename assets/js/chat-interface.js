@@ -13,10 +13,12 @@
         const $chatMessages = $('#mpai-chat-messages');
         const $chatInput = $('#mpai-chat-input');
         const $chatForm = $('#mpai-chat-form');
+        const $chatExpand = $('#mpai-chat-expand');
         const $chatMinimize = $('#mpai-chat-minimize');
         const $chatClose = $('#mpai-chat-close');
         const $chatClear = $('#mpai-chat-clear');
         const $chatSubmit = $('#mpai-chat-submit');
+        const $exportChat = $('#mpai-export-chat');
 
         /**
          * Function to open the chat
@@ -630,60 +632,167 @@
                         // Check if it's memberpress_info
                         else if (toolName === 'memberpress_info') {
                             try {
-                                // Try to parse as JSON and format as info card
-                                let data;
-                                if (typeof response.data.result === 'string') {
-                                    data = JSON.parse(response.data.result);
-                                } else {
-                                    data = response.data.result;
-                                }
-                                
-                                // Create a nice summary display
-                                let infoHtml = '<div class="mpai-info-card">';
-                                
-                                // Add a title based on the type
-                                const type = jsonData.parameters && jsonData.parameters.type ? 
-                                    jsonData.parameters.type : 'summary';
-                                
-                                infoHtml += `<h4 class="mpai-info-title">MemberPress ${type.charAt(0).toUpperCase() + type.slice(1)}</h4>`;
-                                infoHtml += '<div class="mpai-info-content">';
-                                
-                                // Format the data based on what we have
-                                if (Array.isArray(data)) {
-                                    // For arrays (like memberships, members, etc.)
-                                    infoHtml += '<ul>';
-                                    data.forEach(item => {
-                                        if (item.title) {
-                                            infoHtml += `<li><strong>${item.title}</strong>`;
-                                            if (item.id) infoHtml += ` (ID: ${item.id})`;
-                                            infoHtml += '</li>';
-                                        } else if (item.name || item.display_name) {
-                                            infoHtml += `<li><strong>${item.name || item.display_name}</strong>`;
-                                            if (item.email) infoHtml += ` (${item.email})`;
-                                            infoHtml += '</li>';
+                                // Check first if this is already a formatted table output
+                                if (typeof response.data.result === 'string' && 
+                                    response.data.result.includes('\t') && 
+                                    response.data.result.includes('\n')) {
+                                    
+                                    console.log('MPAI: Detected tabular data in memberpress_info result');
+                                    
+                                    // Format as table
+                                    const rows = response.data.result.trim().split('\n');
+                                    let tableHtml = '<div class="mpai-result-table">';
+                                    
+                                    // Add title based on parameter type
+                                    const type = jsonData.parameters && jsonData.parameters.type ? 
+                                        jsonData.parameters.type : 'summary';
+                                    
+                                    tableHtml += `<h3>MemberPress ${type.charAt(0).toUpperCase() + type.slice(1)}</h3>`;
+                                    tableHtml += '<table>';
+                                    
+                                    rows.forEach((row, index) => {
+                                        const cells = row.split('\t');
+                                        
+                                        if (index === 0) {
+                                            // Header row
+                                            tableHtml += '<thead><tr>';
+                                            cells.forEach(cell => {
+                                                tableHtml += `<th>${cell}</th>`;
+                                            });
+                                            tableHtml += '</tr></thead><tbody>';
                                         } else {
-                                            infoHtml += `<li>${JSON.stringify(item)}</li>`;
+                                            // Data row
+                                            tableHtml += '<tr>';
+                                            cells.forEach(cell => {
+                                                tableHtml += `<td>${cell}</td>`;
+                                            });
+                                            tableHtml += '</tr>';
                                         }
                                     });
-                                    infoHtml += '</ul>';
-                                } else if (typeof data === 'object') {
-                                    // For objects with key-value pairs
-                                    infoHtml += '<table class="mpai-info-table">';
-                                    Object.entries(data).forEach(([key, value]) => {
-                                        infoHtml += '<tr>';
-                                        infoHtml += `<th>${key.replace(/_/g, ' ')}</th>`;
-                                        infoHtml += `<td>${typeof value === 'object' ? JSON.stringify(value) : value}</td>`;
-                                        infoHtml += '</tr>';
-                                    });
-                                    infoHtml += '</table>';
+                                    
+                                    tableHtml += '</tbody></table></div>';
+                                    resultContent = tableHtml;
+                                    
                                 } else {
-                                    // Fallback for simple values
-                                    infoHtml += `<p>${data}</p>`;
+                                    // Try the traditional JSON parsing approach
+                                    let data;
+                                    if (typeof response.data.result === 'string') {
+                                        data = JSON.parse(response.data.result);
+                                    } else {
+                                        data = response.data.result;
+                                    }
+                                    
+                                    // Check if this is a pre-formatted tabular result
+                                    if (data && data.command_type && data.result && 
+                                        typeof data.result === 'string' && 
+                                        data.result.includes('\t') && 
+                                        data.result.includes('\n')) {
+                                        
+                                        console.log('MPAI: Found pre-formatted tabular result in JSON');
+                                        
+                                        // Format as table
+                                        const rows = data.result.trim().split('\n');
+                                        let tableHtml = '<div class="mpai-result-table">';
+                                        
+                                        // Add title based on command type
+                                        let tableTitle = '';
+                                        switch(data.command_type) {
+                                            case 'member_list':
+                                                tableTitle = '<h3>MemberPress Members</h3>';
+                                                break;
+                                            case 'membership_list':
+                                                tableTitle = '<h3>MemberPress Memberships</h3>';
+                                                break;
+                                            case 'transaction_list':
+                                                tableTitle = '<h3>MemberPress Transactions</h3>';
+                                                break;
+                                            case 'subscription_list':
+                                                tableTitle = '<h3>MemberPress Subscriptions</h3>';
+                                                break;
+                                            case 'summary':
+                                                tableTitle = '<h3>MemberPress Summary</h3>';
+                                                break;
+                                            default:
+                                                tableTitle = '<h3>MemberPress Data</h3>';
+                                                break;
+                                        }
+                                        
+                                        tableHtml += tableTitle;
+                                        tableHtml += '<table>';
+                                        
+                                        rows.forEach((row, index) => {
+                                            const cells = row.split('\t');
+                                            
+                                            if (index === 0) {
+                                                // Header row
+                                                tableHtml += '<thead><tr>';
+                                                cells.forEach(cell => {
+                                                    tableHtml += `<th>${cell}</th>`;
+                                                });
+                                                tableHtml += '</tr></thead><tbody>';
+                                            } else {
+                                                // Data row
+                                                tableHtml += '<tr>';
+                                                cells.forEach(cell => {
+                                                    tableHtml += `<td>${cell}</td>`;
+                                                });
+                                                tableHtml += '</tr>';
+                                            }
+                                        });
+                                        
+                                        tableHtml += '</tbody></table></div>';
+                                        resultContent = tableHtml;
+                                    } else {
+                                        // Fall back to the old card-based approach
+                                        // Create a nice summary display
+                                        let infoHtml = '<div class="mpai-info-card">';
+                                        
+                                        // Add a title based on the type
+                                        const type = jsonData.parameters && jsonData.parameters.type ? 
+                                            jsonData.parameters.type : 'summary';
+                                        
+                                        infoHtml += `<h4 class="mpai-info-title">MemberPress ${type.charAt(0).toUpperCase() + type.slice(1)}</h4>`;
+                                        infoHtml += '<div class="mpai-info-content">';
+                                        
+                                        // Format the data based on what we have
+                                        if (Array.isArray(data)) {
+                                            // For arrays (like memberships, members, etc.)
+                                            infoHtml += '<ul>';
+                                            data.forEach(item => {
+                                                if (item.title) {
+                                                    infoHtml += `<li><strong>${item.title}</strong>`;
+                                                    if (item.id) infoHtml += ` (ID: ${item.id})`;
+                                                    infoHtml += '</li>';
+                                                } else if (item.name || item.display_name) {
+                                                    infoHtml += `<li><strong>${item.name || item.display_name}</strong>`;
+                                                    if (item.email) infoHtml += ` (${item.email})`;
+                                                    infoHtml += '</li>';
+                                                } else {
+                                                    infoHtml += `<li>${JSON.stringify(item)}</li>`;
+                                                }
+                                            });
+                                            infoHtml += '</ul>';
+                                        } else if (typeof data === 'object') {
+                                            // For objects with key-value pairs
+                                            infoHtml += '<table class="mpai-info-table">';
+                                            Object.entries(data).forEach(([key, value]) => {
+                                                infoHtml += '<tr>';
+                                                infoHtml += `<th>${key.replace(/_/g, ' ')}</th>`;
+                                                infoHtml += `<td>${typeof value === 'object' ? JSON.stringify(value) : value}</td>`;
+                                                infoHtml += '</tr>';
+                                            });
+                                            infoHtml += '</table>';
+                                        } else {
+                                            // Fallback for simple values
+                                            infoHtml += `<p>${data}</p>`;
+                                        }
+                                        
+                                        infoHtml += '</div></div>';
+                                        resultContent = infoHtml;
+                                    }
                                 }
-                                
-                                infoHtml += '</div></div>';
-                                resultContent = infoHtml;
                             } catch (e) {
+                                console.error('MPAI: Error processing memberpress_info result:', e);
                                 // If parsing fails, fall back to simpler formatting
                                 resultContent = `<pre class="mpai-command-result"><code>${response.data.result || 'No data available'}</code></pre>`;
                             }
@@ -757,9 +866,15 @@
         function addMessageToChat(role, content) {
             const messageClass = 'mpai-chat-message-' + role;
             const formattedContent = formatMessage(content);
+            const messageId = 'msg-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
             
             const $message = $(`
-                <div class="mpai-chat-message ${messageClass}">
+                <div id="${messageId}" class="mpai-chat-message ${messageClass}">
+                    <div class="mpai-message-actions">
+                        <button class="mpai-message-action-btn mpai-export-message" title="Export this message" data-message-id="${messageId}">
+                            <span class="dashicons dashicons-download"></span>
+                        </button>
+                    </div>
                     <div class="mpai-chat-message-content">
                         ${formattedContent}
                     </div>
@@ -1103,6 +1218,28 @@
             });
         }
 
+        /**
+         * Function to toggle chat expansion
+         */
+        function toggleChatExpansion() {
+            $chatContainer.toggleClass('mpai-chat-expanded');
+            
+            // Toggle icon from expand to collapse and vice versa
+            const $icon = $chatExpand.find('.dashicons');
+            if ($chatContainer.hasClass('mpai-chat-expanded')) {
+                $icon.removeClass('dashicons-editor-expand').addClass('dashicons-editor-contract');
+                $chatExpand.attr('title', 'Collapse');
+            } else {
+                $icon.removeClass('dashicons-editor-contract').addClass('dashicons-editor-expand');
+                $chatExpand.attr('title', 'Expand');
+            }
+            
+            // Save the expanded state in localStorage
+            localStorage.setItem('mpaiChatExpanded', $chatContainer.hasClass('mpai-chat-expanded'));
+            
+            console.log('MPAI: Chat expansion toggled');
+        }
+        
         // Event Listeners
         
         // Open chat when the toggle button is clicked
@@ -1118,6 +1255,11 @@
         // Minimize chat when the minimize button is clicked
         $chatMinimize.on('click', function() {
             minimizeChat();
+        });
+        
+        // Toggle expansion when the expand button is clicked
+        $chatExpand.on('click', function() {
+            toggleChatExpansion();
         });
 
         // Send message when the form is submitted
@@ -1140,6 +1282,630 @@
         // Auto-resize the input when the window is resized
         $(window).on('resize', function() {
             adjustInputHeight();
+        });
+        
+        /**
+         * Export a single message
+         * 
+         * @param {string} messageId - The ID of the message to export
+         * @param {string} format - The export format (markdown or html)
+         */
+        function exportMessage(messageId, format = 'markdown') {
+            const $message = $('#' + messageId);
+            if (!$message.length) return;
+            
+            // Determine if user or assistant message
+            const isUserMessage = $message.hasClass('mpai-chat-message-user');
+            const role = isUserMessage ? 'User' : 'Assistant';
+            
+            // Get message content
+            const content = $message.find('.mpai-chat-message-content').clone();
+            
+            // Remove any interactive elements from the clone
+            content.find('.mpai-command-toolbar, .mpai-tool-call, .mpai-loading-dots').remove();
+            
+            let fileContent = '';
+            let fileExt = '';
+            
+            if (format === 'html') {
+                // For HTML export, preserve the HTML structure
+                // Get the HTML content including formatting
+                let htmlContent = content.html();
+                
+                // Create a styled HTML document
+                fileContent = createStyledHTML(`<h3>${role}</h3><div class="message-content">${htmlContent}</div>`);
+                fileExt = 'html';
+            } else {
+                // For Markdown export
+                
+                // Clone the content to work with
+                const markdownContent = content.clone();
+                
+                // Process the content for markdown
+                
+                // Replace tables with markdown tables
+                markdownContent.find('table').each(function() {
+                    const $table = $(this);
+                    let mdTable = '';
+                    
+                    // Process header row
+                    const $headerRow = $table.find('thead tr');
+                    if ($headerRow.length) {
+                        const headers = [];
+                        $headerRow.find('th').each(function() {
+                            headers.push($(this).text().trim());
+                        });
+                        
+                        mdTable += '| ' + headers.join(' | ') + ' |\n';
+                        mdTable += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+                    }
+                    
+                    // Process data rows
+                    $table.find('tbody tr').each(function() {
+                        const cells = [];
+                        $(this).find('td').each(function() {
+                            cells.push($(this).text().trim());
+                        });
+                        
+                        mdTable += '| ' + cells.join(' | ') + ' |\n';
+                    });
+                    
+                    // Replace the table with markdown
+                    $table.replaceWith('<div class="md-table">' + mdTable + '</div>');
+                });
+                
+                // Replace code blocks
+                markdownContent.find('pre').each(function() {
+                    const code = $(this).text().trim();
+                    $(this).replaceWith('\n```\n' + code + '\n```\n');
+                });
+                
+                // Replace inline code elements
+                markdownContent.find('code').each(function() {
+                    if ($(this).parent().is('pre')) return; // Skip if in a pre block
+                    const code = $(this).text().trim();
+                    $(this).replaceWith('`' + code + '`');
+                });
+                
+                // Handle numbered lists
+                markdownContent.find('ol').each(function() {
+                    const $list = $(this);
+                    let mdList = '\n';
+                    
+                    $list.find('li').each(function(index) {
+                        mdList += (index + 1) + '. ' + $(this).text().trim() + '\n';
+                    });
+                    
+                    $list.replaceWith(mdList);
+                });
+                
+                // Handle bullet lists
+                markdownContent.find('ul').each(function() {
+                    const $list = $(this);
+                    let mdList = '\n';
+                    
+                    $list.find('li').each(function() {
+                        mdList += '- ' + $(this).text().trim() + '\n';
+                    });
+                    
+                    $list.replaceWith(mdList);
+                });
+                
+                // Process HTML directly to handle nested lists and details
+                
+                // First identify patterns that look like nested lists and add special markers
+                markdownContent.find('.mpai-result-table h3').after('<div class="markdown-h3-marker"></div>');
+                
+                // Manually look for patterns like "1. Item - Detail" and format them
+                let html = markdownContent.html();
+                // This will be used to detect and format numbered lists with nested details
+                html = html.replace(/(\d+\.\s+[^<\n-]+)(\s*-\s+[^<\n]+)/g, '$1<br>    - $2');
+                markdownContent.html(html);
+                
+                // Now do the final text processing
+                let textContent = markdownContent.text().trim();
+                
+                // Check for list patterns and format them properly
+                const listLines = textContent.split(/\n/);
+                const formattedLines = [];
+                
+                listLines.forEach(line => {
+                    // Is this a numbered list item?
+                    if (/^\d+\.\s/.test(line)) {
+                        // Add a blank line before a new list item (unless it's the first line)
+                        if (formattedLines.length > 0 && !/^\d+\.\s/.test(formattedLines[formattedLines.length - 1])) {
+                            formattedLines.push('');
+                        }
+                        formattedLines.push(line);
+                    } 
+                    // Is this a bullet list item?
+                    else if (/^-\s/.test(line)) {
+                        formattedLines.push(line);
+                    } 
+                    // Is this a special table header?
+                    else if (/^[A-Z][\w\s]+:$/.test(line)) {
+                        if (formattedLines.length > 0) formattedLines.push('');
+                        formattedLines.push('**' + line + '**');
+                    }
+                    // Regular text
+                    else {
+                        formattedLines.push(line);
+                    }
+                });
+                
+                // Join the lines back together
+                textContent = formattedLines.join('\n');
+                
+                // Final cleanup - do NOT replace newlines with spaces
+                textContent = textContent
+                    .replace(/([^\n])\s{2,}([^\n])/g, '$1 $2')  // Replace multiple spaces with a single space (but not newlines)
+                    .replace(/(\d+\.\s+[^-\n]+)(\s+-\s+)/g, '$1\n    $2') // Format list with bullet points as details
+                    .replace(/\n{3,}/g, '\n\n'); // Replace multiple newlines with double newlines
+                
+                // Handle any JSON content that might be present
+                if (textContent.includes('json{')) {
+                    textContent = textContent.replace(/json\{/g, '```json\n{');
+                    textContent = textContent.replace(/\}(?=\s|$)/, '}\n```');
+                }
+                
+                // Format as markdown with proper spacing
+                fileContent = `## ${role}\n\n${textContent}\n`;
+                fileExt = 'md';
+            }
+            
+            // Generate filename based on date and time
+            const date = new Date();
+            const formattedDate = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+            const formattedTime = `${date.getHours().toString().padStart(2, '0')}-${date.getMinutes().toString().padStart(2, '0')}`;
+            const filename = `memberpress-ai-message-${formattedDate}-${formattedTime}.${fileExt}`;
+            
+            // Create and trigger the download
+            if (format === 'html') {
+                downloadTextFile(fileContent, filename, 'text/html');
+            } else {
+                downloadTextFile(fileContent, filename, 'text/markdown');
+            }
+        }
+        
+        /**
+         * Export the entire conversation
+         * 
+         * @param {string} format - The export format (markdown or html)
+         */
+        function exportConversation(format = 'markdown') {
+            // Collect all messages
+            const messages = [];
+            const htmlMessages = [];
+            
+            $('.mpai-chat-message').each(function() {
+                const isUserMessage = $(this).hasClass('mpai-chat-message-user');
+                const role = isUserMessage ? 'User' : 'Assistant';
+                
+                // Get message content
+                const content = $(this).find('.mpai-chat-message-content').clone();
+                
+                // Remove any interactive elements from the clone
+                content.find('.mpai-command-toolbar, .mpai-tool-call, .mpai-loading-dots').remove();
+                
+                if (format === 'html') {
+                    // For HTML export, preserve the HTML structure
+                    let htmlContent = content.html();
+                    htmlMessages.push(`<div class="message ${isUserMessage ? 'user-message' : 'assistant-message'}">
+                        <h3>${role}</h3>
+                        <div class="message-content">${htmlContent}</div>
+                    </div>`);
+                } else {
+                    // For Markdown export - use the same processing as single message export
+                    
+                    // Clone the content to work with
+                    const markdownContent = content.clone();
+                    
+                    // Process the content for markdown
+                    
+                    // Replace tables with markdown tables
+                    markdownContent.find('table').each(function() {
+                        const $table = $(this);
+                        let mdTable = '';
+                        
+                        // Process header row
+                        const $headerRow = $table.find('thead tr');
+                        if ($headerRow.length) {
+                            const headers = [];
+                            $headerRow.find('th').each(function() {
+                                headers.push($(this).text().trim());
+                            });
+                            
+                            mdTable += '| ' + headers.join(' | ') + ' |\n';
+                            mdTable += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+                        }
+                        
+                        // Process data rows
+                        $table.find('tbody tr').each(function() {
+                            const cells = [];
+                            $(this).find('td').each(function() {
+                                cells.push($(this).text().trim());
+                            });
+                            
+                            mdTable += '| ' + cells.join(' | ') + ' |\n';
+                        });
+                        
+                        // Replace the table with markdown
+                        $table.replaceWith('<div class="md-table">' + mdTable + '</div>');
+                    });
+                    
+                    // Replace code blocks
+                    markdownContent.find('pre').each(function() {
+                        const code = $(this).text().trim();
+                        $(this).replaceWith('\n```\n' + code + '\n```\n');
+                    });
+                    
+                    // Replace inline code elements
+                    markdownContent.find('code').each(function() {
+                        if ($(this).parent().is('pre')) return; // Skip if in a pre block
+                        const code = $(this).text().trim();
+                        $(this).replaceWith('`' + code + '`');
+                    });
+                    
+                    // Handle numbered lists
+                    markdownContent.find('ol').each(function() {
+                        const $list = $(this);
+                        let mdList = '\n';
+                        
+                        $list.find('li').each(function(index) {
+                            mdList += (index + 1) + '. ' + $(this).text().trim() + '\n';
+                        });
+                        
+                        $list.replaceWith(mdList);
+                    });
+                    
+                    // Handle bullet lists
+                    markdownContent.find('ul').each(function() {
+                        const $list = $(this);
+                        let mdList = '\n';
+                        
+                        $list.find('li').each(function() {
+                            mdList += '- ' + $(this).text().trim() + '\n';
+                        });
+                        
+                        $list.replaceWith(mdList);
+                    });
+                    
+                    // Process HTML directly to handle nested lists and details
+                    
+                    // First identify patterns that look like nested lists and add special markers
+                    markdownContent.find('.mpai-result-table h3').after('<div class="markdown-h3-marker"></div>');
+                    
+                    // Manually look for patterns like "1. Item - Detail" and format them
+                    let html = markdownContent.html();
+                    // This will be used to detect and format numbered lists with nested details
+                    html = html.replace(/(\d+\.\s+[^<\n-]+)(\s*-\s+[^<\n]+)/g, '$1<br>    - $2');
+                    markdownContent.html(html);
+                    
+                    // Now do the final text processing
+                    let textContent = markdownContent.text().trim();
+                    
+                    // Check for list patterns and format them properly
+                    const listLines = textContent.split(/\n/);
+                    const formattedLines = [];
+                    
+                    listLines.forEach(line => {
+                        // Is this a numbered list item?
+                        if (/^\d+\.\s/.test(line)) {
+                            // Add a blank line before a new list item (unless it's the first line)
+                            if (formattedLines.length > 0 && !/^\d+\.\s/.test(formattedLines[formattedLines.length - 1])) {
+                                formattedLines.push('');
+                            }
+                            formattedLines.push(line);
+                        } 
+                        // Is this a bullet list item?
+                        else if (/^-\s/.test(line)) {
+                            formattedLines.push(line);
+                        } 
+                        // Is this a special table header?
+                        else if (/^[A-Z][\w\s]+:$/.test(line)) {
+                            if (formattedLines.length > 0) formattedLines.push('');
+                            formattedLines.push('**' + line + '**');
+                        }
+                        // Regular text
+                        else {
+                            formattedLines.push(line);
+                        }
+                    });
+                    
+                    // Join the lines back together
+                    textContent = formattedLines.join('\n');
+                    
+                    // Final cleanup - do NOT replace newlines with spaces
+                    textContent = textContent
+                        .replace(/([^\n])\s{2,}([^\n])/g, '$1 $2')  // Replace multiple spaces with a single space (but not newlines)
+                        .replace(/(\d+\.\s+[^-\n]+)(\s+-\s+)/g, '$1\n    $2') // Format list with bullet points as details
+                        .replace(/\n{3,}/g, '\n\n'); // Replace multiple newlines with double newlines
+                    
+                    // Handle any JSON content that might be present
+                    if (textContent.includes('json{')) {
+                        textContent = textContent.replace(/json\{/g, '```json\n{');
+                        textContent = textContent.replace(/\}(?=\s|$)/, '}\n```');
+                    }
+                    
+                    messages.push(`## ${role}\n\n${textContent}\n`);
+                }
+            });
+            
+            let fileContent = '';
+            let fileExt = '';
+            
+            if (format === 'html') {
+                // Create a styled HTML document with all messages
+                fileContent = createStyledHTML(`<div class="chat-container">${htmlMessages.join('\n<hr>\n')}</div>`);
+                fileExt = 'html';
+            } else {
+                // Combine all messages with markdown formatting
+                fileContent = messages.join('\n---\n\n');
+                fileExt = 'md';
+            }
+            
+            // Generate filename based on date
+            const date = new Date();
+            const formattedDate = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+            const formattedTime = `${date.getHours().toString().padStart(2, '0')}-${date.getMinutes().toString().padStart(2, '0')}`;
+            const filename = `memberpress-ai-conversation-${formattedDate}-${formattedTime}.${fileExt}`;
+            
+            // Create and trigger the download
+            if (format === 'html') {
+                downloadTextFile(fileContent, filename, 'text/html');
+            } else {
+                downloadTextFile(fileContent, filename, 'text/markdown');
+            }
+        }
+        
+        /**
+         * Creates a styled HTML document with the provided content
+         * 
+         * @param {string} content - The HTML content to include in the document
+         * @returns {string} - The complete HTML document as a string
+         */
+        function createStyledHTML(content) {
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemberPress AI Chat</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            line-height: 1.5;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            position: relative;
+        }
+        .user-message {
+            background-color: #e7f3ff;
+            align-self: flex-end;
+        }
+        .assistant-message {
+            background-color: #f7f7f7;
+            align-self: flex-start;
+        }
+        h3 {
+            margin-top: 0;
+            color: #135e96;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+        }
+        .message-content {
+            font-size: 14px;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #eee;
+            margin: 20px 0;
+        }
+        code {
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 90%;
+        }
+        pre {
+            background-color: #f6f8fa;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #eee;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #135e96;
+            margin-bottom: 5px;
+        }
+        .header p {
+            color: #666;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MemberPress AI Assistant</h1>
+        <p>Chat transcript exported on ${new Date().toLocaleString()}</p>
+    </div>
+    ${content}
+</body>
+</html>`;
+        }
+
+        /**
+         * Helper function to download text as a file
+         * 
+         * @param {string} content - The text content to download
+         * @param {string} filename - The name of the file to download
+         * @param {string} mimeType - The MIME type of the file
+         */
+        function downloadTextFile(content, filename, mimeType = 'text/plain') {
+            // Create a blob with the content and appropriate MIME type
+            const blob = new Blob([content], { type: mimeType });
+            
+            // Create a URL for the blob
+            const url = URL.createObjectURL(blob);
+            
+            // Create a temporary anchor element
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            
+            // Append to the document and trigger the download
+            document.body.appendChild(a);
+            a.click();
+            
+            // Clean up
+            setTimeout(function() {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+        
+        // Export menu for a single message
+        $(document).on('click', '.mpai-export-message', function(e) {
+            e.preventDefault();
+            const messageId = $(this).data('message-id');
+            
+            // Show a simple dialog with format options
+            const $message = $('#' + messageId);
+            const $existingMenu = $('.mpai-export-format-menu');
+            
+            // Remove any existing menus first
+            if ($existingMenu.length) {
+                $existingMenu.remove();
+            }
+            
+            // Create format selection menu
+            const $menu = $(`
+                <div class="mpai-export-format-menu">
+                    <div class="mpai-export-format-title">Export Format</div>
+                    <div class="mpai-export-format-options">
+                        <button class="mpai-export-format-btn" data-format="markdown" data-message-id="${messageId}">Markdown</button>
+                        <button class="mpai-export-format-btn" data-format="html" data-message-id="${messageId}">HTML</button>
+                    </div>
+                </div>
+            `);
+            
+            // Get position relative to the viewport
+            const buttonRect = this.getBoundingClientRect();
+            
+            // Position below the button
+            $menu.css({
+                top: buttonRect.bottom + 5,
+                left: buttonRect.left
+            });
+            
+            // Add to document and show
+            $('body').append($menu);
+            
+            // Handle clicks outside menu to close it
+            $(document).one('click', function(e) {
+                if (!$(e.target).closest('.mpai-export-format-menu, .mpai-export-message').length) {
+                    $menu.remove();
+                }
+            });
+        });
+        
+        // Handle format selection for single message export
+        $(document).on('click', '.mpai-export-format-btn', function() {
+            const format = $(this).data('format');
+            const messageId = $(this).data('message-id');
+            
+            // Remove the menu
+            $('.mpai-export-format-menu').remove();
+            
+            // Export with selected format
+            exportMessage(messageId, format);
+        });
+        
+        // Export menu for the entire conversation
+        $exportChat.on('click', function(e) {
+            e.preventDefault();
+            
+            // Remove any existing menus first
+            const $existingMenu = $('.mpai-export-format-menu');
+            if ($existingMenu.length) {
+                $existingMenu.remove();
+            }
+            
+            // Create format selection menu
+            const $menu = $(`
+                <div class="mpai-export-format-menu">
+                    <div class="mpai-export-format-title">Export Format</div>
+                    <div class="mpai-export-format-options">
+                        <button class="mpai-export-all-format-btn" data-format="markdown">Markdown</button>
+                        <button class="mpai-export-all-format-btn" data-format="html">HTML</button>
+                    </div>
+                </div>
+            `);
+            
+            // Get position relative to the viewport
+            const buttonRect = this.getBoundingClientRect();
+            
+            // Position directly above the button
+            $menu.css({
+                bottom: (window.innerHeight - buttonRect.top) + 10,
+                left: buttonRect.left
+            });
+            
+            // Add to document
+            $('body').append($menu);
+            
+            // Handle clicks outside menu to close it
+            $(document).one('click', function(e) {
+                if (!$(e.target).closest('.mpai-export-format-menu, #mpai-export-chat').length) {
+                    $menu.remove();
+                }
+            });
+        });
+        
+        // Handle format selection for entire conversation export
+        $(document).on('click', '.mpai-export-all-format-btn', function() {
+            const format = $(this).data('format');
+            
+            // Remove the menu
+            $('.mpai-export-format-menu').remove();
+            
+            // Export with selected format
+            exportConversation(format);
         });
 
         // Command Runner
@@ -1439,6 +2205,15 @@
             $chatContainer.css('display', 'flex').hide().fadeIn(300);
             $chatToggle.hide();
             $chatInput.focus();
+            
+            // Check if it was expanded previously
+            if (localStorage.getItem('mpaiChatExpanded') === 'true') {
+                $chatContainer.addClass('mpai-chat-expanded');
+                $chatExpand.find('.dashicons')
+                    .removeClass('dashicons-editor-expand')
+                    .addClass('dashicons-editor-contract');
+                $chatExpand.attr('title', 'Collapse');
+            }
         }
         
         // Log that initialization is complete

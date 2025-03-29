@@ -450,14 +450,90 @@ class MPAI_Chat {
                 }
             }
             
-            $result_block = "```json\n" . json_encode($result, JSON_PRETTY_PRINT) . "\n```";
-            
-            // Replace the tool call with the result
-            $tool_call_block = "```json\n{$match}\n```";
-            $processed_response = str_replace($tool_call_block, $result_block, $processed_response);
+            // Check if we got a tabular result
+            if (isset($result['result']) && is_array($result['result']) && 
+                isset($result['result']['command_type']) && isset($result['result']['result'])) {
+                // This is a tabular result, present it directly without JSON wrapping
+                $command_type = $result['result']['command_type'];
+                $tabular_data = $result['result']['result'];
+                
+                // Create a formatted display with title based on command type
+                $title = $this->get_title_for_command_type($command_type);
+                $formatted_result = "{$title}\n\n```\n{$tabular_data}\n```";
+                
+                // Replace the tool call with the formatted table
+                $tool_call_block = "```json\n{$match}\n```";
+                $processed_response = str_replace($tool_call_block, $formatted_result, $processed_response);
+            } else {
+                // Standard JSON result formatting
+                $result_block = "```\n" . $this->format_result_content($result) . "\n```";
+                
+                // Replace the tool call with the result
+                $tool_call_block = "```json\n{$match}\n```";
+                $processed_response = str_replace($tool_call_block, $result_block, $processed_response);
+            }
         }
         
         return $processed_response;
+    }
+    
+    /**
+     * Format result content for readability
+     *
+     * @param array $result Tool execution result
+     * @return string Formatted content
+     */
+    private function format_result_content($result) {
+        // Check for tabular data pattern in the result
+        if (isset($result['result']) && is_string($result['result']) && 
+            strpos($result['result'], "\t") !== false && strpos($result['result'], "\n") !== false) {
+            // This looks like tabular data
+            return $result['result'];
+        }
+        
+        // Specific handling for MemberPress information
+        if (isset($result['tool']) && $result['tool'] === 'memberpress_info' && isset($result['result'])) {
+            // Try to parse the result
+            if (is_string($result['result'])) {
+                $parsed = json_decode($result['result'], true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($parsed['result'])) {
+                    // Return just the actual result data
+                    return $parsed['result'];
+                }
+            }
+        }
+        
+        // Default to pretty-printed JSON for other results
+        return json_encode($result, JSON_PRETTY_PRINT);
+    }
+    
+    /**
+     * Get title for command type
+     *
+     * @param string $command_type Command type identifier
+     * @return string Title for the command result
+     */
+    private function get_title_for_command_type($command_type) {
+        switch ($command_type) {
+            case 'user_list':
+                return 'WordPress Users';
+            case 'post_list':
+                return 'WordPress Posts';
+            case 'plugin_list':
+                return 'WordPress Plugins';
+            case 'membership_list':
+                return 'MemberPress Memberships';
+            case 'member_list':
+                return 'MemberPress Members';
+            case 'transaction_list':
+                return 'MemberPress Transactions';
+            case 'subscription_list':
+                return 'MemberPress Subscriptions';
+            case 'summary':
+                return 'MemberPress Summary';
+            default:
+                return 'Command Results';
+        }
     }
 
     /**

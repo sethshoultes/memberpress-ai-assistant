@@ -257,8 +257,41 @@ class MPAI_Context_Manager {
                 
             case 'members':
                 $members = $this->memberpress_api->get_members();
-                // Format members data in the future if needed
-                return json_encode($members);
+                
+                // Format members data as a table
+                if (is_array($members)) {
+                    error_log('MPAI: Formatting members as table');
+                    $output = "ID\tEmail\tUsername\tDisplay Name\tMemberships\n";
+                    foreach ($members as $member) {
+                        $id = isset($member['id']) ? $member['id'] : 'N/A';
+                        $email = isset($member['email']) ? $member['email'] : 'N/A';
+                        $username = isset($member['username']) ? $member['username'] : 'N/A';
+                        $display_name = isset($member['display_name']) ? $member['display_name'] : 'N/A';
+                        
+                        // Get membership info
+                        $memberships = [];
+                        if (isset($member['active_memberships']) && is_array($member['active_memberships'])) {
+                            foreach ($member['active_memberships'] as $membership) {
+                                $memberships[] = $membership['title'];
+                            }
+                        }
+                        $membership_text = empty($memberships) ? 'None' : implode(', ', $memberships);
+                        
+                        $output .= "$id\t$email\t$username\t$display_name\t$membership_text\n";
+                    }
+                    
+                    // Return formatted tabular data
+                    $response = array(
+                        'success' => true,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'member_list',
+                        'result' => $output
+                    );
+                    return json_encode($response);
+                } else {
+                    // Fallback to regular JSON if not an array
+                    return json_encode($members);
+                }
                 
             case 'transactions':
                 // Get formatted transactions as table
@@ -281,13 +314,89 @@ class MPAI_Context_Manager {
                 
             case 'subscriptions':
                 $subscriptions = $this->memberpress_api->get_subscriptions();
-                // Format subscriptions data in the future if needed
-                return json_encode($subscriptions);
+                
+                // Format subscriptions data as a table
+                if (is_array($subscriptions)) {
+                    error_log('MPAI: Formatting subscriptions as table');
+                    $output = "ID\tUser\tMembership\tPrice\tStatus\tCreated Date\n";
+                    foreach ($subscriptions as $sub) {
+                        $id = isset($sub['id']) ? $sub['id'] : 'N/A';
+                        
+                        // Get user info
+                        $user = 'N/A';
+                        if (isset($sub['member']) && is_numeric($sub['member'])) {
+                            $member_id = $sub['member'];
+                            // Try to get email from member ID
+                            $member = get_user_by('id', $member_id);
+                            if ($member) {
+                                $user = $member->user_email;
+                            } else {
+                                $user = "ID: $member_id";
+                            }
+                        }
+                        
+                        // Get membership info
+                        $membership = 'N/A';
+                        if (isset($sub['membership']) && is_numeric($sub['membership'])) {
+                            // Try to get membership title
+                            $post = get_post($sub['membership']);
+                            if ($post) {
+                                $membership = $post->post_title;
+                            } else {
+                                $membership = "ID: " . $sub['membership'];
+                            }
+                        }
+                        
+                        $price = isset($sub['price']) ? '$' . $sub['price'] : 'N/A';
+                        $status = isset($sub['status']) ? $sub['status'] : 'N/A';
+                        $created = isset($sub['created_at']) ? date('Y-m-d', strtotime($sub['created_at'])) : 'N/A';
+                        
+                        $output .= "$id\t$user\t$membership\t$price\t$status\t$created\n";
+                    }
+                    
+                    // Return formatted tabular data
+                    $response = array(
+                        'success' => true,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'subscription_list',
+                        'result' => $output
+                    );
+                    return json_encode($response);
+                } else {
+                    // Fallback to regular JSON if not an array
+                    return json_encode($subscriptions);
+                }
                 
             case 'summary':
             default:
                 $summary = $this->memberpress_api->get_data_summary();
-                return json_encode($summary);
+                
+                // Format the summary as a table
+                $output = "Metric\tValue\n";
+                $output .= "Total Members\t" . (isset($summary['total_members']) ? $summary['total_members'] : '0') . "\n";
+                $output .= "Total Memberships\t" . (isset($summary['total_memberships']) ? $summary['total_memberships'] : '0') . "\n";
+                $output .= "Total Transactions\t" . (isset($summary['transaction_count']) ? $summary['transaction_count'] : '0') . "\n";
+                $output .= "Total Subscriptions\t" . (isset($summary['subscription_count']) ? $summary['subscription_count'] : '0') . "\n";
+                
+                // Add membership list if available
+                if (!empty($summary['memberships']) && is_array($summary['memberships'])) {
+                    $output .= "\nMembership ID\tTitle\tPrice\n";
+                    foreach ($summary['memberships'] as $membership) {
+                        $id = isset($membership['id']) ? $membership['id'] : 'N/A';
+                        $title = isset($membership['title']) ? $membership['title'] : 'N/A';
+                        $price = isset($membership['price']) ? '$' . $membership['price'] : 'N/A';
+                        $output .= "$id\t$title\t$price\n";
+                    }
+                }
+                
+                // Return formatted tabular data
+                $response = array(
+                    'success' => true,
+                    'tool' => 'memberpress_info',
+                    'command_type' => 'summary',
+                    'result' => $output
+                );
+                return json_encode($response);
         }
     }
 
@@ -396,6 +505,12 @@ class MPAI_Context_Manager {
         } else if (strpos($command, 'Show recent transactions') !== false ||
                    strpos($command, 'transactions') !== false) {
             return 'transaction_list';
+        } else if (strpos($command, 'List members') !== false ||
+                   strpos($command, 'Show members') !== false ||
+                   strpos($command, 'members') !== false) {
+            return 'member_list';
+        } else if (strpos($command, 'subscriptions') !== false) {
+            return 'subscription_list';
         }
         
         // Default to generic tabular data
