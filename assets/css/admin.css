@@ -1,0 +1,327 @@
+/**
+ * MemberPress AI Assistant Admin Styles
+ */
+
+/* Container layout */
+.mpai-container {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    gap: 20px;
+}
+
+.mpai-sidebar {
+    flex: 0 0 250px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+}
+
+.mpai-chat-container {
+    flex: 1;
+    min-width: 500px;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+    height: 600px;
+}
+
+.mpai-command-container {
+    flex: 1 0 100%;
+    margin-top: 0;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+}
+
+/* Sidebar styling */
+.mpai-sidebar-header,
+.mpai-chat-header,
+.mpai-command-header {
+    padding: 10px 15px;
+    border-bottom: 1px solid #ccd0d4;
+    background: #f5f5f5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mpai-sidebar-header h2,
+.mpai-chat-header h2,
+.mpai-command-header h2 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.mpai-sidebar-content {
+    padding: 15px;
+}
+
+.mpai-stats,
+.mpai-suggestions,
+.mpai-commands {
+    margin-bottom: 20px;
+}
+
+.mpai-stats h3,
+.mpai-suggestions h3,
+.mpai-commands h3 {
+    margin-top: 0;
+    font-size: 14px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.mpai-stats ul,
+.mpai-suggestions ul,
+.mpai-commands ul {
+    margin: 0;
+}
+
+.mpai-stats li {
+    margin-bottom: 5px;
+}
+
+.mpai-suggestion {
+    text-decoration: none;
+    color: #0073aa;
+    cursor: pointer;
+}
+
+.mpai-suggestion:hover {
+    text-decoration: underline;
+}
+
+/* Chat styling */
+.mpai-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+.mpai-message {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.mpai-message-user {
+    align-items: flex-end;
+}
+
+.mpai-message-assistant {
+    align-items: flex-start;
+}
+
+.mpai-message-content {
+    max-width: 80%;
+    padding: 10px 15px;
+    border-radius: 10px;
+    position: relative;
+}
+
+.mpai-message-user .mpai-message-content {
+    background: #e6f2fa;
+}
+
+.mpai-message-assistant .mpai-message-content {
+    background: #f0f0f0;
+}
+
+.mpai-message-content p {
+    margin: 0 0 10px 0;
+}
+
+.mpai-message-content p:last-child {
+    margin-bottom: 0;
+}
+
+.mpai-message-content pre,
+.mpai-message-content code {
+    background: rgba(0,0,0,0.05);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 90%;
+}
+
+.mpai-message-content pre {
+    padding: 10px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+
+.mpai-chat-input {
+    padding: 15px;
+    border-top: 1px solid #ccd0d4;
+}
+
+.mpai-chat-input form {
+    display: flex;
+    gap: 10px;
+}
+
+.mpai-chat-input textarea {
+    flex: 1;
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* Command styling */
+.mpai-command-input {
+    padding: 15px;
+    border-bottom: 1px solid #ccd0d4;
+}
+
+.mpai-command-input form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mpai-command-input input[type="text"] {
+    width: 100%;
+    padding: 10px;
+}
+
+.mpai-command-input textarea {
+    width: 100%;
+    min-height: 60px;
+    resize: vertical;
+}
+
+.mpai-command-input button {
+    align-self: flex-end;
+}
+
+.mpai-command-output {
+    padding: 0;
+}
+
+.mpai-command-output-header,
+.mpai-command-insights-header {
+    padding: 10px 15px;
+    background: #f5f5f5;
+    border-bottom: 1px solid #ccd0d4;
+}
+
+.mpai-command-output-header h3,
+.mpai-command-insights-header h3 {
+    margin: 0;
+    font-size: 14px;
+}
+
+.mpai-command-output pre {
+    margin: 0;
+    padding: 15px;
+    font-family: monospace;
+    overflow-x: auto;
+    background: #f8f8f8;
+    border-bottom: 1px solid #ccd0d4;
+    white-space: pre-wrap;
+}
+
+#mpai-command-insights {
+    padding: 15px;
+}
+
+/* Settings page styles */
+.mpai-settings-page {
+    max-width: 800px;
+}
+
+.mpai-settings-container {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+    margin-top: 20px;
+}
+
+.mpai-settings-tab {
+    padding: 15px;
+}
+
+.mpai-command-row {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Loading indicator */
+.mpai-loading:after {
+    content: " .";
+    animation: mpai-loading 1.5s infinite;
+    display: inline-block;
+}
+
+@keyframes mpai-loading {
+    0% { content: " ."; }
+    25% { content: " .."; }
+    50% { content: " ..."; }
+    75% { content: " ...."; }
+}
+
+/* Test Connection Results */
+.mpai-test-success {
+    color: #46b450;
+    font-weight: bold;
+}
+
+.mpai-test-error {
+    color: #dc3232;
+    font-weight: bold;
+}
+
+.mpai-test-loading {
+    color: #0073aa;
+    font-style: italic;
+}
+
+.mpai-key-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mpai-test-result {
+    margin-left: 10px;
+    padding: 5px 10px;
+    border-radius: 3px;
+}
+
+/* API Status Icons */
+.mpai-api-status {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 10px;
+}
+
+.mpai-api-status-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.mpai-status-connected {
+    background-color: #46b450;
+    box-shadow: 0 0 5px #46b450;
+}
+
+.mpai-status-disconnected {
+    background-color: #dc3232;
+    box-shadow: 0 0 5px #dc3232;
+}
+
+.mpai-status-unknown {
+    background-color: #dba617;
+    box-shadow: 0 0 5px #dba617;
+}
+
+/* Utility classes */
+.mpai-hidden {
+    display: none !important;
+}

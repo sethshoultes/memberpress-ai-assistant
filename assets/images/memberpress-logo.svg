@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>MemberPress Logo</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="memberpress-logo" fill="#FFFFFF" fill-rule="nonzero">
+            <path d="M12,0 C5.373,0 0,5.373 0,12 C0,18.627 5.373,24 12,24 C18.627,24 24,18.627 24,12 C24,5.373 18.627,0 12,0 ZM7.172,15.353 L5.647,15.353 L5.647,8.647 L7.172,8.647 L7.172,15.353 Z M10.371,15.353 L8.845,15.353 L8.845,8.647 L10.371,8.647 L10.371,11.294 L13.146,8.647 L15.155,8.647 L12.112,11.559 L15.353,15.353 L13.344,15.353 L10.371,11.868 L10.371,15.353 Z M18.353,15.353 L13.945,15.353 L13.945,14.118 L16.828,14.118 L16.828,12.735 L14.372,12.735 L14.372,11.500 L16.828,11.500 L16.828,10.118 L13.945,10.118 L13.945,8.882 L18.353,8.882 L18.353,15.353 Z" id="MP"></path>
+        </g>
+    </g>
+</svg>
