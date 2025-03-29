@@ -19,6 +19,7 @@ class MPAI_Admin {
         add_action('wp_ajax_mpai_process_chat', array($this, 'process_chat'));
         add_action('wp_ajax_mpai_reset_conversation', array($this, 'reset_conversation'));
         add_action('wp_ajax_mpai_run_command', array($this, 'run_command'));
+        add_action('wp_ajax_mpai_execute_tool', array($this, 'execute_tool'));
         add_action('wp_ajax_mpai_test_openai_api', array($this, 'test_openai_api'));
         add_action('wp_ajax_mpai_test_memberpress_api', array($this, 'test_memberpress_api'));
         
@@ -230,6 +231,42 @@ class MPAI_Admin {
             wp_send_json_success($result);
         } catch (Exception $e) {
             wp_send_json_error('Error executing command: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Execute a tool via MCP
+     */
+    public function execute_tool() {
+        // Check nonce
+        check_ajax_referer('mpai_nonce', 'mpai_nonce');
+        
+        // Check if MCP is enabled
+        if (!get_option('mpai_enable_mcp', true)) {
+            wp_send_json_error('MCP is not enabled in settings');
+            return;
+        }
+
+        // Check tool request
+        if (empty($_POST['tool_request'])) {
+            wp_send_json_error('Tool request is required');
+            return;
+        }
+
+        $tool_request = json_decode(stripslashes($_POST['tool_request']), true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            wp_send_json_error('Invalid JSON in tool request: ' . json_last_error_msg());
+            return;
+        }
+        
+        try {
+            $context_manager = new MPAI_Context_Manager();
+            $result = $context_manager->process_tool_request($tool_request);
+            
+            wp_send_json_success($result);
+        } catch (Exception $e) {
+            wp_send_json_error('Error executing tool: ' . $e->getMessage());
         }
     }
     

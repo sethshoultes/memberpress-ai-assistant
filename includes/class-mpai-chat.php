@@ -26,6 +26,13 @@ class MPAI_Chat {
     private $memberpress_api;
 
     /**
+     * Context Manager instance
+     *
+     * @var MPAI_Context_Manager
+     */
+    private $context_manager;
+
+    /**
      * Conversation history
      *
      * @var array
@@ -38,6 +45,7 @@ class MPAI_Chat {
     public function __construct() {
         $this->openai = new MPAI_OpenAI();
         $this->memberpress_api = new MPAI_MemberPress_API();
+        $this->context_manager = new MPAI_Context_Manager();
         $this->load_conversation();
     }
 
@@ -205,8 +213,27 @@ class MPAI_Chat {
         $system_prompt .= "- Total Transactions: " . ($memberpress_data['transaction_count'] ?? 'Unknown') . "\n";
         $system_prompt .= "- Total Subscriptions: " . ($memberpress_data['subscription_count'] ?? 'Unknown') . "\n";
         
-        $system_prompt .= "\nYour task is to provide helpful information about MemberPress and assist with managing membership data. ";
-        $system_prompt .= "You can recommend WP-CLI commands where appropriate, and help with MemberPress API usage. ";
+        // Add tool usage information
+        $system_prompt .= "\nYou have access to the following tools that you can use to perform actions:\n\n";
+        $tools = $this->context_manager->get_available_tools();
+        foreach ($tools as $tool_name => $tool) {
+            $system_prompt .= "- {$tool['name']}: {$tool['description']}\n";
+            $system_prompt .= "  Parameters:\n";
+            foreach ($tool['parameters'] as $param_name => $param) {
+                $system_prompt .= "    - {$param_name}: {$param['description']}\n";
+                if (isset($param['enum'])) {
+                    $system_prompt .= "      Options: " . implode(', ', $param['enum']) . "\n";
+                }
+            }
+            $system_prompt .= "\n";
+        }
+        
+        // Add formatting instructions for tool calls
+        $system_prompt .= "To use a tool, format your response like this:\n";
+        $system_prompt .= "```json\n{\"tool\": \"tool_name\", \"parameters\": {\"param1\": \"value1\", \"param2\": \"value2\"}}\n```\n\n";
+        
+        $system_prompt .= "Your task is to provide helpful information about MemberPress and assist with managing membership data. ";
+        $system_prompt .= "You can run WP-CLI commands where appropriate using the wp_cli tool.";
         $system_prompt .= "Keep your responses concise and focused on MemberPress functionality.";
         
         return $system_prompt;
@@ -254,8 +281,11 @@ class MPAI_Chat {
             error_log('MPAI: Saving message to database');
             $this->save_message($message, $response);
             
-            // Process any commands in the response
-            $processed_response = $this->process_commands($response);
+            // Process any tool calls in the response
+            $processed_response = $this->process_tool_calls($response);
+            
+            // Process CLI commands (backward compatibility)
+            $processed_response = $this->process_commands($processed_response);
             
             return array(
                 'success' => true,
@@ -371,7 +401,49 @@ class MPAI_Chat {
     }
 
     /**
-     * Process commands in the response
+     * Process tool calls in the response
+     *
+     * @param string $response Assistant response
+     * @return string Processed response
+     */
+    private function process_tool_calls($response) {
+        // Look for tool call JSON
+        preg_match_all('/```json\n({.*?})\n```/s', $response, $matches);
+        
+        if (empty($matches[1])) {
+            return $response;
+        }
+        
+        $processed_response = $response;
+        
+        foreach ($matches[1] as $match) {
+            $tool_call = json_decode($match, true);
+            
+            if (json_last_error() !== JSON_ERROR_NONE || !isset($tool_call['tool'])) {
+                continue;
+            }
+            
+            $tool_request = array(
+                'name' => $tool_call['tool'],
+                'parameters' => isset($tool_call['parameters']) ? $tool_call['parameters'] : array()
+            );
+            
+            // Execute the tool
+            $result = $this->context_manager->process_tool_request($tool_request);
+            
+            // Format the result
+            $result_block = "```json\n" . json_encode($result, JSON_PRETTY_PRINT) . "\n```";
+            
+            // Replace the tool call with the result
+            $tool_call_block = "```json\n{$match}\n```";
+            $processed_response = str_replace($tool_call_block, $result_block, $processed_response);
+        }
+        
+        return $processed_response;
+    }
+
+    /**
+     * Process commands in the response (backward compatibility)
      *
      * @param string $response Assistant response
      * @return string Processed response

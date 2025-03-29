@@ -42,6 +42,11 @@ if (isset($_POST['mpai_save_settings']) && check_admin_referer('mpai_settings_no
         update_option('mpai_allowed_cli_commands', $commands);
     }
     
+    // AI Tools
+    update_option('mpai_enable_mcp', isset($_POST['mpai_enable_mcp']) ? '1' : '0');
+    update_option('mpai_enable_wp_cli_tool', isset($_POST['mpai_enable_wp_cli_tool']) ? '1' : '0');
+    update_option('mpai_enable_memberpress_info_tool', isset($_POST['mpai_enable_memberpress_info_tool']) ? '1' : '0');
+    
     // Advanced Settings
     if (isset($_POST['mpai_temperature'])) {
         update_option('mpai_temperature', floatval($_POST['mpai_temperature']));
@@ -109,6 +114,7 @@ settings_errors('mpai_messages');
                 <a href="#tab-api" class="nav-tab nav-tab-active"><?php _e('API Settings', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-chat" class="nav-tab"><?php _e('Chat Interface', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-cli" class="nav-tab"><?php _e('CLI Commands', 'memberpress-ai-assistant'); ?></a>
+                <a href="#tab-tools" class="nav-tab"><?php _e('AI Tools', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-advanced" class="nav-tab"><?php _e('Advanced', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-debug" class="nav-tab"><?php _e('Debug', 'memberpress-ai-assistant'); ?></a>
             </h2>
@@ -267,6 +273,65 @@ settings_errors('mpai_messages');
                 </table>
             </div>
 
+            <div id="tab-tools" class="mpai-settings-tab" style="display: none;">
+                <h3><?php _e('AI Tool Configuration', 'memberpress-ai-assistant'); ?></h3>
+                <p><?php _e('Configure tools available to the AI assistant. These tools allow the AI to perform actions when requested.', 'memberpress-ai-assistant'); ?></p>
+                
+                <div class="mpai-tools-section">
+                    <h4><?php _e('Available Tools', 'memberpress-ai-assistant'); ?></h4>
+                    
+                    <div class="mpai-tool-card">
+                        <div class="mpai-tool-header">
+                            <h4><?php _e('WP CLI Tool', 'memberpress-ai-assistant'); ?></h4>
+                            <label class="mpai-toggle">
+                                <input type="checkbox" name="mpai_enable_wp_cli_tool" value="1" <?php checked(get_option('mpai_enable_wp_cli_tool', true)); ?> />
+                                <span class="mpai-toggle-slider"></span>
+                            </label>
+                        </div>
+                        <p><?php _e('Allows the AI to execute WP-CLI commands.', 'memberpress-ai-assistant'); ?></p>
+                        <div class="mpai-tool-details">
+                            <p><strong><?php _e('Usage:', 'memberpress-ai-assistant'); ?></strong> <?php _e('When enabled, the AI can execute commands like "wp user list" or "wp plugin list" directly.', 'memberpress-ai-assistant'); ?></p>
+                            <p><strong><?php _e('Format:', 'memberpress-ai-assistant'); ?></strong> <code>{"tool": "wp_cli", "parameters": {"command": "wp user list"}}</code></p>
+                            <p><strong><?php _e('Note:', 'memberpress-ai-assistant'); ?></strong> <?php _e('Only commands configured in the CLI Commands tab will be allowed.', 'memberpress-ai-assistant'); ?></p>
+                        </div>
+                    </div>
+                    
+                    <div class="mpai-tool-card">
+                        <div class="mpai-tool-header">
+                            <h4><?php _e('MemberPress Info Tool', 'memberpress-ai-assistant'); ?></h4>
+                            <label class="mpai-toggle">
+                                <input type="checkbox" name="mpai_enable_memberpress_info_tool" value="1" <?php checked(get_option('mpai_enable_memberpress_info_tool', true)); ?> />
+                                <span class="mpai-toggle-slider"></span>
+                            </label>
+                        </div>
+                        <p><?php _e('Allows the AI to fetch MemberPress data.', 'memberpress-ai-assistant'); ?></p>
+                        <div class="mpai-tool-details">
+                            <p><strong><?php _e('Usage:', 'memberpress-ai-assistant'); ?></strong> <?php _e('When enabled, the AI can fetch information about memberships, members, transactions, and subscriptions.', 'memberpress-ai-assistant'); ?></p>
+                            <p><strong><?php _e('Format:', 'memberpress-ai-assistant'); ?></strong> <code>{"tool": "memberpress_info", "parameters": {"type": "memberships"}}</code></p>
+                            <p><strong><?php _e('Available Types:', 'memberpress-ai-assistant'); ?></strong> <code>memberships, members, transactions, subscriptions, summary</code></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3><?php _e('Model Context Protocol (MCP)', 'memberpress-ai-assistant'); ?></h3>
+                <p><?php _e('The Model Context Protocol allows the AI assistant to use tools to perform actions. When enabled, the AI will be aware of available tools and can use them when needed.', 'memberpress-ai-assistant'); ?></p>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="mpai_enable_mcp"><?php _e('Enable MCP', 'memberpress-ai-assistant'); ?></label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="mpai_enable_mcp" id="mpai_enable_mcp" value="1" <?php checked(get_option('mpai_enable_mcp', true)); ?> />
+                                <?php _e('Allow the AI assistant to use tools via MCP', 'memberpress-ai-assistant'); ?>
+                            </label>
+                            <p class="description"><?php _e('When enabled, the AI assistant can use tools to perform actions when you ask it to.', 'memberpress-ai-assistant'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
             <div id="tab-advanced" class="mpai-settings-tab" style="display: none;">
                 <table class="form-table">
                     <tr>
@@ -682,5 +747,105 @@ initMpaiSettings();
 .mpai-debug-section .button {
     margin-right: 5px;
     margin-bottom: 5px;
+}
+
+/* AI Tools Tab Styles */
+.mpai-tools-section {
+    margin-bottom: 25px;
+}
+
+.mpai-tool-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.mpai-tool-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.mpai-tool-header h4 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.mpai-tool-details {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.mpai-tool-details code {
+    background: #f5f5f5;
+    padding: 3px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+/* Toggle Switch Styles */
+.mpai-toggle {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.mpai-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.mpai-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.mpai-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .mpai-toggle-slider {
+    background-color: #2196F3;
+}
+
+input:focus + .mpai-toggle-slider {
+    box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .mpai-toggle-slider:before {
+    transform: translateX(26px);
+}
+
+@media (max-width: 782px) {
+    .mpai-tool-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .mpai-toggle {
+        margin-top: 10px;
+    }
 }
 </style>

@@ -365,6 +365,97 @@
     overflow-x: auto;
 }
 
+/* Tool call styling */
+.mpai-tool-call {
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: #f9f9f9;
+}
+
+.mpai-tool-call-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: #f3f4f6;
+    font-size: 13px;
+}
+
+.mpai-tool-call-name {
+    font-weight: 600;
+}
+
+.mpai-tool-call-status {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.mpai-tool-call-processing {
+    background-color: #f8f9fa;
+    color: #666;
+    display: flex;
+    align-items: center;
+}
+
+.mpai-loading-dots {
+    display: inline-flex;
+    margin-right: 5px;
+}
+
+.mpai-loading-dots span {
+    width: 4px;
+    height: 4px;
+    margin: 0 2px;
+    background-color: #666;
+    border-radius: 50%;
+    animation: mpai-dots 1.4s infinite ease-in-out both;
+}
+
+.mpai-loading-dots span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.mpai-loading-dots span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes mpai-dots {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+}
+
+.mpai-tool-call-success {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.mpai-tool-call-error {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.mpai-tool-call-content {
+    padding: 8px 12px;
+}
+
+.mpai-tool-call-content pre {
+    margin: 0;
+    font-size: 12px;
+}
+
+.mpai-tool-call-result {
+    padding: 8px 12px;
+    border-top: 1px solid #eee;
+}
+
+.mpai-tool-call-error-message {
+    color: #c62828;
+    font-size: 12px;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 480px) {
     #mpai-chat-container.mpai-chat-container {

@@ -33,12 +33,63 @@ class MPAI_Context_Manager {
     private $allowed_commands;
 
     /**
+     * Available tools for MCP
+     *
+     * @var array
+     */
+    private $available_tools;
+
+    /**
      * Constructor
      */
     public function __construct() {
         $this->openai = new MPAI_OpenAI();
         $this->memberpress_api = new MPAI_MemberPress_API();
         $this->allowed_commands = get_option('mpai_allowed_cli_commands', array());
+        $this->init_tools();
+    }
+
+    /**
+     * Initialize available tools
+     */
+    private function init_tools() {
+        $this->available_tools = array(
+            'wp_cli' => array(
+                'name' => 'wp_cli',
+                'description' => 'Run WordPress CLI commands',
+                'parameters' => array(
+                    'command' => array(
+                        'type' => 'string',
+                        'description' => 'The WP-CLI command to execute'
+                    )
+                ),
+                'callback' => array($this, 'run_command')
+            ),
+            'memberpress_info' => array(
+                'name' => 'memberpress_info',
+                'description' => 'Get information about MemberPress',
+                'parameters' => array(
+                    'type' => array(
+                        'type' => 'string',
+                        'description' => 'Type of information (memberships, members, transactions, subscriptions)',
+                        'enum' => array('memberships', 'members', 'transactions', 'subscriptions', 'summary')
+                    )
+                ),
+                'callback' => array($this, 'get_memberpress_info')
+            )
+        );
+
+        // Allow plugins to extend available tools
+        $this->available_tools = apply_filters('mpai_available_tools', $this->available_tools);
+    }
+
+    /**
+     * Get available tools
+     *
+     * @return array List of available tools
+     */
+    public function get_available_tools() {
+        return $this->available_tools;
     }
 
     /**
@@ -73,6 +124,37 @@ class MPAI_Context_Manager {
         $output = ob_get_clean();
 
         return $output;
+    }
+
+    /**
+     * Get MemberPress information
+     *
+     * @param string $type Type of information to retrieve
+     * @return mixed MemberPress data
+     */
+    public function get_memberpress_info($type = 'summary') {
+        switch($type) {
+            case 'memberships':
+                $memberships = $this->memberpress_api->get_memberships();
+                return json_encode($memberships);
+                
+            case 'members':
+                $members = $this->memberpress_api->get_members();
+                return json_encode($members);
+                
+            case 'transactions':
+                $transactions = $this->memberpress_api->get_transactions();
+                return json_encode($transactions);
+                
+            case 'subscriptions':
+                $subscriptions = $this->memberpress_api->get_subscriptions();
+                return json_encode($subscriptions);
+                
+            case 'summary':
+            default:
+                $summary = $this->memberpress_api->get_data_summary();
+                return json_encode($summary);
+        }
     }
 
     /**
@@ -177,5 +259,59 @@ class MPAI_Context_Manager {
             'output' => $output,
             'insights' => $insights
         );
+    }
+
+    /**
+     * Process a tool request in MCP format
+     * 
+     * @param array $request Tool request data
+     * @return array Response data
+     */
+    public function process_tool_request($request) {
+        if (!isset($request['name']) || !isset($this->available_tools[$request['name']])) {
+            return array(
+                'success' => false,
+                'error' => 'Tool not found or invalid',
+                'tool' => isset($request['name']) ? $request['name'] : 'unknown'
+            );
+        }
+
+        $tool = $this->available_tools[$request['name']];
+        
+        // Validate parameters
+        $parameters = isset($request['parameters']) ? $request['parameters'] : array();
+        $validated_params = array();
+        
+        foreach ($tool['parameters'] as $param_name => $param_info) {
+            if (!isset($parameters[$param_name])) {
+                if (isset($param_info['required']) && $param_info['required']) {
+                    return array(
+                        'success' => false,
+                        'error' => "Missing required parameter: {$param_name}",
+                        'tool' => $request['name']
+                    );
+                }
+                continue;
+            }
+            
+            $validated_params[$param_name] = $parameters[$param_name];
+        }
+        
+        // Execute the tool
+        try {
+            $result = call_user_func($tool['callback'], $validated_params);
+            
+            return array(
+                'success' => true,
+                'tool' => $request['name'],
+                'result' => $result
+            );
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'error' => $e->getMessage(),
+                'tool' => $request['name']
+            );
+        }
     }
 }

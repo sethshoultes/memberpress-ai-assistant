@@ -88,8 +88,11 @@
                     hideTypingIndicator();
 
                     if (response.success && response.data && response.data.response) {
+                        // Process response for tool calls
+                        let processedResponse = processToolCalls(response.data.response);
+                        
                         // Add the response to the chat
-                        addMessageToChat('assistant', response.data.response);
+                        addMessageToChat('assistant', processedResponse);
                     } else {
                         // Show error message
                         addMessageToChat('assistant', mpai_chat_data.strings.error_message);
@@ -107,6 +110,137 @@
                     addMessageToChat('assistant', mpai_chat_data.strings.error_message);
 
                     // Scroll to the bottom with a slight delay to ensure content is rendered
+                    setTimeout(scrollToBottom, 100);
+                }
+            });
+        }
+
+        /**
+         * Process tool calls in the response
+         * 
+         * @param {string} response - The assistant's response
+         * @return {string} The processed response
+         */
+        function processToolCalls(response) {
+            if (!response || typeof response !== 'string') {
+                return response;
+            }
+            
+            // Match JSON blocks that look like tool calls
+            const toolCallRegex = /```json\n({[\s\S]*?})\n```/g;
+            let match;
+            let processedResponse = response;
+            let matches = [];
+            
+            // Find all tool call matches first
+            while ((match = toolCallRegex.exec(response)) !== null) {
+                try {
+                    const jsonData = JSON.parse(match[1]);
+                    
+                    // Only process if it looks like a tool call (has tool and parameters properties)
+                    // and isn't already a tool result (no success or error properties)
+                    if (jsonData.tool && jsonData.parameters && 
+                        !jsonData.hasOwnProperty('success') && !jsonData.hasOwnProperty('error')) {
+                        matches.push({
+                            fullMatch: match[0],
+                            jsonStr: match[1],
+                            jsonData: jsonData
+                        });
+                    }
+                } catch (e) {
+                    console.error('MPAI: Error parsing potential tool call:', e);
+                }
+            }
+            
+            // Process each match
+            matches.forEach(match => {
+                const toolId = 'tool-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+                
+                // Replace the tool call with a processing indicator
+                const processingHtml = `
+                    <div class="mpai-tool-call" id="${toolId}">
+                        <div class="mpai-tool-call-header">
+                            <span class="mpai-tool-call-name">${match.jsonData.tool}</span>
+                            <span class="mpai-tool-call-status mpai-tool-call-processing">
+                                <span class="mpai-loading-dots"><span></span><span></span><span></span></span>
+                                Processing
+                            </span>
+                        </div>
+                        <div class="mpai-tool-call-content">
+                            <pre><code>${JSON.stringify(match.jsonData, null, 2)}</code></pre>
+                        </div>
+                        <div class="mpai-tool-call-result"></div>
+                    </div>
+                `;
+                
+                processedResponse = processedResponse.replace(match.fullMatch, processingHtml);
+                
+                // Execute the tool call
+                executeToolCall(match.jsonStr, match.jsonData, toolId);
+            });
+            
+            return processedResponse;
+        }
+        
+        /**
+         * Execute a tool call
+         * 
+         * @param {string} jsonStr - The tool call JSON string
+         * @param {object} jsonData - The parsed tool call JSON
+         * @param {string} toolId - The tool call element ID
+         */
+        function executeToolCall(jsonStr, jsonData, toolId) {
+            $.ajax({
+                url: mpai_chat_data.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'mpai_execute_tool',
+                    tool_request: jsonStr,
+                    nonce: mpai_chat_data.nonce
+                },
+                success: function(response) {
+                    const $toolCall = $('#' + toolId);
+                    if (!$toolCall.length) return;
+                    
+                    const $status = $toolCall.find('.mpai-tool-call-status');
+                    const $result = $toolCall.find('.mpai-tool-call-result');
+                    
+                    if (response.success) {
+                        // Update status to success
+                        $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-success');
+                        $status.html('Success');
+                        
+                        // Display the result
+                        const resultHtml = `<pre><code>${JSON.stringify(response.data, null, 2)}</code></pre>`;
+                        $result.html(resultHtml);
+                    } else {
+                        // Update status to error
+                        $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-error');
+                        $status.html('Error');
+                        
+                        // Display the error
+                        const errorMessage = response.data || 'Unknown error executing tool';
+                        $result.html(`<div class="mpai-tool-call-error-message">${errorMessage}</div>`);
+                    }
+                    
+                    // Scroll to bottom to show results
+                    setTimeout(scrollToBottom, 100);
+                },
+                error: function(xhr, status, error) {
+                    const $toolCall = $('#' + toolId);
+                    if (!$toolCall.length) return;
+                    
+                    const $status = $toolCall.find('.mpai-tool-call-status');
+                    const $result = $toolCall.find('.mpai-tool-call-result');
+                    
+                    // Update status to error
+                    $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-error');
+                    $status.html('Error');
+                    
+                    // Display the error
+                    $result.html(`<div class="mpai-tool-call-error-message">AJAX error: ${error}</div>`);
+                    
+                    // Scroll to bottom to show error
                     setTimeout(scrollToBottom, 100);
                 }
             });
