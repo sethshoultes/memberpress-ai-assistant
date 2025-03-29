@@ -302,13 +302,20 @@
                             // Check if the result is a JSON string first
                             let jsonResult = null;
                             try {
-                                if (typeof response.data.result === 'string' && 
+                                // First check if it's an object already - this means the parsing happened on the backend
+                                if (typeof response.data.result === 'object' && response.data.result !== null) {
+                                    console.log('MPAI: Result is already an object, using directly', response.data.result);
+                                    jsonResult = response.data.result;
+                                }
+                                // Then check if it's a string that needs parsing
+                                else if (typeof response.data.result === 'string' && 
                                     response.data.result.trim().startsWith('{') && 
                                     response.data.result.trim().endsWith('}')) {
                                     jsonResult = JSON.parse(response.data.result);
-                                    console.log('MPAI: Found JSON in wp_cli result', jsonResult);
+                                    console.log('MPAI: Found JSON string in wp_cli result, parsed to:', jsonResult);
                                 }
                             } catch (e) {
+                                console.log('MPAI: Error processing JSON:', e);
                                 console.log('MPAI: Not valid JSON, continuing with normal processing');
                             }
                             

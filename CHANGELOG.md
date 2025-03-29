@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Resolved JSON double-encoding issue causing raw JSON to display in chat
 - Fixed parsing of pre-formatted JSON responses for seamless display
 - Implemented proper object handling to prevent string conversion of JSON data
+- Fixed tabular data formatting for simulated WP-CLI commands (wp user list, wp post list, wp plugin list)
+- Fixed double-encoding of JSON responses in tool execution and chat processing
+- Enhanced JSON detection and unwrapping logic to prevent raw JSON display
 
 ### Changed
 - Refactored command execution to use a more direct approach

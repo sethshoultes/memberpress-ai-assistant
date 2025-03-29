@@ -137,7 +137,8 @@ class MPAI_Context_Manager {
                     $output .= $user->ID . "\t" . $user->user_login . "\t" . $user->display_name . "\t" . $user->user_email . "\t" . implode(', ', $user->roles) . "\n";
                 }
                 error_log('MPAI: Returning simulated output for wp user list');
-                return $output;
+                // Make sure to format this as tabular data
+                return $this->format_tabular_output($command, $output);
             }
             
             if (strpos($command, 'wp post list') === 0) {
@@ -148,7 +149,8 @@ class MPAI_Context_Manager {
                     $output .= $post->ID . "\t" . $post->post_title . "\t" . $post->post_date . "\t" . $post->post_status . "\n";
                 }
                 error_log('MPAI: Returning simulated output for wp post list');
-                return $output;
+                // Make sure to format this as tabular data
+                return $this->format_tabular_output($command, $output);
             }
             
             if (strpos($command, 'wp plugin list') === 0) {
@@ -163,7 +165,8 @@ class MPAI_Context_Manager {
                     $output .= $plugin_data['Name'] . "\t" . $status . "\t" . $plugin_data['Version'] . "\n";
                 }
                 error_log('MPAI: Returning simulated output for wp plugin list');
-                return $output;
+                // Make sure to format this as tabular data
+                return $this->format_tabular_output($command, $output);
             }
             
             if (strpos($command, 'wp option get') === 0) {

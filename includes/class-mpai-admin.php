@@ -450,9 +450,16 @@ class MPAI_Admin {
             
             error_log('MPAI: Tool execution result: ' . json_encode($result));
             
-            // Format the result if needed
-            if (isset($result['tool']) && $result['tool'] === 'wp_cli' && isset($result['result'])) {
-                // Keep the formatted result, don't modify it
+            // Process structured result to avoid double-encoding
+            if (isset($result['tool']) && $result['tool'] === 'wp_cli' && isset($result['result']) && 
+                is_string($result['result']) && strpos($result['result'], '{') === 0 && substr($result['result'], -1) === '}') {
+                // Try to parse the result as JSON
+                $parsed_json = json_decode($result['result'], true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($parsed_json['success']) && isset($parsed_json['command_type'])) {
+                    // This is already formatted JSON with command type, parse it to avoid double-encoding
+                    error_log('MPAI: Detected double-encoded JSON, unwrapping...');
+                    $result['result'] = $parsed_json;
+                }
             }
             
             wp_send_json_success($result);

@@ -438,6 +438,18 @@ class MPAI_Chat {
             $result = $this->context_manager->process_tool_request($tool_request);
             
             // Format the result
+            // Check if result is already a properly formatted object with a structured output
+            if (is_array($result) && isset($result['success']) && isset($result['tool']) && 
+                isset($result['result']) && is_string($result['result']) && 
+                (strpos($result['result'], '{') === 0 && substr($result['result'], -1) === '}')) {
+                // Try to parse the inner JSON to see if it's already properly formatted
+                $inner_result = json_decode($result['result'], true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($inner_result['success']) && isset($inner_result['command_type'])) {
+                    // This is a pre-formatted JSON response, don't double-encode it
+                    $result['result'] = $inner_result;
+                }
+            }
+            
             $result_block = "```json\n" . json_encode($result, JSON_PRETTY_PRINT) . "\n```";
             
             // Replace the tool call with the result
