@@ -116,6 +116,91 @@
         }
 
         /**
+         * Format tabular result directly
+         *
+         * @param {object} resultData - The tabular result data object
+         * @return {string} Formatted HTML for the table
+         */
+        function formatTabularResult(resultData) {
+            console.log('MPAI: Formatting tabular result directly:', resultData);
+            
+            const commandType = resultData.command_type || 'generic';
+            let result = resultData.result || '';
+            
+            // Process the result to handle escaped tabs and newlines
+            if (result.includes('\\t')) {
+                console.log('MPAI: Found escaped tabs, replacing with real tabs');
+                result = result.replace(/\\t/g, '\t');
+            }
+            
+            if (result.includes('\\n')) {
+                console.log('MPAI: Found escaped newlines, replacing with real newlines');
+                result = result.replace(/\\n/g, '\n');
+            }
+            
+            // Generate title based on command type
+            let tableTitle = '';
+            switch(commandType) {
+                case 'user_list':
+                    tableTitle = '<h3>WordPress Users</h3>';
+                    break;
+                case 'post_list':
+                    tableTitle = '<h3>WordPress Posts</h3>';
+                    break;
+                case 'plugin_list':
+                    tableTitle = '<h3>WordPress Plugins</h3>';
+                    break;
+                case 'membership_list':
+                    tableTitle = '<h3>MemberPress Memberships</h3>';
+                    break;
+                case 'transaction_list':
+                    tableTitle = '<h3>MemberPress Transactions</h3>';
+                    break;
+                default:
+                    tableTitle = '<h3>Command Results</h3>';
+                    break;
+            }
+            
+            // Format as table
+            const rows = result.trim().split('\n');
+            console.log(`MPAI: Found ${rows.length} rows to format`);
+            
+            let tableHtml = '<div class="mpai-result-table">';
+            tableHtml += tableTitle;
+            tableHtml += '<table>';
+            
+            rows.forEach((row, index) => {
+                console.log(`MPAI: Processing direct format row ${index}:`, row.substring(0, 50));
+                
+                // Split by tab character or by string representation of tab if needed
+                const cells = row.includes('\t') ? 
+                    row.split('\t') : 
+                    row.split('t'); // Fallback if somehow we still have text "t" separators
+                
+                console.log(`MPAI: Direct format row ${index} has ${cells.length} cells`);
+                
+                if (index === 0) {
+                    // Header row
+                    tableHtml += '<thead><tr>';
+                    cells.forEach(cell => {
+                        tableHtml += `<th>${cell}</th>`;
+                    });
+                    tableHtml += '</tr></thead><tbody>';
+                } else {
+                    // Data row
+                    tableHtml += '<tr>';
+                    cells.forEach(cell => {
+                        tableHtml += `<td>${cell}</td>`;
+                    });
+                    tableHtml += '</tr>';
+                }
+            });
+            
+            tableHtml += '</tbody></table></div>';
+            return tableHtml;
+        }
+        
+        /**
          * Process tool calls in the response
          * 
          * @param {string} response - The assistant's response
@@ -147,6 +232,18 @@
                     console.log('MPAI: Found JSON block', match[1]);
                     const jsonData = JSON.parse(match[1]);
                     
+                    // Check if this is a formatted tabular result that we can display directly
+                    if (jsonData.success && jsonData.tool && jsonData.result && 
+                        typeof jsonData.result === 'object' && 
+                        jsonData.result.command_type && jsonData.result.result) {
+                        
+                        console.log('MPAI: Found formatted tabular result', jsonData);
+                        
+                        // Format the result directly without executing a tool call
+                        processedResponse = processedResponse.replace(match[0], formatTabularResult(jsonData.result));
+                        continue;
+                    }
+                    
                     // Only process if it looks like a tool call (has tool and parameters properties)
                     // and isn't already a tool result (no success or error properties)
                     if (jsonData.tool && jsonData.parameters && 
@@ -168,6 +265,18 @@
                 try {
                     console.log('MPAI: Found JSON-object block (pre-parsed)', match[1]);
                     const jsonData = JSON.parse(match[1]);
+                    
+                    // Check if this is a formatted tabular result that we can display directly
+                    if (jsonData.success && jsonData.tool && jsonData.result && 
+                        typeof jsonData.result === 'object' && 
+                        jsonData.result.command_type && jsonData.result.result) {
+                        
+                        console.log('MPAI: Found formatted tabular result in JSON-object block', jsonData);
+                        
+                        // Format the result directly without executing a tool call
+                        processedResponse = processedResponse.replace(match[0], formatTabularResult(jsonData.result));
+                        continue;
+                    }
                     
                     // Only process if it looks like a tool call (has tool and parameters properties)
                     // and isn't already a tool result (no success or error properties)
@@ -196,6 +305,18 @@
                     
                     console.log('MPAI: Found direct JSON', jsonStr);
                     const jsonData = JSON.parse(jsonStr);
+                    
+                    // Check if this is a formatted tabular result that we can display directly
+                    if (jsonData.success && jsonData.tool && jsonData.result && 
+                        typeof jsonData.result === 'object' && 
+                        jsonData.result.command_type && jsonData.result.result) {
+                        
+                        console.log('MPAI: Found formatted tabular result in direct JSON', jsonData);
+                        
+                        // Format the result directly without executing a tool call
+                        processedResponse = processedResponse.replace(match[0], formatTabularResult(jsonData.result));
+                        continue;
+                    }
                     
                     // Only process if it looks like a tool call (has tool and parameters properties)
                     // and isn't already a tool result (no success or error properties)
@@ -328,12 +449,44 @@
                                 console.log('MPAI: Command type:', commandType);
                                 
                                 // Special handling for all tabular formats
-                                if (typeof jsonResult.result === 'string' && 
-                                    jsonResult.result.includes('\t') && 
-                                    jsonResult.result.includes('\n')) {
+                                if (typeof jsonResult.result === 'string') {
+                                    console.log('MPAI: Examining string result for table formatting:', jsonResult.result.substring(0, 100));
+                                    
+                                    // The tab characters might be literal tabs \t or escaped tabs "\\t"
+                                    // The newline characters might be literal newlines \n or escaped newlines "\\n"
+                                    // We need to handle both cases
+                                    
+                                    // First, check if we have escaped characters
+                                    let processedResult = jsonResult.result;
+                                    
+                                    // Replace escaped tabs with real tabs if present
+                                    if (processedResult.includes('\\t')) {
+                                        console.log('MPAI: Found escaped tabs, replacing with real tabs');
+                                        processedResult = processedResult.replace(/\\t/g, '\t');
+                                    }
+                                    
+                                    // Replace escaped newlines with real newlines if present
+                                    if (processedResult.includes('\\n')) {
+                                        console.log('MPAI: Found escaped newlines, replacing with real newlines');
+                                        processedResult = processedResult.replace(/\\n/g, '\n');
+                                    }
+                                    
+                                    // Check if we have tabs and newlines now
+                                    const hasTabsAndNewlines = (
+                                        processedResult.includes('\t') && 
+                                        processedResult.includes('\n')
+                                    );
+                                    
+                                    if (!hasTabsAndNewlines) {
+                                        console.log('MPAI: Result does not have tabs and newlines after processing, showing as plain text');
+                                        resultContent = `<pre class="mpai-command-result"><code>${jsonResult.result || 'No output'}</code></pre>`;
+                                        return;
+                                    }
+                                    
+                                    console.log('MPAI: Confirmed result has tabs and newlines, formatting as table');
                                     
                                     // Format as table - this handles formatted lists from the original JSON
-                                    const rows = jsonResult.result.trim().split('\n');
+                                    const rows = processedResult.trim().split('\n');
                                     
                                     // Generate title based on command type
                                     let tableTitle = '';
@@ -365,7 +518,14 @@
                                     tableHtml += '<table>';
                                     
                                     rows.forEach((row, index) => {
-                                        const cells = row.split('\t');
+                                        console.log(`MPAI: Processing row ${index}:`, row.substring(0, 50));
+                                        
+                                        // Split by tab character or by string representation of tab if needed
+                                        const cells = row.includes('\t') ? 
+                                            row.split('\t') : 
+                                            row.split('t'); // Fallback if somehow we still have text "t" separators
+                                        
+                                        console.log(`MPAI: Row ${index} has ${cells.length} cells`);
                                         
                                         if (index === 0) {
                                             // Header row
@@ -392,16 +552,56 @@
                                 }
                             }
                             // Standard tab-separated processing (for non-JSON results)
-                            else if (typeof response.data.result === 'string' && 
-                                response.data.result.includes('\t') && 
-                                response.data.result.includes('\n')) {
+                            else if (typeof response.data.result === 'string') {
+                                console.log('MPAI: Checking standard string result for table format:', response.data.result.substring(0, 100));
+                                
+                                // The tab characters might be literal tabs \t or escaped tabs "\\t"
+                                // The newline characters might be literal newlines \n or escaped newlines "\\n"
+                                // We need to handle both cases
+                                
+                                // First, check if we have escaped characters
+                                let processedResult = response.data.result;
+                                
+                                // Replace escaped tabs with real tabs if present
+                                if (processedResult.includes('\\t')) {
+                                    console.log('MPAI: Found escaped tabs, replacing with real tabs');
+                                    processedResult = processedResult.replace(/\\t/g, '\t');
+                                }
+                                
+                                // Replace escaped newlines with real newlines if present
+                                if (processedResult.includes('\\n')) {
+                                    console.log('MPAI: Found escaped newlines, replacing with real newlines');
+                                    processedResult = processedResult.replace(/\\n/g, '\n');
+                                }
+                                
+                                // Check if we have tabs and newlines now
+                                const hasTabsAndNewlines = (
+                                    processedResult.includes('\t') && 
+                                    processedResult.includes('\n')
+                                );
+                                
+                                if (!hasTabsAndNewlines) {
+                                    console.log('MPAI: Standard result does not contain tabs and newlines after processing');
+                                    resultContent = `<pre class="mpai-command-result"><code>${response.data.result || 'No output'}</code></pre>`;
+                                    $result.html(resultContent);
+                                    return;
+                                }
+                                
+                                console.log('MPAI: Standard result has tabs and newlines, formatting as table');
                                 
                                 // Format as table
-                                const rows = response.data.result.trim().split('\n');
+                                const rows = processedResult.trim().split('\n');
                                 let tableHtml = '<div class="mpai-result-table"><table>';
                                 
                                 rows.forEach((row, index) => {
-                                    const cells = row.split('\t');
+                                    console.log(`MPAI: Processing standard row ${index}:`, row.substring(0, 50));
+                                    
+                                    // Split by tab character or by string representation of tab if needed
+                                    const cells = row.includes('\t') ? 
+                                        row.split('\t') : 
+                                        row.split('t'); // Fallback if somehow we still have text "t" separators
+                                    
+                                    console.log(`MPAI: Standard row ${index} has ${cells.length} cells`);
                                     
                                     if (index === 0) {
                                         // Header row

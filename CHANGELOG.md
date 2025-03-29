@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed tabular data formatting for simulated WP-CLI commands (wp user list, wp post list, wp plugin list)
 - Fixed double-encoding of JSON responses in tool execution and chat processing
 - Enhanced JSON detection and unwrapping logic to prevent raw JSON display
+- Fixed handling of escaped tab and newline characters in tabular data formatting
+- Added intelligent splitting for tabular data with mixed separator formats
+- Fixed direct rendering of pre-formatted JSON command outputs
+- Added special handling for WP CLI command result tables
 
 ### Changed
 - Refactored command execution to use a more direct approach
