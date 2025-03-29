@@ -99,17 +99,67 @@ class MPAI_Context_Manager {
      * @return string Command output
      */
     public function run_command($command) {
+        error_log('MPAI: run_command called with command: ' . $command);
+        
+        // Check if CLI commands are enabled in settings
+        if (!get_option('mpai_enable_cli_commands', true)) {
+            error_log('MPAI: CLI commands are disabled in settings');
+            return 'CLI commands are disabled in settings. Please enable them in the MemberPress AI Assistant settings page.';
+        }
+        
         // Check if command is allowed
         if (!$this->is_command_allowed($command)) {
-            return 'Command not allowed. Only allowed commands can be executed.';
+            error_log('MPAI: Command not allowed: ' . $command);
+            return 'Command not allowed. Only allowed commands can be executed. Currently allowed: ' . implode(', ', $this->allowed_commands);
         }
 
-        // Check if WP-CLI is available
+        // Since WP-CLI might not be available in admin context, provide meaningful output
         if (!defined('WP_CLI') || !class_exists('WP_CLI')) {
-            return 'WP-CLI is not available in this environment.';
+            error_log('MPAI: WP-CLI not available in this environment');
+            
+            // For certain common commands, provide simulated output
+            if (strpos($command, 'wp user list') === 0) {
+                // Get users through WordPress API
+                $users = get_users(array('number' => 10));
+                $output = "ID\tUser Login\tDisplay Name\tEmail\tRoles\n";
+                foreach ($users as $user) {
+                    $output .= $user->ID . "\t" . $user->user_login . "\t" . $user->display_name . "\t" . $user->user_email . "\t" . implode(', ', $user->roles) . "\n";
+                }
+                error_log('MPAI: Returning simulated output for wp user list');
+                return $output;
+            }
+            
+            if (strpos($command, 'wp post list') === 0) {
+                // Get posts through WordPress API
+                $posts = get_posts(array('posts_per_page' => 10));
+                $output = "ID\tPost Title\tPost Date\tStatus\n";
+                foreach ($posts as $post) {
+                    $output .= $post->ID . "\t" . $post->post_title . "\t" . $post->post_date . "\t" . $post->post_status . "\n";
+                }
+                error_log('MPAI: Returning simulated output for wp post list');
+                return $output;
+            }
+            
+            if (strpos($command, 'wp plugin list') === 0) {
+                // Get plugins through WordPress API
+                if (!function_exists('get_plugins')) {
+                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                }
+                $plugins = get_plugins();
+                $output = "Name\tStatus\tVersion\n";
+                foreach ($plugins as $plugin_file => $plugin_data) {
+                    $status = is_plugin_active($plugin_file) ? 'active' : 'inactive';
+                    $output .= $plugin_data['Name'] . "\t" . $status . "\t" . $plugin_data['Version'] . "\n";
+                }
+                error_log('MPAI: Returning simulated output for wp plugin list');
+                return $output;
+            }
+            
+            return 'WP-CLI is not available in this browser environment. However, you can still use the memberpress_info tool to get MemberPress data.';
         }
 
-        // Run the command
+        // Run the command using WP-CLI
+        error_log('MPAI: Executing WP-CLI command: ' . $command);
         ob_start();
         try {
             $result = WP_CLI::runcommand($command, array(
@@ -118,10 +168,20 @@ class MPAI_Context_Manager {
             ));
             
             echo $result;
+            error_log('MPAI: Command executed successfully');
         } catch (Exception $e) {
-            echo 'Error: ' . $e->getMessage();
+            $error_message = 'Error: ' . $e->getMessage();
+            echo $error_message;
+            error_log('MPAI: Error executing command: ' . $error_message);
         }
         $output = ob_get_clean();
+
+        error_log('MPAI: Command output length: ' . strlen($output));
+        
+        // Trim output if it's too long
+        if (strlen($output) > 5000) {
+            $output = substr($output, 0, 5000) . "...\n\n[Output truncated due to size]";
+        }
 
         return $output;
     }
@@ -268,7 +328,19 @@ class MPAI_Context_Manager {
      * @return array Response data
      */
     public function process_tool_request($request) {
+        error_log('MPAI: Processing tool request: ' . json_encode($request));
+        
+        if (!get_option('mpai_enable_mcp', true)) {
+            error_log('MPAI: MCP is disabled in settings');
+            return array(
+                'success' => false,
+                'error' => 'MCP is disabled in settings',
+                'tool' => isset($request['name']) ? $request['name'] : 'unknown'
+            );
+        }
+        
         if (!isset($request['name']) || !isset($this->available_tools[$request['name']])) {
+            error_log('MPAI: Tool not found or invalid: ' . (isset($request['name']) ? $request['name'] : 'unknown'));
             return array(
                 'success' => false,
                 'error' => 'Tool not found or invalid',
@@ -278,6 +350,25 @@ class MPAI_Context_Manager {
 
         $tool = $this->available_tools[$request['name']];
         
+        // Check if the specific tool is enabled
+        if ($tool['name'] === 'wp_cli' && !get_option('mpai_enable_wp_cli_tool', true)) {
+            error_log('MPAI: wp_cli tool is disabled in settings');
+            return array(
+                'success' => false,
+                'error' => 'The wp_cli tool is disabled in settings',
+                'tool' => $request['name']
+            );
+        }
+        
+        if ($tool['name'] === 'memberpress_info' && !get_option('mpai_enable_memberpress_info_tool', true)) {
+            error_log('MPAI: memberpress_info tool is disabled in settings');
+            return array(
+                'success' => false,
+                'error' => 'The memberpress_info tool is disabled in settings',
+                'tool' => $request['name']
+            );
+        }
+        
         // Validate parameters
         $parameters = isset($request['parameters']) ? $request['parameters'] : array();
         $validated_params = array();
@@ -285,6 +376,7 @@ class MPAI_Context_Manager {
         foreach ($tool['parameters'] as $param_name => $param_info) {
             if (!isset($parameters[$param_name])) {
                 if (isset($param_info['required']) && $param_info['required']) {
+                    error_log('MPAI: Missing required parameter: ' . $param_name);
                     return array(
                         'success' => false,
                         'error' => "Missing required parameter: {$param_name}",
@@ -297,16 +389,46 @@ class MPAI_Context_Manager {
             $validated_params[$param_name] = $parameters[$param_name];
         }
         
+        // Special handling for wp_cli tool
+        if ($tool['name'] === 'wp_cli') {
+            if (!isset($validated_params['command'])) {
+                error_log('MPAI: Missing command parameter for wp_cli tool');
+                return array(
+                    'success' => false,
+                    'error' => 'Command parameter is required for wp_cli tool',
+                    'tool' => $request['name']
+                );
+            }
+            
+            error_log('MPAI: Executing WP-CLI command: ' . $validated_params['command']);
+            return array(
+                'success' => true,
+                'tool' => $request['name'],
+                'result' => $this->run_command($validated_params['command'])
+            );
+        }
+        
         // Execute the tool
         try {
-            $result = call_user_func($tool['callback'], $validated_params);
+            if ($tool['name'] === 'memberpress_info') {
+                // Special handling for memberpress_info tool
+                $type = isset($validated_params['type']) ? $validated_params['type'] : 'summary';
+                error_log('MPAI: Getting MemberPress info type: ' . $type);
+                $result = $this->get_memberpress_info($type);
+            } else {
+                // Generic callback execution
+                error_log('MPAI: Executing tool callback for: ' . $tool['name']);
+                $result = call_user_func($tool['callback'], $validated_params);
+            }
             
+            error_log('MPAI: Tool execution successful');
             return array(
                 'success' => true,
                 'tool' => $request['name'],
                 'result' => $result
             );
         } catch (Exception $e) {
+            error_log('MPAI: Error executing tool: ' . $e->getMessage());
             return array(
                 'success' => false,
                 'error' => $e->getMessage(),

@@ -238,17 +238,30 @@ class MPAI_Admin {
      * Execute a tool via MCP
      */
     public function execute_tool() {
-        // Check nonce
-        check_ajax_referer('mpai_nonce', 'mpai_nonce');
+        // Log the tool execution request for debugging
+        error_log('MPAI: execute_tool called. POST data: ' . json_encode($_POST));
+        
+        // Check nonce - accept either parameter name for backward compatibility
+        if (isset($_POST['mpai_nonce'])) {
+            check_ajax_referer('mpai_nonce', 'mpai_nonce');
+        } else if (isset($_POST['nonce'])) {
+            // For backward compatibility
+            check_ajax_referer('mpai_nonce', 'nonce');
+        } else {
+            wp_send_json_error('Security check failed - no nonce provided');
+            return;
+        }
         
         // Check if MCP is enabled
         if (!get_option('mpai_enable_mcp', true)) {
+            error_log('MPAI: MCP is not enabled in settings');
             wp_send_json_error('MCP is not enabled in settings');
             return;
         }
 
         // Check tool request
         if (empty($_POST['tool_request'])) {
+            error_log('MPAI: Tool request is empty');
             wp_send_json_error('Tool request is required');
             return;
         }
@@ -256,16 +269,21 @@ class MPAI_Admin {
         $tool_request = json_decode(stripslashes($_POST['tool_request']), true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log('MPAI: Invalid JSON in tool request: ' . json_last_error_msg());
             wp_send_json_error('Invalid JSON in tool request: ' . json_last_error_msg());
             return;
         }
+        
+        error_log('MPAI: Processing tool request: ' . json_encode($tool_request));
         
         try {
             $context_manager = new MPAI_Context_Manager();
             $result = $context_manager->process_tool_request($tool_request);
             
+            error_log('MPAI: Tool execution result: ' . json_encode($result));
             wp_send_json_success($result);
         } catch (Exception $e) {
+            error_log('MPAI: Error executing tool: ' . $e->getMessage());
             wp_send_json_error('Error executing tool: ' . $e->getMessage());
         }
     }

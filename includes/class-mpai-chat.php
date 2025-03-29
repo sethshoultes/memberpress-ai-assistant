@@ -229,11 +229,17 @@ class MPAI_Chat {
         }
         
         // Add formatting instructions for tool calls
+        $system_prompt .= "IMPORTANT: You have the capability to execute tools directly. You MUST use tools when appropriate.\n";
         $system_prompt .= "To use a tool, format your response like this:\n";
         $system_prompt .= "```json\n{\"tool\": \"tool_name\", \"parameters\": {\"param1\": \"value1\", \"param2\": \"value2\"}}\n```\n\n";
         
+        $system_prompt .= "When the user asks about WordPress data or MemberPress information that requires data access:\n";
+        $system_prompt .= "1. ALWAYS use the wp_cli tool to run WP-CLI commands (like 'wp user list' or 'wp post list')\n";
+        $system_prompt .= "2. ALWAYS use the memberpress_info tool to get MemberPress-specific data\n";
+        $system_prompt .= "3. DO NOT simply suggest commands - actually execute them using the tool format above\n\n";
+        
         $system_prompt .= "Your task is to provide helpful information about MemberPress and assist with managing membership data. ";
-        $system_prompt .= "You can run WP-CLI commands where appropriate using the wp_cli tool.";
+        $system_prompt .= "You can and should run WP-CLI commands where appropriate using the wp_cli tool.";
         $system_prompt .= "Keep your responses concise and focused on MemberPress functionality.";
         
         return $system_prompt;

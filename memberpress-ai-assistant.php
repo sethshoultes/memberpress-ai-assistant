@@ -244,12 +244,19 @@ class MemberPress_AI_Assistant {
             array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('mpai_chat_nonce'),
+                'mpai_nonce' => wp_create_nonce('mpai_nonce'), // Add the regular nonce for tool execution
                 'strings' => array(
                     'send_message' => __('Send message', 'memberpress-ai-assistant'),
                     'typing' => __('MemberPress AI is typing...', 'memberpress-ai-assistant'),
                     'welcome_message' => get_option('mpai_welcome_message', __('Hi there! I\'m your MemberPress AI Assistant. How can I help you today?', 'memberpress-ai-assistant')),
                     'error_message' => __('Sorry, there was an error processing your request. Please try again.', 'memberpress-ai-assistant'),
                 ),
+                'tools_enabled' => array(
+                    'mcp' => get_option('mpai_enable_mcp', true) ? true : false,
+                    'cli_commands' => get_option('mpai_enable_cli_commands', true) ? true : false,
+                    'wp_cli_tool' => get_option('mpai_enable_wp_cli_tool', true) ? true : false,
+                    'memberpress_info_tool' => get_option('mpai_enable_memberpress_info_tool', true) ? true : false
+                )
             )
         );
 
@@ -664,7 +671,13 @@ class MemberPress_AI_Assistant {
             'enable_chat' => true,
             'chat_position' => 'bottom-right',
             'show_on_all_pages' => true,
-            'welcome_message' => 'Hi there! I\'m your MemberPress AI Assistant. How can I help you today?'
+            'welcome_message' => 'Hi there! I\'m your MemberPress AI Assistant. How can I help you today?',
+            // MCP and CLI settings
+            'enable_mcp' => true,
+            'enable_cli_commands' => true,
+            'enable_wp_cli_tool' => true,
+            'enable_memberpress_info_tool' => true,
+            'allowed_cli_commands' => array('wp user list', 'wp post list', 'wp plugin list')
         );
         
         foreach ($default_options as $option => $value) {

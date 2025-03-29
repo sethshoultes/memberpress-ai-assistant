@@ -126,21 +126,30 @@
                 return response;
             }
             
+            console.log('MPAI: Processing tool calls in response');
+            
             // Match JSON blocks that look like tool calls
-            const toolCallRegex = /```json\n({[\s\S]*?})\n```/g;
+            // Support both formats:
+            // 1. ```json\n{...}\n```
+            // 2. {tool: ..., parameters: ...}
+            const jsonBlockRegex = /```json\n({[\s\S]*?})\n```/g;
+            const directJsonRegex = /\{[\s\S]*?"tool"[\s\S]*?"parameters"[\s\S]*?\}/g;
+            
             let match;
             let processedResponse = response;
             let matches = [];
             
-            // Find all tool call matches first
-            while ((match = toolCallRegex.exec(response)) !== null) {
+            // Find all tool call matches from JSON blocks
+            while ((match = jsonBlockRegex.exec(response)) !== null) {
                 try {
+                    console.log('MPAI: Found JSON block', match[1]);
                     const jsonData = JSON.parse(match[1]);
                     
                     // Only process if it looks like a tool call (has tool and parameters properties)
                     // and isn't already a tool result (no success or error properties)
                     if (jsonData.tool && jsonData.parameters && 
                         !jsonData.hasOwnProperty('success') && !jsonData.hasOwnProperty('error')) {
+                        console.log('MPAI: Valid tool call in JSON block', jsonData);
                         matches.push({
                             fullMatch: match[0],
                             jsonStr: match[1],
@@ -148,9 +157,39 @@
                         });
                     }
                 } catch (e) {
-                    console.error('MPAI: Error parsing potential tool call:', e);
+                    console.error('MPAI: Error parsing potential tool call in JSON block:', e);
                 }
             }
+            
+            // Also try to find direct JSON format
+            while ((match = directJsonRegex.exec(response)) !== null) {
+                try {
+                    const jsonStr = match[0];
+                    // Skip if this match is part of a JSON code block we already processed
+                    if (processedResponse.includes('```json\\n' + jsonStr + '\\n```')) {
+                        continue;
+                    }
+                    
+                    console.log('MPAI: Found direct JSON', jsonStr);
+                    const jsonData = JSON.parse(jsonStr);
+                    
+                    // Only process if it looks like a tool call (has tool and parameters properties)
+                    // and isn't already a tool result (no success or error properties)
+                    if (jsonData.tool && jsonData.parameters && 
+                        !jsonData.hasOwnProperty('success') && !jsonData.hasOwnProperty('error')) {
+                        console.log('MPAI: Valid tool call in direct JSON', jsonData);
+                        matches.push({
+                            fullMatch: jsonStr,
+                            jsonStr: jsonStr,
+                            jsonData: jsonData
+                        });
+                    }
+                } catch (e) {
+                    console.error('MPAI: Error parsing potential direct JSON tool call:', e);
+                }
+            }
+            
+            console.log('MPAI: Found', matches.length, 'tool calls to process');
             
             // Process each match
             matches.forEach(match => {
@@ -190,15 +229,28 @@
          * @param {string} toolId - The tool call element ID
          */
         function executeToolCall(jsonStr, jsonData, toolId) {
+            console.log('MPAI: Executing tool call', {
+                tool: jsonData.tool,
+                parameters: jsonData.parameters,
+                toolId: toolId
+            });
+            
+            // Construct the tool request in the format expected by the backend
+            const toolRequest = {
+                name: jsonData.tool,
+                parameters: jsonData.parameters
+            };
+            
             $.ajax({
                 url: mpai_chat_data.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'mpai_execute_tool',
-                    tool_request: jsonStr,
-                    nonce: mpai_chat_data.nonce
+                    tool_request: JSON.stringify(toolRequest),
+                    mpai_nonce: mpai_chat_data.mpai_nonce || mpai_chat_data.nonce
                 },
                 success: function(response) {
+                    console.log('MPAI: Tool execution response', response);
                     const $toolCall = $('#' + toolId);
                     if (!$toolCall.length) return;
                     
@@ -210,8 +262,24 @@
                         $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-success');
                         $status.html('Success');
                         
+                        // Format the result based on type
+                        let resultContent = '';
+                        if (typeof response.data.result === 'string') {
+                            try {
+                                // Try to parse it as JSON first (for pretty display)
+                                const parsedJson = JSON.parse(response.data.result);
+                                resultContent = JSON.stringify(parsedJson, null, 2);
+                            } catch (e) {
+                                // Not JSON, display as is
+                                resultContent = response.data.result;
+                            }
+                        } else {
+                            // Object or other type
+                            resultContent = JSON.stringify(response.data, null, 2);
+                        }
+                        
                         // Display the result
-                        const resultHtml = `<pre><code>${JSON.stringify(response.data, null, 2)}</code></pre>`;
+                        const resultHtml = `<pre><code>${resultContent}</code></pre>`;
                         $result.html(resultHtml);
                     } else {
                         // Update status to error
@@ -219,7 +287,8 @@
                         $status.html('Error');
                         
                         // Display the error
-                        const errorMessage = response.data || 'Unknown error executing tool';
+                        const errorMessage = response.data && response.data.error ? response.data.error : 
+                                           (response.data || 'Unknown error executing tool');
                         $result.html(`<div class="mpai-tool-call-error-message">${errorMessage}</div>`);
                     }
                     
@@ -227,6 +296,8 @@
                     setTimeout(scrollToBottom, 100);
                 },
                 error: function(xhr, status, error) {
+                    console.error('MPAI: AJAX error executing tool', {xhr, status, error});
+                    
                     const $toolCall = $('#' + toolId);
                     if (!$toolCall.length) return;
                     
@@ -238,7 +309,21 @@
                     $status.html('Error');
                     
                     // Display the error
-                    $result.html(`<div class="mpai-tool-call-error-message">AJAX error: ${error}</div>`);
+                    let errorMessage = `AJAX error: ${error}`;
+                    if (xhr.responseText) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.data) {
+                                errorMessage += ` - ${response.data}`;
+                            }
+                        } catch (e) {
+                            // Can't parse response, use the raw text
+                            if (xhr.responseText.length < 100) {
+                                errorMessage += ` - ${xhr.responseText}`;
+                            }
+                        }
+                    }
+                    $result.html(`<div class="mpai-tool-call-error-message">${errorMessage}</div>`);
                     
                     // Scroll to bottom to show error
                     setTimeout(scrollToBottom, 100);
