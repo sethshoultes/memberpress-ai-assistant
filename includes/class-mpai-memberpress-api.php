@@ -135,10 +135,50 @@ class MPAI_MemberPress_API {
      * Get memberships from the API
      *
      * @param array $params Query parameters
-     * @return array|WP_Error The memberships or error
+     * @param bool $formatted Whether to return formatted tabular data
+     * @return array|WP_Error|string The memberships or error
      */
-    public function get_memberships($params = array()) {
-        return $this->request('memberships', 'GET', $params);
+    public function get_memberships($params = array(), $formatted = false) {
+        $result = $this->request('memberships', 'GET', $params);
+        
+        if ($formatted && !is_wp_error($result)) {
+            return $this->format_memberships_as_table($result);
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Format memberships data as a tab-separated table
+     *
+     * @param array $memberships The memberships data
+     * @return string Formatted tabular data
+     */
+    private function format_memberships_as_table($memberships) {
+        if (empty($memberships) || !is_array($memberships)) {
+            return "ID\tTitle\tPrice\tPeriod\nNo memberships found.";
+        }
+        
+        $output = "ID\tTitle\tPrice\tPeriod\tStatus\n";
+        
+        foreach ($memberships as $membership) {
+            $id = isset($membership['id']) ? $membership['id'] : 'N/A';
+            $title = isset($membership['title']) ? $membership['title'] : 'Untitled';
+            $price = isset($membership['price']) ? $membership['price'] : 'N/A';
+            $period = '';
+            if (isset($membership['period']) && isset($membership['period_type'])) {
+                $period = $membership['period'] . ' ' . $membership['period_type'];
+            } else if (isset($membership['period_type'])) {
+                $period = $membership['period_type'];
+            } else {
+                $period = 'N/A';
+            }
+            $status = isset($membership['status']) ? $membership['status'] : 'active';
+            
+            $output .= "$id\t$title\t$price\t$period\t$status\n";
+        }
+        
+        return $output;
     }
 
     /**
@@ -155,10 +195,58 @@ class MPAI_MemberPress_API {
      * Get transactions from the API
      *
      * @param array $params Query parameters
-     * @return array|WP_Error The transactions or error
+     * @param bool $formatted Whether to return formatted tabular data
+     * @return array|WP_Error|string The transactions or error
      */
-    public function get_transactions($params = array()) {
-        return $this->request('transactions', 'GET', $params);
+    public function get_transactions($params = array(), $formatted = false) {
+        $result = $this->request('transactions', 'GET', $params);
+        
+        if ($formatted && !is_wp_error($result)) {
+            return $this->format_transactions_as_table($result);
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Format transactions data as a tab-separated table
+     *
+     * @param array $transactions The transactions data
+     * @return string Formatted tabular data
+     */
+    private function format_transactions_as_table($transactions) {
+        if (empty($transactions) || !is_array($transactions)) {
+            return "ID\tAmount\tStatus\tDate\tMembership\tUser\nNo transactions found.";
+        }
+        
+        $output = "ID\tAmount\tStatus\tDate\tMembership\tUser\n";
+        
+        foreach ($transactions as $transaction) {
+            $id = isset($transaction['id']) ? $transaction['id'] : 'N/A';
+            $amount = isset($transaction['amount']) ? '$' . $transaction['amount'] : 'N/A';
+            $status = isset($transaction['status']) ? $transaction['status'] : 'N/A';
+            $date = isset($transaction['created_at']) ? date('Y-m-d', strtotime($transaction['created_at'])) : 'N/A';
+            
+            // Extract membership name
+            $membership = 'N/A';
+            if (isset($transaction['product']) && isset($transaction['product']['title'])) {
+                $membership = $transaction['product']['title'];
+            } elseif (isset($transaction['product_id'])) {
+                $membership = 'ID: ' . $transaction['product_id'];
+            }
+            
+            // Extract user info
+            $user = 'N/A';
+            if (isset($transaction['user']) && isset($transaction['user']['email'])) {
+                $user = $transaction['user']['email'];
+            } elseif (isset($transaction['user_id'])) {
+                $user = 'ID: ' . $transaction['user_id'];
+            }
+            
+            $output .= "$id\t$amount\t$status\t$date\t$membership\t$user\n";
+        }
+        
+        return $output;
     }
 
     /**

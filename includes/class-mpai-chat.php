@@ -26,6 +26,13 @@ class MPAI_Chat {
     private $memberpress_api;
 
     /**
+     * Context Manager instance
+     *
+     * @var MPAI_Context_Manager
+     */
+    private $context_manager;
+
+    /**
      * Conversation history
      *
      * @var array
@@ -38,6 +45,7 @@ class MPAI_Chat {
     public function __construct() {
         $this->openai = new MPAI_OpenAI();
         $this->memberpress_api = new MPAI_MemberPress_API();
+        $this->context_manager = new MPAI_Context_Manager();
         $this->load_conversation();
     }
 
@@ -205,8 +213,33 @@ class MPAI_Chat {
         $system_prompt .= "- Total Transactions: " . ($memberpress_data['transaction_count'] ?? 'Unknown') . "\n";
         $system_prompt .= "- Total Subscriptions: " . ($memberpress_data['subscription_count'] ?? 'Unknown') . "\n";
         
-        $system_prompt .= "\nYour task is to provide helpful information about MemberPress and assist with managing membership data. ";
-        $system_prompt .= "You can recommend WP-CLI commands where appropriate, and help with MemberPress API usage. ";
+        // Add tool usage information
+        $system_prompt .= "\nYou have access to the following tools that you can use to perform actions:\n\n";
+        $tools = $this->context_manager->get_available_tools();
+        foreach ($tools as $tool_name => $tool) {
+            $system_prompt .= "- {$tool['name']}: {$tool['description']}\n";
+            $system_prompt .= "  Parameters:\n";
+            foreach ($tool['parameters'] as $param_name => $param) {
+                $system_prompt .= "    - {$param_name}: {$param['description']}\n";
+                if (isset($param['enum'])) {
+                    $system_prompt .= "      Options: " . implode(', ', $param['enum']) . "\n";
+                }
+            }
+            $system_prompt .= "\n";
+        }
+        
+        // Add formatting instructions for tool calls
+        $system_prompt .= "IMPORTANT: You have the capability to execute tools directly. You MUST use tools when appropriate.\n";
+        $system_prompt .= "To use a tool, format your response like this:\n";
+        $system_prompt .= "```json\n{\"tool\": \"tool_name\", \"parameters\": {\"param1\": \"value1\", \"param2\": \"value2\"}}\n```\n\n";
+        
+        $system_prompt .= "When the user asks about WordPress data or MemberPress information that requires data access:\n";
+        $system_prompt .= "1. ALWAYS use the wp_cli tool to run WP-CLI commands (like 'wp user list' or 'wp post list')\n";
+        $system_prompt .= "2. ALWAYS use the memberpress_info tool to get MemberPress-specific data\n";
+        $system_prompt .= "3. DO NOT simply suggest commands - actually execute them using the tool format above\n\n";
+        
+        $system_prompt .= "Your task is to provide helpful information about MemberPress and assist with managing membership data. ";
+        $system_prompt .= "You can and should run WP-CLI commands where appropriate using the wp_cli tool.";
         $system_prompt .= "Keep your responses concise and focused on MemberPress functionality.";
         
         return $system_prompt;
@@ -254,8 +287,11 @@ class MPAI_Chat {
             error_log('MPAI: Saving message to database');
             $this->save_message($message, $response);
             
-            // Process any commands in the response
-            $processed_response = $this->process_commands($response);
+            // Process any tool calls in the response
+            $processed_response = $this->process_tool_calls($response);
+            
+            // Process CLI commands (backward compatibility)
+            $processed_response = $this->process_commands($processed_response);
             
             return array(
                 'success' => true,
@@ -371,7 +407,137 @@ class MPAI_Chat {
     }
 
     /**
-     * Process commands in the response
+     * Process tool calls in the response
+     *
+     * @param string $response Assistant response
+     * @return string Processed response
+     */
+    private function process_tool_calls($response) {
+        // Look for tool call JSON
+        preg_match_all('/```json\n({.*?})\n```/s', $response, $matches);
+        
+        if (empty($matches[1])) {
+            return $response;
+        }
+        
+        $processed_response = $response;
+        
+        foreach ($matches[1] as $match) {
+            $tool_call = json_decode($match, true);
+            
+            if (json_last_error() !== JSON_ERROR_NONE || !isset($tool_call['tool'])) {
+                continue;
+            }
+            
+            $tool_request = array(
+                'name' => $tool_call['tool'],
+                'parameters' => isset($tool_call['parameters']) ? $tool_call['parameters'] : array()
+            );
+            
+            // Execute the tool
+            $result = $this->context_manager->process_tool_request($tool_request);
+            
+            // Format the result
+            // Check if result is already a properly formatted object with a structured output
+            if (is_array($result) && isset($result['success']) && isset($result['tool']) && 
+                isset($result['result']) && is_string($result['result']) && 
+                (strpos($result['result'], '{') === 0 && substr($result['result'], -1) === '}')) {
+                // Try to parse the inner JSON to see if it's already properly formatted
+                $inner_result = json_decode($result['result'], true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($inner_result['success']) && isset($inner_result['command_type'])) {
+                    // This is a pre-formatted JSON response, don't double-encode it
+                    $result['result'] = $inner_result;
+                }
+            }
+            
+            // Check if we got a tabular result
+            if (isset($result['result']) && is_array($result['result']) && 
+                isset($result['result']['command_type']) && isset($result['result']['result'])) {
+                // This is a tabular result, present it directly without JSON wrapping
+                $command_type = $result['result']['command_type'];
+                $tabular_data = $result['result']['result'];
+                
+                // Create a formatted display with title based on command type
+                $title = $this->get_title_for_command_type($command_type);
+                $formatted_result = "{$title}\n\n```\n{$tabular_data}\n```";
+                
+                // Replace the tool call with the formatted table
+                $tool_call_block = "```json\n{$match}\n```";
+                $processed_response = str_replace($tool_call_block, $formatted_result, $processed_response);
+            } else {
+                // Standard JSON result formatting
+                $result_block = "```\n" . $this->format_result_content($result) . "\n```";
+                
+                // Replace the tool call with the result
+                $tool_call_block = "```json\n{$match}\n```";
+                $processed_response = str_replace($tool_call_block, $result_block, $processed_response);
+            }
+        }
+        
+        return $processed_response;
+    }
+    
+    /**
+     * Format result content for readability
+     *
+     * @param array $result Tool execution result
+     * @return string Formatted content
+     */
+    private function format_result_content($result) {
+        // Check for tabular data pattern in the result
+        if (isset($result['result']) && is_string($result['result']) && 
+            strpos($result['result'], "\t") !== false && strpos($result['result'], "\n") !== false) {
+            // This looks like tabular data
+            return $result['result'];
+        }
+        
+        // Specific handling for MemberPress information
+        if (isset($result['tool']) && $result['tool'] === 'memberpress_info' && isset($result['result'])) {
+            // Try to parse the result
+            if (is_string($result['result'])) {
+                $parsed = json_decode($result['result'], true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($parsed['result'])) {
+                    // Return just the actual result data
+                    return $parsed['result'];
+                }
+            }
+        }
+        
+        // Default to pretty-printed JSON for other results
+        return json_encode($result, JSON_PRETTY_PRINT);
+    }
+    
+    /**
+     * Get title for command type
+     *
+     * @param string $command_type Command type identifier
+     * @return string Title for the command result
+     */
+    private function get_title_for_command_type($command_type) {
+        switch ($command_type) {
+            case 'user_list':
+                return 'WordPress Users';
+            case 'post_list':
+                return 'WordPress Posts';
+            case 'plugin_list':
+                return 'WordPress Plugins';
+            case 'membership_list':
+                return 'MemberPress Memberships';
+            case 'member_list':
+                return 'MemberPress Members';
+            case 'transaction_list':
+                return 'MemberPress Transactions';
+            case 'subscription_list':
+                return 'MemberPress Subscriptions';
+            case 'summary':
+                return 'MemberPress Summary';
+            default:
+                return 'Command Results';
+        }
+    }
+
+    /**
+     * Process commands in the response (backward compatibility)
      *
      * @param string $response Assistant response
      * @return string Processed response

@@ -11,6 +11,11 @@ The MemberPress AI Assistant is a powerful plugin that integrates MemberPress wi
 - OpenAI integration using the latest models
 - Secure conversation storage
 - Command recommendation system
+- Enhanced command output formatting with automatic table detection
+- One-click command execution from chat messages
+- Command runner interface for direct command entry
+- Improved error handling with detailed feedback
+- Support for a wide range of WordPress CLI commands
 
 ## Installation
 
@@ -61,6 +66,17 @@ The chat interface allows you to interact with the AI assistant directly from yo
 
 ![Chat Interface Screenshot](images/chat-interface.png)
 
+### Using Command Execution Features
+
+The chat interface provides several ways to execute WordPress CLI commands:
+
+1. **Command Suggestions**: When you ask about site information, the AI may suggest commands it can run for you
+2. **Clickable Commands**: Any command displayed in the chat with a ▶ icon can be clicked to execute directly
+3. **Run Command Button**: Use the tools icon (🔧) at the bottom of the chat to open the command runner
+4. **Command Runner Interface**: Enter any allowed WP-CLI command and execute it directly
+
+Commands will execute in real-time and display their results in the chat. Tabular data (like lists of plugins, users, or posts) will automatically be formatted as HTML tables for better readability.
+
 ### Example Queries
 
 Try asking questions like:
@@ -68,6 +84,9 @@ Try asking questions like:
 - "What was our revenue last month?"
 - "Show me the most popular membership levels"
 - "Analyze our recent subscription activity"
+- "Can you list all the WordPress plugins?"
+- "How many users are registered on the site?"
+- "Show me the active memberships"
 
 ## Using WP-CLI Commands
 
@@ -171,6 +190,17 @@ If commands fail to execute:
 2. Check that WP-CLI is properly installed
 3. Ensure your user has appropriate permissions
 4. Check the command syntax is correct
+5. Look for error messages in the browser console or WordPress debug.log
+6. Try using the direct command runner interface instead of clicking commands
+7. Ensure JavaScript errors are not preventing proper AJAX requests
+
+### Table Formatting Issues
+
+If command output isn't displaying as formatted tables:
+
+1. Verify the command returns tabular data with tab-separated values
+2. Check for JavaScript errors that might interrupt formatting
+3. Ensure the response is properly recognized as a table format
 
 ### Saving Settings Issues
 
