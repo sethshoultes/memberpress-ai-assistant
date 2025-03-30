@@ -155,6 +155,7 @@ settings_errors('mpai_messages');
                 <a href="#tab-cli" class="nav-tab"><?php _e('CLI Commands', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-tools" class="nav-tab"><?php _e('AI Tools', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-advanced" class="nav-tab"><?php _e('Advanced', 'memberpress-ai-assistant'); ?></a>
+                <a href="#tab-diagnostic" class="nav-tab"><?php _e('Diagnostics', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-debug" class="nav-tab"><?php _e('Debug', 'memberpress-ai-assistant'); ?></a>
             </h2>
             
@@ -519,6 +520,11 @@ settings_errors('mpai_messages');
                     <p><?php _e('Check your WordPress error log for more detailed information about any issues.', 'memberpress-ai-assistant'); ?></p>
                 </div>
             </div>
+            
+            <?php 
+            // Include the diagnostics tab
+            require_once MPAI_PLUGIN_DIR . 'includes/settings-diagnostic.php';
+            ?>
         </div>
         
         <p class="submit">

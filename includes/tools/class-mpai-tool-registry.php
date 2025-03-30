@@ -78,6 +78,12 @@ class MPAI_Tool_Registry {
 			$this->register_tool( 'wp_api', $wp_api_tool );
 		}
 		
+		// Register diagnostic tool
+		$diagnostic_tool = $this->get_diagnostic_tool_instance();
+		if ( $diagnostic_tool ) {
+			$this->register_tool( 'diagnostic', $diagnostic_tool );
+		}
+		
 		// Register other tools as needed...
 		// Database tool, Content tool, etc.
 	}
@@ -122,5 +128,26 @@ class MPAI_Tool_Registry {
 		}
 		
 		return new MPAI_WP_CLI_Tool();
+	}
+	
+	/**
+	 * Get Diagnostic tool instance
+	 *
+	 * @return object|null Tool instance
+	 */
+	private function get_diagnostic_tool_instance() {
+		// Check if the Diagnostic tool class exists
+		if ( ! class_exists( 'MPAI_Diagnostic_Tool' ) ) {
+			$tool_path = plugin_dir_path( __FILE__ ) . 'implementations/class-mpai-diagnostic-tool.php';
+			if ( file_exists( $tool_path ) ) {
+				require_once $tool_path;
+				if ( class_exists( 'MPAI_Diagnostic_Tool' ) ) {
+					return new MPAI_Diagnostic_Tool();
+				}
+			}
+			return null;
+		}
+		
+		return new MPAI_Diagnostic_Tool();
 	}
 }

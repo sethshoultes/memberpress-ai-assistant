@@ -28,7 +28,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('MPAI_VERSION', '1.4.0');
+define('MPAI_VERSION', '1.4.1');
 define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MPAI_PLUGIN_BASENAME', plugin_basename(__FILE__));

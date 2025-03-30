@@ -22,6 +22,7 @@ class MPAI_Admin {
         add_action('wp_ajax_mpai_execute_tool', array($this, 'execute_tool'));
         add_action('wp_ajax_mpai_test_openai_api', array($this, 'test_openai_api'));
         add_action('wp_ajax_mpai_test_memberpress_api', array($this, 'test_memberpress_api'));
+        add_action('wp_ajax_mpai_run_diagnostic', array($this, 'run_diagnostic'));
         
         // Debug actions
         add_action('wp_ajax_mpai_debug_nonce', array($this, 'debug_nonce'));
@@ -755,6 +756,64 @@ class MPAI_Admin {
             
         } catch (Exception $e) {
             error_log('MPAI: Exception in test_memberpress_api: ' . $e->getMessage());
+            wp_send_json_error($e->getMessage());
+        }
+    }
+    
+    /**
+     * Run diagnostic tests
+     */
+    public function run_diagnostic() {
+        try {
+            // Log the AJAX request for debugging
+            error_log('MPAI: run_diagnostic called.');
+            
+            // Check nonce
+            check_ajax_referer('mpai_nonce', 'nonce');
+            
+            // Check test type
+            if (empty($_POST['test_type'])) {
+                error_log('MPAI: No test type provided in request');
+                wp_send_json_error('Test type is required');
+                return;
+            }
+            
+            $test_type = sanitize_text_field($_POST['test_type']);
+            error_log('MPAI: Running diagnostic test: ' . $test_type);
+            
+            // Create diagnostic tool instance
+            if (!class_exists('MPAI_Diagnostic_Tool')) {
+                $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-diagnostic-tool.php';
+                if (file_exists($tool_path)) {
+                    require_once $tool_path;
+                } else {
+                    error_log('MPAI: Diagnostic tool class file not found at: ' . $tool_path);
+                    wp_send_json_error('Diagnostic tool class file not found');
+                    return;
+                }
+            }
+            
+            $diagnostic_tool = new MPAI_Diagnostic_Tool();
+            
+            // Get optional API key if provided
+            $parameters = array(
+                'test_type' => $test_type
+            );
+            
+            if (!empty($_POST['api_key'])) {
+                $parameters['api_key'] = sanitize_text_field($_POST['api_key']);
+            }
+            
+            // Execute the diagnostic test
+            $result = $diagnostic_tool->execute($parameters);
+            
+            error_log('MPAI: Diagnostic test result: ' . wp_json_encode($result));
+            
+            // Return the result
+            wp_send_json_success($result);
+            
+        } catch (Exception $e) {
+            error_log('MPAI: Exception in run_diagnostic: ' . $e->getMessage());
             wp_send_json_error($e->getMessage());
         }
     }
