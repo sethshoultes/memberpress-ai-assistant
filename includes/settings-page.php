@@ -495,8 +495,9 @@ settings_errors('mpai_messages');
                 <p><?php _e('These tools are intended for debugging purposes only. Use them to diagnose issues with the API connections and AJAX functionality.', 'memberpress-ai-assistant'); ?></p>
                 
                 <div class="mpai-debug-section">
-                    <h4><?php _e('Diagnostic Links', 'memberpress-ai-assistant'); ?></h4>
+                    <h4><?php _e('Diagnostic Tools', 'memberpress-ai-assistant'); ?></h4>
                     <p>
+                        <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/diagnostic-page.php'); ?>" class="button button-primary" target="_blank"><?php _e('Comprehensive Diagnostics', 'memberpress-ai-assistant'); ?></a>
                         <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/debug-info.php'); ?>" class="button" target="_blank"><?php _e('Debug Info', 'memberpress-ai-assistant'); ?></a>
                         <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/ajax-test.php'); ?>" class="button" target="_blank"><?php _e('AJAX Diagnostics', 'memberpress-ai-assistant'); ?></a>
                         <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/ajax-test.php?run_ajax_test=1'); ?>" class="button" target="_blank"><?php _e('Direct AJAX Test', 'memberpress-ai-assistant'); ?></a>

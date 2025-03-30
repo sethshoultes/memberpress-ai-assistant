@@ -244,7 +244,7 @@ jQuery(document).ready(function($) {
         // Make API request to run diagnostic
         var data = {
             action: 'mpai_run_diagnostic',
-            nonce: mpai_data.nonce,
+            nonce: '<?php echo wp_create_nonce('mpai_nonce'); ?>',
             test_type: testType
         };
         
@@ -522,10 +522,7 @@ jQuery(document).ready(function($) {
         return key.replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
     }
     
-    // Add diagnostic tab to navigation
-    $('.nav-tab-wrapper .nav-tab:last').after(
-        '<a href="#tab-diagnostic" class="nav-tab"><?php _e('Diagnostics', 'memberpress-ai-assistant'); ?></a>'
-    );
+    // Do not add the diagnostic tab here as it's already added in settings-page.php
     
     // Bind diagnostic buttons
     $('#run-openai-diagnostic').on('click', function() {
