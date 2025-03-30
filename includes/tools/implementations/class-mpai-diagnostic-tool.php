@@ -287,100 +287,76 @@ class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
             ];
         }
         
-        // Check if Developer Tools is active
-        $dev_tools_active = class_exists('MeprRestRoutes');
-        if (!$dev_tools_active) {
-            return [
-                'success' => false,
-                'message' => 'MemberPress Developer Tools plugin is not active',
-                'status' => 'missing_dev_tools',
-                'plugin_exists' => true
-            ];
-        }
+        // We no longer require Developer Tools to be active - we use direct database access
         
-        // Get API key from parameters or use the saved one
-        $api_key = isset($parameters['api_key']) ? sanitize_text_field($parameters['api_key']) : get_option('mpai_memberpress_api_key', '');
+        // We don't rely on API keys anymore - using direct database access
         
-        if (empty($api_key)) {
+        // Get memberships directly from database
+        $memberships = [];
+        $membership_count = 0;
+        
+        // Check if we can access MemberPress data directly
+        if (class_exists('MeprProduct')) {
+            // Get all membership products
+            $products = get_posts(array(
+                'post_type' => 'memberpressproduct',
+                'numberposts' => -1,
+                'post_status' => 'publish'
+            ));
+            
+            $membership_count = count($products);
+            
+            foreach ($products as $product) {
+                $product_obj = new MeprProduct($product->ID);
+                $memberships[] = [
+                    'title' => $product->post_title,
+                    'price' => $product_obj->price
+                ];
+            }
+            
             return [
-                'success' => false,
-                'message' => 'MemberPress API key is not configured',
-                'status' => 'unconfigured',
+                'success' => true,
+                'message' => 'MemberPress direct access successful',
+                'status' => 'connected',
                 'plugin_exists' => true,
-                'dev_tools_active' => true
+                'membership_count' => $membership_count,
+                'memberships' => $memberships,
+                'access_method' => 'direct_db'
             ];
-        }
-        
-        // Test MemberPress API
-        $base_url = site_url('/wp-json/mp/v1/');
-        $endpoint = $base_url . 'memberships';
-        
-        $args = array(
-            'method' => 'GET',
-            'headers' => array(
-                'Authorization' => $api_key,
-                'Content-Type' => 'application/json',
-            ),
-            'timeout' => 30,
-        );
-        
-        $response = wp_remote_request($endpoint, $args);
-        
-        if (is_wp_error($response)) {
-            return [
-                'success' => false,
-                'message' => 'Connection error: ' . $response->get_error_message(),
-                'status' => 'connection_error',
-                'plugin_exists' => true,
-                'dev_tools_active' => true
-            ];
-        }
-        
-        $status_code = wp_remote_retrieve_response_code($response);
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-        
-        if ($status_code !== 200) {
-            $error_message = 'Invalid API key or API error';
-            if (is_array($data) && isset($data['message'])) {
-                $error_message = $data['message'];
+        } else {
+            // Try to get memberships using WP database directly
+            global $wpdb;
+            $products = $wpdb->get_results("SELECT ID, post_title FROM {$wpdb->posts} WHERE post_type = 'memberpressproduct' AND post_status = 'publish'");
+            
+            if ($products) {
+                $membership_count = count($products);
+                
+                foreach ($products as $product) {
+                    $price = get_post_meta($product->ID, '_mepr_product_price', true);
+                    $memberships[] = [
+                        'title' => $product->post_title,
+                        'price' => $price
+                    ];
+                }
+                
+                return [
+                    'success' => true, 
+                    'message' => 'MemberPress database access successful',
+                    'status' => 'connected',
+                    'plugin_exists' => true,
+                    'membership_count' => $membership_count,
+                    'memberships' => $memberships,
+                    'access_method' => 'wp_db'
+                ];
             }
             
             return [
                 'success' => false,
-                'message' => 'API Error (' . $status_code . '): ' . $error_message,
-                'status' => 'api_error',
-                'code' => $status_code,
-                'plugin_exists' => true,
-                'dev_tools_active' => true
+                'message' => 'Could not access MemberPress data directly',
+                'status' => 'access_error',
+                'plugin_exists' => true
             ];
         }
-        
-        // Check for memberships
-        $membership_count = is_array($data) ? count($data) : 0;
-        $memberships = [];
-        
-        if (is_array($data) && $membership_count > 0) {
-            foreach ($data as $membership) {
-                if (isset($membership['title'])) {
-                    $price = isset($membership['price']) ? $membership['price'] : 'N/A';
-                    $memberships[] = [
-                        'title' => $membership['title'],
-                        'price' => $price
-                    ];
-                }
-            }
-        }
-        
-        return [
-            'success' => true,
-            'message' => 'MemberPress API connection successful',
-            'status' => 'connected',
-            'plugin_exists' => true,
-            'dev_tools_active' => true,
-            'membership_count' => $membership_count,
-            'memberships' => $memberships
-        ];
     }
     
     /**

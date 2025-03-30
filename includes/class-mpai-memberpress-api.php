@@ -43,68 +43,286 @@ class MPAI_MemberPress_API {
     }
 
     /**
-     * Make a request to the MemberPress API
+     * Make a request to the MemberPress data directly (not using REST API)
      *
-     * @param string $endpoint The API endpoint
-     * @param string $method HTTP method (GET, POST, etc.)
-     * @param array $data Data to send with the request
-     * @return array|WP_Error The API response or error
+     * @param string $endpoint The API endpoint concept (members, memberships, etc.)
+     * @param string $method HTTP method concept (GET, POST, etc.) - used to determine action
+     * @param array $data Data for filtering or creating
+     * @return array|WP_Error The data response or error
      */
     public function request($endpoint, $method = 'GET', $data = array()) {
-        if (empty($this->api_key)) {
-            return new WP_Error('missing_api_key', 'MemberPress API key is not configured.');
+        // We don't use the REST API anymore - direct database access instead
+        
+        // Determine what data to fetch based on the endpoint
+        switch ($endpoint) {
+            case 'members':
+            case 'users':
+                return $this->get_members_from_db($data);
+                
+            case 'memberships':
+            case 'products':
+                return $this->get_memberships_from_db($data);
+                
+            case 'transactions':
+                return $this->get_transactions_from_db($data);
+                
+            case 'subscriptions':
+                return $this->get_subscriptions_from_db($data);
+                
+            default:
+                return new WP_Error(
+                    'invalid_endpoint',
+                    'Invalid endpoint: ' . $endpoint,
+                    array('endpoint' => $endpoint)
+                );
         }
-
-        $url = $this->base_url . ltrim($endpoint, '/');
-
-        $args = array(
-            'method' => $method,
-            'headers' => array(
-                'Authorization' => $this->api_key,
-                'Content-Type' => 'application/json',
-            ),
-            'timeout' => 30,
-        );
-
-        if (!empty($data) && in_array($method, array('POST', 'PUT'))) {
-            $args['body'] = json_encode($data);
+    }
+    
+    /**
+     * Get members from the database directly
+     *
+     * @param array $params Query parameters
+     * @return array Members data
+     */
+    private function get_members_from_db($params = array()) {
+        global $wpdb;
+        
+        // Build query
+        $query = "SELECT u.ID, u.user_login, u.user_email, u.display_name, u.user_registered 
+                 FROM {$wpdb->users} u";
+        
+        $where_clauses = array();
+        $query_args = array();
+        
+        // Filter by date if provided
+        if (!empty($params['start_date'])) {
+            $where_clauses[] = "u.user_registered >= %s";
+            $query_args[] = $params['start_date'];
         }
-
-        $response = wp_remote_request($url, $args);
-
-        if (is_wp_error($response)) {
-            return $response;
+        
+        if (!empty($params['end_date'])) {
+            $where_clauses[] = "u.user_registered <= %s";
+            $query_args[] = $params['end_date'];
         }
-
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return new WP_Error(
-                'json_error',
-                'Failed to parse MemberPress API response.',
-                array('response' => $body)
+        
+        // Add where clauses if any
+        if (!empty($where_clauses)) {
+            $query .= " WHERE " . implode(" AND ", $where_clauses);
+        }
+        
+        // Add ordering
+        $query .= " ORDER BY u.user_registered DESC";
+        
+        // Add limit
+        $limit = isset($params['per_page']) ? intval($params['per_page']) : 20;
+        $query .= " LIMIT %d";
+        $query_args[] = $limit;
+        
+        // Execute the query
+        $users = $wpdb->get_results($wpdb->prepare($query, $query_args));
+        
+        // Format the results similar to the API response
+        $members = array();
+        foreach ($users as $user) {
+            $members[] = array(
+                'id' => $user->ID,
+                'username' => $user->user_login,
+                'email' => $user->user_email,
+                'display_name' => $user->display_name,
+                'registered' => $user->user_registered
             );
         }
-
-        return $data;
+        
+        return $members;
     }
 
     /**
-     * Get members from the API
+     * Get members directly from WordPress database
      *
      * @param array $params Query parameters
      * @param bool $formatted Whether to return formatted tabular data
      * @return array|WP_Error|string The members or error
      */
     public function get_members($params = array(), $formatted = false) {
-        $result = $this->request('members', 'GET', $params);
+        $result = $this->get_members_from_db($params);
         
         if ($formatted && !is_wp_error($result)) {
             return $this->format_members_as_table($result);
         }
         
         return $result;
+    }
+    
+    /**
+     * Get memberships from the database directly
+     *
+     * @param array $params Query parameters
+     * @return array Memberships data
+     */
+    private function get_memberships_from_db($params = array()) {
+        // Use standard WordPress functions to get MemberPress products
+        $args = array(
+            'post_type' => 'memberpressproduct',
+            'posts_per_page' => isset($params['per_page']) ? intval($params['per_page']) : -1,
+            'post_status' => 'publish'
+        );
+        
+        $products = get_posts($args);
+        $memberships = array();
+        
+        foreach ($products as $product) {
+            // Get MemberPress specific data if possible
+            if (class_exists('MeprProduct')) {
+                $mepr_product = new MeprProduct($product->ID);
+                $memberships[] = array(
+                    'id' => $product->ID,
+                    'title' => $product->post_title,
+                    'description' => $product->post_excerpt,
+                    'price' => $mepr_product->price,
+                    'period' => $mepr_product->period,
+                    'period_type' => $mepr_product->period_type,
+                    'status' => $product->post_status,
+                    'created_at' => $product->post_date
+                );
+            } else {
+                // Fallback to post meta
+                $price = get_post_meta($product->ID, '_mepr_product_price', true);
+                $period = get_post_meta($product->ID, '_mepr_product_period', true);
+                $period_type = get_post_meta($product->ID, '_mepr_product_period_type', true);
+                
+                $memberships[] = array(
+                    'id' => $product->ID,
+                    'title' => $product->post_title,
+                    'description' => $product->post_excerpt,
+                    'price' => $price,
+                    'period' => $period,
+                    'period_type' => $period_type,
+                    'status' => $product->post_status,
+                    'created_at' => $product->post_date
+                );
+            }
+        }
+        
+        return $memberships;
+    }
+    
+    /**
+     * Get transactions from the database directly
+     *
+     * @param array $params Query parameters
+     * @return array Transactions data
+     */
+    private function get_transactions_from_db($params = array()) {
+        global $wpdb;
+        
+        // Check if MemberPress is active and we can access its tables
+        if (!class_exists('MeprDb')) {
+            // Try to include MemberPress files
+            if (file_exists(WP_PLUGIN_DIR . '/memberpress/memberpress.php')) {
+                include_once(WP_PLUGIN_DIR . '/memberpress/app/lib/MeprDb.php');
+            }
+        }
+        
+        // Get table name directly if MeprDb is not available
+        $table_name = $wpdb->prefix . 'mepr_transactions';
+        
+        // Check if the table exists
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+        
+        if (!$table_exists) {
+            return array(); // Return empty array if table doesn't exist
+        }
+        
+        // Build query
+        $limit = isset($params['per_page']) ? intval($params['per_page']) : 20;
+        
+        $query = "SELECT * FROM {$table_name} ORDER BY created_at DESC LIMIT %d";
+        $transactions = $wpdb->get_results($wpdb->prepare($query, $limit));
+        
+        $results = array();
+        foreach ($transactions as $txn) {
+            // Get user info
+            $user = get_userdata($txn->user_id);
+            $username = $user ? $user->user_email : "User #{$txn->user_id}";
+            
+            // Get product info
+            $product = get_post($txn->product_id);
+            $product_title = $product ? $product->post_title : "Product #{$txn->product_id}";
+            
+            $results[] = array(
+                'id' => $txn->id,
+                'user_id' => $txn->user_id,
+                'username' => $username,
+                'product_id' => $txn->product_id,
+                'product_title' => $product_title,
+                'amount' => $txn->amount,
+                'total' => $txn->total,
+                'status' => $txn->status,
+                'created_at' => $txn->created_at
+            );
+        }
+        
+        return $results;
+    }
+    
+    /**
+     * Get subscriptions from the database directly
+     *
+     * @param array $params Query parameters
+     * @return array Subscriptions data
+     */
+    private function get_subscriptions_from_db($params = array()) {
+        global $wpdb;
+        
+        // Get table name
+        $table_name = $wpdb->prefix . 'mepr_subscriptions';
+        
+        // Check if the table exists
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+        
+        if (!$table_exists) {
+            return array(); // Return empty array if table doesn't exist
+        }
+        
+        // Build query
+        $limit = isset($params['per_page']) ? intval($params['per_page']) : 20;
+        $status = isset($params['status']) && $params['status'] !== 'all' ? $params['status'] : null;
+        
+        $query = "SELECT * FROM {$table_name}";
+        $query_args = array();
+        
+        if ($status) {
+            $query .= " WHERE status = %s";
+            $query_args[] = $status;
+        }
+        
+        $query .= " ORDER BY created_at DESC LIMIT %d";
+        $query_args[] = $limit;
+        
+        $subscriptions = $wpdb->get_results($wpdb->prepare($query, $query_args));
+        
+        $results = array();
+        foreach ($subscriptions as $sub) {
+            // Get user info
+            $user = get_userdata($sub->user_id);
+            $username = $user ? $user->user_email : "User #{$sub->user_id}";
+            
+            // Get product info
+            $product = get_post($sub->product_id);
+            $product_title = $product ? $product->post_title : "Product #{$sub->product_id}";
+            
+            $results[] = array(
+                'id' => $sub->id,
+                'user_id' => $sub->user_id,
+                'username' => $username,
+                'product_id' => $sub->product_id,
+                'product_title' => $product_title,
+                'status' => $sub->status,
+                'created_at' => $sub->created_at
+            );
+        }
+        
+        return $results;
     }
     
     /**
@@ -223,7 +441,20 @@ class MPAI_MemberPress_API {
      * @return array|WP_Error The member or error
      */
     public function get_member($member_id) {
-        return $this->request("members/{$member_id}");
+        // Get user data directly
+        $user = get_userdata($member_id);
+        
+        if (!$user) {
+            return new WP_Error('member_not_found', 'Member not found');
+        }
+        
+        return array(
+            'id' => $user->ID,
+            'username' => $user->user_login,
+            'email' => $user->user_email,
+            'display_name' => $user->display_name,
+            'registered' => $user->user_registered
+        );
     }
 
     /**
@@ -248,14 +479,14 @@ class MPAI_MemberPress_API {
     }
 
     /**
-     * Get memberships from the API
+     * Get memberships directly from database 
      *
      * @param array $params Query parameters
      * @param bool $formatted Whether to return formatted tabular data
      * @return array|WP_Error|string The memberships or error
      */
     public function get_memberships($params = array(), $formatted = false) {
-        $result = $this->request('memberships', 'GET', $params);
+        $result = $this->get_memberships_from_db($params);
         
         if ($formatted && !is_wp_error($result)) {
             return $this->format_memberships_as_table($result);
@@ -304,18 +535,54 @@ class MPAI_MemberPress_API {
      * @return array|WP_Error The membership or error
      */
     public function get_membership($membership_id) {
-        return $this->request("memberships/{$membership_id}");
+        // Get product directly
+        $product = get_post($membership_id);
+        
+        if (!$product || $product->post_type !== 'memberpressproduct') {
+            return new WP_Error('membership_not_found', 'Membership not found');
+        }
+        
+        // Try to get MemberPress specific data
+        if (class_exists('MeprProduct')) {
+            $mepr_product = new MeprProduct($membership_id);
+            return array(
+                'id' => $product->ID,
+                'title' => $product->post_title,
+                'description' => $product->post_excerpt,
+                'price' => $mepr_product->price,
+                'period' => $mepr_product->period,
+                'period_type' => $mepr_product->period_type,
+                'status' => $product->post_status,
+                'created_at' => $product->post_date
+            );
+        } else {
+            // Fallback to post meta
+            $price = get_post_meta($membership_id, '_mepr_product_price', true);
+            $period = get_post_meta($membership_id, '_mepr_product_period', true);
+            $period_type = get_post_meta($membership_id, '_mepr_product_period_type', true);
+            
+            return array(
+                'id' => $product->ID,
+                'title' => $product->post_title,
+                'description' => $product->post_excerpt,
+                'price' => $price,
+                'period' => $period,
+                'period_type' => $period_type,
+                'status' => $product->post_status,
+                'created_at' => $product->post_date
+            );
+        }
     }
 
     /**
-     * Get transactions from the API
+     * Get transactions directly from database
      *
      * @param array $params Query parameters
      * @param bool $formatted Whether to return formatted tabular data
      * @return array|WP_Error|string The transactions or error
      */
     public function get_transactions($params = array(), $formatted = false) {
-        $result = $this->request('transactions', 'GET', $params);
+        $result = $this->get_transactions_from_db($params);
         
         if ($formatted && !is_wp_error($result)) {
             return $this->format_transactions_as_table($result);
@@ -372,17 +639,47 @@ class MPAI_MemberPress_API {
      * @return array|WP_Error The transaction or error
      */
     public function get_transaction($transaction_id) {
-        return $this->request("transactions/{$transaction_id}");
+        global $wpdb;
+        
+        // Get table name
+        $table_name = $wpdb->prefix . 'mepr_transactions';
+        
+        // Get transaction
+        $txn = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table_name} WHERE id = %d", $transaction_id));
+        
+        if (!$txn) {
+            return new WP_Error('transaction_not_found', 'Transaction not found');
+        }
+        
+        // Get user info
+        $user = get_userdata($txn->user_id);
+        $username = $user ? $user->user_email : "User #{$txn->user_id}";
+        
+        // Get product info
+        $product = get_post($txn->product_id);
+        $product_title = $product ? $product->post_title : "Product #{$txn->product_id}";
+        
+        return array(
+            'id' => $txn->id,
+            'user_id' => $txn->user_id,
+            'username' => $username,
+            'product_id' => $txn->product_id,
+            'product_title' => $product_title,
+            'amount' => $txn->amount,
+            'total' => $txn->total,
+            'status' => $txn->status,
+            'created_at' => $txn->created_at
+        );
     }
 
     /**
-     * Get subscriptions from the API
+     * Get subscriptions directly from database
      *
      * @param array $params Query parameters
      * @return array|WP_Error The subscriptions or error
      */
     public function get_subscriptions($params = array()) {
-        return $this->request('subscriptions', 'GET', $params);
+        return $this->get_subscriptions_from_db($params);
     }
 
     /**
@@ -392,17 +689,85 @@ class MPAI_MemberPress_API {
      * @return array|WP_Error The subscription or error
      */
     public function get_subscription($subscription_id) {
-        return $this->request("subscriptions/{$subscription_id}");
+        global $wpdb;
+        
+        // Get table name
+        $table_name = $wpdb->prefix . 'mepr_subscriptions';
+        
+        // Get subscription
+        $sub = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table_name} WHERE id = %d", $subscription_id));
+        
+        if (!$sub) {
+            return new WP_Error('subscription_not_found', 'Subscription not found');
+        }
+        
+        // Get user info
+        $user = get_userdata($sub->user_id);
+        $username = $user ? $user->user_email : "User #{$sub->user_id}";
+        
+        // Get product info
+        $product = get_post($sub->product_id);
+        $product_title = $product ? $product->post_title : "Product #{$sub->product_id}";
+        
+        return array(
+            'id' => $sub->id,
+            'user_id' => $sub->user_id,
+            'username' => $username,
+            'product_id' => $sub->product_id,
+            'product_title' => $product_title,
+            'status' => $sub->status,
+            'created_at' => $sub->created_at
+        );
     }
 
     /**
-     * Get events from the API
+     * Get events from the database
      *
      * @param array $params Query parameters
      * @return array|WP_Error The events or error
      */
     public function get_events($params = array()) {
-        return $this->request('events', 'GET', $params);
+        // Since events may not have a dedicated table, we combine recent actions
+        $events = array();
+        
+        // Get recent transactions
+        $transactions = $this->get_transactions_from_db(array('per_page' => 10));
+        foreach ($transactions as $txn) {
+            $events[] = array(
+                'type' => 'transaction',
+                'id' => $txn['id'],
+                'date' => $txn['created_at'],
+                'user' => $txn['username'],
+                'product' => $txn['product_title'],
+                'amount' => $txn['amount'],
+                'status' => $txn['status']
+            );
+        }
+        
+        // Get recent subscriptions
+        $subscriptions = $this->get_subscriptions_from_db(array('per_page' => 10));
+        foreach ($subscriptions as $sub) {
+            $events[] = array(
+                'type' => 'subscription',
+                'id' => $sub['id'],
+                'date' => $sub['created_at'],
+                'user' => $sub['username'],
+                'product' => $sub['product_title'],
+                'status' => $sub['status']
+            );
+        }
+        
+        // Sort by date (most recent first)
+        usort($events, function($a, $b) {
+            return strtotime($b['date']) - strtotime($a['date']);
+        });
+        
+        // Apply limit if specified
+        if (!empty($params['per_page'])) {
+            $events = array_slice($events, 0, intval($params['per_page']));
+        }
+        
+        return $events;
     }
 
     /**

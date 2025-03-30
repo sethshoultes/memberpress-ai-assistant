@@ -205,13 +205,7 @@ switch ($action) {
         
     case 'test_memberpress':
         // Test MemberPress API (simplified version)
-        if (empty($_POST['api_key'])) {
-            echo json_encode(array(
-                'success' => false,
-                'data' => 'API key is required'
-            ));
-            break;
-        }
+        // API key is now optional - direct database access is used
         
         // Check if MemberPress is active
         if (!class_exists('MeprAppCtrl')) {
@@ -222,55 +216,57 @@ switch ($action) {
             break;
         }
         
-        // Check if Developer Tools is active
-        if (!class_exists('MeprRestRoutes')) {
-            echo json_encode(array(
-                'success' => false,
-                'data' => 'MemberPress Developer Tools plugin is not active'
-            ));
-            break;
+        // Developer Tools is no longer required
+        
+        // Store the API key if provided (for backward compatibility)
+        if (!empty($_POST['api_key'])) {
+            $api_key = sanitize_text_field($_POST['api_key']);
+            update_option('mpai_memberpress_api_key', $api_key);
         }
         
-        $api_key = sanitize_text_field($_POST['api_key']);
-        $base_url = site_url('/wp-json/mp/v1/');
-        $endpoint = $base_url . 'memberships';
+        // Use direct database access instead of API
+        global $wpdb;
         
-        // Make a request to the MemberPress API
-        $response = wp_remote_get(
-            $endpoint,
-            array(
-                'headers' => array(
-                    'Authorization' => $api_key,
-                    'Content-Type' => 'application/json',
-                ),
-                'timeout' => 30,
-            )
-        );
+        // Try to get memberships
+        $memberships = array();
         
-        if (is_wp_error($response)) {
-            echo json_encode(array(
-                'success' => false,
-                'data' => $response->get_error_message()
+        // Try using MemberPress class if available
+        if (class_exists('MeprProduct')) {
+            // Get all membership products
+            $products = get_posts(array(
+                'post_type' => 'memberpressproduct',
+                'numberposts' => -1,
+                'post_status' => 'publish'
             ));
-            break;
+            
+            foreach ($products as $product) {
+                $mepr_product = new MeprProduct($product->ID);
+                $memberships[] = array(
+                    'id' => $product->ID,
+                    'title' => $product->post_title,
+                    'price' => $mepr_product->price
+                );
+            }
+        } else {
+            // Use WP database directly
+            $products = $wpdb->get_results("SELECT ID, post_title FROM {$wpdb->posts} WHERE post_type = 'memberpressproduct' AND post_status = 'publish'");
+            
+            foreach ($products as $product) {
+                $price = get_post_meta($product->ID, '_mepr_product_price', true);
+                $memberships[] = array(
+                    'id' => $product->ID,
+                    'title' => $product->post_title,
+                    'price' => $price
+                );
+            }
         }
         
-        $status_code = wp_remote_retrieve_response_code($response);
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-        
-        if ($status_code !== 200) {
-            $error_message = isset($data['message']) ? $data['message'] : 'Invalid API key or API error';
-            echo json_encode(array(
-                'success' => false,
-                'data' => 'API Error (' . $status_code . '): ' . $error_message
-            ));
-            break;
-        }
+        $count = count($memberships);
         
         echo json_encode(array(
             'success' => true,
-            'data' => 'MemberPress API connection successful! Found ' . count($data) . ' membership(s).'
+            'data' => 'MemberPress database access successful! Found ' . $count . ' membership(s).',
+            'memberships' => $memberships
         ));
         break;
         
