@@ -457,7 +457,10 @@ class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
         // Check plugin versions
         $mpai_version = defined('MPAI_VERSION') ? MPAI_VERSION : 'Unknown';
         $memberpress_active = class_exists('MeprAppCtrl');
-        $memberpress_version = $memberpress_active ? MeprAppCtrl::$version : 'Not active';
+        $memberpress_version = 'Not active';
+        if ($memberpress_active && defined('MEPR_VERSION')) {
+            $memberpress_version = MEPR_VERSION;
+        }
         $dev_tools_active = class_exists('MeprRestRoutes');
         
         // Check API configurations

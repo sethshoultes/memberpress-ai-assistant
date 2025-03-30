@@ -274,6 +274,67 @@ switch ($action) {
         ));
         break;
         
+    case 'mpai_run_diagnostic':
+        // Run diagnostic test
+        if (empty($_POST['test_type'])) {
+            echo json_encode(array(
+                'success' => false,
+                'data' => 'Test type is required'
+            ));
+            break;
+        }
+        
+        $test_type = sanitize_text_field($_POST['test_type']);
+        
+        // Create diagnostic tool instance
+        if (!class_exists('MPAI_Diagnostic_Tool')) {
+            // First, make sure MPAI_Base_Tool is loaded
+            if (!class_exists('MPAI_Base_Tool')) {
+                $base_tool_path = dirname(dirname(__FILE__)) . '/tools/class-mpai-base-tool.php';
+                if (file_exists($base_tool_path)) {
+                    require_once $base_tool_path;
+                } else {
+                    echo json_encode(array(
+                        'success' => false,
+                        'data' => 'Base tool class not found'
+                    ));
+                    break;
+                }
+            }
+            
+            // Now load the diagnostic tool
+            $tool_path = dirname(dirname(__FILE__)) . '/tools/implementations/class-mpai-diagnostic-tool.php';
+            if (file_exists($tool_path)) {
+                require_once $tool_path;
+            } else {
+                echo json_encode(array(
+                    'success' => false,
+                    'data' => 'Diagnostic tool class file not found at: ' . $tool_path
+                ));
+                break;
+            }
+        }
+        
+        $diagnostic_tool = new MPAI_Diagnostic_Tool();
+        
+        // Get optional API key if provided
+        $parameters = array(
+            'test_type' => $test_type
+        );
+        
+        if (!empty($_POST['api_key'])) {
+            $parameters['api_key'] = sanitize_text_field($_POST['api_key']);
+        }
+        
+        // Execute the diagnostic test
+        $result = $diagnostic_tool->execute($parameters);
+        
+        echo json_encode(array(
+            'success' => true,
+            'data' => $result
+        ));
+        break;
+        
     default:
         // Unknown action
         header('HTTP/1.1 400 Bad Request');

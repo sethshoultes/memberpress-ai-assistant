@@ -242,55 +242,51 @@ jQuery(document).ready(function($) {
         }
         
         // Make API request to run diagnostic
-        var data = {
-            action: 'mpai_run_diagnostic',
-            nonce: '<?php echo wp_create_nonce('mpai_nonce'); ?>',
-            test_type: testType
-        };
+        var formData = new FormData();
+        formData.append('action', 'mpai_run_diagnostic');
+        formData.append('test_type', testType);
+        formData.append('nonce', mpai_data.nonce);
         
-        $.ajax({
-            url: ajaxurl,
-            type: 'POST',
-            data: data,
-            success: function(response) {
-                console.log('MPAI: Diagnostic response:', response);
+        // Use direct AJAX handler instead of WordPress admin-ajax.php
+        var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . 'includes/direct-ajax-handler.php'; ?>';
+        
+        console.log('MPAI: Running diagnostic via direct handler:', testType);
+        fetch(directHandlerUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(function(response) {
+            console.log('MPAI: Diagnostic response:', response);
+            
+            if (response.success) {
+                // Format and display the result
+                var result = response.data;
+                var resultHtml = formatDiagnosticResult(result, testType);
                 
-                if (response.success) {
-                    // Format and display the result
-                    var result = response.data;
-                    var resultHtml = formatDiagnosticResult(result, testType);
-                    
-                    $(resultContainer).html(resultHtml);
-                    
-                    // Update status indicator
-                    if (statusIndicator) {
-                        if (result.success) {
-                            $(statusIndicator + ' .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-error')
-                                .addClass('mpai-status-success');
-                            $(statusIndicator + ' .mpai-status-text').text('Connected');
-                        } else {
-                            $(statusIndicator + ' .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success')
-                                .addClass('mpai-status-error');
-                            $(statusIndicator + ' .mpai-status-text').text('Error');
-                        }
-                    }
-                } else {
-                    // Show error
-                    $(resultContainer).html('<p class="error">Error: ' + response.data + '</p>');
-                    
-                    // Update status indicator
-                    if (statusIndicator) {
+                $(resultContainer).html(resultHtml);
+                
+                // Update status indicator
+                if (statusIndicator) {
+                    if (result.success) {
+                        $(statusIndicator + ' .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-error')
+                            .addClass('mpai-status-success');
+                        $(statusIndicator + ' .mpai-status-text').text('Connected');
+                    } else {
                         $(statusIndicator + ' .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success')
                             .addClass('mpai-status-error');
                         $(statusIndicator + ' .mpai-status-text').text('Error');
                     }
                 }
-            },
-            error: function(xhr, status, error) {
-                console.error('MPAI: AJAX error:', status, error);
-                
+            } else {
                 // Show error
-                $(resultContainer).html('<p class="error">AJAX Error: ' + error + '</p>');
+                $(resultContainer).html('<p class="error">Error: ' + response.data + '</p>');
                 
                 // Update status indicator
                 if (statusIndicator) {
@@ -299,7 +295,21 @@ jQuery(document).ready(function($) {
                     $(statusIndicator + ' .mpai-status-text').text('Error');
                 }
             }
+        })
+        .catch(function(error) {
+            console.error('MPAI: Fetch error:', error);
+            
+            // Show error
+            $(resultContainer).html('<p class="error">Error: ' + error.message + '</p>');
+            
+            // Update status indicator
+            if (statusIndicator) {
+                $(statusIndicator + ' .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success')
+                    .addClass('mpai-status-error');
+                $(statusIndicator + ' .mpai-status-text').text('Error');
+            }
         });
+        
     }
     
     // Function to format diagnostic result
