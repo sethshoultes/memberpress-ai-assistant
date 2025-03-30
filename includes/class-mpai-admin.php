@@ -145,6 +145,7 @@ class MPAI_Admin {
             'mpai_data',
             array(
                 'ajax_url' => admin_url('admin-ajax.php'),
+                'plugin_url' => MPAI_PLUGIN_URL,
                 'nonce' => wp_create_nonce('mpai_nonce'),
                 'debug_info' => array(
                     'plugin_version' => MPAI_VERSION,

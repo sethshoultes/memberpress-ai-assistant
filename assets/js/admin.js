@@ -401,6 +401,57 @@
         });
     }
     
+    // Check Anthropic API status on page load
+    function checkAnthropicStatus() {
+        var apiKey = $('#mpai_anthropic_api_key').val();
+        var $statusIcon = $('#anthropic-api-status .mpai-api-status-icon');
+        var $statusText = $('#anthropic-api-status .mpai-api-status-text');
+        
+        if (!apiKey) {
+            $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
+            $statusText.text('Not Configured');
+            return;
+        }
+        
+        $statusIcon.removeClass('mpai-status-connected mpai-status-disconnected').addClass('mpai-status-unknown');
+        $statusText.text('Checking...');
+        
+        // Create the form data object directly to ensure proper formatting
+        var formData = new FormData();
+        formData.append('action', 'test_anthropic');
+        formData.append('nonce', mpai_data.nonce);
+        formData.append('api_key', apiKey);
+        
+        // Use the direct AJAX handler
+        var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
+        
+        fetch(directHandlerUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                $statusIcon.removeClass('mpai-status-disconnected mpai-status-unknown').addClass('mpai-status-connected');
+                $statusText.text('Connected');
+            } else {
+                $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
+                $statusText.text('Error');
+            }
+        })
+        .catch(function(error) {
+            console.error('MPAI: Anthropic status check error:', error);
+            $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
+            $statusText.text('Connection Error');
+        });
+    }
+    
     // Check MemberPress API status on page load
     function checkMemberPressStatus() {
         var apiKey = $('#mpai_memberpress_api_key').val();
@@ -624,6 +675,21 @@
 
     $(document).ready(function() {
         console.log('MPAI: Admin script ready');
+
+        // Check if mpai_data includes plugin_url, add it if missing
+        if (typeof mpai_data !== 'undefined' && !mpai_data.plugin_url) {
+            // Try to get plugin URL from the page
+            var scriptPath = $('script[src*="memberpress-ai-assistant"]').attr('src');
+            if (scriptPath) {
+                var pluginUrl = scriptPath.split('/assets/')[0] + '/';
+                console.log('MPAI: Setting plugin_url from script tag:', pluginUrl);
+                mpai_data.plugin_url = pluginUrl;
+            } else {
+                // Fallback to current site URL + plugin path
+                mpai_data.plugin_url = window.location.origin + '/wp-content/plugins/memberpress-ai-assistant/';
+                console.log('MPAI: Setting fallback plugin_url:', mpai_data.plugin_url);
+            }
+        }
         
         // Initialize chat (only if the old chat interface exists)
         initChat();
@@ -639,6 +705,7 @@
             // Check status after a short delay to ensure everything is loaded
             setTimeout(function() {
                 checkOpenAIStatus();
+                checkAnthropicStatus();
                 checkMemberPressStatus();
             }, 500);
         }

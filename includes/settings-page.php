@@ -156,7 +156,6 @@ settings_errors('mpai_messages');
                 <a href="#tab-tools" class="nav-tab"><?php _e('AI Tools', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-advanced" class="nav-tab"><?php _e('Advanced', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-diagnostic" class="nav-tab"><?php _e('Diagnostics', 'memberpress-ai-assistant'); ?></a>
-                <a href="#tab-debug" class="nav-tab"><?php _e('Debug', 'memberpress-ai-assistant'); ?></a>
             </h2>
             
             <div id="tab-api" class="mpai-settings-tab">
@@ -490,37 +489,6 @@ settings_errors('mpai_messages');
                 </table>
             </div>
             
-            <div id="tab-debug" class="mpai-settings-tab" style="display: none;">
-                <h3><?php _e('Debugging Tools', 'memberpress-ai-assistant'); ?></h3>
-                <p><?php _e('These tools are intended for debugging purposes only. Use them to diagnose issues with the API connections and AJAX functionality.', 'memberpress-ai-assistant'); ?></p>
-                
-                <div class="mpai-debug-section">
-                    <h4><?php _e('Diagnostic Tools', 'memberpress-ai-assistant'); ?></h4>
-                    <p>
-                        <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/diagnostic-page.php'); ?>" class="button button-primary" target="_blank"><?php _e('Comprehensive Diagnostics', 'memberpress-ai-assistant'); ?></a>
-                        <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/debug-info.php'); ?>" class="button" target="_blank"><?php _e('Debug Info', 'memberpress-ai-assistant'); ?></a>
-                        <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/ajax-test.php'); ?>" class="button" target="_blank"><?php _e('AJAX Diagnostics', 'memberpress-ai-assistant'); ?></a>
-                        <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/ajax-test.php?run_ajax_test=1'); ?>" class="button" target="_blank"><?php _e('Direct AJAX Test', 'memberpress-ai-assistant'); ?></a>
-                    </p>
-                </div>
-                
-                <div class="mpai-debug-section">
-                    <h4><?php _e('AJAX Tests', 'memberpress-ai-assistant'); ?></h4>
-                    <p>
-                        <button type="button" id="mpai-simple-test" class="button"><?php _e('Simple AJAX Test', 'memberpress-ai-assistant'); ?></button>
-                        <button type="button" id="mpai-nonce-test" class="button"><?php _e('Test Nonce', 'memberpress-ai-assistant'); ?></button>
-                    </p>
-                    <div id="mpai-debug-results" class="mpai-debug-results" style="display: none;">
-                        <h4><?php _e('Test Results', 'memberpress-ai-assistant'); ?></h4>
-                        <pre id="mpai-debug-output"></pre>
-                    </div>
-                </div>
-                
-                <div class="mpai-debug-section">
-                    <h4><?php _e('Error Log', 'memberpress-ai-assistant'); ?></h4>
-                    <p><?php _e('Check your WordPress error log for more detailed information about any issues.', 'memberpress-ai-assistant'); ?></p>
-                </div>
-            </div>
             
             <?php 
             // Include the diagnostics tab
