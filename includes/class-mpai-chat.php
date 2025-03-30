@@ -245,7 +245,11 @@ class MPAI_Chat {
         $system_prompt .= "1. For creating/editing WordPress content (posts, pages, users), ALWAYS use the wp_api tool first:\n";
         $system_prompt .= "   - Create post: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Title\", \"content\": \"Content\", \"status\": \"draft\"}}\n";
         $system_prompt .= "   - Create page: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_page\", \"title\": \"Title\", \"content\": \"Content\", \"status\": \"draft\"}}\n";
-        $system_prompt .= "2. Only fall back to wp_cli commands if a specific wp_api function isn't available\n\n";
+        $system_prompt .= "2. For managing WordPress plugins, ALWAYS use the wp_api tool:\n";
+        $system_prompt .= "   - List plugins: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_plugins\"}}\n";
+        $system_prompt .= "   - Activate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"plugin-directory/plugin-file.php\"}}\n";
+        $system_prompt .= "   - Deactivate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"deactivate_plugin\", \"plugin\": \"plugin-directory/plugin-file.php\"}}\n";
+        $system_prompt .= "3. Only fall back to wp_cli commands if a specific wp_api function isn't available\n\n";
         $system_prompt .= "CRITICAL: When the user asks to create a post/page, ALWAYS include the exact title and content they specified in your wp_api tool parameters.\n";
         $system_prompt .= "Examples:\n";
         $system_prompt .= "- If user asks: \"Create a post titled 'Hello World' with content 'This is my first post'\"\n";
@@ -633,6 +637,11 @@ class MPAI_Chat {
                 $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_users\", \"limit\": 10}}\n```";
             } else if (strpos($result['result'], 'MemberPress operations') != false || strpos($result['result'], 'wp mepr') != false) {
                 $modified_result .= "```json\n{\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n```";
+            } else if (strpos($result['result'], 'plugin operations') != false || strpos($result['result'], 'wp plugin') != false || 
+                       strpos($result['result'], 'activate plugin') != false || strpos($result['result'], 'deactivate plugin') != false) {
+                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"plugin-directory/plugin-file.php\"}}\n```";
+                $modified_result .= "\nOr to get a list of all plugins:\n";
+                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_plugins\"}}\n```";
             } else {
                 $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Your Title\", \"content\": \"Your content here\", \"status\": \"draft\"}}\n```";
             }
@@ -663,6 +672,54 @@ class MPAI_Chat {
                 $user_friendly_result .= "- Edit URL: {$edit_url}\n";
                 
                 return $user_friendly_result;
+            }
+            
+            // Handle plugin operations
+            if (in_array($result['action'], ['activate_plugin', 'deactivate_plugin', 'get_plugins'])) {
+                if ($result['action'] == 'activate_plugin' && 
+                    isset($result['result']) && is_array($result['result']) && 
+                    isset($result['result']['success']) && $result['result']['success'] == true) {
+                    
+                    $plugin_name = $result['result']['plugin_name'] ?? $result['result']['plugin'] ?? 'the plugin';
+                    $status = $result['result']['status'] ?? 'active';
+                    
+                    $user_friendly_result = "Plugin operation successful!\n\n";
+                    $user_friendly_result .= "- Action: Activated\n";
+                    $user_friendly_result .= "- Plugin: {$plugin_name}\n";
+                    $user_friendly_result .= "- Status: {$status}\n";
+                    
+                    return $user_friendly_result;
+                }
+                
+                if ($result['action'] == 'deactivate_plugin' && 
+                    isset($result['result']) && is_array($result['result']) && 
+                    isset($result['result']['success']) && $result['result']['success'] == true) {
+                    
+                    $plugin_name = $result['result']['plugin_name'] ?? $result['result']['plugin'] ?? 'the plugin';
+                    $status = $result['result']['status'] ?? 'inactive';
+                    
+                    $user_friendly_result = "Plugin operation successful!\n\n";
+                    $user_friendly_result .= "- Action: Deactivated\n";
+                    $user_friendly_result .= "- Plugin: {$plugin_name}\n";
+                    $user_friendly_result .= "- Status: {$status}\n";
+                    
+                    return $user_friendly_result;
+                }
+                
+                if ($result['action'] == 'get_plugins' && 
+                    isset($result['result']) && is_array($result['result']) && 
+                    isset($result['result']['plugins']) && is_array($result['result']['plugins'])) {
+                    
+                    $plugins = $result['result']['plugins'];
+                    $user_friendly_result = "Installed Plugins (" . count($plugins) . "):\n\n";
+                    
+                    foreach ($plugins as $plugin) {
+                        $status = isset($plugin['is_active']) && $plugin['is_active'] ? '✅ Active' : '❌ Inactive';
+                        $user_friendly_result .= "- {$plugin['name']} ({$plugin['version']}): {$status}\n";
+                    }
+                    
+                    return $user_friendly_result;
+                }
             }
         }
         

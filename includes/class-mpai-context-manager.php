@@ -86,7 +86,11 @@ class MPAI_Context_Manager {
                         'description' => 'The WordPress API action to perform',
                         'enum' => array('create_post', 'update_post', 'get_post', 'create_page', 'create_user', 
                                         'get_users', 'get_memberships', 'create_membership', 'get_transactions', 
-                                        'get_subscriptions')
+                                        'get_subscriptions', 'activate_plugin', 'deactivate_plugin', 'get_plugins')
+                    ),
+                    'plugin' => array(
+                        'type' => 'string',
+                        'description' => 'The plugin path to activate or deactivate (e.g. "memberpress-coachkit/memberpress-coachkit.php")'
                     ),
                     // Other parameters are dynamic based on the action
                 ),

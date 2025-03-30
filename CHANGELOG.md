@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Created comprehensive documentation index in docs folder
 - Implemented project organization improvements
 - Created archive system for test and deprecated files
+- Added plugin management capabilities to WP API tool:
+  - List installed plugins with get_plugins action
+  - Activate plugins with activate_plugin action
+  - Deactivate plugins with deactivate_plugin action
+- Enhanced WP-CLI fallback mechanisms for browser environments
 
 ### Changed
 - Updated README.md with current features and organization
@@ -19,12 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated MemberPress API class to prioritize direct database access
 - Removed dependency on MemberPress Developer Tools
 - Improved diagnostic tool to work without Developer Tools
+- Enhanced WP API tool with detailed tool definition for AI function calling
 
 ### Fixed
 - Fixed fatal error in diagnostic tool accessing undeclared static property
 - Fixed Anthropic API auto-testing in settings page
 - Enhanced fallback methods for member data retrieval when API fails
 - Improved direct AJAX handler for MemberPress tests
+- Fixed issue with plugin activation in browser environments without WP-CLI
 
 ## [1.4.1] - 2025-03-30
 

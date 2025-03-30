@@ -23,6 +23,71 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 		$this->name = 'WordPress API Tool';
 		$this->description = 'Executes WordPress native functions for common operations';
 	}
+	
+	/**
+	 * Get tool definition for AI function calling
+	 *
+	 * @return array Tool definition
+	 */
+	public function get_tool_definition() {
+		return [
+			'name' => 'wp_api',
+			'description' => 'Executes WordPress API functions for common operations like creating posts and managing plugins',
+			'parameters' => [
+				'type' => 'object',
+				'properties' => [
+					'action' => [
+						'type' => 'string',
+						'enum' => [
+							'create_post',
+							'update_post',
+							'get_post',
+							'create_page',
+							'create_user',
+							'get_users',
+							'get_memberships',
+							'create_membership',
+							'get_transactions',
+							'get_subscriptions',
+							'activate_plugin',
+							'deactivate_plugin',
+							'get_plugins',
+						],
+						'description' => 'The action to perform'
+					],
+					'plugin' => [
+						'type' => 'string',
+						'description' => 'The plugin path to activate or deactivate (e.g. "memberpress-coachkit/memberpress-coachkit.php")'
+					],
+					'title' => [
+						'type' => 'string',
+						'description' => 'Title for post or page creation'
+					],
+					'content' => [
+						'type' => 'string',
+						'description' => 'Content for post or page creation'
+					],
+					'post_id' => [
+						'type' => 'integer',
+						'description' => 'Post ID for updating or retrieving a post'
+					],
+					'username' => [
+						'type' => 'string',
+						'description' => 'Username for user creation'
+					],
+					'email' => [
+						'type' => 'string',
+						'description' => 'Email for user creation'
+					],
+					'limit' => [
+						'type' => 'integer',
+						'description' => 'Number of items to retrieve for listing operations'
+					],
+				],
+				'required' => ['action']
+			],
+		];
+	}
 
 	/**
 	 * Execute the tool
@@ -59,6 +124,12 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				return $this->get_transactions( $parameters );
 			case 'get_subscriptions':
 				return $this->get_subscriptions( $parameters );
+			case 'activate_plugin':
+				return $this->activate_plugin( $parameters );
+			case 'deactivate_plugin':
+				return $this->deactivate_plugin( $parameters );
+			case 'get_plugins':
+				return $this->get_plugins( $parameters );
 			default:
 				throw new Exception( 'Unsupported action: ' . $action );
 		}
@@ -645,6 +716,150 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	}
 
 	/**
+	 * Get plugins installed on the site
+	 *
+	 * @param array $parameters Parameters for retrieving plugins
+	 * @return array List of plugins
+	 */
+	private function get_plugins( $parameters ) {
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		
+		$plugins = get_plugins();
+		$result = array();
+		
+		foreach ( $plugins as $plugin_path => $plugin_data ) {
+			$is_active = is_plugin_active( $plugin_path );
+			
+			$result[] = array(
+				'name' => $plugin_data['Name'],
+				'plugin_path' => $plugin_path,
+				'version' => $plugin_data['Version'],
+				'description' => $plugin_data['Description'],
+				'author' => $plugin_data['Author'],
+				'is_active' => $is_active,
+				'status' => $is_active ? 'active' : 'inactive',
+			);
+		}
+		
+		return array(
+			'success' => true,
+			'count' => count( $result ),
+			'plugins' => $result,
+		);
+	}
+	
+	/**
+	 * Activate a plugin
+	 *
+	 * @param array $parameters Parameters for activating a plugin
+	 * @return array Activation result
+	 */
+	private function activate_plugin( $parameters ) {
+		// Check user capabilities
+		if ( ! current_user_can( 'activate_plugins' ) ) {
+			throw new Exception( 'You do not have sufficient permissions to activate plugins' );
+		}
+		
+		// Load plugin functions if needed
+		if ( ! function_exists( 'activate_plugin' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		
+		// Check parameters
+		if ( ! isset( $parameters['plugin'] ) ) {
+			throw new Exception( 'Plugin parameter is required. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
+		}
+		
+		$plugin = $parameters['plugin'];
+		
+		// Check if plugin exists
+		$all_plugins = get_plugins();
+		if ( ! isset( $all_plugins[ $plugin ] ) ) {
+			throw new Exception( "Plugin '{$plugin}' does not exist" );
+		}
+		
+		// Check if plugin is already active
+		if ( is_plugin_active( $plugin ) ) {
+			return array(
+				'success' => true,
+				'plugin' => $plugin,
+				'message' => "Plugin '{$all_plugins[$plugin]['Name']}' is already active",
+				'status' => 'active',
+			);
+		}
+		
+		// Activate the plugin
+		$result = activate_plugin( $plugin );
+		
+		// Check for errors
+		if ( is_wp_error( $result ) ) {
+			throw new Exception( "Failed to activate plugin: " . $result->get_error_message() );
+		}
+		
+		return array(
+			'success' => true,
+			'plugin' => $plugin,
+			'plugin_name' => $all_plugins[$plugin]['Name'],
+			'message' => "Plugin '{$all_plugins[$plugin]['Name']}' has been activated successfully",
+			'status' => 'active',
+		);
+	}
+	
+	/**
+	 * Deactivate a plugin
+	 *
+	 * @param array $parameters Parameters for deactivating a plugin
+	 * @return array Deactivation result
+	 */
+	private function deactivate_plugin( $parameters ) {
+		// Check user capabilities
+		if ( ! current_user_can( 'activate_plugins' ) ) {
+			throw new Exception( 'You do not have sufficient permissions to deactivate plugins' );
+		}
+		
+		// Load plugin functions if needed
+		if ( ! function_exists( 'deactivate_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		
+		// Check parameters
+		if ( ! isset( $parameters['plugin'] ) ) {
+			throw new Exception( 'Plugin parameter is required. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
+		}
+		
+		$plugin = $parameters['plugin'];
+		
+		// Check if plugin exists
+		$all_plugins = get_plugins();
+		if ( ! isset( $all_plugins[ $plugin ] ) ) {
+			throw new Exception( "Plugin '{$plugin}' does not exist" );
+		}
+		
+		// Check if plugin is already inactive
+		if ( ! is_plugin_active( $plugin ) ) {
+			return array(
+				'success' => true,
+				'plugin' => $plugin,
+				'message' => "Plugin '{$all_plugins[$plugin]['Name']}' is already inactive",
+				'status' => 'inactive',
+			);
+		}
+		
+		// Deactivate the plugin
+		deactivate_plugins( $plugin );
+		
+		return array(
+			'success' => true,
+			'plugin' => $plugin,
+			'plugin_name' => $all_plugins[$plugin]['Name'],
+			'message' => "Plugin '{$all_plugins[$plugin]['Name']}' has been deactivated successfully",
+			'status' => 'inactive',
+		);
+	}
+
+	/**
 	 * Get parameters for the tool
 	 *
 	 * @return array Tool parameters
@@ -665,6 +880,9 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					'create_membership',
 					'get_transactions',
 					'get_subscriptions',
+					'activate_plugin',
+					'deactivate_plugin',
+					'get_plugins',
 				),
 			),
 		);
