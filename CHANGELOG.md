@@ -5,6 +5,19 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2025-03-30
+
+### Added
+- Added new `new_members_this_month` type to memberpress_info tool for direct access to new member information
+- Added formatted output for member reports
+- Enhanced MemberPress API with more user-friendly data formatting
+- Improved system prompt to guide the AI to use specific member data tools
+
+### Fixed
+- Fixed AI response to user questions about new member counts
+- Improved tabular data formatting for member information
+- Enhanced fallback methods for member data retrieval when API fails
+
 ## [1.4.0] - 2025-03-30
 
 ### Added
@@ -19,6 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Claude 3 Opus, Sonnet, and Haiku models
 - Improved tool management with dynamic tool registration and routing
 - Created structured tool calls handling for both API formats
+- Added WordPress API Tool for browser-based environments
+- Implemented WP-CLI fallback mechanism when CLI isn't available
+- Added pattern matching for common WP-CLI commands with WordPress API equivalents
+- Added helpful error messages with alternative tool usage examples
+- Added smart detection and handling of WP-CLI fallback scenarios
+- Implemented enhanced system prompting to prefer wp_api tool in browser contexts
+- Created user-friendly formatting for wp_api results (posts, pages)
+- Improved command detection for clearer tool usage suggestions
 
 ### Changed
 - Refactored Chat class to use the new API Router
@@ -27,12 +48,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved settings UI with dedicated sections for each API provider
 - Restructured default settings to support multiple API configurations
 - Added API attribution in the chat interface
+- Enhanced Context Manager to support multiple execution paths
+- Improved system prompt to prioritize wp_api tool over wp_cli in browser contexts
+- Added context-aware messaging to guide AI in tool selection
+- Added automatic WP-CLI fallback detection and system guidance
+- Enhanced wp_api result formatting for more readable output
+- Added specific examples in system prompts to ensure correct parameter passing
+- Improved JSON result parsing and display for better readability
+- Added clear instructions to preserve user-specified titles and content
 
 ### Fixed
 - Fixed issues with tool calling formats between different APIs
 - Enhanced error handling for API-specific error messages
 - Improved response processing for different API response structures
 - Fixed message formatting with proper context passing between APIs
+- Fixed post creation in browser environments without WP-CLI
+- Resolved "WP-CLI not available" errors with proper fallback mechanisms
+- Fixed tool execution in browser contexts using WordPress native API functions
+- Improved AI response to WP-CLI unavailability messages
+- Fixed AI not adapting to use wp_api after seeing WP-CLI unavailability error
+- Added adaptive conversation management to handle tool fallback scenarios
+- Fixed post creation with missing title and content values
+- Fixed post creation using default values instead of user-specified values
+- Fixed wp_api tool results displaying as raw JSON instead of user-friendly format
+- Improved detection of wp_cli commands that should use wp_api instead
 
 ## [1.3.0] - 2025-03-29
 

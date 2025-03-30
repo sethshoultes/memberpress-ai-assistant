@@ -73,7 +73,7 @@ class MPAI_Chat {
             $table_messages = $wpdb->prefix . 'mpai_messages';
             
             // Verify the messages table exists
-            if ($wpdb->get_var("SHOW TABLES LIKE '{$table_messages}'") !== $table_messages) {
+            if ($wpdb->get_var("SHOW TABLES LIKE '{$table_messages}'") != $table_messages) {
                 error_log('MPAI: Messages table does not exist, cannot load conversation');
                 return;
             }
@@ -136,7 +136,7 @@ class MPAI_Chat {
             $table_conversations = $wpdb->prefix . 'mpai_conversations';
             
             // Check if the conversations table exists
-            if ($wpdb->get_var("SHOW TABLES LIKE '{$table_conversations}'") !== $table_conversations) {
+            if ($wpdb->get_var("SHOW TABLES LIKE '{$table_conversations}'") != $table_conversations) {
                 error_log('MPAI: Conversations table does not exist');
                 
                 // Try to create the table
@@ -167,7 +167,7 @@ class MPAI_Chat {
                     )
                 );
                 
-                if ($result === false) {
+                if ($result == false) {
                     error_log('MPAI: Failed to create new conversation: ' . $wpdb->last_error);
                     return null;
                 }
@@ -234,12 +234,27 @@ class MPAI_Chat {
         $system_prompt .= "```json\n{\"tool\": \"tool_name\", \"parameters\": {\"param1\": \"value1\", \"param2\": \"value2\"}}\n```\n\n";
         
         $system_prompt .= "When the user asks about WordPress data or MemberPress information that requires data access:\n";
-        $system_prompt .= "1. ALWAYS use the wp_cli tool to run WP-CLI commands (like 'wp user list' or 'wp post list')\n";
-        $system_prompt .= "2. ALWAYS use the memberpress_info tool to get MemberPress-specific data\n";
-        $system_prompt .= "3. DO NOT simply suggest commands - actually execute them using the tool format above\n\n";
+        $system_prompt .= "1. PREFER the wp_api tool for browser context operations. Use this format:\n";
+        $system_prompt .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Your Title\", \"content\": \"Your content\"}}\n   ```\n";
+        $system_prompt .= "2. When the wp_api tool fails or is unavailable, fall back to the wp_cli tool\n";
+        $system_prompt .= "3. ALWAYS use the memberpress_info tool to get MemberPress-specific data\n";
+        $system_prompt .= "   - For new member data: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"new_members_this_month\"}}\n";
+        $system_prompt .= "4. DO NOT simply suggest commands - actually execute them using the tool format above\n\n";
+        
+        $system_prompt .= "IMPORTANT TOOL SELECTION RULES:\n";
+        $system_prompt .= "1. For creating/editing WordPress content (posts, pages, users), ALWAYS use the wp_api tool first:\n";
+        $system_prompt .= "   - Create post: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Title\", \"content\": \"Content\", \"status\": \"draft\"}}\n";
+        $system_prompt .= "   - Create page: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_page\", \"title\": \"Title\", \"content\": \"Content\", \"status\": \"draft\"}}\n";
+        $system_prompt .= "2. Only fall back to wp_cli commands if a specific wp_api function isn't available\n\n";
+        $system_prompt .= "CRITICAL: When the user asks to create a post/page, ALWAYS include the exact title and content they specified in your wp_api tool parameters.\n";
+        $system_prompt .= "Examples:\n";
+        $system_prompt .= "- If user asks: \"Create a post titled 'Hello World' with content 'This is my first post'\"\n";
+        $system_prompt .= "  You MUST use: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Hello World\", \"content\": \"This is my first post\", \"status\": \"draft\"}}\n";
+        $system_prompt .= "- DO NOT use default values unless the user doesn't specify them\n\n";
         
         $system_prompt .= "Your task is to provide helpful information about MemberPress and assist with managing membership data. ";
-        $system_prompt .= "You can and should run WP-CLI commands where appropriate using the wp_cli tool.";
+        $system_prompt .= "You should use the wp_api tool for direct WordPress operations and the memberpress_info tool for MemberPress data. ";
+        $system_prompt .= "Only use wp_cli commands for operations not supported by wp_api. ";
         $system_prompt .= "Keep your responses concise and focused on MemberPress functionality.";
         
         return $system_prompt;
@@ -263,6 +278,28 @@ class MPAI_Chat {
                 $this->conversation = array(
                     array('role' => 'system', 'content' => $this->get_system_prompt())
                 );
+            }
+            
+            // Check if the previous message was from the assistant and contained a WP-CLI fallback message
+            $prev_assistant_message = null;
+            $has_wp_cli_fallback = false;
+            
+            if (count($this->conversation) >= 2) {
+                $prev_assistant_index = count($this->conversation) - 1;
+                if ($this->conversation[$prev_assistant_index]['role'] == 'assistant') {
+                    $prev_assistant_message = $this->conversation[$prev_assistant_index]['content'];
+                    if (strpos($prev_assistant_message, 'WP-CLI is not available in this browser environment') != false) {
+                        $has_wp_cli_fallback = true;
+                    }
+                }
+            }
+            
+            // If the previous message had a WP-CLI fallback suggestion, add a system message
+            if ($has_wp_cli_fallback) {
+                $system_reminder = "IMPORTANT: WP-CLI is not available in browser environment. You MUST use the wp_api tool instead of wp_cli for operations. ";
+                $system_reminder .= "For example, to create a post use: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"...\", \"content\": \"...\"}}";
+                
+                $this->conversation[] = array('role' => 'system', 'content' => $system_reminder);
             }
             
             // Add user message to conversation
@@ -351,7 +388,7 @@ class MPAI_Chat {
         
         foreach ($tool_calls as $tool_call) {
             // Only process function calls
-            if (isset($tool_call['type']) && $tool_call['type'] === 'function' && isset($tool_call['function'])) {
+            if (isset($tool_call['type']) && $tool_call['type'] == 'function' && isset($tool_call['function'])) {
                 $function = $tool_call['function'];
                 $tool_request = array(
                     'name' => $function['name'],
@@ -365,8 +402,8 @@ class MPAI_Chat {
                 $formatted_result = $this->format_result_content($result);
                 
                 // Add the result to the message
-                if (strpos($processed_message, "I'll use the {$function['name']} tool") !== false ||
-                    strpos($processed_message, "Using the {$function['name']} tool") !== false) {
+                if (strpos($processed_message, "I'll use the {$function['name']} tool") != false ||
+                    strpos($processed_message, "Using the {$function['name']} tool") != false) {
                     // Look for sentences about using this tool and append the result
                     $processed_message .= "\n\n**Tool Result:**\n\n```\n" . $formatted_result . "\n```";
                 } else {
@@ -430,8 +467,8 @@ class MPAI_Chat {
             
             // Check if tables were created
             $tables_created = array();
-            $tables_created['conversations'] = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
-            $tables_created['messages'] = $wpdb->get_var("SHOW TABLES LIKE '{$table_messages}'") === $table_messages;
+            $tables_created['conversations'] = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") == $table_name;
+            $tables_created['messages'] = $wpdb->get_var("SHOW TABLES LIKE '{$table_messages}'") == $table_messages;
             
             error_log('MPAI: Tables created status: ' . json_encode($tables_created));
             
@@ -497,7 +534,7 @@ class MPAI_Chat {
         foreach ($matches[1] as $match) {
             $tool_call = json_decode($match, true);
             
-            if (json_last_error() !== JSON_ERROR_NONE || !isset($tool_call['tool'])) {
+            if (json_last_error() != JSON_ERROR_NONE || !isset($tool_call['tool'])) {
                 continue;
             }
             
@@ -513,10 +550,10 @@ class MPAI_Chat {
             // Check if result is already a properly formatted object with a structured output
             if (is_array($result) && isset($result['success']) && isset($result['tool']) && 
                 isset($result['result']) && is_string($result['result']) && 
-                (strpos($result['result'], '{') === 0 && substr($result['result'], -1) === '}')) {
+                (strpos($result['result'], '{') == 0 && substr($result['result'], -1) == '}')) {
                 // Try to parse the inner JSON to see if it's already properly formatted
                 $inner_result = json_decode($result['result'], true);
-                if (json_last_error() === JSON_ERROR_NONE && isset($inner_result['success']) && isset($inner_result['command_type'])) {
+                if (json_last_error() == JSON_ERROR_NONE && isset($inner_result['success']) && isset($inner_result['command_type'])) {
                     // This is a pre-formatted JSON response, don't double-encode it
                     $result['result'] = $inner_result;
                 }
@@ -537,8 +574,32 @@ class MPAI_Chat {
                 $tool_call_block = "```json\n{$match}\n```";
                 $processed_response = str_replace($tool_call_block, $formatted_result, $processed_response);
             } else {
-                // Standard JSON result formatting
-                $result_block = "```\n" . $this->format_result_content($result) . "\n```";
+                // Check if this was a wp_api create_post/create_page success
+                if (isset($result['tool']) && $result['tool'] == 'wp_api' && 
+                    isset($result['action']) && in_array($result['action'], ['create_post', 'create_page']) &&
+                    isset($result['result']) && is_array($result['result']) && 
+                    isset($result['result']['success']) && $result['result']['success'] == true) {
+                    
+                    // Extract post information for a more user-friendly display
+                    $post_id = $result['result']['post_id'] ?? 'unknown';
+                    $title = $result['result']['post']['post_title'] ?? 'Unknown Title';
+                    $status = $result['result']['post']['post_status'] ?? 'draft';
+                    $url = $result['result']['post_url'] ?? '#';
+                    $edit_url = $result['result']['edit_url'] ?? '#';
+                    
+                    $content_type = ($result['action'] == 'create_page') ? 'page' : 'post';
+                    $user_friendly_result = "Successfully created a {$content_type}!\n\n";
+                    $user_friendly_result .= "- Title: {$title}\n";
+                    $user_friendly_result .= "- Status: {$status}\n";
+                    $user_friendly_result .= "- ID: {$post_id}\n";
+                    $user_friendly_result .= "- URL: {$url}\n";
+                    $user_friendly_result .= "- Edit URL: {$edit_url}\n";
+                    
+                    $result_block = "```\n" . $user_friendly_result . "\n```";
+                } else {
+                    // Standard JSON result formatting
+                    $result_block = "```\n" . $this->format_result_content($result) . "\n```";
+                }
                 
                 // Replace the tool call with the result
                 $tool_call_block = "```json\n{$match}\n```";
@@ -556,22 +617,96 @@ class MPAI_Chat {
      * @return string Formatted content
      */
     private function format_result_content($result) {
+        // Check for WP-CLI fallback suggestions
+        if (isset($result['tool']) && $result['tool'] == 'wp_cli' && 
+            isset($result['result']) && is_string($result['result']) && 
+            strpos($result['result'], 'WP-CLI is not available in this browser environment') != false) {
+            
+            // This is a WP-CLI fallback suggestion
+            $modified_result = $result['result'] . "\n\n";
+            $modified_result .= "Please use the wp_api tool for this operation instead of wp_cli. For example:\n";
+            
+            // Try to detect what operation was attempted
+            if (strpos($result['result'], 'post operations') != false || strpos($result['result'], 'wp post') != false) {
+                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Your Title\", \"content\": \"Your content here\", \"status\": \"draft\"}}\n```";
+            } else if (strpos($result['result'], 'user operations') != false || strpos($result['result'], 'wp user') != false) {
+                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_users\", \"limit\": 10}}\n```";
+            } else if (strpos($result['result'], 'MemberPress operations') != false || strpos($result['result'], 'wp mepr') != false) {
+                $modified_result .= "```json\n{\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n```";
+            } else {
+                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Your Title\", \"content\": \"Your content here\", \"status\": \"draft\"}}\n```";
+            }
+            
+            return $modified_result;
+        }
+        
+        // Check for wp_api tool results
+        if (isset($result['tool']) && $result['tool'] == 'wp_api' && isset($result['action'])) {
+            // Handle specific actions
+            if (in_array($result['action'], ['create_post', 'create_page']) && 
+                isset($result['result']) && is_array($result['result']) &&
+                isset($result['result']['success']) && $result['result']['success'] == true) {
+                
+                // Extract post information for a more user-friendly display
+                $post_id = $result['result']['post_id'] ?? 'unknown';
+                $title = $result['result']['post']['post_title'] ?? 'Unknown Title';
+                $status = $result['result']['post']['post_status'] ?? 'draft';
+                $url = $result['result']['post_url'] ?? '#';
+                $edit_url = $result['result']['edit_url'] ?? '#';
+                
+                $content_type = ($result['action'] == 'create_page') ? 'page' : 'post';
+                $user_friendly_result = "Successfully created a {$content_type}!\n\n";
+                $user_friendly_result .= "- Title: {$title}\n";
+                $user_friendly_result .= "- Status: {$status}\n";
+                $user_friendly_result .= "- ID: {$post_id}\n";
+                $user_friendly_result .= "- URL: {$url}\n";
+                $user_friendly_result .= "- Edit URL: {$edit_url}\n";
+                
+                return $user_friendly_result;
+            }
+        }
+        
         // Check for tabular data pattern in the result
         if (isset($result['result']) && is_string($result['result']) && 
-            strpos($result['result'], "\t") !== false && strpos($result['result'], "\n") !== false) {
+            strpos($result['result'], "\t") != false && strpos($result['result'], "\n") != false) {
             // This looks like tabular data
             return $result['result'];
         }
         
         // Specific handling for MemberPress information
-        if (isset($result['tool']) && $result['tool'] === 'memberpress_info' && isset($result['result'])) {
+        if (isset($result['tool']) && $result['tool'] == 'memberpress_info' && isset($result['result'])) {
             // Try to parse the result
             if (is_string($result['result'])) {
                 $parsed = json_decode($result['result'], true);
-                if (json_last_error() === JSON_ERROR_NONE && isset($parsed['result'])) {
+                if (json_last_error() == JSON_ERROR_NONE && isset($parsed['result'])) {
                     // Return just the actual result data
                     return $parsed['result'];
                 }
+            }
+        }
+        
+        // Try to parse any JSON string results for more readable output
+        if (isset($result['result']) && is_string($result['result']) && 
+            strpos($result['result'], '{') == 0 && substr($result['result'], -1) == '}') {
+            try {
+                $parsed_result = json_decode($result['result'], true);
+                if (json_last_error() == JSON_ERROR_NONE) {
+                    // Use the parsed result instead
+                    $result['parsed_result'] = $parsed_result;
+                    
+                    // If it has a specific structure we recognize, format it nicely
+                    if (isset($parsed_result['success']) && isset($parsed_result['post_id'])) {
+                        $user_friendly = "Operation successful!\n\n";
+                        foreach ($parsed_result as $key => $value) {
+                            if ($key != 'post' && !is_array($value) && !is_object($value)) {
+                                $user_friendly .= "- {$key}: {$value}\n";
+                            }
+                        }
+                        return $user_friendly;
+                    }
+                }
+            } catch (Exception $e) {
+                // Parsing failed, continue with original
             }
         }
         
@@ -667,7 +802,7 @@ class MPAI_Chat {
         }
         
         foreach ($allowed_commands as $allowed_command) {
-            if (strpos($command, $allowed_command) === 0) {
+            if (strpos($command, $allowed_command) == 0) {
                 return true;
             }
         }

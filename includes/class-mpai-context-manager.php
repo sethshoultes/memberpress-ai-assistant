@@ -71,11 +71,26 @@ class MPAI_Context_Manager {
                 'parameters' => array(
                     'type' => array(
                         'type' => 'string',
-                        'description' => 'Type of information (memberships, members, transactions, subscriptions)',
-                        'enum' => array('memberships', 'members', 'transactions', 'subscriptions', 'summary')
+                        'description' => 'Type of information (memberships, members, transactions, subscriptions, new_members_this_month)',
+                        'enum' => array('memberships', 'members', 'transactions', 'subscriptions', 'summary', 'new_members_this_month')
                     )
                 ),
                 'callback' => array($this, 'get_memberpress_info')
+            ),
+            'wp_api' => array(
+                'name' => 'wp_api',
+                'description' => 'Use WordPress API functions directly (for when WP-CLI is not available)',
+                'parameters' => array(
+                    'action' => array(
+                        'type' => 'string',
+                        'description' => 'The WordPress API action to perform',
+                        'enum' => array('create_post', 'update_post', 'get_post', 'create_page', 'create_user', 
+                                        'get_users', 'get_memberships', 'create_membership', 'get_transactions', 
+                                        'get_subscriptions')
+                    ),
+                    // Other parameters are dynamic based on the action
+                ),
+                'callback' => array($this, 'execute_wp_api')
             )
         );
 
@@ -124,32 +139,172 @@ class MPAI_Context_Manager {
         }
         */
 
-        // Since WP-CLI might not be available in admin context, provide meaningful output
+        // Since WP-CLI might not be available in admin context, use WordPress API fallback
         if (!defined('WP_CLI') || !class_exists('WP_CLI')) {
-            error_log('MPAI: WP-CLI not available in this environment');
+            error_log('MPAI: WP-CLI not available in this environment, using WordPress API fallback');
+            
+            // Initialize WP API Tool if needed
+            if (!isset($this->wp_api_tool)) {
+                // Check if the class exists, if not try to load it
+                if (!class_exists('MPAI_WP_API_Tool')) {
+                    $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-wp-api-tool.php';
+                    if (file_exists($tool_path)) {
+                        require_once $tool_path;
+                    }
+                }
+                
+                // Initialize the tool if the class exists
+                if (class_exists('MPAI_WP_API_Tool')) {
+                    $this->wp_api_tool = new MPAI_WP_API_Tool();
+                    error_log('MPAI: WordPress API Tool initialized successfully');
+                } else {
+                    error_log('MPAI: WordPress API Tool class not found');
+                }
+            }
+            
+            // For post creation/update commands
+            if (preg_match('/wp post create --post_title=[\'"]?([^\'"]*)/', $command, $matches)) {
+                error_log('MPAI: Detected post create command, using WordPress API');
+                $title = isset($matches[1]) ? $matches[1] : 'New Post';
+                
+                // Extract content if provided
+                $content = '';
+                if (preg_match('/--post_content=[\'"]?([^\'"]*)/', $command, $content_matches)) {
+                    $content = $content_matches[1];
+                }
+                
+                // Extract status if provided
+                $status = 'draft';
+                if (preg_match('/--post_status=[\'"]?([^\'"]*)/', $command, $status_matches)) {
+                    $status = $status_matches[1];
+                }
+                
+                try {
+                    // Use WP API Tool to create the post
+                    if (isset($this->wp_api_tool)) {
+                        $result = $this->wp_api_tool->execute(array(
+                            'action' => 'create_post',
+                            'title' => $title,
+                            'content' => $content,
+                            'status' => $status
+                        ));
+                        
+                        return "Post created successfully.\nID: {$result['post_id']}\nTitle: {$title}\nStatus: {$status}\nURL: {$result['post_url']}";
+                    }
+                } catch (Exception $e) {
+                    error_log('MPAI: Error creating post: ' . $e->getMessage());
+                    return 'Error creating post: ' . $e->getMessage();
+                }
+            }
+            
+            // For page creation commands
+            if (preg_match('/wp post create --post_type=page --post_title=[\'"]?([^\'"]*)/', $command, $matches)) {
+                error_log('MPAI: Detected page create command, using WordPress API');
+                $title = isset($matches[1]) ? $matches[1] : 'New Page';
+                
+                // Extract content if provided
+                $content = '';
+                if (preg_match('/--post_content=[\'"]?([^\'"]*)/', $command, $content_matches)) {
+                    $content = $content_matches[1];
+                }
+                
+                // Extract status if provided
+                $status = 'draft';
+                if (preg_match('/--post_status=[\'"]?([^\'"]*)/', $command, $status_matches)) {
+                    $status = $status_matches[1];
+                }
+                
+                try {
+                    // Use WP API Tool to create the page
+                    if (isset($this->wp_api_tool)) {
+                        $result = $this->wp_api_tool->execute(array(
+                            'action' => 'create_page',
+                            'title' => $title,
+                            'content' => $content,
+                            'status' => $status
+                        ));
+                        
+                        return "Page created successfully.\nID: {$result['post_id']}\nTitle: {$title}\nStatus: {$status}\nURL: {$result['post_url']}";
+                    }
+                } catch (Exception $e) {
+                    error_log('MPAI: Error creating page: ' . $e->getMessage());
+                    return 'Error creating page: ' . $e->getMessage();
+                }
+            }
+            
+            // For user creation commands
+            if (preg_match('/wp user create ([^\s]+) ([^\s]+)/', $command, $matches)) {
+                error_log('MPAI: Detected user create command, using WordPress API');
+                $username = isset($matches[1]) ? $matches[1] : '';
+                $email = isset($matches[2]) ? $matches[2] : '';
+                
+                // Extract role if provided
+                $role = 'subscriber';
+                if (preg_match('/--role=([^\s]+)/', $command, $role_matches)) {
+                    $role = $role_matches[1];
+                }
+                
+                try {
+                    // Use WP API Tool to create the user
+                    if (isset($this->wp_api_tool) && !empty($username) && !empty($email)) {
+                        $result = $this->wp_api_tool->execute(array(
+                            'action' => 'create_user',
+                            'username' => $username,
+                            'email' => $email,
+                            'role' => $role
+                        ));
+                        
+                        return "User created successfully.\nID: {$result['user_id']}\nUsername: {$username}\nEmail: {$email}\nRole: {$role}";
+                    }
+                } catch (Exception $e) {
+                    error_log('MPAI: Error creating user: ' . $e->getMessage());
+                    return 'Error creating user: ' . $e->getMessage();
+                }
+            }
             
             // For certain common commands, provide simulated output
             if (strpos($command, 'wp user list') === 0) {
-                // Get users through WordPress API
+                // Try to use WP API Tool first
+                try {
+                    if (isset($this->wp_api_tool)) {
+                        $result = $this->wp_api_tool->execute(array(
+                            'action' => 'get_users',
+                            'limit' => 10
+                        ));
+                        
+                        if ($result && isset($result['users']) && is_array($result['users'])) {
+                            // Format the output as tabular
+                            $output = "ID\tUser Login\tDisplay Name\tEmail\tRoles\n";
+                            foreach ($result['users'] as $user) {
+                                $roles = isset($user['roles']) ? implode(', ', $user['roles']) : '';
+                                $output .= $user['ID'] . "\t" . $user['user_login'] . "\t" . $user['display_name'] . "\t" . $user['user_email'] . "\t" . $roles . "\n";
+                            }
+                            error_log('MPAI: Returning simulated output for wp user list using WP API Tool');
+                            return $this->format_tabular_output($command, $output);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log('MPAI: Error using WP API Tool for user list: ' . $e->getMessage());
+                }
+                
+                // Fallback to direct WordPress API
                 $users = get_users(array('number' => 10));
                 $output = "ID\tUser Login\tDisplay Name\tEmail\tRoles\n";
                 foreach ($users as $user) {
                     $output .= $user->ID . "\t" . $user->user_login . "\t" . $user->display_name . "\t" . $user->user_email . "\t" . implode(', ', $user->roles) . "\n";
                 }
                 error_log('MPAI: Returning simulated output for wp user list');
-                // Make sure to format this as tabular data
                 return $this->format_tabular_output($command, $output);
             }
             
             if (strpos($command, 'wp post list') === 0) {
-                // Get posts through WordPress API
+                // Try to use WP API Tool for consistency
                 $posts = get_posts(array('posts_per_page' => 10));
                 $output = "ID\tPost Title\tPost Date\tStatus\n";
                 foreach ($posts as $post) {
                     $output .= $post->ID . "\t" . $post->post_title . "\t" . $post->post_date . "\t" . $post->post_status . "\n";
                 }
                 error_log('MPAI: Returning simulated output for wp post list');
-                // Make sure to format this as tabular data
                 return $this->format_tabular_output($command, $output);
             }
             
@@ -158,6 +313,9 @@ class MPAI_Context_Manager {
                 if (!function_exists('get_plugins')) {
                     require_once ABSPATH . 'wp-admin/includes/plugin.php';
                 }
+                if (!function_exists('is_plugin_active')) {
+                    include_once ABSPATH . 'wp-admin/includes/plugin.php';
+                }
                 $plugins = get_plugins();
                 $output = "Name\tStatus\tVersion\n";
                 foreach ($plugins as $plugin_file => $plugin_data) {
@@ -165,7 +323,6 @@ class MPAI_Context_Manager {
                     $output .= $plugin_data['Name'] . "\t" . $status . "\t" . $plugin_data['Version'] . "\n";
                 }
                 error_log('MPAI: Returning simulated output for wp plugin list');
-                // Make sure to format this as tabular data
                 return $this->format_tabular_output($command, $output);
             }
             
@@ -189,7 +346,35 @@ class MPAI_Context_Manager {
                 }
             }
             
-            return 'WP-CLI is not available in this browser environment. However, you can still use the memberpress_info tool to get MemberPress data.';
+            // MemberPress specific commands
+            if (strpos($command, 'wp mepr-membership list') === 0 || 
+                strpos($command, 'wp mepr-membership') === 0) {
+                try {
+                    if (isset($this->wp_api_tool)) {
+                        $result = $this->wp_api_tool->execute(array(
+                            'action' => 'get_memberships'
+                        ));
+                        
+                        if ($result && isset($result['memberships']) && is_array($result['memberships'])) {
+                            // Format the output as tabular
+                            $output = "ID\tTitle\tPrice\tPeriod\tBilling Type\n";
+                            foreach ($result['memberships'] as $membership) {
+                                $period = isset($membership['period']) ? $membership['period'] : '';
+                                $period_type = isset($membership['period_type']) ? $membership['period_type'] : '';
+                                $period_text = $period . ' ' . $period_type;
+                                $output .= $membership['ID'] . "\t" . $membership['title'] . "\t" . $membership['price'] . "\t" . $period_text . "\t" . $membership['billing_type'] . "\n";
+                            }
+                            error_log('MPAI: Returning simulated output for memberpress membership list');
+                            return $this->format_tabular_output($command, $output);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log('MPAI: Error using WP API Tool for membership list: ' . $e->getMessage());
+                }
+            }
+            
+            // If we reached here, use the memberpress_info tool instead
+            return $this->get_tool_usage_message($command);
         }
 
         // Run the command using WP-CLI
@@ -256,41 +441,72 @@ class MPAI_Context_Manager {
                 }
                 
             case 'members':
-                $members = $this->memberpress_api->get_members();
+                $members = $this->memberpress_api->get_members(array(), true);
                 
-                // Format members data as a table
-                if (is_array($members)) {
-                    error_log('MPAI: Formatting members as table');
-                    $output = "ID\tEmail\tUsername\tDisplay Name\tMemberships\n";
-                    foreach ($members as $member) {
-                        $id = isset($member['id']) ? $member['id'] : 'N/A';
-                        $email = isset($member['email']) ? $member['email'] : 'N/A';
-                        $username = isset($member['username']) ? $member['username'] : 'N/A';
-                        $display_name = isset($member['display_name']) ? $member['display_name'] : 'N/A';
-                        
-                        // Get membership info
-                        $memberships = [];
-                        if (isset($member['active_memberships']) && is_array($member['active_memberships'])) {
-                            foreach ($member['active_memberships'] as $membership) {
-                                $memberships[] = $membership['title'];
-                            }
-                        }
-                        $membership_text = empty($memberships) ? 'None' : implode(', ', $memberships);
-                        
-                        $output .= "$id\t$email\t$username\t$display_name\t$membership_text\n";
-                    }
-                    
-                    // Return formatted tabular data
+                if (is_string($members)) {
+                    error_log('MPAI: Returning formatted members table');
+                    // Already formatted as tabular data
                     $response = array(
                         'success' => true,
                         'tool' => 'memberpress_info',
                         'command_type' => 'member_list',
-                        'result' => $output
+                        'result' => $members
                     );
                     return json_encode($response);
                 } else {
-                    // Fallback to regular JSON if not an array
-                    return json_encode($members);
+                    // Format members data as a table (fallback)
+                    if (is_array($members)) {
+                        error_log('MPAI: Formatting members as table (fallback)');
+                        $output = "ID\tEmail\tUsername\tDisplay Name\tMemberships\n";
+                        foreach ($members as $member) {
+                            $id = isset($member['id']) ? $member['id'] : 'N/A';
+                            $email = isset($member['email']) ? $member['email'] : 'N/A';
+                            $username = isset($member['username']) ? $member['username'] : 'N/A';
+                            $display_name = isset($member['display_name']) ? $member['display_name'] : 'N/A';
+                            
+                            // Get membership info
+                            $memberships = [];
+                            if (isset($member['active_memberships']) && is_array($member['active_memberships'])) {
+                                foreach ($member['active_memberships'] as $membership) {
+                                    $memberships[] = $membership['title'];
+                                }
+                            }
+                            $membership_text = empty($memberships) ? 'None' : implode(', ', $memberships);
+                            
+                            $output .= "$id\t$email\t$username\t$display_name\t$membership_text\n";
+                        }
+                        
+                        // Return formatted tabular data
+                        $response = array(
+                            'success' => true,
+                            'tool' => 'memberpress_info',
+                            'command_type' => 'member_list',
+                            'result' => $output
+                        );
+                        return json_encode($response);
+                    } else {
+                        // Fallback to regular JSON if not an array
+                        return json_encode($members);
+                    }
+                }
+                
+            case 'new_members_this_month':
+                // Get new members who joined this month
+                $new_members = $this->memberpress_api->get_new_members_this_month(true);
+                
+                if (is_string($new_members)) {
+                    error_log('MPAI: Returning formatted new members this month');
+                    // Already formatted as human readable text
+                    $response = array(
+                        'success' => true,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'new_members_this_month',
+                        'result' => $new_members
+                    );
+                    return json_encode($response);
+                } else {
+                    error_log('MPAI: Returning regular new members JSON');
+                    return json_encode($new_members);
                 }
                 
             case 'transactions':
@@ -418,6 +634,101 @@ class MPAI_Context_Manager {
         }
 
         return false;
+    }
+    
+    /**
+     * Get a helpful message about tool usage when WP-CLI is not available
+     *
+     * @param string $command The original command that was attempted
+     * @return string A helpful message about alternative tools
+     */
+    private function get_tool_usage_message($command = '') {
+        $message = "WP-CLI is not available in this browser environment. However, you can use the following tools instead:\n\n";
+        
+        // Determine what type of command was attempted
+        if (strpos($command, 'wp post') !== false) {
+            $message .= "1. For post operations, you can use the WordPress API:\n";
+            $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Your Title\", \"content\": \"Your content here\"}}\n   ```\n\n";
+            $message .= "2. Available post actions: create_post, update_post, get_post, create_page\n";
+        } else if (strpos($command, 'wp user') !== false) {
+            $message .= "1. For user operations, you can use the WordPress API:\n";
+            $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_users\", \"limit\": 10}}\n   ```\n\n";
+            $message .= "2. Available user actions: create_user, get_users\n";
+        } else if (strpos($command, 'wp mepr') !== false || strpos($command, 'memberpress') !== false) {
+            $message .= "1. For MemberPress operations, use the memberpress_info tool:\n";
+            $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n\n";
+            $message .= "2. Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month\n";
+        } else {
+            $message .= "1. For WordPress operations, you can use the WordPress API:\n";
+            $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"action_name\", \"param1\": \"value1\"}}\n   ```\n\n";
+            $message .= "2. For MemberPress operations, use the memberpress_info tool:\n";
+            $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n";
+            $message .= "   - Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month\n\n";
+        }
+        
+        return $message;
+    }
+    
+    /**
+     * Execute WordPress API functions through a direct tool call
+     * 
+     * @param array $parameters Parameters for the API call
+     * @return string Result of the API call
+     */
+    public function execute_wp_api($parameters) {
+        error_log('MPAI: execute_wp_api called with parameters: ' . json_encode($parameters));
+        
+        // Initialize WP API Tool if needed
+        if (!isset($this->wp_api_tool)) {
+            // Check if the class exists, if not try to load it
+            if (!class_exists('MPAI_WP_API_Tool')) {
+                $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-wp-api-tool.php';
+                if (file_exists($tool_path)) {
+                    require_once $tool_path;
+                }
+            }
+            
+            // Initialize the tool if the class exists
+            if (class_exists('MPAI_WP_API_Tool')) {
+                $this->wp_api_tool = new MPAI_WP_API_Tool();
+                error_log('MPAI: WordPress API Tool initialized successfully');
+            } else {
+                error_log('MPAI: WordPress API Tool class not found');
+                return 'Error: WordPress API Tool class not found';
+            }
+        }
+        
+        // Execute the tool with the provided parameters
+        try {
+            error_log('MPAI: Executing WordPress API function: ' . $parameters['action']);
+            $result = $this->wp_api_tool->execute($parameters);
+            
+            // Format the result for display
+            if (is_array($result) || is_object($result)) {
+                // For structured data, convert to JSON for better display
+                return json_encode(
+                    array(
+                        'success' => true,
+                        'tool' => 'wp_api',
+                        'action' => $parameters['action'],
+                        'result' => $result
+                    )
+                );
+            } else {
+                // For string results, return directly
+                return $result;
+            }
+        } catch (Exception $e) {
+            error_log('MPAI: Error executing WordPress API function: ' . $e->getMessage());
+            return json_encode(
+                array(
+                    'success' => false,
+                    'tool' => 'wp_api',
+                    'action' => $parameters['action'],
+                    'error' => $e->getMessage()
+                )
+            );
+        }
     }
     
     /**

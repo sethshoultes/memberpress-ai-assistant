@@ -94,10 +94,126 @@ class MPAI_MemberPress_API {
      * Get members from the API
      *
      * @param array $params Query parameters
-     * @return array|WP_Error The members or error
+     * @param bool $formatted Whether to return formatted tabular data
+     * @return array|WP_Error|string The members or error
      */
-    public function get_members($params = array()) {
-        return $this->request('members', 'GET', $params);
+    public function get_members($params = array(), $formatted = false) {
+        $result = $this->request('members', 'GET', $params);
+        
+        if ($formatted && !is_wp_error($result)) {
+            return $this->format_members_as_table($result);
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Format members data as a tab-separated table
+     *
+     * @param array $members The members data
+     * @return string Formatted tabular data
+     */
+    private function format_members_as_table($members) {
+        if (empty($members) || !is_array($members)) {
+            return "ID\tUsername\tEmail\tJoin Date\tStatus\nNo members found.";
+        }
+        
+        $output = "ID\tUsername\tEmail\tJoin Date\tStatus\n";
+        
+        foreach ($members as $member) {
+            $id = isset($member['id']) ? $member['id'] : 'N/A';
+            $username = isset($member['username']) ? $member['username'] : 'N/A';
+            $email = isset($member['email']) ? $member['email'] : 'N/A';
+            $join_date = isset($member['registered']) ? date('Y-m-d', strtotime($member['registered'])) : 'N/A';
+            $status = isset($member['status']) ? $member['status'] : 'active';
+            
+            $output .= "$id\t$username\t$email\t$join_date\t$status\n";
+        }
+        
+        return $output;
+    }
+    
+    /**
+     * Get new members who joined in the current month
+     *
+     * @param bool $formatted Whether to return formatted tabular data
+     * @return array|string The new members or formatted table
+     */
+    public function get_new_members_this_month($formatted = true) {
+        // Calculate the first day of the current month
+        $first_day_of_month = date('Y-m-01');
+        
+        // Set the params to filter by registration date
+        $params = array(
+            'start_date' => $first_day_of_month,
+            'end_date' => date('Y-m-d'),
+            'per_page' => 100 // Increase to get more members if needed
+        );
+        
+        // Try to use the API to get members
+        $new_members = $this->get_members($params);
+        
+        // If API fails, try direct database query as fallback
+        if (is_wp_error($new_members) || !is_array($new_members)) {
+            error_log('MPAI: Failed to get new members from API, using database fallback');
+            
+            global $wpdb;
+            
+            // Get all users registered this month
+            $query = $wpdb->prepare(
+                "SELECT ID, user_login, user_email, user_registered 
+                FROM {$wpdb->users} 
+                WHERE user_registered >= %s 
+                ORDER BY user_registered DESC",
+                $first_day_of_month
+            );
+            
+            $users = $wpdb->get_results($query);
+            
+            // Format the result
+            $new_members = array();
+            foreach ($users as $user) {
+                $new_members[] = array(
+                    'id' => $user->ID,
+                    'username' => $user->user_login,
+                    'email' => $user->user_email,
+                    'registered' => $user->user_registered,
+                    'status' => 'active'
+                );
+            }
+        }
+        
+        // If we want formatted output
+        if ($formatted) {
+            if (empty($new_members) || !is_array($new_members)) {
+                return "No new members joined this month.";
+            }
+            
+            $output = "New Members This Month (" . date('F Y') . "):\n\n";
+            $output .= "ID\tUsername\tEmail\tJoin Date\n";
+            
+            foreach ($new_members as $member) {
+                $id = isset($member['id']) ? $member['id'] : 'N/A';
+                $username = isset($member['username']) ? $member['username'] : 'N/A';
+                $email = isset($member['email']) ? $member['email'] : 'N/A';
+                $join_date = isset($member['registered']) ? date('Y-m-d', strtotime($member['registered'])) : 'N/A';
+                
+                $output .= "$id\t$username\t$email\t$join_date\n";
+            }
+            
+            $output .= "\nTotal New Members: " . count($new_members);
+            return $output;
+        }
+        
+        return array(
+            'count' => count($new_members),
+            'members' => $new_members,
+            'period' => array(
+                'start' => $first_day_of_month,
+                'end' => date('Y-m-d'),
+                'month' => date('F Y')
+            )
+        );
     }
 
     /**
