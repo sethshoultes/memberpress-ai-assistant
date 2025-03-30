@@ -125,13 +125,13 @@ For detailed information, refer to the following documentation:
 - Membership campaign creation wizards
 - Integration with additional AI providers
 
-## OpenAI Agents SDK Integration
+## OpenAI Assistants API Integration
 
-The project will integrate the OpenAI Agents SDK to enhance functionality while preserving all existing features:
+The project integrates directly with the OpenAI Assistants API to enhance functionality while preserving all existing features:
 
 ### 1. Agent System Enhancement
 
-The Agent System will be enhanced with the OpenAI Agents SDK to provide more powerful and flexible agent capabilities:
+The Agent System is enhanced with the OpenAI Assistants API to provide more powerful and flexible agent capabilities:
 
 - **Handoff Protocol**: Enable seamless transitions between specialized agents
 - **Multi-Agent Collaboration**: Allow agents to work together on complex tasks
@@ -140,7 +140,7 @@ The Agent System will be enhanced with the OpenAI Agents SDK to provide more pow
 
 ### 2. Integration Architecture
 
-The OpenAI Agents SDK will be implemented directly into the agent system while preserving all existing functionality:
+The OpenAI Assistants API is implemented directly into the agent system using pure PHP while preserving all existing functionality:
 
 ```
 +------------------------------+
@@ -149,7 +149,7 @@ The OpenAI Agents SDK will be implemented directly into the agent system while p
 |                              |
 |  +-------------------------+ |
 |  |                         | |
-|  |  OpenAI Agents SDK      | |
+|  |  OpenAI Assistants API  | |
 |  |  Integration            | |
 |  |                         | |
 |  +-------------------------+ |
@@ -166,41 +166,42 @@ The OpenAI Agents SDK will be implemented directly into the agent system while p
 
 Key architectural components include:
 
-- **SDK Bridge**: PHP-Python bridge for integrating the OpenAI Agents SDK
-- **Agent Adapters**: Adapters that connect existing agents with SDK capabilities
-- **Tool Mapping**: Registry that maps existing tools to SDK-compatible formats
+- **SDK Integration**: PHP class that provides direct OpenAI Assistants API integration
+- **Agent Registration**: System to register agents with the OpenAI Assistants API
+- **Tool Mapping**: Registry that maps existing tools to API-compatible formats
 - **Context System**: Memory management for agent context and state
 
 ### 3. Implementation Approach
 
-The implementation will be guided by these core principles:
+The implementation is guided by these core principles:
 
 - **Preserve ALL Functionality**: Maintain EVERY existing feature and capability
-- **Direct Integration**: Integrate SDK directly without optional toggles
+- **Direct Integration**: Integrate API directly without optional toggles
 - **Exact Feature Parity**: Create identical functionality where needed for compatibility
-- **Enhanced Capabilities**: Add SDK features to extend current functionality
+- **Enhanced Capabilities**: Add API features to extend current functionality
 - **Simple Implementation**: Avoid overcomplicating with unnecessary abstraction layers
+- **No External Dependencies**: Implement everything in pure PHP with no external dependencies
 
-### 4. Technical Dependencies
+### 4. Technical Requirements
 
-Additional technical requirements for the OpenAI Agents SDK:
+Technical requirements for the OpenAI Assistants API integration:
 
-- Python 3.8+ (for SDK functionality)
+- PHP 7.4+ (8.0+ recommended)
+- WordPress 5.8+
 - OpenAI API key with appropriate permissions
-- Proper server configuration for Python execution
-- Dependencies listed in the OpenAI Agents SDK documentation
+- WordPress HTTP API capability (default in most hosting environments)
 
 ### 5. Development Phases
 
-The SDK integration will be implemented in a focused, efficient timeline:
+The API integration is implemented in a focused, efficient timeline:
 
 1. **Week 1: Core Integration**
-   - Set up Python bridge
-   - Create SDK directory structure
-   - Implement core integration layer
+   - Create OpenAI Assistants API integration class
+   - Implement assistant creation and management
+   - Implement thread management
 
 2. **Week 2: Agent Implementation**
-   - Connect all agents to SDK
+   - Connect all agents to API integration
    - Implement all tool mappings
    - Ensure exact feature parity
 
@@ -216,7 +217,7 @@ The SDK integration will be implemented in a focused, efficient timeline:
 
 ### 6. Feature Preservation Measures
 
-These measures will ensure all functionality is preserved:
+These measures ensure all functionality is preserved:
 
 - **Command Processing**: Maintain exact parity with current command processing
 - **API Endpoints**: Preserve all existing API endpoints with identical behavior

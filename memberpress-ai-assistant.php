@@ -129,10 +129,59 @@ class MemberPress_AI_Assistant {
         // Chat Interface
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-chat-interface.php';
         
+        // Agent System
+        $this->load_agent_system();
+        
         // CLI Commands
         if (defined('WP_CLI') && WP_CLI) {
             require_once MPAI_PLUGIN_DIR . 'includes/cli/class-mpai-cli-commands.php';
         }
+    }
+    
+    /**
+     * Load agent system components
+     */
+    private function load_agent_system() {
+        // Load agent interface
+        require_once MPAI_PLUGIN_DIR . 'includes/agents/interfaces/interface-mpai-agent.php';
+        
+        // Load base tool class
+        if (!class_exists('MPAI_Base_Tool')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/class-mpai-base-tool.php';
+        }
+        
+        // Load tool registry
+        if (!class_exists('MPAI_Tool_Registry')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/class-mpai-tool-registry.php';
+        }
+        
+        // Load tool implementations
+        $tool_dir = MPAI_PLUGIN_DIR . 'includes/tools/implementations/';
+        if (file_exists($tool_dir)) {
+            foreach (glob($tool_dir . 'class-mpai-*.php') as $tool_file) {
+                require_once $tool_file;
+            }
+        }
+        
+        // Load base agent class
+        require_once MPAI_PLUGIN_DIR . 'includes/agents/class-mpai-base-agent.php';
+        
+        // Load specialized agents
+        $agents_dir = MPAI_PLUGIN_DIR . 'includes/agents/specialized/';
+        if (file_exists($agents_dir)) {
+            foreach (glob($agents_dir . 'class-mpai-*.php') as $agent_file) {
+                require_once $agent_file;
+            }
+        }
+        
+        // Load SDK integration
+        $sdk_dir = MPAI_PLUGIN_DIR . 'includes/agents/sdk/';
+        if (file_exists($sdk_dir . 'class-mpai-sdk-integration.php')) {
+            require_once $sdk_dir . 'class-mpai-sdk-integration.php';
+        }
+        
+        // Finally, load the orchestrator
+        require_once MPAI_PLUGIN_DIR . 'includes/agents/class-mpai-agent-orchestrator.php';
     }
 
     /**
@@ -590,8 +639,44 @@ class MemberPress_AI_Assistant {
         // Create tables if needed
         $this->create_database_tables();
         
+        // Initialize agent system
+        $this->initialize_agent_system();
+        
         // Clear rewrite rules
         flush_rewrite_rules();
+    }
+    
+    /**
+     * Initialize the agent system
+     */
+    private function initialize_agent_system() {
+        try {
+            // Load dependencies first
+            $this->load_agent_system();
+            
+            // Create directories for SDK if they don't exist
+            $sdk_dir = MPAI_PLUGIN_DIR . 'includes/agents/sdk';
+            if (!file_exists($sdk_dir)) {
+                wp_mkdir_p($sdk_dir);
+            }
+            
+            // Set default OpenAI options for the agent system
+            $model = get_option('mpai_model', 'gpt-4o');
+            update_option('mpai_agent_system_model', $model);
+            update_option('mpai_agent_system_version', MPAI_VERSION);
+            update_option('mpai_agent_system_initialized', true);
+            
+            // Create an instance of the agent orchestrator
+            // This will trigger agent registration and SDK initialization
+            $orchestrator = new MPAI_Agent_Orchestrator();
+            
+            // Log success
+            error_log('MPAI: Agent system initialized successfully');
+            return true;
+        } catch (Exception $e) {
+            error_log('MPAI: Error initializing agent system: ' . $e->getMessage());
+            return false;
+        }
     }
     
     /**
@@ -684,7 +769,11 @@ class MemberPress_AI_Assistant {
             'enable_cli_commands' => true,
             'enable_wp_cli_tool' => true,
             'enable_memberpress_info_tool' => true,
-            'allowed_cli_commands' => array('wp user list', 'wp post list', 'wp plugin list')
+            'allowed_cli_commands' => array('wp user list', 'wp post list', 'wp plugin list'),
+            // Agent system settings
+            'agent_system_enabled' => true,
+            'agent_system_version' => MPAI_VERSION,
+            'agent_system_model' => 'gpt-4o',
         );
         
         foreach ($default_options as $option => $value) {
