@@ -72,8 +72,35 @@ class MPAI_Tool_Registry {
 			$this->register_tool( 'wpcli', $wp_cli_tool );
 		}
 		
+		// Register WordPress API tool
+		$wp_api_tool = $this->get_wp_api_tool_instance();
+		if ( $wp_api_tool ) {
+			$this->register_tool( 'wp_api', $wp_api_tool );
+		}
+		
 		// Register other tools as needed...
 		// Database tool, Content tool, etc.
+	}
+	
+	/**
+	 * Get WordPress API tool instance
+	 * 
+	 * @return object|null Tool instance
+	 */
+	private function get_wp_api_tool_instance() {
+		// Check if the WordPress API tool class exists
+		if ( ! class_exists( 'MPAI_WP_API_Tool' ) ) {
+			$tool_path = plugin_dir_path( __FILE__ ) . 'implementations/class-mpai-wp-api-tool.php';
+			if ( file_exists( $tool_path ) ) {
+				require_once $tool_path;
+				if ( class_exists( 'MPAI_WP_API_Tool' ) ) {
+					return new MPAI_WP_API_Tool();
+				}
+			}
+			return null;
+		}
+		
+		return new MPAI_WP_API_Tool();
 	}
 	
 	/**

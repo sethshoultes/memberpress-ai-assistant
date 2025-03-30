@@ -187,38 +187,90 @@ class MPAI_MemberPress_Agent extends MPAI_Base_Agent {
 		$message = strtolower( $intent_data['original_message'] );
 		$actions = [];
 		
-		// Check for common MemberPress commands
-		if ( strpos( $message, 'list' ) !== false && strpos( $message, 'membership' ) !== false ) {
+		// Check for time-based queries about new members
+		if ( ( strpos( $message, 'new member' ) !== false || strpos( $message, 'members joined' ) !== false ) 
+			&& ( strpos( $message, 'this month' ) !== false || strpos( $message, 'current month' ) !== false ) ) {
 			$actions[] = [
-				'tool_id' => 'wpcli',
+				'tool_id' => 'wp_api',
+				'description' => 'Get users who registered this month',
+				'parameters' => [
+					'action' => 'get_users',
+					'month' => 'current',
+					'limit' => 100,
+				],
+			];
+		}
+		// Check for time-based queries about new members in previous month
+		elseif ( ( strpos( $message, 'new member' ) !== false || strpos( $message, 'members joined' ) !== false ) 
+			&& ( strpos( $message, 'last month' ) !== false || strpos( $message, 'previous month' ) !== false ) ) {
+			$actions[] = [
+				'tool_id' => 'wp_api',
+				'description' => 'Get users who registered last month',
+				'parameters' => [
+					'action' => 'get_users',
+					'month' => 'previous',
+					'limit' => 100,
+				],
+			];
+		}
+		// Check for time-based queries about transactions for current month
+		elseif ( strpos( $message, 'transaction' ) !== false && 
+			( strpos( $message, 'this month' ) !== false || strpos( $message, 'current month' ) !== false ) ) {
+			$actions[] = [
+				'tool_id' => 'wp_api',
+				'description' => 'Get transactions for this month',
+				'parameters' => [
+					'action' => 'get_transactions',
+					'month' => 'current',
+					'limit' => 100,
+				],
+			];
+		}
+		// Check for common MemberPress commands
+		elseif ( strpos( $message, 'list' ) !== false && strpos( $message, 'membership' ) !== false ) {
+			$actions[] = [
+				'tool_id' => 'wp_api',
 				'description' => 'List all membership levels',
 				'parameters' => [
-					'command' => 'wp mepr-membership list',
+					'action' => 'get_memberships',
+					'limit' => 100,
 				],
 			];
 		} elseif ( strpos( $message, 'transaction' ) !== false ) {
 			$actions[] = [
-				'tool_id' => 'wpcli',
+				'tool_id' => 'wp_api',
 				'description' => 'List recent transactions',
 				'parameters' => [
-					'command' => 'wp mepr-transaction list --limit=10',
+					'action' => 'get_transactions',
+					'limit' => 10,
 				],
 			];
 		} elseif ( strpos( $message, 'subscription' ) !== false ) {
 			$actions[] = [
-				'tool_id' => 'wpcli',
+				'tool_id' => 'wp_api',
 				'description' => 'List active subscriptions',
 				'parameters' => [
-					'command' => 'wp mepr-subscription list --status=active --limit=10',
+					'action' => 'get_subscriptions',
+					'status' => 'active',
+					'limit' => 10,
 				],
 			];
 		} else {
-			// Default action
+			// Default action - try WP-CLI first, then fall back to WordPress API
 			$actions[] = [
 				'tool_id' => 'wpcli',
-				'description' => 'Get MemberPress status',
+				'description' => 'Get MemberPress status using WP-CLI',
 				'parameters' => [
 					'command' => 'wp mepr-option get',
+				],
+			];
+			
+			// Add a fallback action using the WordPress API
+			$actions[] = [
+				'tool_id' => 'wp_api',
+				'description' => 'Get MemberPress memberships',
+				'parameters' => [
+					'action' => 'get_memberships',
 				],
 			];
 		}

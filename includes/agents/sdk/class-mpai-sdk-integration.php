@@ -763,6 +763,62 @@ class MPAI_SDK_Integration {
 	 */
 	private function execute_tool( $tool_name, $args ) {
 		try {
+			// Special handling for common commands that might fail in browser environment
+			if ($tool_name === 'wpcli') {
+				// Use WordPress API tool for common operations
+				try {
+					// Check if request is to create a post
+					if (isset($args['command']) && strpos($args['command'], 'wp post create') !== false) {
+						if (strpos($args['command'], '--post_type=page') !== false) {
+							return $this->use_wp_api_tool('create_page', $args);
+						} else {
+							return $this->use_wp_api_tool('create_post', $args);
+						}
+					}
+					
+					// Check if request is to get a post/page
+					if (isset($args['command']) && strpos($args['command'], 'wp post get') !== false) {
+						return $this->use_wp_api_tool('get_post', $args);
+					}
+					
+					// Check if request is for user operations
+					if (isset($args['command']) && strpos($args['command'], 'wp user list') !== false) {
+						return $this->use_wp_api_tool('get_users', $args);
+					}
+					
+					// Check if request is for MemberPress-specific operations
+					if (isset($args['command']) && strpos($args['command'], 'wp mepr-membership list') !== false) {
+						return $this->use_wp_api_tool('get_memberships', $args);
+					} else if (isset($args['command']) && strpos($args['command'], 'wp mepr-membership create') !== false) {
+						return $this->use_wp_api_tool('create_membership', $args);
+					} else if (isset($args['command']) && strpos($args['command'], 'wp mepr-transaction list') !== false) {
+						return $this->use_wp_api_tool('get_transactions', $args);
+					} else if (isset($args['command']) && strpos($args['command'], 'wp mepr-subscription list') !== false) {
+						return $this->use_wp_api_tool('get_subscriptions', $args);
+					}
+				} catch (Exception $e) {
+					$this->logger->warning('Failed to use WordPress API tool: ' . $e->getMessage());
+					// Fall back to direct implementations below
+				}
+				
+				// Fall back to direct implementations if WP API tool fails
+				// Create post
+				if (isset($args['command']) && strpos($args['command'], 'wp post create') !== false) {
+					return $this->execute_wp_post_create($args);
+				}
+				
+				// Create page
+				if (isset($args['command']) && strpos($args['command'], 'wp post create --post_type=page') !== false) {
+					$args['post_type'] = 'page';
+					return $this->execute_wp_post_create($args);
+				}
+				
+				// MemberPress operations
+				if (isset($args['command']) && strpos($args['command'], 'wp mepr') !== false) {
+					return $this->execute_memberpress_operation($args);
+				}
+			}
+			
 			// Check if tool exists in registry
 			$tool_instance = $this->tool_registry->get_tool( $tool_name );
 			
@@ -778,6 +834,351 @@ class MPAI_SDK_Integration {
 			$this->logger->error( "Error executing tool {$tool_name}: " . $e->getMessage() );
 			return "Error executing tool: " . $e->getMessage();
 		}
+	}
+	
+	/**
+	 * Use WordPress API tool for operations
+	 *
+	 * @param string $action The action to perform
+	 * @param array $args Command arguments
+	 * @return string|array Result message
+	 */
+	private function use_wp_api_tool($action, $args) {
+		// Get the WordPress API tool
+		$wp_api_tool = $this->tool_registry->get_tool('wp_api');
+		
+		if (!$wp_api_tool) {
+			throw new Exception('WordPress API tool not available');
+		}
+		
+		$command = isset($args['command']) ? $args['command'] : '';
+		$parameters = ['action' => $action];
+		
+		// Parse parameters based on action
+		switch ($action) {
+			case 'create_post':
+			case 'create_page':
+				// Extract post title
+				preg_match('/--post_title=[\'"]([^\'"]+)[\'"]/', $command, $title_matches);
+				$parameters['title'] = isset($title_matches[1]) ? $title_matches[1] : 'New Post';
+				
+				// Extract post content
+				preg_match('/--post_content=[\'"]([^\'"]+)[\'"]/', $command, $content_matches);
+				$parameters['content'] = isset($content_matches[1]) ? $content_matches[1] : '';
+				
+				// Extract post status
+				preg_match('/--post_status=[\'"]?([^\'" ]+)[\'"]?/', $command, $status_matches);
+				$parameters['status'] = isset($status_matches[1]) ? $status_matches[1] : 'draft';
+				
+				// Set post type for page
+				if ($action === 'create_page') {
+					$parameters['post_type'] = 'page';
+				}
+				break;
+				
+			case 'get_post':
+				// Extract post ID
+				preg_match('/wp post get (\d+)/', $command, $id_matches);
+				if (isset($id_matches[1])) {
+					$parameters['post_id'] = intval($id_matches[1]);
+				} else {
+					throw new Exception('Post ID not found in command');
+				}
+				break;
+				
+			case 'get_users':
+				// Extract limit if present
+				preg_match('/--limit=(\d+)/', $command, $limit_matches);
+				if (isset($limit_matches[1])) {
+					$parameters['limit'] = intval($limit_matches[1]);
+				}
+				
+				// Extract role if present
+				preg_match('/--role=([a-z]+)/', $command, $role_matches);
+				if (isset($role_matches[1])) {
+					$parameters['role'] = $role_matches[1];
+				}
+				break;
+				
+			case 'get_memberships':
+				// Extract limit if present
+				preg_match('/--limit=(\d+)/', $command, $limit_matches);
+				if (isset($limit_matches[1])) {
+					$parameters['limit'] = intval($limit_matches[1]);
+				}
+				break;
+				
+			case 'create_membership':
+				// Extract membership title
+				preg_match('/--name=[\'"]([^\'"]+)[\'"]/', $command, $name_matches);
+				$parameters['title'] = isset($name_matches[1]) ? $name_matches[1] : 'New Membership';
+				
+				// Extract price
+				preg_match('/--price=([0-9.]+)/', $command, $price_matches);
+				$parameters['price'] = isset($price_matches[1]) ? floatval($price_matches[1]) : 9.99;
+				
+				// Extract period
+				preg_match('/--period=([a-z]+)/', $command, $period_matches);
+				$parameters['period_type'] = isset($period_matches[1]) ? $period_matches[1] : 'month';
+				
+				// Set billing type
+				$parameters['billing_type'] = 'recurring';
+				break;
+				
+			case 'get_transactions':
+			case 'get_subscriptions':
+				// Extract limit if present
+				preg_match('/--limit=(\d+)/', $command, $limit_matches);
+				if (isset($limit_matches[1])) {
+					$parameters['limit'] = intval($limit_matches[1]);
+				}
+				
+				// Extract status if present
+				preg_match('/--status=([a-z]+)/', $command, $status_matches);
+				if (isset($status_matches[1])) {
+					$parameters['status'] = $status_matches[1];
+				}
+				break;
+		}
+		
+		// Execute the tool
+		$result = $wp_api_tool->execute($parameters);
+		
+		// Format results as needed
+		if (is_array($result) && isset($result['message'])) {
+			return $result['message'];
+		} elseif (is_array($result)) {
+			return json_encode($result, JSON_PRETTY_PRINT);
+		} else {
+			return $result;
+		}
+	}
+	
+	/**
+	 * Execute WordPress post creation directly
+	 *
+	 * @param array $args Command arguments
+	 * @return string Result message
+	 */
+	private function execute_wp_post_create($args) {
+		$command = $args['command'];
+		
+		// Extract post title
+		preg_match('/--post_title=[\'"]([^\'"]+)[\'"]/', $command, $title_matches);
+		$title = isset($title_matches[1]) ? $title_matches[1] : 'New Post';
+		
+		// Extract post content
+		preg_match('/--post_content=[\'"]([^\'"]+)[\'"]/', $command, $content_matches);
+		$content = isset($content_matches[1]) ? $content_matches[1] : '';
+		
+		// Extract post status
+		preg_match('/--post_status=[\'"]?([^\'" ]+)[\'"]?/', $command, $status_matches);
+		$status = isset($status_matches[1]) ? $status_matches[1] : 'draft';
+		
+		// Extract post type
+		$post_type = isset($args['post_type']) ? $args['post_type'] : 'post';
+		
+		// Create post
+		$post_data = array(
+			'post_title'    => $title,
+			'post_content'  => $content,
+			'post_status'   => $status,
+			'post_type'     => $post_type,
+		);
+		
+		$post_id = wp_insert_post($post_data);
+		
+		if (is_wp_error($post_id)) {
+			return "Error creating post: " . $post_id->get_error_message();
+		}
+		
+		$post_url = get_edit_post_link($post_id, '');
+		
+		return "Successfully created {$post_type} with ID {$post_id}. You can edit it here: {$post_url}";
+	}
+	
+	/**
+	 * Execute MemberPress operations directly
+	 *
+	 * @param array $args Command arguments
+	 * @return string|array Result message
+	 */
+	private function execute_memberpress_operation($args) {
+		$command = $args['command'];
+		
+		// Check if MemberPress is active
+		if (!class_exists('MeprOptions')) {
+			return "Error: MemberPress is not active or not installed.";
+		}
+		
+		// Handle different MemberPress operations
+		if (strpos($command, 'wp mepr-membership list') !== false) {
+			// List memberships
+			return $this->get_memberpress_memberships();
+		} elseif (strpos($command, 'wp mepr-transaction list') !== false) {
+			// List transactions
+			return $this->get_memberpress_transactions();
+		} elseif (strpos($command, 'wp mepr-subscription list') !== false) {
+			// List subscriptions
+			return $this->get_memberpress_subscriptions();
+		} elseif (strpos($command, 'wp mepr-membership create') !== false) {
+			// Create membership
+			return $this->create_memberpress_membership($command);
+		}
+		
+		return "The requested MemberPress operation could not be executed directly. Please try a different approach.";
+	}
+	
+	/**
+	 * Get MemberPress memberships
+	 *
+	 * @return string Formatted memberships list
+	 */
+	private function get_memberpress_memberships() {
+		$args = array(
+			'post_type' => 'memberpressproduct',
+			'posts_per_page' => -1,
+			'post_status' => 'publish'
+		);
+		
+		$memberships = get_posts($args);
+		
+		if (empty($memberships)) {
+			return "No memberships found.";
+		}
+		
+		$output = "ID\tTitle\tPrice\tStatus\n";
+		
+		foreach ($memberships as $membership) {
+			$mepr_options = MeprOptions::fetch();
+			$product = new MeprProduct($membership->ID);
+			$price = $product->price;
+			$status = $membership->post_status;
+			
+			$output .= "{$membership->ID}\t{$membership->post_title}\t{$mepr_options->currency_symbol}{$price}\t{$status}\n";
+		}
+		
+		return $output;
+	}
+	
+	/**
+	 * Get MemberPress transactions
+	 *
+	 * @return string Formatted transactions list
+	 */
+	private function get_memberpress_transactions() {
+		global $wpdb;
+		$mepr_db = new MeprDb();
+		
+		$transactions = $wpdb->get_results(
+			"SELECT id, user_id, product_id, amount, status, created_at
+			 FROM {$mepr_db->transactions}
+			 ORDER BY created_at DESC
+			 LIMIT 20"
+		);
+		
+		if (empty($transactions)) {
+			return "No transactions found.";
+		}
+		
+		$output = "ID\tUser\tMembership\tAmount\tStatus\tDate\n";
+		
+		foreach ($transactions as $txn) {
+			$user = get_user_by('id', $txn->user_id);
+			$username = $user ? $user->user_email : "User #{$txn->user_id}";
+			
+			$membership = get_post($txn->product_id);
+			$membership_title = $membership ? $membership->post_title : "Product #{$txn->product_id}";
+			
+			$mepr_options = MeprOptions::fetch();
+			$amount = $mepr_options->currency_symbol . $txn->amount;
+			$date = date('Y-m-d', strtotime($txn->created_at));
+			
+			$output .= "{$txn->id}\t{$username}\t{$membership_title}\t{$amount}\t{$txn->status}\t{$date}\n";
+		}
+		
+		return $output;
+	}
+	
+	/**
+	 * Get MemberPress subscriptions
+	 *
+	 * @return string Formatted subscriptions list
+	 */
+	private function get_memberpress_subscriptions() {
+		global $wpdb;
+		$mepr_db = new MeprDb();
+		
+		$subscriptions = $wpdb->get_results(
+			"SELECT id, user_id, product_id, status, created_at
+			 FROM {$mepr_db->subscriptions}
+			 ORDER BY created_at DESC
+			 LIMIT 20"
+		);
+		
+		if (empty($subscriptions)) {
+			return "No subscriptions found.";
+		}
+		
+		$output = "ID\tUser\tMembership\tStatus\tDate\n";
+		
+		foreach ($subscriptions as $sub) {
+			$user = get_user_by('id', $sub->user_id);
+			$username = $user ? $user->user_email : "User #{$sub->user_id}";
+			
+			$membership = get_post($sub->product_id);
+			$membership_title = $membership ? $membership->post_title : "Product #{$sub->product_id}";
+			
+			$date = date('Y-m-d', strtotime($sub->created_at));
+			
+			$output .= "{$sub->id}\t{$username}\t{$membership_title}\t{$sub->status}\t{$date}\n";
+		}
+		
+		return $output;
+	}
+	
+	/**
+	 * Create MemberPress membership
+	 *
+	 * @param string $command Command to parse
+	 * @return string Result message
+	 */
+	private function create_memberpress_membership($command) {
+		// Extract membership title
+		preg_match('/--name=[\'"]([^\'"]+)[\'"]/', $command, $name_matches);
+		$title = isset($name_matches[1]) ? $name_matches[1] : 'New Membership';
+		
+		// Extract price
+		preg_match('/--price=([0-9.]+)/', $command, $price_matches);
+		$price = isset($price_matches[1]) ? floatval($price_matches[1]) : 9.99;
+		
+		// Extract period
+		preg_match('/--period=([a-z]+)/', $command, $period_matches);
+		$period = isset($period_matches[1]) ? $period_matches[1] : 'month';
+		
+		// Create membership
+		$post_data = array(
+			'post_title'    => $title,
+			'post_content'  => '',
+			'post_status'   => 'publish',
+			'post_type'     => 'memberpressproduct',
+		);
+		
+		$product_id = wp_insert_post($post_data);
+		
+		if (is_wp_error($product_id)) {
+			return "Error creating membership: " . $product_id->get_error_message();
+		}
+		
+		// Set product meta
+		update_post_meta($product_id, '_mepr_product_price', $price);
+		update_post_meta($product_id, '_mepr_billing_type', 'recurring');
+		update_post_meta($product_id, '_mepr_product_period', 1);
+		update_post_meta($product_id, '_mepr_product_period_type', $period);
+		
+		$edit_url = admin_url("post.php?post={$product_id}&action=edit");
+		
+		return "Successfully created membership '{$title}' with ID {$product_id} at price {$price} per {$period}. You can edit it here: {$edit_url}";
 	}
 	
 	/**
