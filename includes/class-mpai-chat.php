@@ -12,11 +12,11 @@ if (!defined('WPINC')) {
 
 class MPAI_Chat {
     /**
-     * OpenAI integration instance
+     * API Router instance
      *
-     * @var MPAI_OpenAI
+     * @var MPAI_API_Router
      */
-    private $openai;
+    private $api_router;
 
     /**
      * MemberPress API integration instance
@@ -43,7 +43,7 @@ class MPAI_Chat {
      * Constructor
      */
     public function __construct() {
-        $this->openai = new MPAI_OpenAI();
+        $this->api_router = new MPAI_API_Router();
         $this->memberpress_api = new MPAI_MemberPress_API();
         $this->context_manager = new MPAI_Context_Manager();
         $this->load_conversation();
@@ -268,36 +268,68 @@ class MPAI_Chat {
             // Add user message to conversation
             $this->conversation[] = array('role' => 'user', 'content' => $message);
             
-            // Get response from OpenAI
-            error_log('MPAI: Generating chat completion');
-            $response = $this->openai->generate_chat_completion($this->conversation);
+            // Get response using the API Router
+            error_log('MPAI: Generating chat completion using API Router');
+            $response = $this->api_router->generate_completion($this->conversation);
             
+            // Handle different response formats
             if (is_wp_error($response)) {
-                error_log('MPAI: OpenAI returned error: ' . $response->get_error_message());
+                error_log('MPAI: API returned error: ' . $response->get_error_message());
                 return array(
                     'success' => false,
                     'message' => 'AI Assistant Error: ' . $response->get_error_message(),
                 );
             }
             
-            // Add assistant response to conversation
-            $this->conversation[] = array('role' => 'assistant', 'content' => $response);
-            
-            // Save conversation to database
-            error_log('MPAI: Saving message to database');
-            $this->save_message($message, $response);
-            
-            // Process any tool calls in the response
-            $processed_response = $this->process_tool_calls($response);
-            
-            // Process CLI commands (backward compatibility)
-            $processed_response = $this->process_commands($processed_response);
-            
-            return array(
-                'success' => true,
-                'message' => $processed_response,
-                'raw_response' => $response,
-            );
+            // Handle array response (structured with tool calls)
+            if (is_array($response) && isset($response['message'])) {
+                $message_content = $response['message'];
+                $has_tool_calls = isset($response['tool_calls']) && !empty($response['tool_calls']);
+                
+                // Add assistant response to conversation
+                $this->conversation[] = array('role' => 'assistant', 'content' => $message_content);
+                
+                // Save conversation to database
+                error_log('MPAI: Saving message to database');
+                $this->save_message($message, $message_content);
+                
+                if ($has_tool_calls) {
+                    error_log('MPAI: Processing tool calls from structured response');
+                    // Process tool calls from structure
+                    $processed_response = $this->process_structured_tool_calls($message_content, $response['tool_calls']);
+                } else {
+                    // Just process the message content
+                    $processed_response = $this->process_tool_calls($message_content);
+                    $processed_response = $this->process_commands($processed_response);
+                }
+                
+                return array(
+                    'success' => true,
+                    'message' => $processed_response,
+                    'raw_response' => $message_content,
+                    'api_used' => isset($response['api']) ? $response['api'] : 'unknown',
+                );
+            } else {
+                // Handle simple string response
+                // Add assistant response to conversation
+                $this->conversation[] = array('role' => 'assistant', 'content' => $response);
+                
+                // Save conversation to database
+                error_log('MPAI: Saving message to database');
+                $this->save_message($message, $response);
+                
+                // Process any tool calls in the response
+                $processed_response = $this->process_tool_calls($response);
+                
+                // Process CLI commands (backward compatibility)
+                $processed_response = $this->process_commands($processed_response);
+                
+                return array(
+                    'success' => true,
+                    'message' => $processed_response,
+                    'raw_response' => $response,
+                );
+            }
         } catch (Exception $e) {
             error_log('MPAI: Exception in process_message: ' . $e->getMessage());
             return array(
@@ -305,6 +337,46 @@ class MPAI_Chat {
                 'message' => 'Error processing message: ' . $e->getMessage(),
             );
         }
+    }
+    
+    /**
+     * Process structured tool calls from API response
+     *
+     * @param string $message Original message content
+     * @param array $tool_calls Tool calls from API response
+     * @return string Processed response with tool results
+     */
+    private function process_structured_tool_calls($message, $tool_calls) {
+        $processed_message = $message;
+        
+        foreach ($tool_calls as $tool_call) {
+            // Only process function calls
+            if (isset($tool_call['type']) && $tool_call['type'] === 'function' && isset($tool_call['function'])) {
+                $function = $tool_call['function'];
+                $tool_request = array(
+                    'name' => $function['name'],
+                    'parameters' => json_decode($function['arguments'], true) ?: array()
+                );
+                
+                // Execute the tool
+                $result = $this->context_manager->process_tool_request($tool_request);
+                
+                // Format the result
+                $formatted_result = $this->format_result_content($result);
+                
+                // Add the result to the message
+                if (strpos($processed_message, "I'll use the {$function['name']} tool") !== false ||
+                    strpos($processed_message, "Using the {$function['name']} tool") !== false) {
+                    // Look for sentences about using this tool and append the result
+                    $processed_message .= "\n\n**Tool Result:**\n\n```\n" . $formatted_result . "\n```";
+                } else {
+                    // Just append the result to the end of the message
+                    $processed_message .= "\n\n**Results from {$function['name']}:**\n\n```\n" . $formatted_result . "\n```";
+                }
+            }
+        }
+        
+        return $processed_message;
     }
     
     /**

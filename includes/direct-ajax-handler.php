@@ -130,12 +130,85 @@ switch ($action) {
         ));
         break;
         
+    case 'test_anthropic':
+        // Test Anthropic API
+        if (empty($_POST['api_key'])) {
+            echo json_encode(array(
+                'success' => false,
+                'data' => 'API key is required'
+            ));
+            break;
+        }
+        
+        $api_key = sanitize_text_field($_POST['api_key']);
+        $model = !empty($_POST['model']) ? sanitize_text_field($_POST['model']) : 'claude-3-opus-20240229';
+        
+        // Make a simple request to the Anthropic API
+        $response = wp_remote_post(
+            'https://api.anthropic.com/v1/messages',
+            array(
+                'headers' => array(
+                    'x-api-key' => $api_key,
+                    'anthropic-version' => '2023-06-01',
+                    'Content-Type' => 'application/json',
+                ),
+                'body' => json_encode(array(
+                    'model' => $model,
+                    'messages' => array(
+                        array(
+                            'role' => 'user',
+                            'content' => 'Hello, I am testing the MemberPress AI Assistant connection to Anthropic. Please respond with a very brief welcome message.'
+                        )
+                    ),
+                    'max_tokens' => 150
+                )),
+                'timeout' => 30,
+                'sslverify' => true,
+            )
+        );
+        
+        if (is_wp_error($response)) {
+            echo json_encode(array(
+                'success' => false,
+                'data' => $response->get_error_message()
+            ));
+            break;
+        }
+        
+        $status_code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+        
+        if ($status_code !== 200) {
+            $error_message = isset($data['error']['message']) ? $data['error']['message'] : 'Invalid API key or API error';
+            echo json_encode(array(
+                'success' => false,
+                'data' => 'API Error (' . $status_code . '): ' . $error_message
+            ));
+            break;
+        }
+        
+        // Save the API key and model to options if they've changed
+        if (get_option('mpai_anthropic_api_key') !== $api_key) {
+            update_option('mpai_anthropic_api_key', $api_key);
+        }
+        
+        if (get_option('mpai_anthropic_model') !== $model) {
+            update_option('mpai_anthropic_model', $model);
+        }
+        
+        echo json_encode(array(
+            'success' => true,
+            'data' => 'Anthropic API connection successful! Response: ' . $data['content'][0]['text']
+        ));
+        break;
+        
     case 'test_memberpress':
         // Test MemberPress API (simplified version)
         if (empty($_POST['api_key'])) {
             echo json_encode(array(
                 'success' => false,
-                'message' => 'API key is required'
+                'data' => 'API key is required'
             ));
             break;
         }
@@ -144,7 +217,7 @@ switch ($action) {
         if (!class_exists('MeprAppCtrl')) {
             echo json_encode(array(
                 'success' => false,
-                'message' => 'MemberPress plugin is not active'
+                'data' => 'MemberPress plugin is not active'
             ));
             break;
         }
@@ -153,7 +226,7 @@ switch ($action) {
         if (!class_exists('MeprRestRoutes')) {
             echo json_encode(array(
                 'success' => false,
-                'message' => 'MemberPress Developer Tools plugin is not active'
+                'data' => 'MemberPress Developer Tools plugin is not active'
             ));
             break;
         }
@@ -177,7 +250,7 @@ switch ($action) {
         if (is_wp_error($response)) {
             echo json_encode(array(
                 'success' => false,
-                'message' => $response->get_error_message()
+                'data' => $response->get_error_message()
             ));
             break;
         }
@@ -190,18 +263,14 @@ switch ($action) {
             $error_message = isset($data['message']) ? $data['message'] : 'Invalid API key or API error';
             echo json_encode(array(
                 'success' => false,
-                'message' => 'API Error (' . $status_code . '): ' . $error_message
+                'data' => 'API Error (' . $status_code . '): ' . $error_message
             ));
             break;
         }
         
         echo json_encode(array(
             'success' => true,
-            'message' => 'MemberPress API connection successful! Found ' . count($data) . ' membership(s).',
-            'data' => array(
-                'memberships_count' => count($data),
-                'first_membership' => !empty($data) ? $data[0]['title'] : 'none'
-            )
+            'data' => 'MemberPress API connection successful! Found ' . count($data) . ' membership(s).'
         ));
         break;
         

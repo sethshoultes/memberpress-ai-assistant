@@ -5,6 +5,35 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-03-30
+
+### Added
+- Implemented dual API support with both OpenAI and Anthropic Claude
+- Created API Router to manage requests between multiple AI providers
+- Added Anthropic integration class for Claude API
+- Enhanced Settings page with Anthropic API configuration options
+- Added API fallback mechanism for improved reliability
+- Created direct test tool for Anthropic Claude API
+- Implemented API Provider selection for primary and fallback preferences
+- Added compatibility with Claude's function calling format
+- Added support for Claude 3 Opus, Sonnet, and Haiku models
+- Improved tool management with dynamic tool registration and routing
+- Created structured tool calls handling for both API formats
+
+### Changed
+- Refactored Chat class to use the new API Router
+- Updated system messages handling for compatibility with both APIs
+- Enhanced error handling with API-specific debugging information
+- Improved settings UI with dedicated sections for each API provider
+- Restructured default settings to support multiple API configurations
+- Added API attribution in the chat interface
+
+### Fixed
+- Fixed issues with tool calling formats between different APIs
+- Enhanced error handling for API-specific error messages
+- Improved response processing for different API response structures
+- Fixed message formatting with proper context passing between APIs
+
 ## [1.3.0] - 2025-03-29
 
 ### Added

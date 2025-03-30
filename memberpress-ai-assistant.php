@@ -3,7 +3,7 @@
  * Plugin Name: MemberPress AI Assistant
  * Plugin URI: https://example.com/memberpress-ai-assistant
  * Description: AI-powered chat assistant for MemberPress that helps with membership management, troubleshooting, and WordPress CLI command execution.
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: MemberPress
  * Author URI: https://memberpress.com
  * Text Domain: memberpress-ai-assistant
@@ -28,7 +28,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('MPAI_VERSION', '1.3.0');
+define('MPAI_VERSION', '1.4.0');
 define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MPAI_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -116,6 +116,8 @@ class MemberPress_AI_Assistant {
     private function load_dependencies() {
         // API Integration Classes
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-openai.php';
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-anthropic.php';
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-api-router.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-memberpress-api.php';
         
         // Functionality Classes
@@ -756,20 +758,34 @@ class MemberPress_AI_Assistant {
      */
     private function set_default_options() {
         $default_options = array(
+            // OpenAI Settings
             'api_key' => '',
             'model' => 'gpt-4o',
             'temperature' => 0.7,
             'max_tokens' => 2048,
+            
+            // Anthropic Settings
+            'anthropic_api_key' => '',
+            'anthropic_model' => 'claude-3-opus-20240229',
+            'anthropic_temperature' => 0.7,
+            'anthropic_max_tokens' => 2048,
+            
+            // API Router Settings
+            'primary_api' => 'openai',
+            
+            // Chat Interface Settings
             'enable_chat' => true,
             'chat_position' => 'bottom-right',
             'show_on_all_pages' => true,
             'welcome_message' => 'Hi there! I\'m your MemberPress AI Assistant. How can I help you today?',
+            
             // MCP and CLI settings
             'enable_mcp' => true,
             'enable_cli_commands' => true,
             'enable_wp_cli_tool' => true,
             'enable_memberpress_info_tool' => true,
             'allowed_cli_commands' => array('wp user list', 'wp post list', 'wp plugin list'),
+            
             // Agent system settings
             'agent_system_enabled' => true,
             'agent_system_version' => MPAI_VERSION,
