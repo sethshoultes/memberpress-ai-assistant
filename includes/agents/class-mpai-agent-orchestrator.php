@@ -411,7 +411,32 @@ class MPAI_Agent_Orchestrator {
 		// Register the MemberPress agent
 		$this->register_memberpress_agent();
 		
+		// Register the Command Validation agent
+		$this->register_command_validation_agent();
+		
 		// Other agents would be registered here
+	}
+	
+	/**
+	 * Register Command Validation agent
+	 */
+	private function register_command_validation_agent() {
+		// Check if the class exists
+		if (!class_exists('MPAI_Command_Validation_Agent')) {
+			$agent_path = plugin_dir_path(__FILE__) . 'specialized/class-mpai-command-validation-agent.php';
+			if (file_exists($agent_path)) {
+				require_once $agent_path;
+			}
+		}
+		
+		// Create and register the agent if available
+		if (class_exists('MPAI_Command_Validation_Agent')) {
+			$validation_agent = new MPAI_Command_Validation_Agent($this->tool_registry, $this->logger);
+			$this->register_agent('command_validation', $validation_agent);
+			$this->logger->info('Command Validation Agent registered successfully');
+		} else {
+			$this->logger->warning('Command Validation Agent class not found');
+		}
 	}
 	
 	/**

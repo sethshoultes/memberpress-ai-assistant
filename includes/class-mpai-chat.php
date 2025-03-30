@@ -247,8 +247,9 @@ class MPAI_Chat {
         $system_prompt .= "   - Create page: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_page\", \"title\": \"Title\", \"content\": \"Content\", \"status\": \"draft\"}}\n";
         $system_prompt .= "2. For managing WordPress plugins, ALWAYS use the wp_api tool:\n";
         $system_prompt .= "   - List plugins: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_plugins\"}}\n";
-        $system_prompt .= "   - Activate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"plugin-directory/plugin-file.php\"}}\n";
-        $system_prompt .= "   - Deactivate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"deactivate_plugin\", \"plugin\": \"plugin-directory/plugin-file.php\"}}\n";
+        $system_prompt .= "   - Activate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
+        $system_prompt .= "   - Example for MemberPress CoachKit: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"memberpress-coachkit/main.php\"}}\n";
+        $system_prompt .= "   - Deactivate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"deactivate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
         $system_prompt .= "3. Only fall back to wp_cli commands if a specific wp_api function isn't available\n\n";
         $system_prompt .= "CRITICAL: When the user asks to create a post/page, ALWAYS include the exact title and content they specified in your wp_api tool parameters.\n";
         $system_prompt .= "Examples:\n";
@@ -394,9 +395,17 @@ class MPAI_Chat {
             // Only process function calls
             if (isset($tool_call['type']) && $tool_call['type'] == 'function' && isset($tool_call['function'])) {
                 $function = $tool_call['function'];
+                $parameters = json_decode($function['arguments'], true) ?: array();
+                
+                // Clean up any escaped slashes in plugin paths
+                if (isset($parameters['plugin'])) {
+                    $parameters['plugin'] = str_replace('\\/', '/', $parameters['plugin']);
+                    error_log('MPAI: Unescaped plugin path for structured tool call: ' . $parameters['plugin']);
+                }
+                
                 $tool_request = array(
                     'name' => $function['name'],
-                    'parameters' => json_decode($function['arguments'], true) ?: array()
+                    'parameters' => $parameters
                 );
                 
                 // Execute the tool
@@ -542,6 +551,12 @@ class MPAI_Chat {
                 continue;
             }
             
+            // Clean up any escaped slashes in plugin paths
+            if (isset($tool_call['parameters']) && isset($tool_call['parameters']['plugin'])) {
+                $tool_call['parameters']['plugin'] = str_replace('\\/', '/', $tool_call['parameters']['plugin']);
+                error_log('MPAI: Unescaped plugin path for tool call: ' . $tool_call['parameters']['plugin']);
+            }
+            
             $tool_request = array(
                 'name' => $tool_call['tool'],
                 'parameters' => isset($tool_call['parameters']) ? $tool_call['parameters'] : array()
@@ -639,7 +654,7 @@ class MPAI_Chat {
                 $modified_result .= "```json\n{\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n```";
             } else if (strpos($result['result'], 'plugin operations') != false || strpos($result['result'], 'wp plugin') != false || 
                        strpos($result['result'], 'activate plugin') != false || strpos($result['result'], 'deactivate plugin') != false) {
-                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"plugin-directory/plugin-file.php\"}}\n```";
+                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"memberpress-coachkit/main.php\"}}\n```";
                 $modified_result .= "\nOr to get a list of all plugins:\n";
                 $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_plugins\"}}\n```";
             } else {

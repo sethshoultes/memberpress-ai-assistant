@@ -772,10 +772,17 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			throw new Exception( 'Plugin parameter is required. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
 		}
 		
+		// Ensure proper format without escaped slashes
 		$plugin = $parameters['plugin'];
+		$plugin = str_replace('\\/', '/', $plugin); // Replace escaped slashes
 		
 		// Check if plugin exists
 		$all_plugins = get_plugins();
+		
+		// Debug
+		error_log('MPAI: Attempting to activate plugin: ' . $plugin);
+		error_log('MPAI: Available plugins: ' . implode(', ', array_keys($all_plugins)));
+		
 		if ( ! isset( $all_plugins[ $plugin ] ) ) {
 			throw new Exception( "Plugin '{$plugin}' does not exist" );
 		}
@@ -829,10 +836,17 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			throw new Exception( 'Plugin parameter is required. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
 		}
 		
+		// Ensure proper format without escaped slashes
 		$plugin = $parameters['plugin'];
+		$plugin = str_replace('\\/', '/', $plugin); // Replace escaped slashes
 		
 		// Check if plugin exists
 		$all_plugins = get_plugins();
+		
+		// Debug
+		error_log('MPAI: Attempting to deactivate plugin: ' . $plugin);
+		error_log('MPAI: Available plugins: ' . implode(', ', array_keys($all_plugins)));
+		
 		if ( ! isset( $all_plugins[ $plugin ] ) ) {
 			throw new Exception( "Plugin '{$plugin}' does not exist" );
 		}
