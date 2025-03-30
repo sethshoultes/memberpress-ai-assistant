@@ -5,6 +5,27 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2025-03-30
+
+### Added
+- Added direct database access for MemberPress data to reduce dependencies
+- Created comprehensive documentation index in docs folder
+- Implemented project organization improvements
+- Created archive system for test and deprecated files
+
+### Changed
+- Updated README.md with current features and organization
+- Reorganized test files into archive directory
+- Updated MemberPress API class to prioritize direct database access
+- Removed dependency on MemberPress Developer Tools
+- Improved diagnostic tool to work without Developer Tools
+
+### Fixed
+- Fixed fatal error in diagnostic tool accessing undeclared static property
+- Fixed Anthropic API auto-testing in settings page
+- Enhanced fallback methods for member data retrieval when API fails
+- Improved direct AJAX handler for MemberPress tests
+
 ## [1.4.1] - 2025-03-30
 
 ### Added

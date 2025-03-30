@@ -1,51 +1,33 @@
 # MemberPress AI Assistant Documentation
 
-Welcome to the documentation for the MemberPress AI Assistant plugin. This documentation provides comprehensive information about installing, configuring, and using the AI Assistant and its advanced Agent System.
+Welcome to the MemberPress AI Assistant documentation hub. This directory contains comprehensive documentation for both users and developers.
 
-## Table of Contents
+## User Documentation
 
-### Getting Started
-- [User Guide](./user-guide.md) - Basic usage instructions for the AI Assistant
-- [Developer Guide](./developer-guide.md) - Technical information for developers
+- [User Guide](user-guide.md) - Complete guide for setting up and using the MemberPress AI Assistant
+- [Agent System User Guide](agent-system-user-guide.md) - How to use the AI agent system and its specialized agents
+- [Agent System Quickstart](agent-system-quickstart.md) - Quick start guide for the agent system
 
-### Agent System
-- [Agent System Quick Start](./agent-system-quickstart.md) - Get up and running with AI agents quickly
-- [Agent System User Guide](./agent-system-user-guide.md) - Complete guide to using the agent system
-- [Agent System Specification](./agent-system-spec.md) - Technical specification of the agent system
-- [Agent System Implementation](./agent-system-implementation.md) - Detailed implementation plan for developers
+## Developer Documentation
 
-## Overview
+- [Developer Guide](developer-guide.md) - Technical guide for developers including hooks and integration examples
+- [Project Specification](project-specification.md) - Detailed project overview and architecture
+- [Agent System Specification](agent-system-spec.md) - Technical specification of the agent system architecture
+- [Agent System Implementation](agent-system-implementation.md) - Implementation details of the agent system
 
-The MemberPress AI Assistant enhances your WordPress and MemberPress experience by providing:
+## Testing and Status
 
-1. **Chat Interface** - Ask questions and get instant help with MemberPress
-2. **AI Agents** - Specialized assistants that can perform tasks:
-   - Content Agent - Create and manage website content
-   - System Agent - Manage WordPress updates, plugins, and settings
-   - Security Agent - Monitor and enhance site security
-   - Analytics Agent - Generate insights about your membership site
-   - MemberPress Agent - Handle MemberPress-specific tasks and configurations
+- [Test Procedures](../tests/test-procedures.md) - Testing procedures and checklists
+- [Changelog](../CHANGELOG.md) - Version history with detailed changes
 
-3. **WP-CLI Integration** - Execute WordPress commands with natural language requests
-4. **Content Generation** - Create blog posts, pages, and marketing materials
+## SDK Integration
 
-## Key Features
+- [SDK README](../sdk/README.md) - Documentation for the Python SDK integration
 
-- **Natural Language Processing** - Communicate with your site in plain English
-- **Contextual Understanding** - The assistant remembers conversation history
-- **Task Automation** - Complete complex tasks with simple requests
-- **MemberPress Integration** - Deep knowledge of MemberPress functionality
-- **Security-Focused Design** - Built with WordPress security best practices
-- **Extensible Architecture** - Developers can add custom agents and capabilities
+## Media and Assets
 
-## System Requirements
+- [Images](images/) - Images used in documentation
 
-- WordPress 5.8+
-- MemberPress 1.9.0+
-- PHP 7.4+ (8.0+ recommended)
-- OpenAI API key
-- WP-CLI installed on server (for command execution)
+## Archived Files
 
-## Support
-
-If you need assistance, please contact MemberPress support through your account portal or visit [support.memberpress.com](https://support.memberpress.com).
+- [Archive](archive/) - Archived test files and deprecated functionality
