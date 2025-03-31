@@ -17,6 +17,8 @@ Welcome to the MemberPress AI Assistant documentation hub. This directory contai
 - [Command Validation Agent](command-validation-agent.md) - Documentation for the command validation system
 - [Console Logging System](console-logging-system.md) - Documentation for the browser console logging system
 - [Tool Call Detection](tool-call-detection.md) - Documentation for the enhanced tool call detection system
+- [Content Marker System](CONTENT_MARKER_SYSTEM.md) - Documentation for the content marker system
+- [Blog Post Fix Summary](BLOG_POST_FIX_SUMMARY.md) - Detailed summary of the blog post publishing fix
 
 ## Testing and Status
 

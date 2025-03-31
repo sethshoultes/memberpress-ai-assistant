@@ -284,6 +284,13 @@ class MPAI_API_Router {
         $this->primary_api = get_option('mpai_primary_api', 'openai');
         error_log('MPAI API Router: Reloaded primary API setting: ' . $this->primary_api);
         
+        // Force refresh WordPress plugins cache
+        wp_cache_delete('plugins', 'plugins');
+        if (function_exists('get_plugins')) {
+            get_plugins('', true); // Force refresh
+            error_log('MPAI API Router: Refreshed WordPress plugins cache');
+        }
+        
         error_log('MPAI API Router: State reset complete');
     }
 

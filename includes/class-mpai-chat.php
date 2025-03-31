@@ -284,8 +284,17 @@ class MPAI_Chat {
      * @return string System prompt
      */
     private function get_system_prompt() {
-        // Get MemberPress data summary
-        $memberpress_data = $this->memberpress_api->get_data_summary();
+        error_log('MPAI Chat: Getting fresh system prompt');
+        
+        // Make sure the memberpress API instance is fresh
+        if (!isset($this->memberpress_api) || !is_object($this->memberpress_api)) {
+            error_log('MPAI Chat: Recreating MemberPress API instance for fresh data');
+            $this->memberpress_api = new MPAI_MemberPress_API();
+        }
+        
+        // Force a refresh of the MemberPress data - we don't want cached values
+        error_log('MPAI Chat: Fetching fresh MemberPress data summary');
+        $memberpress_data = $this->memberpress_api->get_data_summary(true); // Pass true to force refresh
         
         $system_prompt = "You are an AI assistant for MemberPress, a WordPress membership plugin. ";
         $system_prompt .= "You have access to the following MemberPress data:\n\n";

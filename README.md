@@ -93,7 +93,7 @@ For detailed information, please check these documentation files:
 - [Agent System Specification](docs/agent-system-spec.md) - Detailed specification of the agent system
 - [Agent System Implementation](docs/agent-system-implementation.md) - Implementation details for the agent system
 - [Agent System Quick Start](docs/agent-system-quickstart.md) - Get started with the agent system quickly
-- [Content Marker System](CONTENT_MARKER_SYSTEM.md) - Comprehensive documentation of the content marker implementation
+- [Content Marker System](docs/CONTENT_MARKER_SYSTEM.md) - Comprehensive documentation of the content marker implementation
 - [Testing Procedures](tests/test-procedures.md) - Procedures for testing the plugin
 
 ## Agent System

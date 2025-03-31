@@ -775,9 +775,24 @@ class MPAI_MemberPress_API {
      *
      * @return array MemberPress data summary
      */
-    public function get_data_summary() {
+    public function get_data_summary($force_refresh = false) {
         try {
-            error_log('MPAI: Getting MemberPress data summary');
+            error_log('MPAI: Getting MemberPress data summary' . ($force_refresh ? ' (forced refresh)' : ''));
+            
+            // Clear any cached data if forcing refresh
+            if ($force_refresh) {
+                error_log('MPAI: Clearing any cached MemberPress data');
+                global $wpdb;
+                wp_cache_flush();
+                
+                // Clear internal WordPress cache for plugins
+                wp_cache_delete('plugins', 'plugins');
+                
+                // Force get_plugins to reload
+                if (function_exists('get_plugins')) {
+                    get_plugins('', true); // Use true to refresh the cache
+                }
+            }
             
             // Initialize with default values
             $summary = array(

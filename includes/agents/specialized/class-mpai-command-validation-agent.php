@@ -488,11 +488,20 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
      *
      * @return array List of available plugins
      */
-    private function get_available_plugins() {
-        // Return cached plugins if available
-        if ( isset( $this->cache['plugins'] ) && !empty( $this->cache['plugins'] ) ) {
+    private function get_available_plugins($force_refresh = false) {
+        // Return cached plugins if available and not forcing refresh
+        if (!$force_refresh && isset($this->cache['plugins']) && !empty($this->cache['plugins'])) {
             $this->logger->info('Using cached plugins list with ' . count($this->cache['plugins']) . ' plugins');
             return $this->cache['plugins'];
+        }
+        
+        // If we're force refreshing, clear WordPress plugin cache
+        if ($force_refresh) {
+            $this->logger->info('Force refreshing plugins list');
+            // Clear WordPress plugin cache
+            wp_cache_delete('plugins', 'plugins');
+            // Also clear our internal cache
+            unset($this->cache['plugins']);
         }
         
         // Initialize empty plugins array

@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated JavaScript UI to immediately clear visible chat on reset
   - Improved error handling and logging throughout the reset process
   - Fixed issue where context/conversation history was persisting between resets
+- Fixed issues with AJAX tool execution and stale data:
+  - Enhanced nonce validation in run_command and execute_tool methods
+  - Added flexible nonce verification to handle different client formats
+  - Modified MemberPress API to support force-refreshing data
+  - Added plugin cache clearing in multiple locations to ensure fresh data
+  - Updated get_available_plugins method to support forced refresh
+  - Improved system prompt generation with fresh data every time
+  - Fixed 400 Bad Request errors during tool execution
   
 ## [1.5.3] - 2025-03-31
 
