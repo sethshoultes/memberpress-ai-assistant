@@ -40,6 +40,22 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             'validate_wp_block_commands',
             'validate_wp_api_requests',
         ];
+        
+        // Initialize fallback logger if none was provided
+        if (!isset($this->logger) || !is_object($this->logger)) {
+            // Create a default logger that uses error_log
+            $this->logger = new stdClass();
+            $this->logger->info = function($message) { 
+                error_log('MPAI INFO: ' . $message); 
+            };
+            $this->logger->error = function($message) { 
+                error_log('MPAI ERROR: ' . $message); 
+            };
+            $this->logger->warning = function($message) { 
+                error_log('MPAI WARNING: ' . $message); 
+            };
+            error_log('MPAI: Command validation agent initialized with fallback logger');
+        }
     }
 
     /**
@@ -66,19 +82,36 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
                 'source' => 'command_validation_agent',
             ];
             
-            // FAST PATH: Skip validation for wp post list commands
-            if ($command_type === 'wp_cli' && isset($command_data['command']) && 
-                strpos($command_data['command'], 'wp post list') === 0) {
-                $this->logger->info('Bypassing validation for wp post list command');
-                return $validation_result;
+            // FAST PATH: Skip validation for wp post list and wp user list commands
+            if ($command_type === 'wp_cli' && isset($command_data['command'])) {
+                // Check for post list command
+                if (strpos($command_data['command'], 'wp post list') === 0) {
+                    $this->logger->info('Bypassing validation for wp post list command');
+                    return $validation_result;
+                }
+                
+                // Check for user list command
+                if (strpos($command_data['command'], 'wp user list') === 0) {
+                    $this->logger->info('Bypassing validation for wp user list command');
+                    return $validation_result;
+                }
             }
             
-            // Also check for post list commands in tool calls
+            // Also check for post/user list commands in tool calls
             if ($command_type === 'tool_call' && isset($command_data['parameters']) && 
-                isset($command_data['parameters']['command']) && 
-                strpos($command_data['parameters']['command'], 'wp post list') === 0) {
-                $this->logger->info('Bypassing validation for wp post list tool call');
-                return $validation_result;
+                isset($command_data['parameters']['command'])) {
+                
+                // Check for post list command in tool call
+                if (strpos($command_data['parameters']['command'], 'wp post list') === 0) {
+                    $this->logger->info('Bypassing validation for wp post list tool call');
+                    return $validation_result;
+                }
+                
+                // Check for user list command in tool call
+                if (strpos($command_data['parameters']['command'], 'wp user list') === 0) {
+                    $this->logger->info('Bypassing validation for wp user list tool call');
+                    return $validation_result;
+                }
             }
             
             // Process based on command type
@@ -212,7 +245,19 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             }
             // Theme commands
             else if ( strpos( $command, 'wp theme ' ) === 0 ) {
-                // Add theme command validations here
+                $result = $this->validate_wp_cli_theme_command( $command, $context );
+                $result['original_command'] = $command_data;
+                $result['validated_command'] = [
+                    'command' => $result['validated_command']
+                ];
+            }
+            // Block commands
+            else if ( strpos( $command, 'wp block ' ) === 0 ) {
+                $result = $this->validate_wp_cli_block_command( $command, $context );
+                $result['original_command'] = $command_data;
+                $result['validated_command'] = [
+                    'command' => $result['validated_command']
+                ];
             }
             
             return $result;
@@ -529,6 +574,351 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             return false;
         } catch (Exception $e) {
             $this->logger->error('Error in find_plugin_path: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Validate a WP-CLI theme command
+     *
+     * @param string $command The command string
+     * @param array $context Context data
+     * @return array Validation result
+     */
+    private function validate_wp_cli_theme_command( $command, $context ) {
+        $result = [
+            'success' => true,
+            'original_command' => $command,
+            'validated_command' => $command,
+            'message' => 'Theme command validated successfully',
+            'source' => 'command_validation_agent',
+        ];
+        
+        try {
+            // Extract the action (activate, update, etc.) and theme
+            if ( preg_match( '/wp theme (activate|update|install|delete)\s+([^\s]+)/', $command, $matches ) ) {
+                $action = $matches[1];
+                $theme_slug = trim( $matches[2], '"' ); // Remove quotes if present
+                
+                if ( $action === 'activate' || $action === 'update' ) {
+                    // Get available themes
+                    $available_themes = $this->get_available_themes();
+                    
+                    // Skip validation if we couldn't get themes
+                    if ( empty( $available_themes ) ) {
+                        $this->logger->warning( 'Could not get themes list, bypassing theme validation' );
+                        return $result;
+                    }
+                    
+                    // Check if the theme exists
+                    $theme_stylesheet = $this->find_theme_stylesheet( $theme_slug, $available_themes );
+                    
+                    if ( ! $theme_stylesheet ) {
+                        $result['success'] = false;
+                        $result['message'] = "Theme '{$theme_slug}' not found. Please check available themes with 'wp theme list'.";
+                    } else {
+                        // Update command with the correct theme stylesheet
+                        $result['validated_command'] = "wp theme {$action} {$theme_stylesheet}";
+                        $result['message'] = "Theme stylesheet corrected from '{$theme_slug}' to '{$theme_stylesheet}'";
+                    }
+                }
+            }
+            
+            return $result;
+        } catch ( Exception $e ) {
+            $this->logger->error( 'Error in validate_wp_cli_theme_command: ' . $e->getMessage() );
+            return $result;
+        }
+    }
+    
+    /**
+     * Get list of available themes
+     *
+     * @return array List of available themes
+     */
+    private function get_available_themes() {
+        // Return cached themes if available
+        if ( isset( $this->cache['themes'] ) && !empty( $this->cache['themes'] ) ) {
+            return $this->cache['themes'];
+        }
+        
+        // Initialize empty themes array
+        $themes = [];
+        
+        try {
+            // Get the themes
+            if ( function_exists( 'wp_get_themes' ) ) {
+                $themes = wp_get_themes();
+                $this->cache['themes'] = $themes;
+            } else {
+                $this->logger->error( 'wp_get_themes function not available' );
+            }
+        } catch ( Exception $e ) {
+            $this->logger->error( 'Error getting themes: ' . $e->getMessage() );
+        }
+        
+        // Always return an array, even if empty
+        return $themes;
+    }
+    
+    /**
+     * Find the correct theme stylesheet based on a slug or partial name
+     *
+     * @param string $theme_slug The theme slug or name
+     * @param array $available_themes List of available themes
+     * @return string|false The correct theme stylesheet or false if not found
+     */
+    private function find_theme_stylesheet( $theme_slug, $available_themes ) {
+        try {
+            // Bail early if theme_slug is empty
+            if ( empty( $theme_slug ) || empty( $available_themes ) ) {
+                return false;
+            }
+            
+            // Check if slug exactly matches a theme's stylesheet
+            if ( isset( $available_themes[$theme_slug] ) ) {
+                return $theme_slug;
+            }
+            
+            // Check if slug matches a theme name (case insensitive)
+            $theme_slug_lower = strtolower( $theme_slug );
+            foreach ( $available_themes as $stylesheet => $theme ) {
+                // Exact name match
+                if ( strtolower( $theme->get('Name') ) === $theme_slug_lower ) {
+                    return $stylesheet;
+                }
+            }
+            
+            // Check for partial matches
+            foreach ( $available_themes as $stylesheet => $theme ) {
+                // Partial name match
+                if ( stripos( $theme->get('Name'), $theme_slug ) !== false ) {
+                    return $stylesheet;
+                }
+            }
+            
+            // No matches found
+            return false;
+        } catch ( Exception $e ) {
+            $this->logger->error( 'Error in find_theme_stylesheet: ' . $e->getMessage() );
+            return false;
+        }
+    }
+    
+    /**
+     * Validate a WP-CLI block command
+     *
+     * @param string $command The command string
+     * @param array $context Context data
+     * @return array Validation result
+     */
+    private function validate_wp_cli_block_command( $command, $context ) {
+        $result = [
+            'success' => true,
+            'original_command' => $command,
+            'validated_command' => $command,
+            'message' => 'Block command validated successfully',
+            'source' => 'command_validation_agent',
+        ];
+        
+        try {
+            // Extract the action and block name
+            if ( preg_match( '/wp block (unregister)\s+([^\s]+)/', $command, $matches ) ) {
+                $action = $matches[1];
+                $block_name = trim( $matches[2], '"' ); // Remove quotes if present
+                
+                // Only perform validation for certain actions
+                if ( $action === 'unregister' ) {
+                    // Get available blocks
+                    $available_blocks = $this->get_available_blocks();
+                    
+                    // Skip validation if we couldn't get blocks
+                    if ( empty( $available_blocks ) ) {
+                        $this->logger->warning( 'Could not get blocks list, bypassing block validation' );
+                        return $result;
+                    }
+                    
+                    // Check if the block exists
+                    $block_path = $this->find_block_path( $block_name, $available_blocks );
+                    
+                    if ( ! $block_path ) {
+                        $result['success'] = false;
+                        $result['message'] = "Block '{$block_name}' not found. Please check available blocks.";
+                    } else {
+                        // Update command with the correct block path
+                        $result['validated_command'] = "wp block {$action} {$block_path}";
+                        if ( $block_path !== $block_name ) {
+                            $result['message'] = "Block name corrected from '{$block_name}' to '{$block_path}'";
+                        }
+                    }
+                }
+            }
+            
+            return $result;
+        } catch ( Exception $e ) {
+            $this->logger->error( 'Error in validate_wp_cli_block_command: ' . $e->getMessage() );
+            return $result;
+        }
+    }
+    
+    /**
+     * Get list of available blocks
+     *
+     * @return array List of available blocks
+     */
+    private function get_available_blocks() {
+        // Return cached blocks if available
+        if ( isset( $this->cache['blocks'] ) && !empty( $this->cache['blocks'] ) ) {
+            return $this->cache['blocks'];
+        }
+        
+        // Initialize empty blocks array
+        $blocks = [];
+        
+        try {
+            // Check if block registry is available
+            if ( class_exists( 'WP_Block_Type_Registry' ) ) {
+                $registry = WP_Block_Type_Registry::get_instance();
+                $blocks = $registry->get_all_registered();
+                $this->cache['blocks'] = $blocks;
+            } else {
+                $this->logger->error( 'WP_Block_Type_Registry class not available' );
+            }
+        } catch ( Exception $e ) {
+            $this->logger->error( 'Error getting blocks: ' . $e->getMessage() );
+        }
+        
+        // Always return an array, even if empty
+        return $blocks;
+    }
+    
+    /**
+     * Find the correct block path based on a name or partial name
+     *
+     * @param string $block_name The block name
+     * @param array $available_blocks List of available blocks
+     * @return string|false The correct block path or false if not found
+     */
+    private function find_block_path( $block_name, $available_blocks ) {
+        try {
+            // Bail early if block_name is empty
+            if ( empty( $block_name ) || empty( $available_blocks ) ) {
+                return false;
+            }
+            
+            // Check for exact block name match
+            if ( isset( $available_blocks[$block_name] ) ) {
+                return $block_name;
+            }
+            
+            // Check for namespace match (if no namespace is provided)
+            if ( strpos( $block_name, '/' ) === false ) {
+                // Try common namespaces
+                $common_namespaces = [ 'core', 'core-embed', 'memberpress', 'wp', 'woocommerce' ];
+                foreach ( $common_namespaces as $namespace ) {
+                    $full_name = $namespace . '/' . $block_name;
+                    if ( isset( $available_blocks[$full_name] ) ) {
+                        return $full_name;
+                    }
+                }
+            }
+            
+            // Check for block name that contains the partial name (case insensitive)
+            $block_name_lower = strtolower( $block_name );
+            foreach ( array_keys( $available_blocks ) as $block_path ) {
+                if ( stripos( $block_path, $block_name_lower ) !== false ) {
+                    return $block_path;
+                }
+            }
+            
+            // No matches found
+            return false;
+        } catch ( Exception $e ) {
+            $this->logger->error( 'Error in find_block_path: ' . $e->getMessage() );
+            return false;
+        }
+    }
+    
+    /**
+     * Get list of available patterns
+     *
+     * @return array List of available patterns
+     */
+    private function get_available_patterns() {
+        // Return cached patterns if available
+        if ( isset( $this->cache['patterns'] ) && !empty( $this->cache['patterns'] ) ) {
+            return $this->cache['patterns'];
+        }
+        
+        // Initialize empty patterns array
+        $patterns = [];
+        
+        try {
+            // Check if pattern registry is available
+            if ( class_exists( 'WP_Block_Patterns_Registry' ) ) {
+                $registry = WP_Block_Patterns_Registry::get_instance();
+                $patterns = $registry->get_all_registered();
+                $this->cache['patterns'] = $patterns;
+            } else {
+                $this->logger->error( 'WP_Block_Patterns_Registry class not available' );
+            }
+        } catch ( Exception $e ) {
+            $this->logger->error( 'Error getting patterns: ' . $e->getMessage() );
+        }
+        
+        // Always return an array, even if empty
+        return $patterns;
+    }
+    
+    /**
+     * Find the correct pattern path based on a name or partial name
+     *
+     * @param string $pattern_name The pattern name
+     * @param array $available_patterns List of available patterns
+     * @return string|false The correct pattern path or false if not found
+     */
+    private function find_pattern_path( $pattern_name, $available_patterns ) {
+        try {
+            // Bail early if pattern_name is empty
+            if ( empty( $pattern_name ) || empty( $available_patterns ) ) {
+                return false;
+            }
+            
+            // Check for direct matches
+            foreach ( $available_patterns as $pattern ) {
+                if ( isset( $pattern['name'] ) && $pattern['name'] === $pattern_name ) {
+                    return $pattern['name'];
+                }
+            }
+            
+            // Check for name-based matches (case insensitive)
+            $pattern_name_lower = strtolower( $pattern_name );
+            foreach ( $available_patterns as $pattern ) {
+                if ( isset( $pattern['name'] ) && strtolower( $pattern['name'] ) === $pattern_name_lower ) {
+                    return $pattern['name'];
+                }
+                
+                // Also check title if available
+                if ( isset( $pattern['title'] ) && strtolower( $pattern['title'] ) === $pattern_name_lower ) {
+                    return $pattern['name'];
+                }
+            }
+            
+            // Check for partial matches in name or title
+            foreach ( $available_patterns as $pattern ) {
+                if ( isset( $pattern['name'] ) && stripos( $pattern['name'], $pattern_name ) !== false ) {
+                    return $pattern['name'];
+                }
+                
+                if ( isset( $pattern['title'] ) && stripos( $pattern['title'], $pattern_name ) !== false ) {
+                    return $pattern['name'];
+                }
+            }
+            
+            // No matches found
+            return false;
+        } catch ( Exception $e ) {
+            $this->logger->error( 'Error in find_pattern_path: ' . $e->getMessage() );
             return false;
         }
     }

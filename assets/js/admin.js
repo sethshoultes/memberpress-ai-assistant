@@ -206,8 +206,14 @@
         $chatForm.on('submit', function(e) {
             e.preventDefault();
             
-            // Check if $messageInput exists and has a val method before calling trim
-            const message = $messageInput && $messageInput.val ? $messageInput.val().trim() : '';
+            // Early return if form exists but message input doesn't
+            if (!$messageInput || !$messageInput.length) {
+                console.log('MPAI: Message input not found, cannot process form submission');
+                return;
+            }
+            
+            // Get message safely
+            const message = $messageInput.val().trim();
             
             if (message) {
                 sendMessage(message);

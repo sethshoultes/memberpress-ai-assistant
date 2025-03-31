@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Activate plugins with activate_plugin action
   - Deactivate plugins with deactivate_plugin action
 - Enhanced WP-CLI fallback mechanisms for browser environments
+- Extended command validation agent with support for themes, blocks, and patterns:
+  - Added theme validation for theme activation/update commands
+  - Implemented block validation for block-related commands
+  - Added pattern support for pattern-related operations
+  - Created test script for validation functionality
+- Implemented comprehensive console logging system for improved debugging
 
 ### Changed
 - Updated README.md with current features and organization

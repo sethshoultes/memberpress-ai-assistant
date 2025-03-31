@@ -14,6 +14,77 @@ if (!defined('WPINC')) {
 <div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">
     <h3><?php _e('System Diagnostics', 'memberpress-ai-assistant'); ?></h3>
     <p><?php _e('Run various diagnostic tests to check the health of your MemberPress AI Assistant installation.', 'memberpress-ai-assistant'); ?></p>
+
+    <div class="mpai-diagnostic-section">
+        <h4><?php _e('Console Logging', 'memberpress-ai-assistant'); ?></h4>
+        <p><?php _e('Configure the browser console logging system to help with debugging and monitoring.', 'memberpress-ai-assistant'); ?></p>
+        
+        <table class="form-table">
+            <tr>
+                <th scope="row">
+                    <label for="mpai_enable_console_logging"><?php _e('Enable Console Logging', 'memberpress-ai-assistant'); ?></label>
+                </th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="mpai_enable_console_logging" id="mpai_enable_console_logging" value="1" <?php checked(get_option('mpai_enable_console_logging', false)); ?> />
+                        <?php _e('Log detailed information to the browser console', 'memberpress-ai-assistant'); ?>
+                    </label>
+                    <p class="description"><?php _e('Enable this option to log detailed information about AI Assistant operations to your browser console.', 'memberpress-ai-assistant'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">
+                    <label for="mpai_console_log_level"><?php _e('Log Level', 'memberpress-ai-assistant'); ?></label>
+                </th>
+                <td>
+                    <select name="mpai_console_log_level" id="mpai_console_log_level">
+                        <option value="error" <?php selected(get_option('mpai_console_log_level', 'info'), 'error'); ?>><?php _e('Error Only', 'memberpress-ai-assistant'); ?></option>
+                        <option value="warning" <?php selected(get_option('mpai_console_log_level', 'info'), 'warning'); ?>><?php _e('Warning & Error', 'memberpress-ai-assistant'); ?></option>
+                        <option value="info" <?php selected(get_option('mpai_console_log_level', 'info'), 'info'); ?>><?php _e('Info, Warning & Error', 'memberpress-ai-assistant'); ?></option>
+                        <option value="debug" <?php selected(get_option('mpai_console_log_level', 'info'), 'debug'); ?>><?php _e('All (Debug)', 'memberpress-ai-assistant'); ?></option>
+                    </select>
+                    <p class="description"><?php _e('Select the level of detail to log in the browser console.', 'memberpress-ai-assistant'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">
+                    <label><?php _e('Log Categories', 'memberpress-ai-assistant'); ?></label>
+                </th>
+                <td>
+                    <fieldset>
+                        <legend class="screen-reader-text"><?php _e('Log Categories', 'memberpress-ai-assistant'); ?></legend>
+                        <label>
+                            <input type="checkbox" name="mpai_log_api_calls" value="1" <?php checked(get_option('mpai_log_api_calls', true)); ?> />
+                            <?php _e('API Calls (Anthropic & OpenAI)', 'memberpress-ai-assistant'); ?>
+                        </label><br>
+                        <label>
+                            <input type="checkbox" name="mpai_log_tool_usage" value="1" <?php checked(get_option('mpai_log_tool_usage', true)); ?> />
+                            <?php _e('Tool Usage', 'memberpress-ai-assistant'); ?>
+                        </label><br>
+                        <label>
+                            <input type="checkbox" name="mpai_log_agent_activity" value="1" <?php checked(get_option('mpai_log_agent_activity', true)); ?> />
+                            <?php _e('Agent Activity', 'memberpress-ai-assistant'); ?>
+                        </label><br>
+                        <label>
+                            <input type="checkbox" name="mpai_log_timing" value="1" <?php checked(get_option('mpai_log_timing', true)); ?> />
+                            <?php _e('Performance Timing', 'memberpress-ai-assistant'); ?>
+                        </label>
+                        <p class="description"><?php _e('Select which categories of events to log to the console.', 'memberpress-ai-assistant'); ?></p>
+                    </fieldset>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">
+                    <label><?php _e('Console Tester', 'memberpress-ai-assistant'); ?></label>
+                </th>
+                <td>
+                    <button type="button" id="mpai-test-console-logging" class="button"><?php _e('Test Console Logging', 'memberpress-ai-assistant'); ?></button>
+                    <span id="mpai-console-test-result" class="mpai-test-result" style="display: none;"></span>
+                    <p class="description"><?php _e('Click to test console logging with your current settings. Check your browser\'s developer console (F12) to see the logs.', 'memberpress-ai-assistant'); ?></p>
+                </td>
+            </tr>
+        </table>
+    </div>
     
     <div class="mpai-diagnostic-section">
         <h4><?php _e('API Connections', 'memberpress-ai-assistant'); ?></h4>

@@ -1102,6 +1102,17 @@ class MPAI_Context_Manager {
                 return $result;
             }
             
+            // Skip validation for theme list and block list commands specifically
+            if (isset($request['command']) && is_string($request['command'])) {
+                $bypass_commands = ['wp theme list', 'wp block list', 'wp pattern list'];
+                foreach ($bypass_commands as $bypass_command) {
+                    if (strpos($request['command'], $bypass_command) === 0) {
+                        error_log('MPAI: Skipping validation for ' . $bypass_command . ' - high priority bypass');
+                        return $result;
+                    }
+                }
+            }
+            
             // Determine command type
             $command_type = '';
             if (isset($request['name'])) {

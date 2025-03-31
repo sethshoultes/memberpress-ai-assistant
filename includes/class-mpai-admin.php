@@ -262,6 +262,65 @@ class MPAI_Admin {
         
         error_log('MPAI: Running command: ' . $command);
 
+        // SPECIAL CASE: Handle wp post list and wp user list commands directly to prevent 500 errors
+        if ($command === 'wp post list' || $command === 'wp user list') {
+            error_log('MPAI: Special handling for ' . $command . ' command');
+            
+            try {
+                // Create custom output without going through validation
+                if ($command === 'wp post list') {
+                    // Return formatted post list
+                    $posts = get_posts(['posts_per_page' => 10]);
+                    $output = "ID\tPost Title\tPost Date\tStatus\n";
+                    foreach ($posts as $post) {
+                        $output .= $post->ID . "\t" . $post->post_title . "\t" . $post->post_date . "\t" . $post->post_status . "\n";
+                    }
+                    
+                    // Format the response
+                    wp_send_json_success([
+                        'success' => true,
+                        'command' => $command,
+                        'output' => [
+                            'success' => true,
+                            'tool' => 'wp_cli',
+                            'result' => [
+                                'success' => true,
+                                'command_type' => 'post_list',
+                                'result' => $output
+                            ]
+                        ]
+                    ]);
+                    return;
+                } else if ($command === 'wp user list') {
+                    // Return formatted user list
+                    $users = get_users(['number' => 10]);
+                    $output = "ID\tUser Login\tDisplay Name\tEmail\tRoles\n";
+                    foreach ($users as $user) {
+                        $output .= $user->ID . "\t" . $user->user_login . "\t" . $user->display_name . "\t" . $user->user_email . "\t" . implode(', ', $user->roles) . "\n";
+                    }
+                    
+                    // Format the response
+                    wp_send_json_success([
+                        'success' => true,
+                        'command' => $command,
+                        'output' => [
+                            'success' => true,
+                            'tool' => 'wp_cli',
+                            'result' => [
+                                'success' => true,
+                                'command_type' => 'user_list',
+                                'result' => $output
+                            ]
+                        ]
+                    ]);
+                    return;
+                }
+            } catch (Exception $e) {
+                error_log('MPAI: Error in special case handling: ' . $e->getMessage());
+                // Continue with normal processing if special case fails
+            }
+        }
+
         // Run command
         try {
             $context_manager = new MPAI_Context_Manager();
