@@ -281,10 +281,19 @@ class MemberPress_AI_Assistant {
             MPAI_VERSION
         );
 
+        // Load the logger script first, so it's available for other scripts
+        wp_enqueue_script(
+            'mpai-logger-js',
+            MPAI_PLUGIN_URL . 'assets/js/mpai-logger.js',
+            array('jquery'),
+            MPAI_VERSION,
+            true
+        );
+
         wp_enqueue_script(
             'mpai-chat-js',
             MPAI_PLUGIN_URL . 'assets/js/chat-interface.js',
-            array('jquery'),
+            array('jquery', 'mpai-logger-js'),
             MPAI_VERSION,
             true
         );
@@ -295,6 +304,33 @@ class MemberPress_AI_Assistant {
         
         // Log the nonces we're passing to JS (first few chars only for security)
         error_log('MPAI: Generated nonces for JS - mpai_nonce: ' . substr($mpai_nonce, 0, 6) . '..., chat_nonce: ' . substr($chat_nonce, 0, 6) . '...');
+
+        // Get logger settings
+        $logger_settings = array(
+            'enabled' => get_option('mpai_enable_console_logging', '0'),
+            'log_level' => get_option('mpai_console_log_level', 'info'),
+            'categories' => array(
+                'api_calls' => get_option('mpai_log_api_calls', '1'),
+                'tool_usage' => get_option('mpai_log_tool_usage', '1'),
+                'agent_activity' => get_option('mpai_log_agent_activity', '1'),
+                'timing' => get_option('mpai_log_timing', '1')
+            )
+        );
+        
+        // Pass settings to all scripts through mpai_data
+        $shared_data = array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => $mpai_nonce,
+            'plugin_url' => MPAI_PLUGIN_URL,
+            'logger' => $logger_settings
+        );
+
+        // Localize the logger script with settings
+        wp_localize_script(
+            'mpai-logger-js',
+            'mpai_data',
+            $shared_data
+        );
         
         wp_localize_script(
             'mpai-chat-js',
@@ -330,21 +366,21 @@ class MemberPress_AI_Assistant {
             wp_enqueue_script(
                 'mpai-admin-js',
                 MPAI_PLUGIN_URL . 'assets/js/admin.js',
-                array('jquery'),
+                array('jquery', 'mpai-logger-js'),
                 MPAI_VERSION,
                 true
             );
 
+            // Add additional data specific to admin pages
+            $admin_data = array_merge($shared_data, array(
+                'rest_url' => rest_url('mpai/v1/'),
+                'page' => $hook
+            ));
+
             wp_localize_script(
                 'mpai-admin-js',
                 'mpai_data',
-                array(
-                    'ajax_url' => admin_url('admin-ajax.php'),
-                    'rest_url' => rest_url('mpai/v1/'),
-                    'nonce' => wp_create_nonce('mpai_nonce'),
-                    'page' => $hook,
-                    'plugin_url' => MPAI_PLUGIN_URL,
-                )
+                $admin_data
             );
         }
     }

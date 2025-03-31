@@ -1088,6 +1088,18 @@ class MPAI_Context_Manager {
         ];
         
         try {
+            // Skip validation for memberpress_info tool
+            if (isset($request['name']) && $request['name'] === 'memberpress_info') {
+                error_log('MPAI: Skipping validation for memberpress_info tool - high priority bypass');
+                return $result;
+            }
+            
+            // Also check if directly in tool property for backward compatibility
+            if (isset($request['tool']) && $request['tool'] === 'memberpress_info') {
+                error_log('MPAI: Skipping validation for memberpress_info tool - high priority bypass');
+                return $result;
+            }
+            
             // Skip validation for post list commands specifically
             if (isset($request['parameters']) && isset($request['parameters']['command']) && 
                 strpos($request['parameters']['command'], 'wp post list') === 0) {

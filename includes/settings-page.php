@@ -80,6 +80,18 @@ if (isset($_POST['mpai_save_settings']) && check_admin_referer('mpai_settings_no
         update_option('mpai_anthropic_max_tokens', absint($_POST['mpai_anthropic_max_tokens']));
     }
     
+    // Console Logging Settings
+    update_option('mpai_enable_console_logging', isset($_POST['mpai_enable_console_logging']) ? '1' : '0');
+    
+    if (isset($_POST['mpai_console_log_level'])) {
+        update_option('mpai_console_log_level', sanitize_text_field($_POST['mpai_console_log_level']));
+    }
+    
+    update_option('mpai_log_api_calls', isset($_POST['mpai_log_api_calls']) ? '1' : '0');
+    update_option('mpai_log_tool_usage', isset($_POST['mpai_log_tool_usage']) ? '1' : '0');
+    update_option('mpai_log_agent_activity', isset($_POST['mpai_log_agent_activity']) ? '1' : '0');
+    update_option('mpai_log_timing', isset($_POST['mpai_log_timing']) ? '1' : '0');
+    
     // Show success message
     add_settings_error('mpai_messages', 'mpai_success', __('Settings saved successfully.', 'memberpress-ai-assistant'), 'updated');
 }

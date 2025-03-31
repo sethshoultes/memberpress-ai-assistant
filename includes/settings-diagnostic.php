@@ -81,6 +81,53 @@ if (!defined('WPINC')) {
                     <button type="button" id="mpai-test-console-logging" class="button"><?php _e('Test Console Logging', 'memberpress-ai-assistant'); ?></button>
                     <span id="mpai-console-test-result" class="mpai-test-result" style="display: none;"></span>
                     <p class="description"><?php _e('Click to test console logging with your current settings. Check your browser\'s developer console (F12) to see the logs.', 'memberpress-ai-assistant'); ?></p>
+                    <script>
+                    jQuery(document).ready(function($) {
+                        $('#mpai-test-console-logging').on('click', function() {
+                            var $resultContainer = $('#mpai-console-test-result');
+                            
+                            // Show loading state
+                            $resultContainer.html('<?php _e('Testing...', 'memberpress-ai-assistant'); ?>');
+                            $resultContainer.show();
+                            
+                            // Check if window.mpaiLogger exists
+                            if (typeof window.mpaiLogger === 'undefined') {
+                                $resultContainer.html('<?php _e('Error: Logger not initialized. Try reloading the page.', 'memberpress-ai-assistant'); ?>');
+                                return;
+                            }
+                            
+                            // Run logger test
+                            var testResult = window.mpaiLogger.testLog();
+                            
+                            // Show test results
+                            var resultHtml = '<span style="color: ' + (testResult.enabled ? 'green' : 'red') + '; font-weight: bold;">';
+                            resultHtml += testResult.enabled ? '✓ Logger enabled' : '✗ Logger disabled';
+                            resultHtml += '</span><br>';
+                            resultHtml += '<br><strong>Settings:</strong><br>';
+                            resultHtml += 'Log Level: ' + testResult.logLevel + '<br>';
+                            
+                            // Show enabled categories
+                            resultHtml += 'Categories: ';
+                            var enabledCategories = [];
+                            for (var cat in testResult.categories) {
+                                if (testResult.categories[cat]) {
+                                    enabledCategories.push(cat);
+                                }
+                            }
+                            
+                            if (enabledCategories.length > 0) {
+                                resultHtml += enabledCategories.join(', ');
+                            } else {
+                                resultHtml += 'None enabled';
+                            }
+                            
+                            resultHtml += '<br><br>';
+                            resultHtml += '<?php _e('Check your browser\'s console (F12) for test log messages.', 'memberpress-ai-assistant'); ?>';
+                            
+                            $resultContainer.html(resultHtml);
+                        });
+                    });
+                    </script>
                 </td>
             </tr>
         </table>

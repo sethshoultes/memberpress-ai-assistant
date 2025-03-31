@@ -9,7 +9,15 @@
     if (typeof mpai_data === 'undefined') {
         console.error('MPAI: mpai_data is not available in admin.js');
     } else {
-        console.log('MPAI: Admin script loaded with mpai_data nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+        // Use the logger if available, otherwise fall back to console
+        if (window.mpaiLogger) {
+            window.mpaiLogger.info('Admin script loaded', 'ui');
+            window.mpaiLogger.debug('Admin script loaded with mpai_data nonce: ' + 
+                (mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined'), 'ui');
+        } else {
+            console.log('MPAI: Admin script loaded with mpai_data nonce:', 
+                mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+        }
     }
 
     /**

@@ -14,6 +14,7 @@ Welcome to the MemberPress AI Assistant documentation hub. This directory contai
 - [Project Specification](project-specification.md) - Detailed project overview and architecture
 - [Agent System Specification](agent-system-spec.md) - Technical specification of the agent system architecture
 - [Agent System Implementation](agent-system-implementation.md) - Implementation details of the agent system
+- [Command Validation Agent](command-validation-agent.md) - Documentation for the command validation system
 
 ## Testing and Status
 

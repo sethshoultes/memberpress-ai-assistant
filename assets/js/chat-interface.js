@@ -7,6 +7,11 @@
 
     // Initialize the chat interface once the document is ready
     $(document).ready(function() {
+        // Check if the logger is available and log initialization
+        if (window.mpaiLogger) {
+            window.mpaiLogger.info('Chat interface initializing', 'ui');
+        }
+        
         // DOM elements
         const $chatToggle = $('#mpai-chat-toggle');
         const $chatContainer = $('#mpai-chat-container');
@@ -61,6 +66,12 @@
                 return;
             }
 
+            // Log the message being sent
+            if (window.mpaiLogger) {
+                window.mpaiLogger.info('Sending user message: ' + message.substring(0, 50) + (message.length > 50 ? '...' : ''), 'api_calls');
+                window.mpaiLogger.startTimer('message_processing');
+            }
+
             // Add the user message to the chat
             addMessageToChat('user', message);
 
@@ -86,6 +97,12 @@
                     nonce: mpai_chat_data.nonce
                 },
                 success: function(response) {
+                    // Log the response received
+                    if (window.mpaiLogger) {
+                        const elapsed = window.mpaiLogger.endTimer('message_processing');
+                        window.mpaiLogger.info('Received response in ' + (elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown time'), 'api_calls');
+                    }
+                    
                     // Hide typing indicator
                     hideTypingIndicator();
 
@@ -95,16 +112,37 @@
                         
                         // Add the response to the chat
                         addMessageToChat('assistant', processedResponse);
+                        
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.debug('Response successfully processed and added to chat', 'api_calls');
+                        }
                     } else {
                         // Show error message
                         addMessageToChat('assistant', mpai_chat_data.strings.error_message);
-                        console.error('MPAI: Invalid response format:', response);
+                        
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.error('Invalid response format received', 'api_calls', response);
+                        } else {
+                            console.error('MPAI: Invalid response format:', response);
+                        }
                     }
 
                     // Scroll to the bottom with a slight delay to ensure content is rendered
                     setTimeout(scrollToBottom, 100);
                 },
-                error: function() {
+                error: function(xhr, status, error) {
+                    // Log the error
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.error('AJAX error when sending message', 'api_calls', {
+                            xhr: xhr,
+                            status: status,
+                            error: error
+                        });
+                        window.mpaiLogger.endTimer('message_processing');
+                    } else {
+                        console.error('MPAI: AJAX error:', error);
+                    }
+                    
                     // Hide typing indicator
                     hideTypingIndicator();
 
@@ -376,11 +414,17 @@
          * @param {string} toolId - The tool call element ID
          */
         function executeToolCall(jsonStr, jsonData, toolId) {
-            console.log('MPAI: Executing tool call', {
-                tool: jsonData.tool,
-                parameters: jsonData.parameters,
-                toolId: toolId
-            });
+            // Log the tool call if logger is available
+            if (window.mpaiLogger) {
+                window.mpaiLogger.logToolUsage(jsonData.tool, jsonData.parameters);
+                window.mpaiLogger.startTimer('tool_' + toolId);
+            } else {
+                console.log('MPAI: Executing tool call', {
+                    tool: jsonData.tool,
+                    parameters: jsonData.parameters,
+                    toolId: toolId
+                });
+            }
             
             // Construct the tool request in the format expected by the backend
             const toolRequest = {
@@ -388,10 +432,12 @@
                 parameters: jsonData.parameters
             };
             
-            console.log('MPAI: Tool request being sent:', toolRequest);
-            
-            // Add raw format for debugging
-            console.log('MPAI: Raw tool_request parameter:', JSON.stringify(toolRequest));
+            if (window.mpaiLogger) {
+                window.mpaiLogger.debug('Tool request prepared', 'tool_usage', toolRequest);
+            } else {
+                console.log('MPAI: Tool request being sent:', toolRequest);
+                console.log('MPAI: Raw tool_request parameter:', JSON.stringify(toolRequest));
+            }
             
             $.ajax({
                 url: mpai_chat_data.ajax_url,
@@ -402,7 +448,17 @@
                     nonce: mpai_chat_data.nonce // Try using the regular nonce instead
                 },
                 success: function(response) {
-                    console.log('MPAI: Tool execution response', response);
+                    if (window.mpaiLogger) {
+                        const elapsed = window.mpaiLogger.endTimer('tool_' + toolId);
+                        window.mpaiLogger.info(
+                            'Tool "' + jsonData.tool + '" executed in ' + (elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown time'), 
+                            'tool_usage'
+                        );
+                        window.mpaiLogger.debug('Tool execution response', 'tool_usage', response);
+                    } else {
+                        console.log('MPAI: Tool execution response', response);
+                    }
+                    
                     const $toolCall = $('#' + toolId);
                     if (!$toolCall.length) return;
                     
@@ -822,7 +878,18 @@
                     setTimeout(scrollToBottom, 100);
                 },
                 error: function(xhr, status, error) {
-                    console.error('MPAI: AJAX error executing tool', {xhr, status, error});
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.error('AJAX error executing tool ' + jsonData.tool, 'tool_usage', {
+                            xhr: xhr,
+                            status: status,
+                            error: error,
+                            tool: jsonData.tool,
+                            parameters: jsonData.parameters
+                        });
+                        window.mpaiLogger.endTimer('tool_' + toolId);
+                    } else {
+                        console.error('MPAI: AJAX error executing tool', {xhr, status, error});
+                    }
                     
                     const $toolCall = $('#' + toolId);
                     if (!$toolCall.length) return;

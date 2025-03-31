@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced fallback methods for member data retrieval when API fails
 - Improved direct AJAX handler for MemberPress tests
 - Fixed issue with plugin activation in browser environments without WP-CLI
+- Fixed fatal error in command validation agent causing 500 error with memberpress_info tool
+- Enhanced validation system to bypass validation for MemberPress tools
 
 ## [1.4.1] - 2025-03-30
 
