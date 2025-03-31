@@ -5,6 +5,23 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] - 2025-03-31
+
+### Added
+- Implemented successful content marker system for blog post publishing:
+  - Added HTML comment-based markers with timestamps
+  - Created comprehensive documentation in CONTENT_MARKER_SYSTEM.md
+  - Added automatic content type detection and tagging
+  - Implemented three-tiered content retrieval strategy with fallbacks
+  - Added logging for marker detection and content extraction
+
+### Fixed
+- Solved blog post publishing issues with marker-based content identification
+- Fixed content loss when publishing posts with marker-based retrieval
+- Enhanced post-type detection for better content extraction
+- Added defensive programming to support older versions without markers
+- Fixed pattern matching for more reliable content extraction
+
 ## [1.5.2] - 2025-03-31
 
 ### Added
