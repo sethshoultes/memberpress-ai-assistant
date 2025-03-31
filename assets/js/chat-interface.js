@@ -582,13 +582,29 @@
             // Log request timing start
             const requestStartTime = performance.now();
             
+            // Log important data before sending the AJAX request
+            if (window.mpaiLogger) {
+                window.mpaiLogger.debug('AJAX URL and Nonce', 'tool_usage', {
+                    ajax_url: mpai_chat_data.ajax_url,
+                    nonce_length: mpai_chat_data.nonce ? mpai_chat_data.nonce.length : 0,
+                    nonce_preview: mpai_chat_data.nonce ? mpai_chat_data.nonce.substring(0, 5) + '...' : 'null'
+                });
+            } else {
+                console.log('MPAI: AJAX URL and Nonce', {
+                    ajax_url: mpai_chat_data.ajax_url,
+                    nonce_length: mpai_chat_data.nonce ? mpai_chat_data.nonce.length : 0,
+                    nonce_preview: mpai_chat_data.nonce ? mpai_chat_data.nonce.substring(0, 5) + '...' : 'null'
+                });
+            }
+            
             $.ajax({
                 url: mpai_chat_data.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'mpai_execute_tool',
                     tool_request: JSON.stringify(toolRequest),
-                    nonce: mpai_chat_data.nonce // Try using the regular nonce instead
+                    nonce: mpai_chat_data.nonce, // Regular nonce
+                    mpai_nonce: mpai_chat_data.nonce // Add as mpai_nonce too
                 },
                 success: function(response) {
                     // Calculate the elapsed time since request start

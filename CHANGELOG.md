@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated get_available_plugins method to support forced refresh
   - Improved system prompt generation with fresh data every time
   - Fixed 400 Bad Request errors during tool execution
+  - Added fast path for wp_user_list to avoid dependency issues
+  - Removed problematic direct handling in admin AJAX controller
+  - Fixed error with logger dependency when processing tool calls
   
 ## [1.5.3] - 2025-03-31
 

@@ -1130,13 +1130,53 @@ class MPAI_Context_Manager {
             );
         }
         
-        // FAST PATH: Special handling for wp post list command - bypass validation
+        // FAST PATH: Special handling for common wp_cli commands - bypass validation
         if (isset($request['name']) && $request['name'] === 'wp_cli' && 
-            isset($request['parameters']) && isset($request['parameters']['command']) && 
-            strpos($request['parameters']['command'], 'wp post list') === 0) {
-            error_log('MPAI: Fast path for wp post list command - bypassing validation');
-            // Continue with processing without validation
-        } else {
+            isset($request['parameters']) && isset($request['parameters']['command'])) {
+            
+            $command = $request['parameters']['command'];
+            
+            // Check for wp post list command
+            if (strpos($command, 'wp post list') === 0) {
+                error_log('MPAI: Fast path for wp post list command - bypassing validation');
+                // Continue with processing without validation
+            }
+            // Check for wp user list command
+            else if (strpos($command, 'wp user list') === 0) {
+                error_log('MPAI: Fast path for wp user list command - bypassing validation');
+                
+                // Special handling for wp user list to avoid logger dependency
+                try {
+                    $users = get_users(array('number' => 10));
+                    $output = "ID\tUser Login\tDisplay Name\tEmail\tRoles\n";
+                    
+                    foreach ($users as $user) {
+                        $output .= $user->ID . "\t" . $user->user_login . "\t" . 
+                                $user->display_name . "\t" . $user->user_email . "\t" . 
+                                implode(', ', $user->roles) . "\n";
+                    }
+                    
+                    // Return properly formatted response
+                    return array(
+                        'success' => true,
+                        'tool' => 'wp_cli',
+                        'action' => 'user_list',
+                        'result' => array(
+                            'success' => true,
+                            'command_type' => 'user_list',
+                            'result' => $output
+                        )
+                    );
+                } catch (Exception $e) {
+                    error_log('MPAI: Error in wp user list fast path: ' . $e->getMessage());
+                    // Fall through to normal processing if this fails
+                }
+            }
+            // Continue with normal processing for other commands
+        }
+        
+        // Regular validation path for other commands
+        {
             // Try to validate the command, but don't block execution if validation fails
             try {
                 // Special handling for wp_api create_post/create_page to extract content from the assistant's message
