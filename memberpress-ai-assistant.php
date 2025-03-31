@@ -1,9 +1,9 @@
 <?php
 /**
  * Plugin Name: MemberPress AI Assistant
- * Plugin URI: https://example.com/memberpress-ai-assistant
+ * Plugin URI: https://memberpress.com/memberpress-ai-assistant
  * Description: AI-powered chat assistant for MemberPress that helps with membership management, troubleshooting, and WordPress CLI command execution.
- * Version: 1.3.0
+ * Version: 1.5.4
  * Author: MemberPress
  * Author URI: https://memberpress.com
  * Text Domain: memberpress-ai-assistant
@@ -28,7 +28,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('MPAI_VERSION', '1.3.0');
+define('MPAI_VERSION', '1.5.4');
 define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MPAI_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -116,6 +116,8 @@ class MemberPress_AI_Assistant {
     private function load_dependencies() {
         // API Integration Classes
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-openai.php';
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-anthropic.php';
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-api-router.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-memberpress-api.php';
         
         // Functionality Classes
@@ -129,10 +131,59 @@ class MemberPress_AI_Assistant {
         // Chat Interface
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-chat-interface.php';
         
+        // Agent System
+        $this->load_agent_system();
+        
         // CLI Commands
         if (defined('WP_CLI') && WP_CLI) {
             require_once MPAI_PLUGIN_DIR . 'includes/cli/class-mpai-cli-commands.php';
         }
+    }
+    
+    /**
+     * Load agent system components
+     */
+    private function load_agent_system() {
+        // Load agent interface
+        require_once MPAI_PLUGIN_DIR . 'includes/agents/interfaces/interface-mpai-agent.php';
+        
+        // Load base tool class
+        if (!class_exists('MPAI_Base_Tool')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/class-mpai-base-tool.php';
+        }
+        
+        // Load tool registry
+        if (!class_exists('MPAI_Tool_Registry')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/tools/class-mpai-tool-registry.php';
+        }
+        
+        // Load tool implementations
+        $tool_dir = MPAI_PLUGIN_DIR . 'includes/tools/implementations/';
+        if (file_exists($tool_dir)) {
+            foreach (glob($tool_dir . 'class-mpai-*.php') as $tool_file) {
+                require_once $tool_file;
+            }
+        }
+        
+        // Load base agent class
+        require_once MPAI_PLUGIN_DIR . 'includes/agents/class-mpai-base-agent.php';
+        
+        // Load specialized agents
+        $agents_dir = MPAI_PLUGIN_DIR . 'includes/agents/specialized/';
+        if (file_exists($agents_dir)) {
+            foreach (glob($agents_dir . 'class-mpai-*.php') as $agent_file) {
+                require_once $agent_file;
+            }
+        }
+        
+        // Load SDK integration
+        $sdk_dir = MPAI_PLUGIN_DIR . 'includes/agents/sdk/';
+        if (file_exists($sdk_dir . 'class-mpai-sdk-integration.php')) {
+            require_once $sdk_dir . 'class-mpai-sdk-integration.php';
+        }
+        
+        // Finally, load the orchestrator
+        require_once MPAI_PLUGIN_DIR . 'includes/agents/class-mpai-agent-orchestrator.php';
     }
 
     /**
@@ -230,10 +281,19 @@ class MemberPress_AI_Assistant {
             MPAI_VERSION
         );
 
+        // Load the logger script first, so it's available for other scripts
+        wp_enqueue_script(
+            'mpai-logger-js',
+            MPAI_PLUGIN_URL . 'assets/js/mpai-logger.js',
+            array('jquery'),
+            MPAI_VERSION,
+            true
+        );
+
         wp_enqueue_script(
             'mpai-chat-js',
             MPAI_PLUGIN_URL . 'assets/js/chat-interface.js',
-            array('jquery'),
+            array('jquery', 'mpai-logger-js'),
             MPAI_VERSION,
             true
         );
@@ -244,6 +304,33 @@ class MemberPress_AI_Assistant {
         
         // Log the nonces we're passing to JS (first few chars only for security)
         error_log('MPAI: Generated nonces for JS - mpai_nonce: ' . substr($mpai_nonce, 0, 6) . '..., chat_nonce: ' . substr($chat_nonce, 0, 6) . '...');
+
+        // Get logger settings
+        $logger_settings = array(
+            'enabled' => get_option('mpai_enable_console_logging', '0'),
+            'log_level' => get_option('mpai_console_log_level', 'info'),
+            'categories' => array(
+                'api_calls' => get_option('mpai_log_api_calls', '1'),
+                'tool_usage' => get_option('mpai_log_tool_usage', '1'),
+                'agent_activity' => get_option('mpai_log_agent_activity', '1'),
+                'timing' => get_option('mpai_log_timing', '1')
+            )
+        );
+        
+        // Pass settings to all scripts through mpai_data
+        $shared_data = array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => $mpai_nonce,
+            'plugin_url' => MPAI_PLUGIN_URL,
+            'logger' => $logger_settings
+        );
+
+        // Localize the logger script with settings
+        wp_localize_script(
+            'mpai-logger-js',
+            'mpai_data',
+            $shared_data
+        );
         
         wp_localize_script(
             'mpai-chat-js',
@@ -279,21 +366,21 @@ class MemberPress_AI_Assistant {
             wp_enqueue_script(
                 'mpai-admin-js',
                 MPAI_PLUGIN_URL . 'assets/js/admin.js',
-                array('jquery'),
+                array('jquery', 'mpai-logger-js'),
                 MPAI_VERSION,
                 true
             );
 
+            // Add additional data specific to admin pages
+            $admin_data = array_merge($shared_data, array(
+                'rest_url' => rest_url('mpai/v1/'),
+                'page' => $hook
+            ));
+
             wp_localize_script(
                 'mpai-admin-js',
                 'mpai_data',
-                array(
-                    'ajax_url' => admin_url('admin-ajax.php'),
-                    'rest_url' => rest_url('mpai/v1/'),
-                    'nonce' => wp_create_nonce('mpai_nonce'),
-                    'page' => $hook,
-                    'plugin_url' => MPAI_PLUGIN_URL,
-                )
+                $admin_data
             );
         }
     }
@@ -302,81 +389,140 @@ class MemberPress_AI_Assistant {
      * Process chat message via AJAX
      */
     public function process_chat_ajax() {
-        // Check nonce for security
-        check_ajax_referer('mpai_chat_nonce', 'nonce');
-
-        // Only allow logged-in users with appropriate capabilities
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error('Unauthorized access');
-        }
-
-        // Get the message from the request
-        if (!isset($_POST['message'])) {
-            wp_send_json_error('No message provided');
-            return;
-        }
-        
-        $message = sanitize_text_field($_POST['message']);
-        
-        if (empty($message)) {
-            wp_send_json_error('Message cannot be empty');
-            return;
-        }
-
         try {
-            // Process the message using the chat handler
-            $chat = new MPAI_Chat();
-            $response_data = $chat->process_message($message);
+            // Check nonce for security
+            check_ajax_referer('mpai_chat_nonce', 'nonce');
+            
+            error_log('MPAI: AJAX process_chat_ajax started');
 
-            // For debugging
-            error_log('MPAI: AJAX response data: ' . json_encode($response_data));
+            // Only allow logged-in users with appropriate capabilities
+            if (!current_user_can('edit_posts')) {
+                error_log('MPAI: AJAX unauthorized access attempt');
+                wp_send_json_error('Unauthorized access');
+                return;
+            }
 
-            // Extract response content for saving to history
-            if (is_array($response_data) && isset($response_data['message'])) {
-                $response_content = $response_data['message'];
-            } else if (is_array($response_data) && isset($response_data['success']) && isset($response_data['raw_response'])) {
-                $response_content = $response_data['raw_response'];
-            } else if (is_string($response_data)) {
-                $response_content = $response_data;
-            } else {
-                $response_content = 'Invalid response format';
+            // Get the message from the request
+            if (!isset($_POST['message'])) {
+                error_log('MPAI: AJAX No message provided');
+                wp_send_json_error('No message provided');
+                return;
             }
             
-            // Always save to user meta to ensure chat history is available
-            $this->save_message_to_history($message, $response_content);
+            $message = sanitize_text_field($_POST['message']);
             
-            // Log whether we're using database storage
-            error_log('MPAI: Using database storage: ' . ($this->is_using_database_storage() ? 'yes' : 'no'));
+            if (empty($message)) {
+                error_log('MPAI: AJAX Empty message');
+                wp_send_json_error('Message cannot be empty');
+                return;
+            }
+            
+            error_log('MPAI: AJAX Processing message: ' . $message);
 
-            // Standardize the response format to ensure consistent structure
-            if ($response_data) {
-                if (is_array($response_data) && isset($response_data['success'])) {
-                    // If it's already in the expected format with success flag
-                    if ($response_data['success']) {
+            try {
+                // Process the message using the chat handler
+                if (!class_exists('MPAI_Chat')) {
+                    error_log('MPAI: AJAX MPAI_Chat class not found');
+                    require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-chat.php';
+                    
+                    if (!class_exists('MPAI_Chat')) {
+                        error_log('MPAI: AJAX Failed to load MPAI_Chat class even after requiring file');
+                        wp_send_json_error('Internal error: MPAI_Chat class not available');
+                        return;
+                    }
+                    
+                    error_log('MPAI: AJAX MPAI_Chat class loaded successfully');
+                }
+                
+                try {
+                    error_log('MPAI: AJAX Creating MPAI_Chat instance');
+                    $chat = new MPAI_Chat();
+                    error_log('MPAI: AJAX MPAI_Chat instance created successfully');
+                } catch (Throwable $chat_instance_error) {
+                    error_log('MPAI: AJAX Fatal error creating MPAI_Chat instance: ' . $chat_instance_error->getMessage() . ' in ' . $chat_instance_error->getFile() . ' on line ' . $chat_instance_error->getLine());
+                    error_log('MPAI: AJAX Stack trace: ' . $chat_instance_error->getTraceAsString());
+                    wp_send_json_error('Error initializing chat system. Check error logs for details.');
+                    return;
+                }
+                
+                try {
+                    error_log('MPAI: AJAX Calling process_message on MPAI_Chat instance');
+                    $response_data = $chat->process_message($message);
+                    error_log('MPAI: AJAX process_message completed successfully');
+                } catch (Throwable $process_error) {
+                    error_log('MPAI: AJAX Error in process_message: ' . $process_error->getMessage() . ' in ' . $process_error->getFile() . ' on line ' . $process_error->getLine());
+                    error_log('MPAI: AJAX Stack trace: ' . $process_error->getTraceAsString());
+                    throw $process_error; // Re-throw to be caught by the outer catch
+                }
+
+                // For debugging
+                error_log('MPAI: AJAX response data: ' . (is_array($response_data) ? json_encode($response_data) : (is_object($response_data) ? 'Object of class ' . get_class($response_data) : (string)$response_data)));
+
+                // Extract response content for saving to history
+                if (is_array($response_data) && isset($response_data['message'])) {
+                    $response_content = $response_data['message'];
+                } else if (is_array($response_data) && isset($response_data['success']) && isset($response_data['raw_response'])) {
+                    $response_content = $response_data['raw_response'];
+                } else if (is_string($response_data)) {
+                    $response_content = $response_data;
+                } else {
+                    $response_content = 'Invalid response format';
+                    error_log('MPAI: AJAX Invalid response format, setting default response content');
+                }
+                
+                // Always save to user meta to ensure chat history is available
+                try {
+                    error_log('MPAI: AJAX Saving message to history');
+                    $this->save_message_to_history($message, $response_content);
+                    error_log('MPAI: AJAX Message saved to history successfully');
+                } catch (Throwable $history_error) {
+                    error_log('MPAI: AJAX Error saving message to history: ' . $history_error->getMessage());
+                    // Continue even if history saving fails
+                }
+                
+                // Log whether we're using database storage
+                error_log('MPAI: AJAX Using database storage: ' . ($this->is_using_database_storage(false) ? 'yes' : 'no'));
+
+                // Standardize the response format to ensure consistent structure
+                if ($response_data) {
+                    if (is_array($response_data) && isset($response_data['success'])) {
+                        // If it's already in the expected format with success flag
+                        if ($response_data['success']) {
+                            error_log('MPAI: AJAX Sending success response');
+                            wp_send_json_success(array(
+                                'response' => isset($response_data['message']) ? $response_data['message'] : 'Success but no message provided',
+                            ));
+                        } else {
+                            error_log('MPAI: AJAX Sending error response from response_data');
+                            wp_send_json_error(isset($response_data['message']) ? $response_data['message'] : 'Unknown error occurred');
+                        }
+                    } else if (is_string($response_data)) {
+                        // Just a direct string response
+                        error_log('MPAI: AJAX Sending success response with string');
                         wp_send_json_success(array(
-                            'response' => isset($response_data['message']) ? $response_data['message'] : 'Success but no message provided',
+                            'response' => $response_data,
                         ));
                     } else {
-                        wp_send_json_error(isset($response_data['message']) ? $response_data['message'] : 'Unknown error occurred');
+                        // Invalid response format - log and return error
+                        error_log('MPAI: AJAX Invalid response format: ' . print_r($response_data, true));
+                        wp_send_json_success(array(
+                            'response' => 'Response received but in unexpected format. Check error logs for details.',
+                        ));
                     }
-                } else if (is_string($response_data)) {
-                    // Just a direct string response
-                    wp_send_json_success(array(
-                        'response' => $response_data,
-                    ));
                 } else {
-                    // Invalid response format - log and return error
-                    error_log('MPAI: Invalid response format: ' . print_r($response_data, true));
-                    wp_send_json_success(array(
-                        'response' => 'Response received but in unexpected format. Check error logs for details.',
-                    ));
+                    error_log('MPAI: AJAX Empty response data');
+                    wp_send_json_error('Failed to get response from AI service');
                 }
-            } else {
-                wp_send_json_error('Failed to get response from AI service');
+            } catch (Throwable $e) {
+                error_log('MPAI: AJAX Exception in inner try/catch of process_chat_ajax: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+                error_log('MPAI: AJAX Stack trace: ' . $e->getTraceAsString());
+                wp_send_json_error('Error processing message: ' . $e->getMessage());
             }
-        } catch (Exception $e) {
-            error_log('MPAI: Exception in process_chat_ajax: ' . $e->getMessage());
-            wp_send_json_error('Error: ' . $e->getMessage());
+        } catch (Throwable $e) {
+            // Catch absolutely everything at the top level to prevent 500 errors
+            error_log('MPAI: AJAX CRITICAL ERROR in process_chat_ajax: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            error_log('MPAI: AJAX Stack trace: ' . $e->getTraceAsString());
+            wp_send_json_error('A system error occurred. Please check the server logs for more information.');
         }
     }
     
@@ -590,8 +736,44 @@ class MemberPress_AI_Assistant {
         // Create tables if needed
         $this->create_database_tables();
         
+        // Initialize agent system
+        $this->initialize_agent_system();
+        
         // Clear rewrite rules
         flush_rewrite_rules();
+    }
+    
+    /**
+     * Initialize the agent system
+     */
+    private function initialize_agent_system() {
+        try {
+            // Load dependencies first
+            $this->load_agent_system();
+            
+            // Create directories for SDK if they don't exist
+            $sdk_dir = MPAI_PLUGIN_DIR . 'includes/agents/sdk';
+            if (!file_exists($sdk_dir)) {
+                wp_mkdir_p($sdk_dir);
+            }
+            
+            // Set default OpenAI options for the agent system
+            $model = get_option('mpai_model', 'gpt-4o');
+            update_option('mpai_agent_system_model', $model);
+            update_option('mpai_agent_system_version', MPAI_VERSION);
+            update_option('mpai_agent_system_initialized', true);
+            
+            // Create an instance of the agent orchestrator
+            // This will trigger agent registration and SDK initialization
+            $orchestrator = new MPAI_Agent_Orchestrator();
+            
+            // Log success
+            error_log('MPAI: Agent system initialized successfully');
+            return true;
+        } catch (Exception $e) {
+            error_log('MPAI: Error initializing agent system: ' . $e->getMessage());
+            return false;
+        }
     }
     
     /**
@@ -671,20 +853,38 @@ class MemberPress_AI_Assistant {
      */
     private function set_default_options() {
         $default_options = array(
+            // OpenAI Settings
             'api_key' => '',
             'model' => 'gpt-4o',
             'temperature' => 0.7,
             'max_tokens' => 2048,
+            
+            // Anthropic Settings
+            'anthropic_api_key' => '',
+            'anthropic_model' => 'claude-3-opus-20240229',
+            'anthropic_temperature' => 0.7,
+            'anthropic_max_tokens' => 2048,
+            
+            // API Router Settings
+            'primary_api' => 'openai',
+            
+            // Chat Interface Settings
             'enable_chat' => true,
             'chat_position' => 'bottom-right',
             'show_on_all_pages' => true,
             'welcome_message' => 'Hi there! I\'m your MemberPress AI Assistant. How can I help you today?',
+            
             // MCP and CLI settings
             'enable_mcp' => true,
             'enable_cli_commands' => true,
             'enable_wp_cli_tool' => true,
             'enable_memberpress_info_tool' => true,
-            'allowed_cli_commands' => array('wp user list', 'wp post list', 'wp plugin list')
+            'allowed_cli_commands' => array('wp user list', 'wp post list', 'wp plugin list'),
+            
+            // Agent system settings
+            'agent_system_enabled' => true,
+            'agent_system_version' => MPAI_VERSION,
+            'agent_system_model' => 'gpt-4o',
         );
         
         foreach ($default_options as $option => $value) {

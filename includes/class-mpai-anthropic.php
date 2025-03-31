@@ -1,0 +1,316 @@
+<?php
+/**
+ * Anthropic Claude Integration Class
+ *
+ * Handles integration with Anthropic Claude API
+ */
+
+// If this file is called directly, abort.
+if (!defined('WPINC')) {
+    die;
+}
+
+class MPAI_Anthropic {
+    /**
+     * Anthropic API key
+     *
+     * @var string
+     */
+    private $api_key;
+
+    /**
+     * Model to use
+     *
+     * @var string
+     */
+    private $model;
+
+    /**
+     * Temperature for response generation
+     *
+     * @var float
+     */
+    private $temperature;
+
+    /**
+     * Maximum number of tokens to generate
+     *
+     * @var int
+     */
+    private $max_tokens;
+
+    /**
+     * Constructor
+     */
+    public function __construct() {
+        $this->api_key = get_option('mpai_anthropic_api_key', '');
+        $this->model = get_option('mpai_anthropic_model', 'claude-3-opus-20240229');
+        $this->temperature = (float) get_option('mpai_anthropic_temperature', 0.7);
+        $this->max_tokens = (int) get_option('mpai_anthropic_max_tokens', 2048);
+    }
+
+    /**
+     * Send a request to the Anthropic Claude API
+     *
+     * @param array $messages The messages to send
+     * @param array $tools Available tools for function calling
+     * @param array $additional_params Additional parameters to send to the API
+     * @return array|WP_Error The API response or error
+     */
+    public function send_request($messages, $tools = array(), $additional_params = array()) {
+        if (empty($this->api_key)) {
+            return new WP_Error('missing_api_key', 'Anthropic API key is not configured.');
+        }
+
+        $endpoint = 'https://api.anthropic.com/v1/messages';
+
+        $headers = array(
+            'x-api-key' => $this->api_key,
+            'anthropic-version' => '2023-06-01',
+            'Content-Type' => 'application/json',
+        );
+
+        // Format messages from OpenAI format to Anthropic format if needed
+        $formatted_messages = $this->format_messages_for_anthropic($messages);
+
+        $body = array_merge(
+            array(
+                'model' => $this->model,
+                'messages' => $formatted_messages,
+                'temperature' => $this->temperature,
+                'max_tokens' => $this->max_tokens,
+            ),
+            $additional_params
+        );
+
+        // Add tools if provided
+        if (!empty($tools)) {
+            $body['tools'] = $tools;
+        }
+
+        $response = wp_remote_post(
+            $endpoint,
+            array(
+                'headers' => $headers,
+                'body' => json_encode($body),
+                'timeout' => 60,
+            )
+        );
+
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return new WP_Error('json_error', 'Failed to parse Anthropic API response.');
+        }
+
+        if (isset($data['error'])) {
+            return new WP_Error(
+                'anthropic_error',
+                $data['error']['message'],
+                array('status' => $data['error']['type'])
+            );
+        }
+
+        return $data;
+    }
+
+    /**
+     * Format messages from OpenAI format to Anthropic format if needed
+     *
+     * @param array $messages Messages in OpenAI format
+     * @return array Messages in Anthropic format
+     */
+    private function format_messages_for_anthropic($messages) {
+        $formatted_messages = array();
+        
+        foreach ($messages as $message) {
+            // Skip 'system' messages initially
+            if ($message['role'] === 'system') {
+                continue;
+            }
+            
+            $formatted_messages[] = array(
+                'role' => $message['role'],
+                'content' => $message['content']
+            );
+        }
+        
+        // If there's a system message, add it to the first user message
+        $system_message = '';
+        foreach ($messages as $message) {
+            if ($message['role'] === 'system') {
+                $system_message = $message['content'];
+                break;
+            }
+        }
+        
+        // If we have a system message and at least one user message
+        if (!empty($system_message) && !empty($formatted_messages)) {
+            foreach ($formatted_messages as &$message) {
+                if ($message['role'] === 'user') {
+                    $message['system'] = $system_message;
+                    break;
+                }
+            }
+        }
+        
+        return $formatted_messages;
+    }
+
+    /**
+     * Generate a chat completion using Anthropic Claude
+     *
+     * @param array $messages The conversation history
+     * @param array $tools Available tools for function calling
+     * @return string|WP_Error The generated text or error
+     */
+    public function generate_completion($messages, $tools = array()) {
+        // If no API key is set, return a dummy response for testing
+        if (empty($this->api_key)) {
+            error_log('MPAI: No Anthropic API key configured, returning dummy response');
+            return "I'm sorry, but the Anthropic API key is not configured. Please add your API key in the settings page to use the Claude AI assistant.";
+        }
+        
+        // Let's log the messages for debugging
+        error_log('MPAI: Sending messages to Anthropic: ' . json_encode($messages));
+        
+        try {
+            $response = $this->send_request($messages, $tools);
+    
+            if (is_wp_error($response)) {
+                error_log('MPAI: Anthropic API returned WP_Error: ' . $response->get_error_message());
+                return $response;
+            }
+    
+            if (empty($response['content'][0]['text'])) {
+                error_log('MPAI: Anthropic returned empty response');
+                return new WP_Error('empty_response', 'Anthropic returned an empty response.');
+            }
+            
+            // Extract tool calls if present
+            if (!empty($response['tool_outputs'])) {
+                // Process tool calls
+                error_log('MPAI: Tool outputs found in Anthropic response');
+                return array(
+                    'message' => $response['content'][0]['text'],
+                    'tool_outputs' => $response['tool_outputs']
+                );
+            }
+    
+            return $response['content'][0]['text'];
+        } catch (Exception $e) {
+            error_log('MPAI: Error in generate_completion: ' . $e->getMessage());
+            return new WP_Error('anthropic_error', 'Error generating completion: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Generate a completion with context about MemberPress data
+     *
+     * @param string $prompt The prompt to send
+     * @param array $memberpress_data MemberPress data to include in the context
+     * @return string|WP_Error The generated text or error
+     */
+    public function generate_memberpress_completion($prompt, $memberpress_data) {
+        // Create a system message with MemberPress context
+        $system_message = "You are an AI assistant for MemberPress. You have access to the following MemberPress data:\n\n";
+        
+        foreach ($memberpress_data as $key => $value) {
+            if (is_array($value)) {
+                $system_message .= "- {$key}:\n";
+                foreach ($value as $item) {
+                    if (is_array($item)) {
+                        $system_message .= json_encode($item, JSON_PRETTY_PRINT) . "\n";
+                    } else {
+                        $system_message .= "  - {$item}\n";
+                    }
+                }
+            } else {
+                $system_message .= "- {$key}: {$value}\n";
+            }
+        }
+        
+        $system_message .= "\nYour task is to provide helpful responses about MemberPress based on this data.";
+        
+        $messages = array(
+            array('role' => 'system', 'content' => $system_message),
+            array('role' => 'user', 'content' => $prompt)
+        );
+        
+        return $this->generate_completion($messages);
+    }
+
+    /**
+     * Generate CLI command recommendations
+     *
+     * @param string $prompt The user's request
+     * @return string|WP_Error The recommended commands or error
+     */
+    public function generate_cli_recommendations($prompt) {
+        $system_message = "You are an AI assistant that recommends WordPress CLI commands. 
+        Your task is to suggest appropriate WP-CLI commands based on the user's request. 
+        Only suggest commands that are safe to run and relevant to MemberPress. 
+        Format your response as a list of commands with a brief explanation for each.";
+        
+        $messages = array(
+            array('role' => 'system', 'content' => $system_message),
+            array('role' => 'user', 'content' => $prompt)
+        );
+        
+        return $this->generate_completion($messages);
+    }
+
+    /**
+     * Convert tools from OpenAI format to Anthropic format
+     *
+     * @param array $openai_tools Tools in OpenAI format
+     * @return array Tools in Anthropic format
+     */
+    public function convert_tools_to_anthropic_format($openai_tools) {
+        $anthropic_tools = array();
+        
+        foreach ($openai_tools as $tool) {
+            if (isset($tool['function'])) {
+                $function = $tool['function'];
+                
+                // Convert OpenAI function schema to Anthropic schema
+                $parameters = array();
+                if (isset($function['parameters']['properties'])) {
+                    foreach ($function['parameters']['properties'] as $name => $property) {
+                        $param = array(
+                            'name' => $name,
+                            'type' => $property['type'],
+                        );
+                        
+                        if (isset($property['description'])) {
+                            $param['description'] = $property['description'];
+                        }
+                        
+                        if (isset($property['enum'])) {
+                            $param['enum'] = $property['enum'];
+                        }
+                        
+                        $parameters[] = $param;
+                    }
+                }
+                
+                $anthropic_tools[] = array(
+                    'name' => $function['name'],
+                    'description' => isset($function['description']) ? $function['description'] : '',
+                    'input_schema' => array(
+                        'type' => 'object',
+                        'properties' => $parameters,
+                        'required' => isset($function['parameters']['required']) ? $function['parameters']['required'] : array(),
+                    ),
+                );
+            }
+        }
+        
+        return $anthropic_tools;
+    }
+}

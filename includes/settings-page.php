@@ -16,7 +16,7 @@ error_log('MPAI: Settings page nonce generated: ' . substr($mpai_settings_nonce,
 
 // Process form submission - direct approach without using Settings API
 if (isset($_POST['mpai_save_settings']) && check_admin_referer('mpai_settings_nonce', 'mpai_nonce')) {
-    // API Settings
+    // OpenAI API Settings
     if (isset($_POST['mpai_api_key'])) {
         update_option('mpai_api_key', sanitize_text_field($_POST['mpai_api_key']));
     }
@@ -25,9 +25,21 @@ if (isset($_POST['mpai_save_settings']) && check_admin_referer('mpai_settings_no
         update_option('mpai_model', sanitize_text_field($_POST['mpai_model']));
     }
     
-    if (isset($_POST['mpai_memberpress_api_key'])) {
-        update_option('mpai_memberpress_api_key', sanitize_text_field($_POST['mpai_memberpress_api_key']));
+    // Anthropic API Settings
+    if (isset($_POST['mpai_anthropic_api_key'])) {
+        update_option('mpai_anthropic_api_key', sanitize_text_field($_POST['mpai_anthropic_api_key']));
     }
+    
+    if (isset($_POST['mpai_anthropic_model'])) {
+        update_option('mpai_anthropic_model', sanitize_text_field($_POST['mpai_anthropic_model']));
+    }
+    
+    // Primary API Selection
+    if (isset($_POST['mpai_primary_api'])) {
+        update_option('mpai_primary_api', sanitize_text_field($_POST['mpai_primary_api']));
+    }
+    
+    // MemberPress API Key - removed as not needed
     
     // CLI Commands
     update_option('mpai_enable_cli_commands', isset($_POST['mpai_enable_cli_commands']) ? '1' : '0');
@@ -47,7 +59,7 @@ if (isset($_POST['mpai_save_settings']) && check_admin_referer('mpai_settings_no
     update_option('mpai_enable_wp_cli_tool', isset($_POST['mpai_enable_wp_cli_tool']) ? '1' : '0');
     update_option('mpai_enable_memberpress_info_tool', isset($_POST['mpai_enable_memberpress_info_tool']) ? '1' : '0');
     
-    // Advanced Settings
+    // Advanced Settings - OpenAI
     if (isset($_POST['mpai_temperature'])) {
         update_option('mpai_temperature', floatval($_POST['mpai_temperature']));
     }
@@ -56,18 +68,51 @@ if (isset($_POST['mpai_save_settings']) && check_admin_referer('mpai_settings_no
         update_option('mpai_max_tokens', absint($_POST['mpai_max_tokens']));
     }
     
+    // Advanced Settings - Anthropic
+    if (isset($_POST['mpai_anthropic_temperature'])) {
+        update_option('mpai_anthropic_temperature', floatval($_POST['mpai_anthropic_temperature']));
+    }
+    
+    if (isset($_POST['mpai_anthropic_max_tokens'])) {
+        update_option('mpai_anthropic_max_tokens', absint($_POST['mpai_anthropic_max_tokens']));
+    }
+    
+    // Console Logging Settings
+    update_option('mpai_enable_console_logging', isset($_POST['mpai_enable_console_logging']) ? '1' : '0');
+    
+    if (isset($_POST['mpai_console_log_level'])) {
+        update_option('mpai_console_log_level', sanitize_text_field($_POST['mpai_console_log_level']));
+    }
+    
+    update_option('mpai_log_api_calls', isset($_POST['mpai_log_api_calls']) ? '1' : '0');
+    update_option('mpai_log_tool_usage', isset($_POST['mpai_log_tool_usage']) ? '1' : '0');
+    update_option('mpai_log_agent_activity', isset($_POST['mpai_log_agent_activity']) ? '1' : '0');
+    update_option('mpai_log_timing', isset($_POST['mpai_log_timing']) ? '1' : '0');
+    
     // Show success message
     add_settings_error('mpai_messages', 'mpai_success', __('Settings saved successfully.', 'memberpress-ai-assistant'), 'updated');
 }
 
-// Get current settings
+// Get current settings - OpenAI
 $api_key = get_option('mpai_api_key', '');
 $model = get_option('mpai_model', 'gpt-4o');
-$memberpress_api_key = get_option('mpai_memberpress_api_key', '');
-$enable_cli_commands = get_option('mpai_enable_cli_commands', false);
-$allowed_commands = get_option('mpai_allowed_cli_commands', array());
 $temperature = get_option('mpai_temperature', 0.7);
 $max_tokens = get_option('mpai_max_tokens', 2048);
+
+// Get current settings - Anthropic
+$anthropic_api_key = get_option('mpai_anthropic_api_key', '');
+$anthropic_model = get_option('mpai_anthropic_model', 'claude-3-opus-20240229');
+$anthropic_temperature = get_option('mpai_anthropic_temperature', 0.7);
+$anthropic_max_tokens = get_option('mpai_anthropic_max_tokens', 2048);
+
+// Get primary API setting
+$primary_api = get_option('mpai_primary_api', 'openai');
+
+// MemberPress API Key retrieval removed - not needed
+
+// Get CLI command settings
+$enable_cli_commands = get_option('mpai_enable_cli_commands', false);
+$allowed_commands = get_option('mpai_allowed_cli_commands', array());
 
 // Default allowed commands if empty
 if (empty($allowed_commands)) {
@@ -78,9 +123,11 @@ if (empty($allowed_commands)) {
     );
 }
 
-// Get available models
+// Get available models and providers
 $settings = new MPAI_Settings();
-$models = $settings->get_available_models();
+$openai_models = $settings->get_available_models();
+$anthropic_models = $settings->get_available_anthropic_models();
+$api_providers = $settings->get_available_api_providers();
 
 // Display settings errors
 settings_errors('mpai_messages');
@@ -116,10 +163,35 @@ settings_errors('mpai_messages');
                 <a href="#tab-cli" class="nav-tab"><?php _e('CLI Commands', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-tools" class="nav-tab"><?php _e('AI Tools', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-advanced" class="nav-tab"><?php _e('Advanced', 'memberpress-ai-assistant'); ?></a>
-                <a href="#tab-debug" class="nav-tab"><?php _e('Debug', 'memberpress-ai-assistant'); ?></a>
+                <a href="#tab-diagnostic" class="nav-tab"><?php _e('Diagnostics', 'memberpress-ai-assistant'); ?></a>
             </h2>
             
             <div id="tab-api" class="mpai-settings-tab">
+                <h3><?php _e('API Selection', 'memberpress-ai-assistant'); ?></h3>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="mpai_primary_api"><?php _e('Primary API Provider', 'memberpress-ai-assistant'); ?></label>
+                        </th>
+                        <td>
+                            <select name="mpai_primary_api" id="mpai_primary_api">
+                                <?php
+                                foreach ($api_providers as $provider_key => $provider_name) {
+                                    printf(
+                                        '<option value="%s" %s>%s</option>',
+                                        esc_attr($provider_key),
+                                        selected($primary_api, $provider_key, false),
+                                        esc_html($provider_name)
+                                    );
+                                }
+                                ?>
+                            </select>
+                            <p class="description"><?php _e('Select which AI provider to use as the primary service. The other provider will be used as a fallback if the primary one fails.', 'memberpress-ai-assistant'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <h3><?php _e('OpenAI Settings', 'memberpress-ai-assistant'); ?></h3>
                 <table class="form-table">
                     <tr>
                         <th scope="row">
@@ -143,12 +215,12 @@ settings_errors('mpai_messages');
                     </tr>
                     <tr>
                         <th scope="row">
-                            <label for="mpai_model"><?php _e('AI Model', 'memberpress-ai-assistant'); ?></label>
+                            <label for="mpai_model"><?php _e('OpenAI Model', 'memberpress-ai-assistant'); ?></label>
                         </th>
                         <td>
                             <select name="mpai_model" id="mpai_model">
                                 <?php
-                                foreach ($models as $model_key => $model_name) {
+                                foreach ($openai_models as $model_key => $model_name) {
                                     printf(
                                         '<option value="%s" %s>%s</option>',
                                         esc_attr($model_key),
@@ -161,11 +233,15 @@ settings_errors('mpai_messages');
                             <p class="description"><?php _e('Select the OpenAI model to use.', 'memberpress-ai-assistant'); ?></p>
                         </td>
                     </tr>
+                </table>
+                
+                <h3><?php _e('Anthropic (Claude) Settings', 'memberpress-ai-assistant'); ?></h3>
+                <table class="form-table">
                     <tr>
                         <th scope="row">
-                            <label for="mpai_memberpress_api_key">
-                                <?php _e('MemberPress API Key', 'memberpress-ai-assistant'); ?>
-                                <div class="mpai-api-status" id="memberpress-api-status">
+                            <label for="mpai_anthropic_api_key">
+                                <?php _e('Anthropic API Key', 'memberpress-ai-assistant'); ?>
+                                <div class="mpai-api-status" id="anthropic-api-status">
                                     <span class="mpai-api-status-icon mpai-status-unknown"></span>
                                     <span class="mpai-api-status-text"><?php _e('Unknown', 'memberpress-ai-assistant'); ?></span>
                                 </div>
@@ -173,15 +249,35 @@ settings_errors('mpai_messages');
                         </th>
                         <td>
                             <div class="mpai-key-field">
-                                <input type="password" name="mpai_memberpress_api_key" id="mpai_memberpress_api_key" value="<?php echo esc_attr($memberpress_api_key); ?>" class="regular-text" />
-                                <button type="button" id="mpai-test-memberpress-api" class="button"><?php _e('Test Connection', 'memberpress-ai-assistant'); ?></button>
-                                <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/memberpress-test.php'); ?>" class="button" target="_blank"><?php _e('Direct Test', 'memberpress-ai-assistant'); ?></a>
-                                <span id="mpai-memberpress-test-result" class="mpai-test-result" style="display: none;"></span>
+                                <input type="password" name="mpai_anthropic_api_key" id="mpai_anthropic_api_key" value="<?php echo esc_attr($anthropic_api_key); ?>" class="regular-text" />
+                                <button type="button" id="mpai-test-anthropic-api" class="button"><?php _e('Test Connection', 'memberpress-ai-assistant'); ?></button>
+                                <span id="mpai-anthropic-test-result" class="mpai-test-result" style="display: none;"></span>
                             </div>
-                            <p class="description"><?php _e('Enter your MemberPress API key. You can generate one in the MemberPress Developer Tools settings.', 'memberpress-ai-assistant'); ?></p>
+                            <p class="description"><?php _e('Enter your Anthropic API key. You can get one from <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic Console</a>.', 'memberpress-ai-assistant'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="mpai_anthropic_model"><?php _e('Claude Model', 'memberpress-ai-assistant'); ?></label>
+                        </th>
+                        <td>
+                            <select name="mpai_anthropic_model" id="mpai_anthropic_model">
+                                <?php
+                                foreach ($anthropic_models as $model_key => $model_name) {
+                                    printf(
+                                        '<option value="%s" %s>%s</option>',
+                                        esc_attr($model_key),
+                                        selected($anthropic_model, $model_key, false),
+                                        esc_html($model_name)
+                                    );
+                                }
+                                ?>
+                            </select>
+                            <p class="description"><?php _e('Select the Anthropic Claude model to use.', 'memberpress-ai-assistant'); ?></p>
                         </td>
                     </tr>
                 </table>
+                <!-- MemberPress API Integration section removed as it is not needed -->
             </div>
             
             <div id="tab-cli" class="mpai-settings-tab" style="display: none;">
@@ -333,6 +429,7 @@ settings_errors('mpai_messages');
             </div>
             
             <div id="tab-advanced" class="mpai-settings-tab" style="display: none;">
+                <h3><?php _e('OpenAI Advanced Settings', 'memberpress-ai-assistant'); ?></h3>
                 <table class="form-table">
                     <tr>
                         <th scope="row">
@@ -353,38 +450,35 @@ settings_errors('mpai_messages');
                         </td>
                     </tr>
                 </table>
+                
+                <h3><?php _e('Anthropic Advanced Settings', 'memberpress-ai-assistant'); ?></h3>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="mpai_anthropic_temperature"><?php _e('Temperature', 'memberpress-ai-assistant'); ?></label>
+                        </th>
+                        <td>
+                            <input type="number" name="mpai_anthropic_temperature" id="mpai_anthropic_temperature" value="<?php echo esc_attr($anthropic_temperature); ?>" class="regular-text" min="0" max="1" step="0.01" />
+                            <p class="description"><?php _e('Controls randomness: lower values make responses more focused and deterministic (0-1).', 'memberpress-ai-assistant'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="mpai_anthropic_max_tokens"><?php _e('Max Tokens', 'memberpress-ai-assistant'); ?></label>
+                        </th>
+                        <td>
+                            <input type="number" name="mpai_anthropic_max_tokens" id="mpai_anthropic_max_tokens" value="<?php echo esc_attr($anthropic_max_tokens); ?>" class="regular-text" min="1" max="4096" step="1" />
+                            <p class="description"><?php _e('Maximum number of tokens to generate in the response.', 'memberpress-ai-assistant'); ?></p>
+                        </td>
+                    </tr>
+                </table>
             </div>
             
-            <div id="tab-debug" class="mpai-settings-tab" style="display: none;">
-                <h3><?php _e('Debugging Tools', 'memberpress-ai-assistant'); ?></h3>
-                <p><?php _e('These tools are intended for debugging purposes only. Use them to diagnose issues with the API connections and AJAX functionality.', 'memberpress-ai-assistant'); ?></p>
-                
-                <div class="mpai-debug-section">
-                    <h4><?php _e('Diagnostic Links', 'memberpress-ai-assistant'); ?></h4>
-                    <p>
-                        <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/debug-info.php'); ?>" class="button" target="_blank"><?php _e('Debug Info', 'memberpress-ai-assistant'); ?></a>
-                        <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/ajax-test.php'); ?>" class="button" target="_blank"><?php _e('AJAX Diagnostics', 'memberpress-ai-assistant'); ?></a>
-                        <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/ajax-test.php?run_ajax_test=1'); ?>" class="button" target="_blank"><?php _e('Direct AJAX Test', 'memberpress-ai-assistant'); ?></a>
-                    </p>
-                </div>
-                
-                <div class="mpai-debug-section">
-                    <h4><?php _e('AJAX Tests', 'memberpress-ai-assistant'); ?></h4>
-                    <p>
-                        <button type="button" id="mpai-simple-test" class="button"><?php _e('Simple AJAX Test', 'memberpress-ai-assistant'); ?></button>
-                        <button type="button" id="mpai-nonce-test" class="button"><?php _e('Test Nonce', 'memberpress-ai-assistant'); ?></button>
-                    </p>
-                    <div id="mpai-debug-results" class="mpai-debug-results" style="display: none;">
-                        <h4><?php _e('Test Results', 'memberpress-ai-assistant'); ?></h4>
-                        <pre id="mpai-debug-output"></pre>
-                    </div>
-                </div>
-                
-                <div class="mpai-debug-section">
-                    <h4><?php _e('Error Log', 'memberpress-ai-assistant'); ?></h4>
-                    <p><?php _e('Check your WordPress error log for more detailed information about any issues.', 'memberpress-ai-assistant'); ?></p>
-                </div>
-            </div>
+            
+            <?php 
+            // Include the diagnostics tab
+            require_once MPAI_PLUGIN_DIR . 'includes/settings-diagnostic.php';
+            ?>
         </div>
         
         <p class="submit">
@@ -535,8 +629,12 @@ function initMpaiSettings() {
             $resultContainer.show();
             
             // Make AJAX request to test the API
-            console.log('MPAI: Testing MemberPress API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
-            console.log('MPAI: AJAX URL:', ajaxurl);
+            if (typeof mpai_data !== 'undefined') {
+                console.log('MPAI: Testing MemberPress API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+            } else {
+                console.error('MPAI: mpai_data is not available for MemberPress API test');
+            }
+            console.log('MPAI: AJAX URL:', typeof ajaxurl !== 'undefined' ? ajaxurl : 'ajaxurl not defined');
             
             // Try the direct AJAX handler instead of admin-ajax.php
             var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . 'includes/direct-ajax-handler.php'; ?>';
@@ -544,12 +642,14 @@ function initMpaiSettings() {
             // Create the form data object directly to ensure proper formatting
             var formData = new FormData();
             formData.append('action', 'test_memberpress');
-            formData.append('nonce', mpai_data.nonce);
+            formData.append('nonce', typeof mpai_data !== 'undefined' ? mpai_data.nonce : '');
             formData.append('api_key', apiKey);
             
             // Log what we're sending for debugging
-            console.log('MPAI: FormData prepared with direct AJAX handler and nonce length:', 
-                        mpai_data.nonce ? mpai_data.nonce.length : 0);
+            console.log('MPAI: FormData prepared with direct AJAX handler');
+            if (typeof mpai_data !== 'undefined' && mpai_data.nonce) {
+                console.log('MPAI: Nonce length:', mpai_data.nonce.length);
+            }
             console.log('MPAI: Direct handler URL:', directHandlerUrl);
             
             // Use fetch API with direct handler
@@ -581,6 +681,76 @@ function initMpaiSettings() {
                 $resultContainer.html('Error: ' + error.message);
                 $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
                 $('#mpai-test-memberpress-api').prop('disabled', false);
+            });
+        });
+        
+        // Test Anthropic API Connection
+        $('#mpai-test-anthropic-api').on('click', function() {
+            var apiKey = $('#mpai_anthropic_api_key').val();
+            var $resultContainer = $('#mpai-anthropic-test-result');
+            
+            // Use the globally localized nonce
+            console.log('Test Anthropic API clicked with localized nonce');
+            
+            if (!apiKey) {
+                $resultContainer.html('<?php echo esc_js(__('Please enter an API key first', 'memberpress-ai-assistant')); ?>');
+                $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-success mpai-test-loading');
+                $resultContainer.show();
+                return;
+            }
+            
+            // Show loading state
+            $(this).prop('disabled', true);
+            $resultContainer.html('<?php echo esc_js(__('Testing...', 'memberpress-ai-assistant')); ?>');
+            $resultContainer.addClass('mpai-test-loading').removeClass('mpai-test-success mpai-test-error');
+            $resultContainer.show();
+            
+            // Make AJAX request to test the API
+            console.log('MPAI: Testing Anthropic API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+            
+            // Try the direct AJAX handler instead of admin-ajax.php
+            var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . 'includes/direct-ajax-handler.php'; ?>';
+            
+            // Create the form data object directly to ensure proper formatting
+            var formData = new FormData();
+            formData.append('action', 'test_anthropic');
+            formData.append('nonce', mpai_data.nonce);
+            formData.append('api_key', apiKey);
+            
+            // Log what we're sending for debugging
+            console.log('MPAI: FormData prepared with direct AJAX handler and nonce length:', 
+                        mpai_data.nonce ? mpai_data.nonce.length : 0);
+            console.log('MPAI: Direct handler URL:', directHandlerUrl);
+            
+            // Use fetch API with direct handler
+            fetch(directHandlerUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                console.log('MPAI: Fetch response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                console.log('MPAI: Anthropic API test response:', data);
+                if (data.success) {
+                    $resultContainer.html(data.data);
+                    $resultContainer.addClass('mpai-test-success').removeClass('mpai-test-loading mpai-test-error');
+                } else {
+                    $resultContainer.html(data.data);
+                    $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
+                }
+                $('#mpai-test-anthropic-api').prop('disabled', false);
+            })
+            .catch(function(error) {
+                console.error('MPAI: Fetch error:', error);
+                $resultContainer.html('Error: ' + error.message);
+                $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
+                $('#mpai-test-anthropic-api').prop('disabled', false);
             });
         });
         

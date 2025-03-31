@@ -2,7 +2,7 @@
 
 ## Description
 
-MemberPress AI Assistant integrates OpenAI's powerful language models with your MemberPress WordPress plugin, providing intelligent insights, content analysis, and WP-CLI command assistance. This plugin helps site administrators better understand their membership data and streamline site management tasks.
+MemberPress AI Assistant integrates powerful AI language models (OpenAI and Anthropic) with your MemberPress WordPress plugin, providing intelligent insights, content analysis, and WP-CLI command assistance. This plugin helps site administrators better understand their membership data and streamline site management tasks.
 
 ## Features
 
@@ -18,6 +18,8 @@ MemberPress AI Assistant integrates OpenAI's powerful language models with your 
 - **Intelligent Table Formatting**: Automatic detection and formatting of tabular data with appropriate headers
 - **Command-Specific Styling**: Specialized formatting for different types of commands (users, posts, plugins, etc.)
 - **Direct Command Execution**: Click commands to run them directly from the chat interface
+- **Content Marker System**: Automatic tagging and identification of blog posts and pages for reliable publishing
+- **Smart Content Extraction**: Multi-tiered content retrieval system with fallbacks for blog post publishing
 - **Improved User Experience**: Streamlined interface with real-time feedback during command execution
 
 ## Requirements
@@ -25,7 +27,8 @@ MemberPress AI Assistant integrates OpenAI's powerful language models with your 
 - WordPress 5.8 or higher
 - PHP 7.4 or higher (8.0+ recommended)
 - MemberPress 1.9.0+ plugin installed and activated
-- OpenAI API key
+- OpenAI API key (primary integration)
+- Anthropic API key (optional)
 - WP-CLI (optional, for command-line features)
 
 ## Installation
@@ -40,9 +43,11 @@ MemberPress AI Assistant integrates OpenAI's powerful language models with your 
 ### API Settings
 
 1. Obtain an API key from OpenAI (https://platform.openai.com/api-keys)
-2. Enter your API key in the plugin settings
-3. Select your preferred model (e.g., gpt-4o)
-4. Configure temperature and token settings as needed
+2. Optionally obtain an API key from Anthropic (https://console.anthropic.com/)
+3. Enter your API keys in the plugin settings
+4. Select your preferred models for each API
+5. Configure temperature and token settings as needed
+6. Choose your primary API provider (OpenAI or Anthropic)
 
 ### CLI Command Settings
 
@@ -88,6 +93,7 @@ For detailed information, please check these documentation files:
 - [Agent System Specification](docs/agent-system-spec.md) - Detailed specification of the agent system
 - [Agent System Implementation](docs/agent-system-implementation.md) - Implementation details for the agent system
 - [Agent System Quick Start](docs/agent-system-quickstart.md) - Get started with the agent system quickly
+- [Content Marker System](docs/CONTENT_MARKER_SYSTEM.md) - Comprehensive documentation of the content marker implementation
 - [Testing Procedures](tests/test-procedures.md) - Procedures for testing the plugin
 
 ## Agent System
@@ -118,13 +124,27 @@ This plugin takes security seriously:
 - WP-CLI commands can only be executed if they're on a pre-approved whitelist
 - All user inputs are properly sanitized and validated
 
+## Project Organization
+
+The plugin is organized into the following structure:
+
+- `/assets/` - CSS and JavaScript files
+- `/docs/` - Documentation files
+  - `/docs/archive/` - Archived and deprecated files
+- `/includes/` - PHP class files
+  - `/includes/agents/` - Agent system files
+  - `/includes/cli/` - WP-CLI command files
+  - `/includes/tools/` - Tool implementation files
+- `/sdk/` - Python SDK files (optional)
+- `/tests/` - Testing procedures and test files
+
 ## Development Resources
 
-Refer to the [CLAUDE.md](../CLAUDE.md) file for development guidelines and coding standards.
+Refer to the [CLAUDE.md](./CLAUDE.md) file for development guidelines and coding standards.
 
 ## Support
 
-For support, please use the GitHub issue tracker or contact us at [support@example.com](mailto:support@example.com).
+For support, please use the GitHub issue tracker or contact us at [support@memberpress.com](mailto:support@memberpress.com).
 
 ## License
 
@@ -132,10 +152,10 @@ This plugin is licensed under the GPL v2 or later.
 
 ## Credits
 
-- Developed by [Your Name]
-- OpenAI integration for language model capabilities
+- Developed by MemberPress
+- OpenAI and Anthropic integrations for language model capabilities
 - Built to enhance the MemberPress plugin experience
 
 ---
 
-MemberPress AI Assistant is not officially affiliated with MemberPress or OpenAI.
+MemberPress AI Assistant is an official MemberPress plugin.

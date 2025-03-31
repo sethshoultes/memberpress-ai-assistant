@@ -130,54 +130,47 @@ switch ($action) {
         ));
         break;
         
-    case 'test_memberpress':
-        // Test MemberPress API (simplified version)
+    case 'test_anthropic':
+        // Test Anthropic API
         if (empty($_POST['api_key'])) {
             echo json_encode(array(
                 'success' => false,
-                'message' => 'API key is required'
-            ));
-            break;
-        }
-        
-        // Check if MemberPress is active
-        if (!class_exists('MeprAppCtrl')) {
-            echo json_encode(array(
-                'success' => false,
-                'message' => 'MemberPress plugin is not active'
-            ));
-            break;
-        }
-        
-        // Check if Developer Tools is active
-        if (!class_exists('MeprRestRoutes')) {
-            echo json_encode(array(
-                'success' => false,
-                'message' => 'MemberPress Developer Tools plugin is not active'
+                'data' => 'API key is required'
             ));
             break;
         }
         
         $api_key = sanitize_text_field($_POST['api_key']);
-        $base_url = site_url('/wp-json/mp/v1/');
-        $endpoint = $base_url . 'memberships';
+        $model = !empty($_POST['model']) ? sanitize_text_field($_POST['model']) : 'claude-3-opus-20240229';
         
-        // Make a request to the MemberPress API
-        $response = wp_remote_get(
-            $endpoint,
+        // Make a simple request to the Anthropic API
+        $response = wp_remote_post(
+            'https://api.anthropic.com/v1/messages',
             array(
                 'headers' => array(
-                    'Authorization' => $api_key,
+                    'x-api-key' => $api_key,
+                    'anthropic-version' => '2023-06-01',
                     'Content-Type' => 'application/json',
                 ),
+                'body' => json_encode(array(
+                    'model' => $model,
+                    'messages' => array(
+                        array(
+                            'role' => 'user',
+                            'content' => 'Hello, I am testing the MemberPress AI Assistant connection to Anthropic. Please respond with a very brief welcome message.'
+                        )
+                    ),
+                    'max_tokens' => 150
+                )),
                 'timeout' => 30,
+                'sslverify' => true,
             )
         );
         
         if (is_wp_error($response)) {
             echo json_encode(array(
                 'success' => false,
-                'message' => $response->get_error_message()
+                'data' => $response->get_error_message()
             ));
             break;
         }
@@ -187,21 +180,154 @@ switch ($action) {
         $data = json_decode($body, true);
         
         if ($status_code !== 200) {
-            $error_message = isset($data['message']) ? $data['message'] : 'Invalid API key or API error';
+            $error_message = isset($data['error']['message']) ? $data['error']['message'] : 'Invalid API key or API error';
             echo json_encode(array(
                 'success' => false,
-                'message' => 'API Error (' . $status_code . '): ' . $error_message
+                'data' => 'API Error (' . $status_code . '): ' . $error_message
             ));
             break;
         }
         
+        // Save the API key and model to options if they've changed
+        if (get_option('mpai_anthropic_api_key') !== $api_key) {
+            update_option('mpai_anthropic_api_key', $api_key);
+        }
+        
+        if (get_option('mpai_anthropic_model') !== $model) {
+            update_option('mpai_anthropic_model', $model);
+        }
+        
         echo json_encode(array(
             'success' => true,
-            'message' => 'MemberPress API connection successful! Found ' . count($data) . ' membership(s).',
-            'data' => array(
-                'memberships_count' => count($data),
-                'first_membership' => !empty($data) ? $data[0]['title'] : 'none'
-            )
+            'data' => 'Anthropic API connection successful! Response: ' . $data['content'][0]['text']
+        ));
+        break;
+        
+    case 'test_memberpress':
+        // Test MemberPress API (simplified version)
+        // API key is now optional - direct database access is used
+        
+        // Check if MemberPress is active
+        if (!class_exists('MeprAppCtrl')) {
+            echo json_encode(array(
+                'success' => false,
+                'data' => 'MemberPress plugin is not active'
+            ));
+            break;
+        }
+        
+        // Developer Tools is no longer required
+        
+        // Store the API key if provided (for backward compatibility)
+        if (!empty($_POST['api_key'])) {
+            $api_key = sanitize_text_field($_POST['api_key']);
+            update_option('mpai_memberpress_api_key', $api_key);
+        }
+        
+        // Use direct database access instead of API
+        global $wpdb;
+        
+        // Try to get memberships
+        $memberships = array();
+        
+        // Try using MemberPress class if available
+        if (class_exists('MeprProduct')) {
+            // Get all membership products
+            $products = get_posts(array(
+                'post_type' => 'memberpressproduct',
+                'numberposts' => -1,
+                'post_status' => 'publish'
+            ));
+            
+            foreach ($products as $product) {
+                $mepr_product = new MeprProduct($product->ID);
+                $memberships[] = array(
+                    'id' => $product->ID,
+                    'title' => $product->post_title,
+                    'price' => $mepr_product->price
+                );
+            }
+        } else {
+            // Use WP database directly
+            $products = $wpdb->get_results("SELECT ID, post_title FROM {$wpdb->posts} WHERE post_type = 'memberpressproduct' AND post_status = 'publish'");
+            
+            foreach ($products as $product) {
+                $price = get_post_meta($product->ID, '_mepr_product_price', true);
+                $memberships[] = array(
+                    'id' => $product->ID,
+                    'title' => $product->post_title,
+                    'price' => $price
+                );
+            }
+        }
+        
+        $count = count($memberships);
+        
+        echo json_encode(array(
+            'success' => true,
+            'data' => 'MemberPress database access successful! Found ' . $count . ' membership(s).',
+            'memberships' => $memberships
+        ));
+        break;
+        
+    case 'mpai_run_diagnostic':
+        // Run diagnostic test
+        if (empty($_POST['test_type'])) {
+            echo json_encode(array(
+                'success' => false,
+                'data' => 'Test type is required'
+            ));
+            break;
+        }
+        
+        $test_type = sanitize_text_field($_POST['test_type']);
+        
+        // Create diagnostic tool instance
+        if (!class_exists('MPAI_Diagnostic_Tool')) {
+            // First, make sure MPAI_Base_Tool is loaded
+            if (!class_exists('MPAI_Base_Tool')) {
+                $base_tool_path = dirname(dirname(__FILE__)) . '/tools/class-mpai-base-tool.php';
+                if (file_exists($base_tool_path)) {
+                    require_once $base_tool_path;
+                } else {
+                    echo json_encode(array(
+                        'success' => false,
+                        'data' => 'Base tool class not found'
+                    ));
+                    break;
+                }
+            }
+            
+            // Now load the diagnostic tool
+            $tool_path = dirname(dirname(__FILE__)) . '/tools/implementations/class-mpai-diagnostic-tool.php';
+            if (file_exists($tool_path)) {
+                require_once $tool_path;
+            } else {
+                echo json_encode(array(
+                    'success' => false,
+                    'data' => 'Diagnostic tool class file not found at: ' . $tool_path
+                ));
+                break;
+            }
+        }
+        
+        $diagnostic_tool = new MPAI_Diagnostic_Tool();
+        
+        // Get optional API key if provided
+        $parameters = array(
+            'test_type' => $test_type
+        );
+        
+        if (!empty($_POST['api_key'])) {
+            $parameters['api_key'] = sanitize_text_field($_POST['api_key']);
+        }
+        
+        // Execute the diagnostic test
+        $result = $diagnostic_tool->execute($parameters);
+        
+        echo json_encode(array(
+            'success' => true,
+            'data' => $result
         ));
         break;
         

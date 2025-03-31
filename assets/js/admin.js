@@ -9,7 +9,15 @@
     if (typeof mpai_data === 'undefined') {
         console.error('MPAI: mpai_data is not available in admin.js');
     } else {
-        console.log('MPAI: Admin script loaded with mpai_data nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+        // Use the logger if available, otherwise fall back to console
+        if (window.mpaiLogger) {
+            window.mpaiLogger.info('Admin script loaded', 'ui');
+            window.mpaiLogger.debug('Admin script loaded with mpai_data nonce: ' + 
+                (mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined'), 'ui');
+        } else {
+            console.log('MPAI: Admin script loaded with mpai_data nonce:', 
+                mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+        }
     }
 
     /**
@@ -177,6 +185,21 @@
          * Reset conversation
          */
         function resetConversation() {
+            // First clear the UI immediately
+            $chatMessages.empty();
+            $messageInput.val('');
+            
+            // Show loading indicator immediately
+            addLoadingMessage();
+            
+            // Add a notice that we're resetting
+            $chatMessages.append(
+                '<div class="mpai-message mpai-message-system">' +
+                '<div class="mpai-message-content">Resetting conversation and clearing cached data...</div>' +
+                '</div>'
+            );
+            
+            // Now make the API call to reset on the server
             $.ajax({
                 url: mpai_data.ajax_url,
                 type: 'POST',
@@ -186,18 +209,33 @@
                     mpai_nonce: mpai_data.nonce
                 },
                 success: function(response) {
+                    // Remove loading indicator
+                    removeLoadingMessage();
+                    
+                    // Remove all messages including the system message
+                    $chatMessages.empty();
+                    
                     if (response.success) {
-                        // Clear chat
-                        $chatMessages.empty();
+                        // Log the successful reset
+                        console.log('MPAI: Conversation reset successfully');
                         
                         // Add welcome message
                         addMessageToChat('assistant', 'Hello! I\'m your MemberPress AI Assistant. I can help you with your MemberPress site data and suggest WP-CLI commands. How can I assist you today?');
+                        
+                        // Optionally, refresh the page to ensure all state is cleared
+                        // Uncomment the next line if you want a full page refresh
+                        // window.location.reload();
                     } else {
+                        console.error('MPAI: Failed to reset conversation:', response.data);
                         alert('Error: ' + response.data);
                     }
                 },
-                error: function() {
-                    alert('Failed to reset conversation.');
+                error: function(xhr, status, error) {
+                    // Remove loading indicator
+                    removeLoadingMessage();
+                    
+                    console.error('MPAI: AJAX error when resetting conversation:', status, error);
+                    alert('Failed to reset conversation. Please try refreshing the page.');
                 }
             });
         }
@@ -206,8 +244,14 @@
         $chatForm.on('submit', function(e) {
             e.preventDefault();
             
-            // Check if $messageInput exists and has a val method before calling trim
-            const message = $messageInput && $messageInput.val ? $messageInput.val().trim() : '';
+            // Early return if form exists but message input doesn't
+            if (!$messageInput || !$messageInput.length) {
+                console.log('MPAI: Message input not found, cannot process form submission');
+                return;
+            }
+            
+            // Get message safely
+            const message = $messageInput.val().trim();
             
             if (message) {
                 sendMessage(message);
@@ -401,11 +445,11 @@
         });
     }
     
-    // Check MemberPress API status on page load
-    function checkMemberPressStatus() {
-        var apiKey = $('#mpai_memberpress_api_key').val();
-        var $statusIcon = $('#memberpress-api-status .mpai-api-status-icon');
-        var $statusText = $('#memberpress-api-status .mpai-api-status-text');
+    // Check Anthropic API status on page load
+    function checkAnthropicStatus() {
+        var apiKey = $('#mpai_anthropic_api_key').val();
+        var $statusIcon = $('#anthropic-api-status .mpai-api-status-icon');
+        var $statusText = $('#anthropic-api-status .mpai-api-status-text');
         
         if (!apiKey) {
             $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
@@ -418,7 +462,7 @@
         
         // Create the form data object directly to ensure proper formatting
         var formData = new FormData();
-        formData.append('action', 'test_memberpress');
+        formData.append('action', 'test_anthropic');
         formData.append('nonce', mpai_data.nonce);
         formData.append('api_key', apiKey);
         
@@ -446,11 +490,13 @@
             }
         })
         .catch(function(error) {
-            console.error('MPAI: MemberPress status check error:', error);
+            console.error('MPAI: Anthropic status check error:', error);
             $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
             $statusText.text('Connection Error');
         });
     }
+    
+    // MemberPress API status check removed - not needed
 
     // Test OpenAI API Connection
     function initApiTests() {
@@ -460,7 +506,11 @@
             var $statusIcon = $('#openai-api-status .mpai-api-status-icon');
             var $statusText = $('#openai-api-status .mpai-api-status-text');
             
-            console.log('Test OpenAI clicked with localized nonce');
+            if (window.mpaiLogger) {
+                window.mpaiLogger.info('Testing OpenAI API connection', 'api_calls');
+            } else {
+                console.log('Test OpenAI clicked with localized nonce');
+            }
             
             if (!apiKey) {
                 $resultContainer.html('Please enter an API key first');
@@ -469,6 +519,10 @@
                 
                 $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
                 $statusText.text('Not Configured');
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.warn('OpenAI API test canceled - no API key provided', 'api_calls');
+                }
                 return;
             }
             
@@ -481,7 +535,12 @@
             $statusIcon.removeClass('mpai-status-connected mpai-status-disconnected').addClass('mpai-status-unknown');
             $statusText.text('Checking...');
             
-            console.log('MPAI: Testing OpenAI API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+            if (window.mpaiLogger) {
+                window.mpaiLogger.info('Testing OpenAI API with key: ***' + apiKey.substring(apiKey.length - 4), 'api_calls');
+                window.mpaiLogger.startTimer('openai_test');
+            } else {
+                console.log('MPAI: Testing OpenAI API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+            }
             
             // Create the form data object directly to ensure proper formatting
             var formData = new FormData();
@@ -492,9 +551,17 @@
             // Use direct AJAX handler
             var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
             
-            console.log('MPAI: FormData prepared with direct AJAX handler and nonce length:', 
-                        mpai_data.nonce ? mpai_data.nonce.length : 0);
-            console.log('MPAI: Direct handler URL:', directHandlerUrl);
+            if (window.mpaiLogger) {
+                window.mpaiLogger.debug('Using direct AJAX handler for OpenAI test', 'api_calls', {
+                    url: directHandlerUrl,
+                    action: 'test_openai',
+                    nonceLength: mpai_data.nonce ? mpai_data.nonce.length : 0
+                });
+            } else {
+                console.log('MPAI: FormData prepared with direct AJAX handler and nonce length:', 
+                            mpai_data.nonce ? mpai_data.nonce.length : 0);
+                console.log('MPAI: Direct handler URL:', directHandlerUrl);
+            }
             
             // Use fetch API with direct handler
             fetch(directHandlerUrl, {
@@ -503,31 +570,57 @@
                 credentials: 'same-origin'
             })
             .then(function(response) {
-                console.log('MPAI: Fetch response status:', response.status);
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.debug('OpenAI API test response status: ' + response.status, 'api_calls');
+                } else {
+                    console.log('MPAI: Fetch response status:', response.status);
+                }
+                
                 if (!response.ok) {
                     throw new Error('Network response was not ok: ' + response.status);
                 }
                 return response.json();
             })
             .then(function(data) {
-                console.log('MPAI: API test response:', data);
+                if (window.mpaiLogger) {
+                    const elapsed = window.mpaiLogger.endTimer('openai_test');
+                    window.mpaiLogger.info('OpenAI API test completed in ' + (elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown time'), 'api_calls');
+                    window.mpaiLogger.debug('OpenAI API test response data', 'api_calls', data);
+                } else {
+                    console.log('MPAI: API test response:', data);
+                }
+                
                 if (data.success) {
                     $resultContainer.html(data.data);
                     $resultContainer.addClass('mpai-test-success').removeClass('mpai-test-loading mpai-test-error');
                     
                     $statusIcon.removeClass('mpai-status-disconnected mpai-status-unknown').addClass('mpai-status-connected');
                     $statusText.text('Connected');
+                    
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.info('OpenAI API connection successful', 'api_calls');
+                    }
                 } else {
                     $resultContainer.html(data.data);
                     $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
                     
                     $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
                     $statusText.text('Error');
+                    
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.error('OpenAI API connection failed', 'api_calls', data);
+                    }
                 }
                 $('#mpai-test-openai-api').prop('disabled', false);
             })
             .catch(function(error) {
-                console.error('MPAI: Fetch error:', error);
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.error('OpenAI API test fetch error', 'api_calls', error);
+                    window.mpaiLogger.endTimer('openai_test');
+                } else {
+                    console.error('MPAI: Fetch error:', error);
+                }
+                
                 $resultContainer.html('Error: ' + error.message);
                 $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
                 $('#mpai-test-openai-api').prop('disabled', false);
@@ -537,93 +630,26 @@
             });
         });
         
-        // Test MemberPress API Connection
-        $('#mpai-test-memberpress-api').on('click', function() {
-            var apiKey = $('#mpai_memberpress_api_key').val();
-            var $resultContainer = $('#mpai-memberpress-test-result');
-            var $statusIcon = $('#memberpress-api-status .mpai-api-status-icon');
-            var $statusText = $('#memberpress-api-status .mpai-api-status-text');
-            
-            console.log('Test MemberPress API clicked with localized nonce');
-            
-            if (!apiKey) {
-                $resultContainer.html('Please enter an API key first');
-                $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-success mpai-test-loading');
-                $resultContainer.show();
-                
-                $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
-                $statusText.text('Not Configured');
-                return;
-            }
-            
-            // Show loading state
-            $(this).prop('disabled', true);
-            $resultContainer.html('Testing...');
-            $resultContainer.addClass('mpai-test-loading').removeClass('mpai-test-success mpai-test-error');
-            $resultContainer.show();
-            
-            $statusIcon.removeClass('mpai-status-connected mpai-status-disconnected').addClass('mpai-status-unknown');
-            $statusText.text('Checking...');
-            
-            console.log('MPAI: Testing MemberPress API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
-            
-            // Create the form data object directly to ensure proper formatting
-            var formData = new FormData();
-            formData.append('action', 'test_memberpress');
-            formData.append('nonce', mpai_data.nonce);
-            formData.append('api_key', apiKey);
-            
-            // Use direct AJAX handler
-            var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
-            
-            console.log('MPAI: FormData prepared with direct AJAX handler and nonce length:', 
-                        mpai_data.nonce ? mpai_data.nonce.length : 0);
-            console.log('MPAI: Direct handler URL:', directHandlerUrl);
-            
-            // Use fetch API with direct handler
-            fetch(directHandlerUrl, {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin'
-            })
-            .then(function(response) {
-                console.log('MPAI: Fetch response status:', response.status);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(function(data) {
-                console.log('MPAI: MemberPress API test response:', data);
-                if (data.success) {
-                    $resultContainer.html(data.data);
-                    $resultContainer.addClass('mpai-test-success').removeClass('mpai-test-loading mpai-test-error');
-                    
-                    $statusIcon.removeClass('mpai-status-disconnected mpai-status-unknown').addClass('mpai-status-connected');
-                    $statusText.text('Connected');
-                } else {
-                    $resultContainer.html(data.data);
-                    $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
-                    
-                    $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
-                    $statusText.text('Error');
-                }
-                $('#mpai-test-memberpress-api').prop('disabled', false);
-            })
-            .catch(function(error) {
-                console.error('MPAI: Fetch error:', error);
-                $resultContainer.html('Error: ' + error.message);
-                $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
-                $('#mpai-test-memberpress-api').prop('disabled', false);
-                
-                $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
-                $statusText.text('Connection Error');
-            });
-        });
+        // MemberPress API test handler removed - not needed
     }
 
     $(document).ready(function() {
         console.log('MPAI: Admin script ready');
+
+        // Check if mpai_data includes plugin_url, add it if missing
+        if (typeof mpai_data !== 'undefined' && !mpai_data.plugin_url) {
+            // Try to get plugin URL from the page
+            var scriptPath = $('script[src*="memberpress-ai-assistant"]').attr('src');
+            if (scriptPath) {
+                var pluginUrl = scriptPath.split('/assets/')[0] + '/';
+                console.log('MPAI: Setting plugin_url from script tag:', pluginUrl);
+                mpai_data.plugin_url = pluginUrl;
+            } else {
+                // Fallback to current site URL + plugin path
+                mpai_data.plugin_url = window.location.origin + '/wp-content/plugins/memberpress-ai-assistant/';
+                console.log('MPAI: Setting fallback plugin_url:', mpai_data.plugin_url);
+            }
+        }
         
         // Initialize chat (only if the old chat interface exists)
         initChat();
@@ -635,11 +661,14 @@
         initApiTests();
         
         // Initialize API status indicators on page load if we're on the settings page
-        if ($('#openai-api-status').length > 0 && $('#memberpress-api-status').length > 0) {
+        if ($('#openai-api-status').length > 0) {
             // Check status after a short delay to ensure everything is loaded
             setTimeout(function() {
+                // Only check OpenAI and Anthropic APIs by default
                 checkOpenAIStatus();
-                checkMemberPressStatus();
+                checkAnthropicStatus();
+                
+                // MemberPress API check removed - not needed
             }, 500);
         }
         

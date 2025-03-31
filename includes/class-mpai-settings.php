@@ -63,9 +63,9 @@ class MPAI_Settings {
     }
 
     /**
-     * Get available models
+     * Get available OpenAI models
      *
-     * @return array Available models
+     * @return array Available OpenAI models
      */
     public function get_available_models() {
         return array(
@@ -73,6 +73,33 @@ class MPAI_Settings {
             'gpt-4-turbo' => 'GPT-4 Turbo',
             'gpt-4' => 'GPT-4',
             'gpt-3.5-turbo' => 'GPT-3.5 Turbo',
+        );
+    }
+    
+    /**
+     * Get available Anthropic models
+     *
+     * @return array Available Anthropic models
+     */
+    public function get_available_anthropic_models() {
+        return array(
+            'claude-3-opus-20240229' => 'Claude 3 Opus',
+            'claude-3-sonnet-20240229' => 'Claude 3 Sonnet',
+            'claude-3-haiku-20240307' => 'Claude 3 Haiku',
+            'claude-2.1' => 'Claude 2.1',
+            'claude-2.0' => 'Claude 2.0',
+        );
+    }
+    
+    /**
+     * Get available API providers
+     *
+     * @return array Available API providers
+     */
+    public function get_available_api_providers() {
+        return array(
+            'openai' => 'OpenAI',
+            'anthropic' => 'Anthropic (Claude)',
         );
     }
 }
