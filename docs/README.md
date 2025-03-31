@@ -21,6 +21,7 @@ Welcome to the MemberPress AI Assistant documentation hub. This directory contai
 ## Testing and Status
 
 - [Test Procedures](../tests/test-procedures.md) - Testing procedures and checklists
+- [Logging and Tool Detection Tests](../tests/logging-and-tool-detection-tests.md) - Specific tests for the console logging and tool call detection
 - [Changelog](../CHANGELOG.md) - Version history with detailed changes
 
 ## SDK Integration

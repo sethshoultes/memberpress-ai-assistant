@@ -5,6 +5,43 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2025-03-31
+
+### Added
+- Enhanced tool call detection system with additional patterns:
+  - Added support for indented JSON code blocks
+  - Added detection for multi-line JSON without code blocks
+  - Added support for JSON with single quotes
+  - Added compatibility with two-backtick code blocks
+- Implemented comprehensive tool call testing utility:
+  - Added browser console test function `testToolCallDetection()`
+  - Enhanced diagnostic reporting for pattern matching
+  - Added detailed test reporting for different tool call formats
+- Created detailed testing documentation:
+  - Added new test file for logging and tool call detection testing
+  - Documented test cases for all supported formats
+  - Created sample responses for testing and debugging
+  - Added reporting guidelines for tool call detection issues
+- Added content marker system for reliable content identification:
+  - Implemented automatic tagging of blog posts with unique markers
+  - Created message type identification for blog posts, pages, and memberships
+  - Added find_message_with_content_marker method to locate specific content types
+  - Implemented prioritized content retrieval logic with multiple fallbacks
+  - Added HTML comment-based markers with timestamps for content identification
+
+### Fixed
+- Significantly improved tool call detection reliability:
+  - Enhanced pattern testing diagnostics
+  - Added individual pattern test output
+  - Improved error reporting for malformed tool calls
+- Fixed blog post content extraction issues:
+  - Added more reliable blog post content identification
+  - Implemented smart content type detection for blog posts, pages, and memberships
+  - Fixed incorrect post content by using marker-based message identification
+  - Improved title and content extraction reliability
+  - Fixed pattern matching for edge cases
+  - Added code block extraction for better debugging
+
 ## [1.5.1] - 2025-03-31
 
 ### Fixed
@@ -19,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented additional checks for chat instance method existence
 - Fixed nested parameters structure handling for more reliable post creation
 - Added defensive programming to prevent PHP fatal errors during content extraction
+- Added get_previous_assistant_message method to correctly extract blog post content
+- Fixed incorrect post content by using previous AI message instead of latest message
+- Improved reliability of extracting content by prioritizing the most relevant message
+- Added better message selection logic for post content extraction
 
 ## [1.5.0] - 2025-03-30
 

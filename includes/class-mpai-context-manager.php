@@ -757,26 +757,53 @@ class MPAI_Context_Manager {
                 if (isset($this->chat_instance)) {
                     try {
                         error_log('MPAI: Chat instance is available, attempting to extract content');
-                        $latest_message = $this->chat_instance->get_latest_assistant_message();
                         
-                        if ($latest_message && !empty($latest_message['content'])) {
-                            error_log('MPAI: Got message content of length: ' . strlen($latest_message['content']));
+                        // Try to find a message with an appropriate content marker first
+                        // Then try previous message as a fallback
+                        // Finally fall back to latest message if neither is available
+                        $message_to_use = null;
+                        $content_type = isset($parameters['post_type']) && $parameters['post_type'] === 'page' ? 'page' : 'blog-post';
+                        
+                        // First approach: look for content marker
+                        if (method_exists($this->chat_instance, 'find_message_with_content_marker')) {
+                            $message_to_use = $this->chat_instance->find_message_with_content_marker($content_type);
+                            if ($message_to_use) {
+                                error_log('MPAI: Using message with ' . $content_type . ' marker for content extraction');
+                            }
+                        }
+                        
+                        // Second approach: try previous message
+                        if (!$message_to_use && method_exists($this->chat_instance, 'get_previous_assistant_message')) {
+                            $message_to_use = $this->chat_instance->get_previous_assistant_message();
+                            if ($message_to_use) {
+                                error_log('MPAI: Using PREVIOUS assistant message for content extraction (fallback)');
+                            }
+                        }
+                        
+                        // Last resort: latest message
+                        if (!$message_to_use) {
+                            $message_to_use = $this->chat_instance->get_latest_assistant_message();
+                            error_log('MPAI: Using LATEST assistant message for content extraction (last resort)');
+                        }
+                        
+                        if ($message_to_use && !empty($message_to_use['content'])) {
+                            error_log('MPAI: Got message content of length: ' . strlen($message_to_use['content']));
                             
                             // Extract title if needed
                             if (empty($parameters['title']) || $parameters['title'] === 'New Post' || $parameters['title'] === 'New Blog Post') {
-                                if (preg_match('/#+\s*(?:Title:|)([^\n]+)/i', $latest_message['content'], $title_matches)) {
+                                if (preg_match('/#+\s*(?:Title:|)([^\n]+)/i', $message_to_use['content'], $title_matches)) {
                                     $parameters['title'] = trim($title_matches[1]);
                                     error_log('MPAI: Extracted title: ' . $parameters['title']);
                                 }
                             }
                             
                             // Extract content - try to find content section first
-                            if (preg_match('/(?:#+\s*Content:?|Content:)[\r\n]+([\s\S]+?)(?:$|#+\s|```json)/i', $latest_message['content'], $content_matches)) {
+                            if (preg_match('/(?:#+\s*Content:?|Content:)[\r\n]+([\s\S]+?)(?:$|#+\s|```json)/i', $message_to_use['content'], $content_matches)) {
                                 $cleaned_content = trim($content_matches[1]);
                                 error_log('MPAI: Extracted content from dedicated content section');
                             } else {
                                 // If no content section, use whole message
-                                $content = $latest_message['content'];
+                                $content = $message_to_use['content'];
                                 
                                 // Remove code blocks and JSON blocks
                                 $cleaned_content = preg_replace('/```(?:json)?.*?```/s', '', $content);
@@ -1086,18 +1113,40 @@ class MPAI_Context_Manager {
                     try {
                         // Check if content is missing or empty
                         if (!isset($request['parameters']['content']) || empty($request['parameters']['content'])) {
-                            // Try to find content from the latest assistant message
-                            if (isset($this->chat_instance) && method_exists($this->chat_instance, 'get_latest_assistant_message')) {
-                                $latest_message = $this->chat_instance->get_latest_assistant_message();
-                                if ($latest_message && !empty($latest_message['content'])) {
+                            // Try to find content using marker-based approach first, then fallbacks
+                            if (isset($this->chat_instance)) {
+                                // Determine which message to use - prefer marker-based approach
+                                $message_to_use = null;
+                                $content_type = ($request['parameters']['action'] === 'create_page') ? 'page' : 'blog-post';
+                                
+                                // First approach: look for content marker
+                                if (method_exists($this->chat_instance, 'find_message_with_content_marker')) {
+                                    $message_to_use = $this->chat_instance->find_message_with_content_marker($content_type);
+                                    if ($message_to_use) {
+                                        error_log('MPAI: Using message with ' . $content_type . ' marker for content extraction in tool request');
+                                    }
+                                }
+                                
+                                // Second approach: try previous message
+                                if (!$message_to_use && method_exists($this->chat_instance, 'get_previous_assistant_message')) {
+                                    $message_to_use = $this->chat_instance->get_previous_assistant_message();
+                                    error_log('MPAI: Using PREVIOUS assistant message for content extraction in tool request (fallback)');
+                                } 
+                                // Last resort: latest message
+                                else if (!$message_to_use && method_exists($this->chat_instance, 'get_latest_assistant_message')) {
+                                    $message_to_use = $this->chat_instance->get_latest_assistant_message();
+                                    error_log('MPAI: Using LATEST assistant message for content extraction in tool request (last resort)');
+                                }
+                                
+                                if ($message_to_use && !empty($message_to_use['content'])) {
                                     // First, check for title if it's missing or default
                                     if (!isset($request['parameters']['title']) || empty($request['parameters']['title']) || 
                                         $request['parameters']['title'] === 'New Post') {
                                         // Try multiple title patterns
-                                        if (preg_match('/(?:#+\s*Title:?\s*|Title:\s*)([^\n]+)/i', $latest_message['content'], $title_matches)) {
+                                        if (preg_match('/(?:#+\s*Title:?\s*|Title:\s*)([^\n]+)/i', $message_to_use['content'], $title_matches)) {
                                             $request['parameters']['title'] = trim($title_matches[1]);
                                             error_log('MPAI: Extracted title from assistant message: ' . $request['parameters']['title']);
-                                        } else if (preg_match('/^#+\s*([^\n]+)/i', $latest_message['content'], $heading_matches)) {
+                                        } else if (preg_match('/^#+\s*([^\n]+)/i', $message_to_use['content'], $heading_matches)) {
                                             // Try the first heading as a title
                                             $request['parameters']['title'] = trim($heading_matches[1]);
                                             error_log('MPAI: Using first heading as title: ' . $request['parameters']['title']);
@@ -1106,12 +1155,12 @@ class MPAI_Context_Manager {
                                     
                                     // Now extract content using several approaches
                                     // 1. Try to find a dedicated content section
-                                    if (preg_match('/(?:#+\s*Content:?|Content:)[\r\n]+([\s\S]+?)(?:$|#+\s|```json)/i', $latest_message['content'], $content_matches)) {
+                                    if (preg_match('/(?:#+\s*Content:?|Content:)[\r\n]+([\s\S]+?)(?:$|#+\s|```json)/i', $message_to_use['content'], $content_matches)) {
                                         $request['parameters']['content'] = trim($content_matches[1]);
                                         error_log('MPAI: Extracted content from dedicated section - length: ' . strlen($request['parameters']['content']));
                                     } else {
                                         // 2. If no content section found, use the whole message excluding tool calls and formatting
-                                        $content = $latest_message['content'];
+                                        $content = $message_to_use['content'];
                                         
                                         // Remove tool call blocks (JSON code blocks)
                                         $cleaned_content = preg_replace('/```(?:json)?\s*\{.*?\}\s*```/is', '', $content);

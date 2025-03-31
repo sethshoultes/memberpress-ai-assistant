@@ -275,6 +275,12 @@
             const anyCodeBlockRegex = /```[\w-]*\s*\n(\{[\s\S]*?["']tool["'][\s\S]*?["']parameters["'][\s\S]*?\})\s*\n```/g;  // Any code block with tool calls
             const altFormatRegex = /```\s*(\{[\s\S]*?["']tool["'][\s\S]*?["']parameters["'][\s\S]*?\})\s*```/g;  // No newlines after ticks
             
+            // Enhanced patterns for additional edge cases
+            const indentedJsonBlockRegex = /```(?:json)?\s*\n\s*({[\s\S]*?})\s*\n```/g;  // JSON with indentation
+            const multilineToolRegex = /\{\s*[\r\n\s]*"tool"[\s\S]*?"parameters"[\s\S]*?\}/g;  // Multi-line JSON without code blocks
+            const singleQuoteJsonRegex = /```(?:json)?\s*\n({'[\s\S]*?'})\s*\n```/g;  // JSON with single quotes
+            const backtickFenceVariantRegex = /``\s*\n({[\s\S]*?})\s*\n``/g;  // Two backticks instead of three
+            
             // Log the regex patterns we're using to find tool calls
             console.log('MPAI: Using regex patterns:', {
                 jsonBlockRegex: jsonBlockRegex.toString(),
@@ -374,10 +380,17 @@
             }
             
             // Process all patterns
+            // Process all pattern variations
             processMatchesFromPattern(jsonBlockRegex, 'jsonBlockRegex');
             processMatchesFromPattern(jsonObjectBlockRegex, 'jsonObjectBlockRegex');
             processMatchesFromPattern(anyCodeBlockRegex, 'anyCodeBlockRegex');
             processMatchesFromPattern(altFormatRegex, 'altFormatRegex');
+            
+            // Process enhanced patterns
+            processMatchesFromPattern(indentedJsonBlockRegex, 'indentedJsonBlockRegex');
+            processMatchesFromPattern(multilineToolRegex, 'multilineToolRegex');
+            processMatchesFromPattern(singleQuoteJsonRegex, 'singleQuoteJsonRegex');
+            processMatchesFromPattern(backtickFenceVariantRegex, 'backtickFenceVariantRegex');
             
             // Process direct JSON format separately because it's different (match[0] instead of match[1])
             let directMatch;
@@ -465,11 +478,30 @@
                 console.log('- Tool keyword:', response.includes('"tool"') || response.includes("'tool'"));
                 console.log('- Parameters keyword:', response.includes('"parameters"') || response.includes("'parameters'"));
                 
+                // Test each regex pattern individually to see which ones might have matched
+                console.log('MPAI: Testing individual patterns:');
+                console.log('- jsonBlockRegex:', response.match(jsonBlockRegex) !== null);
+                console.log('- jsonObjectBlockRegex:', response.match(jsonObjectBlockRegex) !== null);
+                console.log('- anyCodeBlockRegex:', response.match(anyCodeBlockRegex) !== null);
+                console.log('- altFormatRegex:', response.match(altFormatRegex) !== null);
+                console.log('- indentedJsonBlockRegex:', response.match(indentedJsonBlockRegex) !== null);
+                console.log('- multilineToolRegex:', response.match(multilineToolRegex) !== null);
+                console.log('- singleQuoteJsonRegex:', response.match(singleQuoteJsonRegex) !== null);
+                console.log('- backtickFenceVariantRegex:', response.match(backtickFenceVariantRegex) !== null);
+                console.log('- directJsonRegex:', response.match(directJsonRegex) !== null);
+                
                 // Check for alternative formats that might not be matching
                 if (response.includes('tool') && response.includes('parameters')) {
                     console.log('MPAI: Response contains "tool" and "parameters" keywords, but might be in an unexpected format:');
                     const potentialMatches = response.match(/tool[\s\S]*?parameters/g);
                     if (potentialMatches) {
+                        console.log('MPAI: Potential undetected tool patterns:', potentialMatches);
+                        
+                        // Extract code blocks for inspection
+                        const codeBlocks = response.match(/```[\s\S]*?```/g);
+                        if (codeBlocks && codeBlocks.length > 0) {
+                            console.log('MPAI: Code blocks in response for inspection:', codeBlocks);
+                        }
                         console.log('MPAI: Potential undetected tool patterns:', potentialMatches);
                     }
                 }
@@ -2435,5 +2467,152 @@
             localStorage.setItem('mpaiChatOpen', 'false');
         });
     });
+
+    /**
+     * Test utility function for tool call detection
+     * This function can be called from the browser console to test tool call detection with various formats
+     * 
+     * @param {string} testResponse - The test response to process
+     * @return {object} Test results
+     */
+    window.testToolCallDetection = function(testResponse) {
+        // Create a clean test environment
+        console.group('MPAI Tool Call Detection Test');
+        
+        console.log('Running tool call detection test on provided response');
+        console.log('Response length:', testResponse.length);
+        
+        if (window.mpaiLogger) {
+            window.mpaiLogger.debug('Starting tool call detection test', 'tool_usage');
+        }
+        
+        // Apply all regex patterns to the test response
+        const jsonBlockRegex = /```(?:json)?\s*\n({[\s\S]*?})\s*\n```/g;
+        const jsonObjectBlockRegex = /```(?:json-object)?\s*\n({[\s\S]*?})\s*\n```/g;
+        const directJsonRegex = /\{[\s\S]*?["']tool["'][\s\S]*?["']parameters["'][\s\S]*?\}/g;
+        const anyCodeBlockRegex = /```[\w-]*\s*\n(\{[\s\S]*?["']tool["'][\s\S]*?["']parameters["'][\s\S]*?\})\s*\n```/g;
+        const altFormatRegex = /```\s*(\{[\s\S]*?["']tool["'][\s\S]*?["']parameters["'][\s\S]*?\})\s*```/g;
+        const indentedJsonBlockRegex = /```(?:json)?\s*\n\s*({[\s\S]*?})\s*\n```/g;
+        const multilineToolRegex = /\{\s*[\r\n\s]*"tool"[\s\S]*?"parameters"[\s\S]*?\}/g;
+        const singleQuoteJsonRegex = /```(?:json)?\s*\n({'[\s\S]*?'})\s*\n```/g;
+        const backtickFenceVariantRegex = /``\s*\n({[\s\S]*?})\s*\n``/g;
+        
+        // Object to store all matches by pattern
+        const allMatches = {
+            jsonBlockRegex: [],
+            jsonObjectBlockRegex: [],
+            directJsonRegex: [],
+            anyCodeBlockRegex: [],
+            altFormatRegex: [],
+            indentedJsonBlockRegex: [],
+            multilineToolRegex: [],
+            singleQuoteJsonRegex: [],
+            backtickFenceVariantRegex: []
+        };
+        
+        // Function to collect matches from each pattern
+        function collectMatches(pattern, patternName) {
+            let match;
+            let patternCopy = new RegExp(pattern.source, pattern.flags); // Create a copy of the regex to avoid lastIndex issues
+            while ((match = patternCopy.exec(testResponse)) !== null) {
+                try {
+                    const matchText = patternName === 'directJsonRegex' ? match[0] : match[1];
+                    if (!matchText || matchText.trim() === '') continue;
+                    
+                    try {
+                        const jsonData = JSON.parse(matchText);
+                        if (jsonData.tool && jsonData.parameters) {
+                            allMatches[patternName].push({
+                                fullMatch: match[0],
+                                jsonText: matchText,
+                                jsonData: jsonData
+                            });
+                        }
+                    } catch (parseError) {
+                        console.log(`MPAI Test: Parse error for ${patternName} match:`, parseError);
+                        allMatches[patternName].push({
+                            fullMatch: match[0],
+                            jsonText: matchText,
+                            parseError: parseError.message
+                        });
+                    }
+                } catch (e) {
+                    console.error(`MPAI Test: Error processing ${patternName} match:`, e);
+                }
+            }
+        }
+        
+        // Collect matches for each pattern
+        collectMatches(jsonBlockRegex, 'jsonBlockRegex');
+        collectMatches(jsonObjectBlockRegex, 'jsonObjectBlockRegex');
+        collectMatches(anyCodeBlockRegex, 'anyCodeBlockRegex');
+        collectMatches(altFormatRegex, 'altFormatRegex');
+        collectMatches(indentedJsonBlockRegex, 'indentedJsonBlockRegex');
+        collectMatches(multilineToolRegex, 'multilineToolRegex');
+        collectMatches(singleQuoteJsonRegex, 'singleQuoteJsonRegex');
+        collectMatches(backtickFenceVariantRegex, 'backtickFenceVariantRegex');
+        
+        // Handle directJsonRegex specially (match[0] instead of match[1])
+        collectMatches(directJsonRegex, 'directJsonRegex');
+        
+        // Consolidate all valid tool calls (deduplicated)
+        const validToolCalls = [];
+        const toolCallMap = {}; // For deduplication
+        
+        Object.keys(allMatches).forEach(patternName => {
+            allMatches[patternName].forEach(match => {
+                if (match.jsonData && match.jsonData.tool && match.jsonData.parameters) {
+                    const toolKey = match.jsonData.tool + JSON.stringify(match.jsonData.parameters);
+                    if (!toolCallMap[toolKey]) {
+                        toolCallMap[toolKey] = true;
+                        validToolCalls.push({
+                            tool: match.jsonData.tool,
+                            parameters: match.jsonData.parameters,
+                            patternUsed: patternName
+                        });
+                    }
+                }
+            });
+        });
+        
+        // Generate pattern usage statistics
+        const patternStats = {};
+        validToolCalls.forEach(toolCall => {
+            if (!patternStats[toolCall.patternUsed]) {
+                patternStats[toolCall.patternUsed] = 0;
+            }
+            patternStats[toolCall.patternUsed]++;
+        });
+        
+        // Output the test results
+        console.log('MPAI Test: Pattern matching results:', allMatches);
+        console.log('MPAI Test: Valid tool calls found:', validToolCalls);
+        console.log('MPAI Test: Pattern usage statistics:', patternStats);
+        console.log('MPAI Test: Total valid tool calls:', validToolCalls.length);
+        
+        if (validToolCalls.length === 0) {
+            // Additional diagnostics for debugging
+            console.log('MPAI Test: No valid tool calls found. Response analysis:');
+            console.log('- Contains `tool` keyword:', testResponse.includes('tool'));
+            console.log('- Contains `parameters` keyword:', testResponse.includes('parameters'));
+            console.log('- Contains code blocks:', testResponse.includes('```'));
+            
+            // Extract code blocks for inspection
+            const codeBlocks = testResponse.match(/```[\s\S]*?```/g);
+            if (codeBlocks && codeBlocks.length > 0) {
+                console.log('MPAI Test: Code blocks in response:', codeBlocks);
+            }
+        }
+        
+        console.groupEnd();
+        
+        // Return the test results
+        return {
+            patternMatches: allMatches,
+            validToolCalls: validToolCalls,
+            patternStats: patternStats,
+            responseLength: testResponse.length
+        };
+    };
 
 })(jQuery);

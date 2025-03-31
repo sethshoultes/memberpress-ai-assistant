@@ -334,12 +334,44 @@ class MPAI_Chat {
                 $message_content = $response['message'];
                 $has_tool_calls = isset($response['tool_calls']) && !empty($response['tool_calls']);
                 
+                // Check if this response looks like it contains a blog post or page
+                // and add a marker if it does
+                $modified_content = $message_content;
+                
+                // Check for blog post content patterns
+                if (preg_match('/(?:#+\s*Title:?|Title:)\s*([^\n]+)/i', $message_content) ||
+                    (preg_match('/^#+\s*([^\n]+)/i', $message_content) && 
+                     preg_match('/introduction|summary|overview|content|body|conclusion/i', $message_content))) {
+                    
+                    // This looks like a blog post or article
+                    $modified_content = $this->add_content_marker($message_content, 'blog-post');
+                    error_log('MPAI: Added blog-post marker to response');
+                } 
+                // Check for page content patterns
+                else if (strpos(strtolower($message), 'create a page') !== false && 
+                         (preg_match('/(?:#+\s*Title:?|Title:)\s*([^\n]+)/i', $message_content) ||
+                          preg_match('/^#+\s*([^\n]+)/i', $message_content))) {
+                    
+                    // This looks like a page
+                    $modified_content = $this->add_content_marker($message_content, 'page');
+                    error_log('MPAI: Added page marker to response');
+                }
+                // Check for membership content patterns
+                else if (strpos(strtolower($message), 'membership') !== false && 
+                         (strpos(strtolower($message_content), 'membership') !== false) &&
+                         preg_match('/(?:title|name):\s*([^\n]+)/i', $message_content)) {
+                         
+                    // This looks like a membership
+                    $modified_content = $this->add_content_marker($message_content, 'membership');
+                    error_log('MPAI: Added membership marker to response');
+                }
+                
                 // Add assistant response to conversation
-                $this->conversation[] = array('role' => 'assistant', 'content' => $message_content);
+                $this->conversation[] = array('role' => 'assistant', 'content' => $modified_content);
                 
                 // Save conversation to database
                 error_log('MPAI: Saving message to database');
-                $this->save_message($message, $message_content);
+                $this->save_message($message, $modified_content);
                 
                 if ($has_tool_calls) {
                     error_log('MPAI: Processing tool calls from structured response');
@@ -659,6 +691,110 @@ class MPAI_Chat {
         
         error_log('MPAI: No assistant messages found in conversation history');
         return null;
+    }
+    
+    /**
+     * Get the previous assistant message (i.e., the second most recent)
+     * This is useful when creating posts, as the most recent message is typically 
+     * "Let me publish that" and the actual content is in the previous message
+     *
+     * @return array|null The previous assistant message or null if not found
+     */
+    public function get_previous_assistant_message() {
+        if (empty($this->conversation)) {
+            error_log('MPAI: No conversation history available');
+            return null;
+        }
+        
+        $messages_copy = $this->conversation;
+        $messages_copy = array_reverse($messages_copy);
+        
+        $found_assistant_messages = 0;
+        
+        foreach ($messages_copy as $message) {
+            if (isset($message['role']) && $message['role'] === 'assistant' && 
+                isset($message['content']) && !empty($message['content'])) {
+                
+                $found_assistant_messages++;
+                
+                // We want the second assistant message (the previous one)
+                if ($found_assistant_messages == 2) {
+                    error_log('MPAI: Found previous assistant message with length ' . strlen($message['content']));
+                    return $message;
+                }
+            }
+        }
+        
+        // If only one assistant message was found, just return that
+        if ($found_assistant_messages == 1) {
+            error_log('MPAI: Only one assistant message found, returning it');
+            return $this->get_latest_assistant_message();
+        }
+        
+        error_log('MPAI: No previous assistant message found in conversation history');
+        return null;
+    }
+    
+    /**
+     * Find a message with specific content type marker
+     * This looks for markers like #create-blog-post-<timestamp>, #create-page-<timestamp>, etc.
+     *
+     * @param string $type Content type to look for (e.g., 'blog-post', 'page', 'membership')
+     * @return array|null The message with the marker or null if not found
+     */
+    public function find_message_with_content_marker($type) {
+        if (empty($this->conversation)) {
+            error_log('MPAI: No conversation history available');
+            return null;
+        }
+        
+        $messages_copy = $this->conversation;
+        $messages_copy = array_reverse($messages_copy);
+        
+        $marker_pattern = '/<!--\s*#create-' . preg_quote($type, '/') . '-\d+\s*-->/i';
+        
+        foreach ($messages_copy as $message) {
+            if (isset($message['role']) && $message['role'] === 'assistant' && 
+                isset($message['content']) && !empty($message['content'])) {
+                
+                // Check if this message has the marker we're looking for
+                if (preg_match($marker_pattern, $message['content'])) {
+                    error_log('MPAI: Found message with ' . $type . ' marker, length: ' . strlen($message['content']));
+                    
+                    // Create a copy of the message
+                    $cleaned_message = $message;
+                    
+                    // Remove the marker from the content before returning
+                    $cleaned_message['content'] = preg_replace($marker_pattern, '', $cleaned_message['content']);
+                    
+                    // Trim any extra whitespace that might be left
+                    $cleaned_message['content'] = trim($cleaned_message['content']);
+                    
+                    error_log('MPAI: Cleaned marker from content, new length: ' . strlen($cleaned_message['content']));
+                    return $cleaned_message;
+                }
+            }
+        }
+        
+        error_log('MPAI: No message with ' . $type . ' marker found in conversation history');
+        return null;
+    }
+    
+    /**
+     * Add content marker to a message
+     * This will add a marker like #create-blog-post-<timestamp> to assistant messages
+     * that contain specific types of content
+     *
+     * @param string $response The response message to modify
+     * @param string $type The type of content ('blog-post', 'page', 'membership', etc.)
+     * @return string The modified response with the content marker
+     */
+    private function add_content_marker($response, $type) {
+        $timestamp = time();
+        $marker = "<!-- #create-{$type}-{$timestamp} -->";
+        
+        // We'll add the marker at the very end of the content
+        return $response . "\n\n" . $marker;
     }
     
     /**

@@ -96,6 +96,12 @@ const anyCodeBlockRegex = /```[\w-]*\s*\n(\{[\s\S]*?["']tool["'][\s\S]*?["']para
 
 // No newlines after code fence format
 const altFormatRegex = /```\s*(\{[\s\S]*?["']tool["'][\s\S]*?["']parameters["'][\s\S]*?\})\s*```/g;
+
+// Enhanced patterns for additional edge cases
+const indentedJsonBlockRegex = /```(?:json)?\s*\n\s*({[\s\S]*?})\s*\n```/g;  // JSON with indentation
+const multilineToolRegex = /\{\s*[\r\n\s]*"tool"[\s\S]*?"parameters"[\s\S]*?\}/g;  // Multi-line JSON without code blocks
+const singleQuoteJsonRegex = /```(?:json)?\s*\n({'[\s\S]*?'})\s*\n```/g;  // JSON with single quotes
+const backtickFenceVariantRegex = /``\s*\n({[\s\S]*?})\s*\n``/g;  // Two backticks instead of three
 ```
 
 ## Diagnostics
@@ -144,6 +150,79 @@ If tool calls aren't being detected properly:
 5. **Look for Alternative Formats** - The system will identify potential undetected patterns
 6. **Review the AI's Response** - Sometimes the AI doesn't include proper tool call formatting
 
+## Testing Utility
+
+A dedicated testing utility is included to help verify tool call detection in different scenarios. This utility can be accessed via the browser console:
+
+```javascript
+// Test a sample response
+const testResponse = `Let me get that information for you:
+
+\`\`\`json
+{
+  "tool": "memberpress_info",
+  "parameters": { "type": "memberships" }
+}
+\`\`\`
+
+This will show your membership plans.`;
+
+// Run the test
+const results = testToolCallDetection(testResponse);
+```
+
+### Testing Features
+
+The utility provides detailed diagnostics and analysis:
+
+- **Pattern Matching Results**: Shows which patterns matched and what they found
+- **Valid Tool Calls**: Lists all detected valid tool calls
+- **Pattern Statistics**: Shows which patterns were most effective
+- **Response Analysis**: For cases where no valid tool calls are found
+- **Code Block Extraction**: Extracts and analyzes code blocks in the response
+
+### Sample Test Output
+
+```
+MPAI Tool Call Detection Test
+  Running tool call detection test on provided response
+  Response length: 152
+  MPAI Test: Pattern matching results: {
+    jsonBlockRegex: [
+      {
+        fullMatch: "```json\n{\n  \"tool\": \"memberpress_info\",\n  \"parameters\": { \"type\": \"memberships\" }\n}\n```",
+        jsonText: "{\n  \"tool\": \"memberpress_info\",\n  \"parameters\": { \"type\": \"memberships\" }\n}",
+        jsonData: {tool: "memberpress_info", parameters: {type: "memberships"}}
+      }
+    ],
+    jsonObjectBlockRegex: [],
+    directJsonRegex: [],
+    anyCodeBlockRegex: [
+      {
+        fullMatch: "```json\n{\n  \"tool\": \"memberpress_info\",\n  \"parameters\": { \"type\": \"memberships\" }\n}\n```",
+        jsonText: "{\n  \"tool\": \"memberpress_info\",\n  \"parameters\": { \"type\": \"memberships\" }\n}",
+        jsonData: {tool: "memberpress_info", parameters: {type: "memberships"}}
+      }
+    ],
+    altFormatRegex: [],
+    indentedJsonBlockRegex: [],
+    multilineToolRegex: [],
+    singleQuoteJsonRegex: [],
+    backtickFenceVariantRegex: []
+  }
+  MPAI Test: Valid tool calls found: [
+    {
+      tool: "memberpress_info",
+      parameters: {type: "memberships"},
+      patternUsed: "jsonBlockRegex"
+    }
+  ]
+  MPAI Test: Pattern usage statistics: {jsonBlockRegex: 1}
+  MPAI Test: Total valid tool calls: 1
+```
+
+When using the testing utility, you can identify which patterns are working correctly and diagnose issues with specific tool call formats.
+
 ## Future Improvements
 
 The tool call detection system will continue to evolve with:
@@ -152,3 +231,5 @@ The tool call detection system will continue to evolve with:
 2. **Response Correction** - Automatically fixing malformed tool calls
 3. **AI Prompt Refinement** - Improving instructions to the AI for consistent tool call formatting
 4. **Pattern Performance Analytics** - Measuring which patterns are most effective over time
+5. **Adaptive Pattern Selection** - Dynamically adjusting patterns based on LLM provider and model
+6. **Continuous Pattern Updates** - Adding new patterns as novel edge cases are discovered
