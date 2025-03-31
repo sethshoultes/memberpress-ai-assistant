@@ -1315,42 +1315,116 @@ class MPAI_Chat {
 
     /**
      * Reset conversation
+     * 
+     * This function completely resets the conversation state and history,
+     * including context and any cached values.
      *
      * @return bool Success status
      */
     public function reset_conversation() {
         global $wpdb;
         
-        $user_id = get_current_user_id();
-        $conversation_id = $this->get_current_conversation_id();
+        error_log('MPAI Chat: Starting complete conversation reset');
         
-        if (empty($conversation_id)) {
+        try {
+            // Reset internal conversation array first
+            $this->conversation = array();
+            error_log('MPAI Chat: Reset internal conversation array');
+            
+            // Reset any cached system prompt
+            if (isset($this->system_prompt)) {
+                unset($this->system_prompt);
+                error_log('MPAI Chat: Cleared cached system prompt');
+            }
+            
+            // Get current user ID
+            $user_id = get_current_user_id();
+            if (empty($user_id)) {
+                error_log('MPAI Chat: No user ID available for conversation reset');
+                return false;
+            }
+            
+            // Get conversation ID
+            $conversation_id = $this->get_current_conversation_id();
+            if (empty($conversation_id)) {
+                error_log('MPAI Chat: No conversation ID available for reset');
+                return false;
+            }
+            
+            // Table names
+            $table_messages = $wpdb->prefix . 'mpai_messages';
+            $table_conversations = $wpdb->prefix . 'mpai_conversations';
+            
+            // Delete all messages for this conversation
+            $deleted = $wpdb->delete(
+                $table_messages,
+                array('conversation_id' => $conversation_id)
+            );
+            error_log('MPAI Chat: Deleted ' . ($deleted !== false ? $deleted : '0') . ' messages from database');
+            
+            // Create new conversation ID
+            $new_conversation_id = wp_generate_uuid4();
+            
+            // Update conversation with new ID
+            $updated = $wpdb->update(
+                $table_conversations,
+                array(
+                    'conversation_id' => $new_conversation_id,
+                    'updated_at' => current_time('mysql'),
+                ),
+                array('conversation_id' => $conversation_id)
+            );
+            error_log('MPAI Chat: Updated conversation with new ID: ' . $new_conversation_id . ', result: ' . ($updated !== false ? $updated : 'failed'));
+            
+            // Clear any cached context in the context manager
+            if (isset($this->context_manager) && is_object($this->context_manager)) {
+                if (method_exists($this->context_manager, 'reset_context')) {
+                    $this->context_manager->reset_context();
+                    error_log('MPAI Chat: Reset context manager');
+                } else {
+                    error_log('MPAI Chat: Context manager does not have reset_context method');
+                }
+            } else {
+                error_log('MPAI Chat: Context manager not available for reset');
+            }
+            
+            // If we have an API router, try to reset its state too
+            if (isset($this->api_router) && is_object($this->api_router)) {
+                if (method_exists($this->api_router, 'reset_state')) {
+                    $this->api_router->reset_state();
+                    error_log('MPAI Chat: Reset API router state');
+                } else {
+                    error_log('MPAI Chat: API router does not have reset_state method');
+                }
+            } else {
+                error_log('MPAI Chat: API router not available for reset');
+            }
+            
+            // Initialize a new conversation with a system prompt
+            // This ensures we start with a clean state for next messages
+            try {
+                $system_prompt = $this->get_system_prompt();
+                $this->conversation = array(
+                    array('role' => 'system', 'content' => $system_prompt)
+                );
+                error_log('MPAI Chat: Initialized new conversation with fresh system prompt');
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error initializing new conversation: ' . $e->getMessage());
+                // If reinitializing fails, at least leave with an empty conversation
+                $this->conversation = array();
+            }
+            
+            error_log('MPAI Chat: Conversation reset completed successfully');
+            return true;
+            
+        } catch (Throwable $e) {
+            error_log('MPAI Chat: Error in reset_conversation: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            error_log('MPAI Chat: ' . $e->getTraceAsString());
+            
+            // Try to at least reset the internal state
+            $this->conversation = array();
+            
             return false;
         }
-        
-        $table_messages = $wpdb->prefix . 'mpai_messages';
-        $table_conversations = $wpdb->prefix . 'mpai_conversations';
-        
-        // Delete messages
-        $wpdb->delete(
-            $table_messages,
-            array('conversation_id' => $conversation_id)
-        );
-        
-        // Create new conversation
-        $new_conversation_id = wp_generate_uuid4();
-        
-        $wpdb->update(
-            $table_conversations,
-            array(
-                'conversation_id' => $new_conversation_id,
-                'updated_at' => current_time('mysql'),
-            ),
-            array('conversation_id' => $conversation_id)
-        );
-        
-        $this->conversation = array();
-        
-        return true;
     }
 }

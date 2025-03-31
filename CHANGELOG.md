@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed plugin name to path conversion with fuzzy matching
   - Resilient error handling with descriptive error messages
   - Fixed 500 errors during plugin activation with comprehensive catch blocks
+- Enhanced conversation reset functionality to clear cached state:
+  - Completely rewrote reset_conversation method with comprehensive state clearing
+  - Added reset_context method to context manager to clear cached tools and settings
+  - Added reset_state method to API Router to refresh API connections
+  - Updated JavaScript UI to immediately clear visible chat on reset
+  - Improved error handling and logging throughout the reset process
+  - Fixed issue where context/conversation history was persisting between resets
   
 ## [1.5.3] - 2025-03-31
 

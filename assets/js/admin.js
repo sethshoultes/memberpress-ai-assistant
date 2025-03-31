@@ -185,6 +185,21 @@
          * Reset conversation
          */
         function resetConversation() {
+            // First clear the UI immediately
+            $chatMessages.empty();
+            $messageInput.val('');
+            
+            // Show loading indicator immediately
+            addLoadingMessage();
+            
+            // Add a notice that we're resetting
+            $chatMessages.append(
+                '<div class="mpai-message mpai-message-system">' +
+                '<div class="mpai-message-content">Resetting conversation and clearing cached data...</div>' +
+                '</div>'
+            );
+            
+            // Now make the API call to reset on the server
             $.ajax({
                 url: mpai_data.ajax_url,
                 type: 'POST',
@@ -194,18 +209,33 @@
                     mpai_nonce: mpai_data.nonce
                 },
                 success: function(response) {
+                    // Remove loading indicator
+                    removeLoadingMessage();
+                    
+                    // Remove all messages including the system message
+                    $chatMessages.empty();
+                    
                     if (response.success) {
-                        // Clear chat
-                        $chatMessages.empty();
+                        // Log the successful reset
+                        console.log('MPAI: Conversation reset successfully');
                         
                         // Add welcome message
                         addMessageToChat('assistant', 'Hello! I\'m your MemberPress AI Assistant. I can help you with your MemberPress site data and suggest WP-CLI commands. How can I assist you today?');
+                        
+                        // Optionally, refresh the page to ensure all state is cleared
+                        // Uncomment the next line if you want a full page refresh
+                        // window.location.reload();
                     } else {
+                        console.error('MPAI: Failed to reset conversation:', response.data);
                         alert('Error: ' + response.data);
                     }
                 },
-                error: function() {
-                    alert('Failed to reset conversation.');
+                error: function(xhr, status, error) {
+                    // Remove loading indicator
+                    removeLoadingMessage();
+                    
+                    console.error('MPAI: AJAX error when resetting conversation:', status, error);
+                    alert('Failed to reset conversation. Please try refreshing the page.');
                 }
             });
         }

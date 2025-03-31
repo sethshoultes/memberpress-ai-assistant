@@ -37,6 +37,7 @@ class MPAI_API_Router {
      */
     public function __construct() {
         // Load dependencies if not already loaded
+        error_log('MPAI API Router: Constructor started');
         if (!class_exists('MPAI_OpenAI')) {
             require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-openai.php';
         }
@@ -249,6 +250,41 @@ class MPAI_API_Router {
      */
     public function generate_completion($messages, $tools = array(), $context = array()) {
         return $this->process_request($messages, $tools, $context);
+    }
+    
+    /**
+     * Reset the internal state of the API Router
+     * 
+     * This clears any cached data and reinitializes API connections.
+     */
+    public function reset_state() {
+        error_log('MPAI API Router: Resetting state');
+        
+        // Reset OpenAI instance if it exists
+        if (isset($this->openai) && method_exists($this->openai, 'reset')) {
+            $this->openai->reset();
+            error_log('MPAI API Router: Reset OpenAI instance');
+        } else {
+            // If no reset method, recreate the instance
+            $this->openai = new MPAI_OpenAI();
+            error_log('MPAI API Router: Recreated OpenAI instance');
+        }
+        
+        // Reset Anthropic instance if it exists
+        if (isset($this->anthropic) && method_exists($this->anthropic, 'reset')) {
+            $this->anthropic->reset();
+            error_log('MPAI API Router: Reset Anthropic instance');
+        } else {
+            // If no reset method, recreate the instance  
+            $this->anthropic = new MPAI_Anthropic();
+            error_log('MPAI API Router: Recreated Anthropic instance');
+        }
+        
+        // Reload primary API setting from database
+        $this->primary_api = get_option('mpai_primary_api', 'openai');
+        error_log('MPAI API Router: Reloaded primary API setting: ' . $this->primary_api);
+        
+        error_log('MPAI API Router: State reset complete');
     }
 
     /**

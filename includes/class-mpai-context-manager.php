@@ -65,6 +65,40 @@ class MPAI_Context_Manager {
         $this->chat_instance = $chat_instance;
         error_log('MPAI: Chat instance set in context manager');
     }
+    
+    /**
+     * Reset the context manager's state
+     * 
+     * Clears any cached data or state that might persist between 
+     * chat sessions.
+     */
+    public function reset_context() {
+        error_log('MPAI: Resetting context manager state');
+        
+        // Clear chat instance
+        if (isset($this->chat_instance)) {
+            $this->chat_instance = null;
+            error_log('MPAI: Cleared chat instance reference');
+        }
+        
+        // Clear any tool-specific cached data
+        if (isset($this->wp_api_tool)) {
+            $this->wp_api_tool = null;
+            error_log('MPAI: Cleared WP API tool instance');
+        }
+        
+        // Reinitialize the tools
+        $this->init_tools();
+        error_log('MPAI: Reinitialized tools');
+        
+        // Reload allowed commands from database
+        $this->allowed_commands = get_option('mpai_allowed_cli_commands', array());
+        error_log('MPAI: Reloaded allowed commands');
+        
+        // Clear any other cached data here
+        
+        error_log('MPAI: Context manager reset complete');
+    }
 
     /**
      * Initialize available tools
