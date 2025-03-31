@@ -252,15 +252,43 @@
             }
             
             console.log('MPAI: Processing tool calls in response');
+            // Log the first 200 characters of the response to see what format it's in
+            console.log('MPAI: Response preview:', response.substring(0, 200) + (response.length > 200 ? '...' : ''));
+            // Look for markers that might indicate tool calls
+            console.log('MPAI: Response contains tool markers:', {
+                'jsonBlock': response.includes('```json'),
+                'jsonObjectBlock': response.includes('```json-object'),
+                'toolProperty': response.includes('"tool"'),
+                'parametersProperty': response.includes('"parameters"')
+            });
             
             // Match JSON blocks that look like tool calls
             // Support multiple formats:
             // 1. ```json\n{...}\n``` - Standard code block with JSON
             // 2. ```json-object\n{...}\n``` - Special marker for pre-parsed JSON that shouldn't be double-encoded
             // 3. {tool: ..., parameters: ...} - Direct JSON in text
-            const jsonBlockRegex = /```json\n({[\s\S]*?})\n```/g;
-            const jsonObjectBlockRegex = /```json-object\n({[\s\S]*?})\n```/g;
-            const directJsonRegex = /\{[\s\S]*?"tool"[\s\S]*?"parameters"[\s\S]*?\}/g;
+            // More flexible regex patterns to catch different code block formats
+            const jsonBlockRegex = /```(?:json)?\s*\n({[\s\S]*?})\s*\n```/g;  // Allow optional json tag and extra whitespace
+            const jsonObjectBlockRegex = /```(?:json-object)?\s*\n({[\s\S]*?})\s*\n```/g;  // More flexible parsing
+            const directJsonRegex = /\{[\s\S]*?["']tool["'][\s\S]*?["']parameters["'][\s\S]*?\}/g;  // Allow single or double quotes
+            
+            // Log the regex patterns we're using to find tool calls
+            console.log('MPAI: Using regex patterns:', {
+                jsonBlockRegex: jsonBlockRegex.toString(),
+                jsonObjectBlockRegex: jsonObjectBlockRegex.toString(),
+                directJsonRegex: directJsonRegex.toString()
+            });
+            
+            // Test each pattern on the response text and log the results
+            // Note: We need to reset the regex patterns after each test since they're global
+            console.log('MPAI: Testing jsonBlockRegex:', jsonBlockRegex.test(response));
+            jsonBlockRegex.lastIndex = 0;
+            
+            console.log('MPAI: Testing jsonObjectBlockRegex:', jsonObjectBlockRegex.test(response));
+            jsonObjectBlockRegex.lastIndex = 0;
+            
+            console.log('MPAI: Testing directJsonRegex:', directJsonRegex.test(response));
+            directJsonRegex.lastIndex = 0;
             
             let match;
             let processedResponse = response;

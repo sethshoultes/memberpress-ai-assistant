@@ -656,8 +656,12 @@ function initMpaiSettings() {
             $resultContainer.show();
             
             // Make AJAX request to test the API
-            console.log('MPAI: Testing MemberPress API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
-            console.log('MPAI: AJAX URL:', ajaxurl);
+            if (typeof mpai_data !== 'undefined') {
+                console.log('MPAI: Testing MemberPress API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+            } else {
+                console.error('MPAI: mpai_data is not available for MemberPress API test');
+            }
+            console.log('MPAI: AJAX URL:', typeof ajaxurl !== 'undefined' ? ajaxurl : 'ajaxurl not defined');
             
             // Try the direct AJAX handler instead of admin-ajax.php
             var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . 'includes/direct-ajax-handler.php'; ?>';
@@ -665,12 +669,14 @@ function initMpaiSettings() {
             // Create the form data object directly to ensure proper formatting
             var formData = new FormData();
             formData.append('action', 'test_memberpress');
-            formData.append('nonce', mpai_data.nonce);
+            formData.append('nonce', typeof mpai_data !== 'undefined' ? mpai_data.nonce : '');
             formData.append('api_key', apiKey);
             
             // Log what we're sending for debugging
-            console.log('MPAI: FormData prepared with direct AJAX handler and nonce length:', 
-                        mpai_data.nonce ? mpai_data.nonce.length : 0);
+            console.log('MPAI: FormData prepared with direct AJAX handler');
+            if (typeof mpai_data !== 'undefined' && mpai_data.nonce) {
+                console.log('MPAI: Nonce length:', mpai_data.nonce.length);
+            }
             console.log('MPAI: Direct handler URL:', directHandlerUrl);
             
             // Use fetch API with direct handler

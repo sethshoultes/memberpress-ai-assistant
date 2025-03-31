@@ -41,14 +41,30 @@
 
     // Initialize the logger with settings from WordPress options
     MpaiLogger.prototype.initialize = function() {
-        // Check if mpai_data exists and has logger settings
-        if (typeof mpai_data === 'undefined') {
-            console.log('MPAI: Logger initialization failed - mpai_data not available');
-            return;
+        // First try to get settings from localStorage
+        var storedSettings = localStorage.getItem('mpai_logger_settings');
+        if (storedSettings) {
+            try {
+                var settings = JSON.parse(storedSettings);
+                this.enabled = settings.enabled;
+                this.logLevel = settings.logLevel;
+                this.categories = settings.categories;
+                console.log('MPAI: Logger initialized from localStorage');
+            } catch (e) {
+                console.error('MPAI: Error parsing logger settings from localStorage:', e);
+            }
         }
-
-        // Load settings from mpai_data if available
-        if (mpai_data.logger) {
+        
+        // Check if mpai_data exists and has logger settings (override localStorage)
+        if (typeof mpai_data === 'undefined') {
+            console.log('MPAI: mpai_data not available, using default/localStorage settings for logger');
+            // Enable the logger by default if no settings are available
+            if (!storedSettings) {
+                this.enabled = true;
+                console.log('MPAI: Enabling logger with default settings');
+            }
+        } else if (mpai_data.logger) {
+            // Load settings from mpai_data
             this.enabled = mpai_data.logger.enabled === '1';
             this.logLevel = mpai_data.logger.log_level || 'info';
             
@@ -60,18 +76,16 @@
                     timing: mpai_data.logger.categories.timing === '1'
                 };
             }
-        } else {
-            // Try to get settings from localStorage as fallback
-            var storedSettings = localStorage.getItem('mpai_logger_settings');
-            if (storedSettings) {
-                try {
-                    var settings = JSON.parse(storedSettings);
-                    this.enabled = settings.enabled;
-                    this.logLevel = settings.logLevel;
-                    this.categories = settings.categories;
-                } catch (e) {
-                    console.error('MPAI: Error parsing logger settings from localStorage:', e);
-                }
+            
+            // Save settings to localStorage for next time
+            try {
+                localStorage.setItem('mpai_logger_settings', JSON.stringify({
+                    enabled: this.enabled,
+                    logLevel: this.logLevel,
+                    categories: this.categories
+                }));
+            } catch (e) {
+                console.error('MPAI: Error saving logger settings to localStorage:', e);
             }
         }
 

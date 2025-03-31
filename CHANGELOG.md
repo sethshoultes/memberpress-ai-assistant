@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed issue with plugin activation in browser environments without WP-CLI
 - Fixed fatal error in command validation agent causing 500 error with memberpress_info tool
 - Enhanced validation system to bypass validation for MemberPress tools
+- Fixed 500 error when publishing blog posts or pages through AI assistant
+- Added validation bypass for wp_api post creation and editing operations
 
 ## [1.4.1] - 2025-03-30
 

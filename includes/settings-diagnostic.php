@@ -96,6 +96,12 @@ if (!defined('WPINC')) {
                                 return;
                             }
                             
+                            // Ensure logger is enabled for testing
+                            if (!window.mpaiLogger.enabled) {
+                                window.mpaiLogger.enabled = true;
+                                console.log('MPAI: Temporarily enabling logger for test');
+                            }
+                            
                             // Run logger test
                             var testResult = window.mpaiLogger.testLog();
                             
@@ -125,6 +131,23 @@ if (!defined('WPINC')) {
                             resultHtml += '<?php _e('Check your browser\'s console (F12) for test log messages.', 'memberpress-ai-assistant'); ?>';
                             
                             $resultContainer.html(resultHtml);
+                            
+                            // Save settings to localStorage for persistence
+                            try {
+                                localStorage.setItem('mpai_logger_settings', JSON.stringify({
+                                    enabled: $('#mpai_enable_console_logging').is(':checked'),
+                                    logLevel: $('#mpai_console_log_level').val(),
+                                    categories: {
+                                        api_calls: $('#mpai_log_api_calls').is(':checked'),
+                                        tool_usage: $('#mpai_log_tool_usage').is(':checked'), 
+                                        agent_activity: $('#mpai_log_agent_activity').is(':checked'),
+                                        timing: $('#mpai_log_timing').is(':checked')
+                                    }
+                                }));
+                                console.log('MPAI: Saved logger settings to localStorage');
+                            } catch(e) {
+                                console.error('MPAI: Could not save logger settings to localStorage:', e);
+                            }
                         });
                     });
                     </script>

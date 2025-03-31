@@ -1100,6 +1100,14 @@ class MPAI_Context_Manager {
                 return $result;
             }
             
+            // Skip validation for wp_api post-related actions (create_post, update_post, etc.)
+            if (isset($request['name']) && $request['name'] === 'wp_api' && 
+                isset($request['parameters']) && isset($request['parameters']['action']) && 
+                in_array($request['parameters']['action'], ['create_post', 'update_post', 'delete_post', 'get_post'])) {
+                error_log('MPAI: Skipping validation for wp_api post action - high priority bypass');
+                return $result;
+            }
+            
             // Skip validation for post list commands specifically
             if (isset($request['parameters']) && isset($request['parameters']['command']) && 
                 strpos($request['parameters']['command'], 'wp post list') === 0) {

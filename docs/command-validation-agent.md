@@ -133,8 +133,12 @@ The validation agent implements comprehensive error handling to ensure that vali
 2. **Permissive Validation**: Even failed validations return success to allow operations to continue
 3. **Detailed Logging**: All validation steps are logged for debugging
 4. **Graceful Degradation**: Fallbacks for when services are unavailable
-5. **Validation Bypassing**: Certain tools like memberpress_info bypass validation completely for maximum reliability
-6. **Command Type Detection**: Commands like wp_post_list and theme listing bypass validation
+5. **Validation Bypassing**: Certain tools and operations bypass validation completely for maximum reliability:
+   - memberpress_info tool calls
+   - wp_api post actions (create_post, update_post, etc.)
+   - wp post list commands
+   - wp theme list and wp block list commands
+6. **Command Type Detection**: Commands that perform listing operations typically bypass validation
 
 ## Future Enhancements
 

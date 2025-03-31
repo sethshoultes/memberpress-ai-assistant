@@ -525,7 +525,11 @@
             var $statusIcon = $('#openai-api-status .mpai-api-status-icon');
             var $statusText = $('#openai-api-status .mpai-api-status-text');
             
-            console.log('Test OpenAI clicked with localized nonce');
+            if (window.mpaiLogger) {
+                window.mpaiLogger.info('Testing OpenAI API connection', 'api_calls');
+            } else {
+                console.log('Test OpenAI clicked with localized nonce');
+            }
             
             if (!apiKey) {
                 $resultContainer.html('Please enter an API key first');
@@ -534,6 +538,10 @@
                 
                 $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
                 $statusText.text('Not Configured');
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.warn('OpenAI API test canceled - no API key provided', 'api_calls');
+                }
                 return;
             }
             
@@ -546,7 +554,12 @@
             $statusIcon.removeClass('mpai-status-connected mpai-status-disconnected').addClass('mpai-status-unknown');
             $statusText.text('Checking...');
             
-            console.log('MPAI: Testing OpenAI API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+            if (window.mpaiLogger) {
+                window.mpaiLogger.info('Testing OpenAI API with key: ***' + apiKey.substring(apiKey.length - 4), 'api_calls');
+                window.mpaiLogger.startTimer('openai_test');
+            } else {
+                console.log('MPAI: Testing OpenAI API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+            }
             
             // Create the form data object directly to ensure proper formatting
             var formData = new FormData();
@@ -557,9 +570,17 @@
             // Use direct AJAX handler
             var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
             
-            console.log('MPAI: FormData prepared with direct AJAX handler and nonce length:', 
-                        mpai_data.nonce ? mpai_data.nonce.length : 0);
-            console.log('MPAI: Direct handler URL:', directHandlerUrl);
+            if (window.mpaiLogger) {
+                window.mpaiLogger.debug('Using direct AJAX handler for OpenAI test', 'api_calls', {
+                    url: directHandlerUrl,
+                    action: 'test_openai',
+                    nonceLength: mpai_data.nonce ? mpai_data.nonce.length : 0
+                });
+            } else {
+                console.log('MPAI: FormData prepared with direct AJAX handler and nonce length:', 
+                            mpai_data.nonce ? mpai_data.nonce.length : 0);
+                console.log('MPAI: Direct handler URL:', directHandlerUrl);
+            }
             
             // Use fetch API with direct handler
             fetch(directHandlerUrl, {
@@ -568,31 +589,57 @@
                 credentials: 'same-origin'
             })
             .then(function(response) {
-                console.log('MPAI: Fetch response status:', response.status);
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.debug('OpenAI API test response status: ' + response.status, 'api_calls');
+                } else {
+                    console.log('MPAI: Fetch response status:', response.status);
+                }
+                
                 if (!response.ok) {
                     throw new Error('Network response was not ok: ' + response.status);
                 }
                 return response.json();
             })
             .then(function(data) {
-                console.log('MPAI: API test response:', data);
+                if (window.mpaiLogger) {
+                    const elapsed = window.mpaiLogger.endTimer('openai_test');
+                    window.mpaiLogger.info('OpenAI API test completed in ' + (elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown time'), 'api_calls');
+                    window.mpaiLogger.debug('OpenAI API test response data', 'api_calls', data);
+                } else {
+                    console.log('MPAI: API test response:', data);
+                }
+                
                 if (data.success) {
                     $resultContainer.html(data.data);
                     $resultContainer.addClass('mpai-test-success').removeClass('mpai-test-loading mpai-test-error');
                     
                     $statusIcon.removeClass('mpai-status-disconnected mpai-status-unknown').addClass('mpai-status-connected');
                     $statusText.text('Connected');
+                    
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.info('OpenAI API connection successful', 'api_calls');
+                    }
                 } else {
                     $resultContainer.html(data.data);
                     $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
                     
                     $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
                     $statusText.text('Error');
+                    
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.error('OpenAI API connection failed', 'api_calls', data);
+                    }
                 }
                 $('#mpai-test-openai-api').prop('disabled', false);
             })
             .catch(function(error) {
-                console.error('MPAI: Fetch error:', error);
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.error('OpenAI API test fetch error', 'api_calls', error);
+                    window.mpaiLogger.endTimer('openai_test');
+                } else {
+                    console.error('MPAI: Fetch error:', error);
+                }
+                
                 $resultContainer.html('Error: ' + error.message);
                 $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
                 $('#mpai-test-openai-api').prop('disabled', false);
