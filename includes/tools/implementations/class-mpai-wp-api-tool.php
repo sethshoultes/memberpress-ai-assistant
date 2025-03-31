@@ -96,14 +96,25 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	 * @return mixed Execution result
 	 */
 	public function execute( $parameters ) {
+		// Log all incoming parameters for debugging
+		error_log('MPAI WP_API: Full parameters received by execute: ' . json_encode($parameters));
+		
 		if ( ! isset( $parameters['action'] ) ) {
 			throw new Exception( 'Action parameter is required' );
 		}
 
 		$action = $parameters['action'];
+		error_log('MPAI WP_API: Processing action: ' . $action);
 
 		switch ( $action ) {
 			case 'create_post':
+				// Check required parameters for create_post action
+				if (!isset($parameters['title']) || empty($parameters['title'])) {
+					error_log('MPAI WP_API: Missing title for create_post action');
+				}
+				if (!isset($parameters['content']) || empty($parameters['content'])) {
+					error_log('MPAI WP_API: Missing content for create_post action');
+				}
 				return $this->create_post( $parameters );
 			case 'update_post':
 				return $this->update_post( $parameters );
@@ -142,6 +153,9 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	 * @return array Created post data
 	 */
 	private function create_post( $parameters ) {
+	    // Log the incoming parameters for debugging
+	    error_log('MPAI: Create post parameters: ' . json_encode($parameters));
+	    
 		$post_data = array(
 			'post_title'   => isset( $parameters['title'] ) ? $parameters['title'] : 'New Post',
 			'post_content' => isset( $parameters['content'] ) ? $parameters['content'] : '',
@@ -149,6 +163,12 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			'post_type'    => isset( $parameters['post_type'] ) ? $parameters['post_type'] : 'post',
 			'post_author'  => isset( $parameters['author_id'] ) ? $parameters['author_id'] : get_current_user_id(),
 		);
+		
+		// If content is empty, check if there's a message parameter that might contain content
+		if (empty($post_data['post_content']) && isset($parameters['message'])) {
+		    $post_data['post_content'] = $parameters['message'];
+		    error_log('MPAI: Using message parameter as post content');
+		}
 
 		// Add excerpt if provided
 		if ( isset( $parameters['excerpt'] ) ) {

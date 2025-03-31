@@ -39,10 +39,7 @@ if (isset($_POST['mpai_save_settings']) && check_admin_referer('mpai_settings_no
         update_option('mpai_primary_api', sanitize_text_field($_POST['mpai_primary_api']));
     }
     
-    // MemberPress API Key
-    if (isset($_POST['mpai_memberpress_api_key'])) {
-        update_option('mpai_memberpress_api_key', sanitize_text_field($_POST['mpai_memberpress_api_key']));
-    }
+    // MemberPress API Key - removed as not needed
     
     // CLI Commands
     update_option('mpai_enable_cli_commands', isset($_POST['mpai_enable_cli_commands']) ? '1' : '0');
@@ -111,8 +108,7 @@ $anthropic_max_tokens = get_option('mpai_anthropic_max_tokens', 2048);
 // Get primary API setting
 $primary_api = get_option('mpai_primary_api', 'openai');
 
-// Get MemberPress API Key
-$memberpress_api_key = get_option('mpai_memberpress_api_key', '');
+// MemberPress API Key retrieval removed - not needed
 
 // Get CLI command settings
 $enable_cli_commands = get_option('mpai_enable_cli_commands', false);
@@ -281,30 +277,7 @@ settings_errors('mpai_messages');
                         </td>
                     </tr>
                 </table>
-                
-                <h3><?php _e('MemberPress API Integration', 'memberpress-ai-assistant'); ?></h3>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="mpai_memberpress_api_key">
-                                <?php _e('MemberPress API Key', 'memberpress-ai-assistant'); ?>
-                                <div class="mpai-api-status" id="memberpress-api-status">
-                                    <span class="mpai-api-status-icon mpai-status-unknown"></span>
-                                    <span class="mpai-api-status-text"><?php _e('Unknown', 'memberpress-ai-assistant'); ?></span>
-                                </div>
-                            </label>
-                        </th>
-                        <td>
-                            <div class="mpai-key-field">
-                                <input type="password" name="mpai_memberpress_api_key" id="mpai_memberpress_api_key" value="<?php echo esc_attr($memberpress_api_key); ?>" class="regular-text" />
-                                <button type="button" id="mpai-test-memberpress-api" class="button"><?php _e('Test Connection', 'memberpress-ai-assistant'); ?></button>
-                                <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/memberpress-test.php'); ?>" class="button" target="_blank"><?php _e('Direct Test', 'memberpress-ai-assistant'); ?></a>
-                                <span id="mpai-memberpress-test-result" class="mpai-test-result" style="display: none;"></span>
-                            </div>
-                            <p class="description"><?php _e('Enter your MemberPress API key. You can generate one in the MemberPress Developer Tools settings.', 'memberpress-ai-assistant'); ?></p>
-                        </td>
-                    </tr>
-                </table>
+                <!-- MemberPress API Integration section removed as it is not needed -->
             </div>
             
             <div id="tab-cli" class="mpai-settings-tab" style="display: none;">

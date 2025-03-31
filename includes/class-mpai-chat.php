@@ -46,6 +46,12 @@ class MPAI_Chat {
         $this->api_router = new MPAI_API_Router();
         $this->memberpress_api = new MPAI_MemberPress_API();
         $this->context_manager = new MPAI_Context_Manager();
+        
+        // Set this instance in the context manager to enable message extraction
+        if (method_exists($this->context_manager, 'set_chat_instance')) {
+            $this->context_manager->set_chat_instance($this);
+        }
+        
         $this->load_conversation();
     }
 
@@ -627,6 +633,32 @@ class MPAI_Chat {
         }
         
         return $processed_response;
+    }
+    
+    /**
+     * Get the latest assistant message from conversation history
+     *
+     * @return array|null The latest assistant message or null if none found
+     */
+    public function get_latest_assistant_message() {
+        if (empty($this->conversation)) {
+            error_log('MPAI: No conversation history available');
+            return null;
+        }
+        
+        $messages_copy = $this->conversation;
+        $messages_copy = array_reverse($messages_copy);
+        
+        foreach ($messages_copy as $message) {
+            if (isset($message['role']) && $message['role'] === 'assistant' && 
+                isset($message['content']) && !empty($message['content'])) {
+                error_log('MPAI: Found latest assistant message with length ' . strlen($message['content']));
+                return $message;
+            }
+        }
+        
+        error_log('MPAI: No assistant messages found in conversation history');
+        return null;
     }
     
     /**

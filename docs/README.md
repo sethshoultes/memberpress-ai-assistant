@@ -15,6 +15,8 @@ Welcome to the MemberPress AI Assistant documentation hub. This directory contai
 - [Agent System Specification](agent-system-spec.md) - Technical specification of the agent system architecture
 - [Agent System Implementation](agent-system-implementation.md) - Implementation details of the agent system
 - [Command Validation Agent](command-validation-agent.md) - Documentation for the command validation system
+- [Console Logging System](console-logging-system.md) - Documentation for the browser console logging system
+- [Tool Call Detection](tool-call-detection.md) - Documentation for the enhanced tool call detection system
 
 ## Testing and Status
 

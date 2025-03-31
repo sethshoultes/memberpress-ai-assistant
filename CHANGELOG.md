@@ -5,6 +5,21 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2025-03-31
+
+### Fixed
+- Fixed PHP fatal error in command validation agent by replacing stdClass logger with anonymous class
+- Fixed missing blog post content when using AI to create and publish posts
+- Enhanced content extraction from AI assistant messages with better pattern matching
+- Added additional fallback mechanisms for blog post creation when content is missing
+- Improved title extraction from multiple message formats
+- Enhanced error handling with try/catch blocks to prevent 500 errors
+- Added comprehensive error logging for blog post publishing process
+- Extended validation bypass to include more post-related actions
+- Implemented additional checks for chat instance method existence
+- Fixed nested parameters structure handling for more reliable post creation
+- Added defensive programming to prevent PHP fatal errors during content extraction
+
 ## [1.5.0] - 2025-03-30
 
 ### Added
@@ -22,7 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented block validation for block-related commands
   - Added pattern support for pattern-related operations
   - Created test script for validation functionality
-- Implemented comprehensive console logging system for improved debugging
+- Implemented comprehensive console logging system for improved debugging:
+  - Log levels: error, warning, info, debug
+  - Categories: API calls, tool usage, agent activity, timing
+  - Performance timing functionality
+  - Configuration via WordPress settings
+  - Diagnostic testing interface
 
 ### Changed
 - Updated README.md with current features and organization
@@ -42,6 +62,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced validation system to bypass validation for MemberPress tools
 - Fixed 500 error when publishing blog posts or pages through AI assistant
 - Added validation bypass for wp_api post creation and editing operations
+- Fixed issue with blog post content not being passed correctly when publishing posts
+- Added intelligent content extraction from assistant messages for post publishing
+- Enhanced context manager with chat instance reference for better content extraction
+- Improved debugging for missing blog post content issues
+- Fixed critical bug in execute_wp_api method where parameters were being lost
+- Enhanced tool call detection in chat interface for more reliable execution:
+  - Improved regex patterns to handle multiple tool call formats
+  - Added comprehensive pattern matching for different code block styles
+  - Improved detection of JSON-formatted tool calls in text
+  - Enhanced logging and debugging for tool call processing
+  - Added pattern usage statistics for tool call execution
+  - Fixed issue with tool calls showing "0 tool calls" in logging
+  - Added detailed diagnostics for response content when no tool calls detected
 
 ## [1.4.1] - 2025-03-30
 

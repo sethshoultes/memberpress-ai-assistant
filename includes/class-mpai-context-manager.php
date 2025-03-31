@@ -40,6 +40,13 @@ class MPAI_Context_Manager {
     private $available_tools;
 
     /**
+     * Chat instance for message extraction
+     *
+     * @var MPAI_Chat
+     */
+    private $chat_instance;
+
+    /**
      * Constructor
      */
     public function __construct() {
@@ -47,6 +54,16 @@ class MPAI_Context_Manager {
         $this->memberpress_api = new MPAI_MemberPress_API();
         $this->allowed_commands = get_option('mpai_allowed_cli_commands', array());
         $this->init_tools();
+    }
+    
+    /**
+     * Set the chat instance for message extraction
+     *
+     * @param object $chat_instance Chat instance
+     */
+    public function set_chat_instance($chat_instance) {
+        $this->chat_instance = $chat_instance;
+        error_log('MPAI: Chat instance set in context manager');
     }
 
     /**
@@ -680,7 +697,29 @@ class MPAI_Context_Manager {
      * @return string Result of the API call
      */
     public function execute_wp_api($parameters) {
+        // This is the key fix - we need to make sure we're using the full parameters object
+        // In the case where we see 'parameters' inside the parameters, extract those
+        if (isset($parameters['parameters']) && is_array($parameters['parameters']) && isset($parameters['parameters']['action'])) {
+            error_log('MPAI: Unwrapped nested parameters structure');
+            $parameters = $parameters['parameters'];
+        }
+        
         error_log('MPAI: execute_wp_api called with parameters: ' . json_encode($parameters));
+        
+        // Important debug logging to diagnose missing content issues
+        if (isset($parameters['action']) && $parameters['action'] === 'create_post') {
+            if (!isset($parameters['title']) || empty($parameters['title'])) {
+                error_log('MPAI: ⚠️ WARNING - Missing title for create_post action');
+            }
+            if (!isset($parameters['content']) || empty($parameters['content'])) {
+                error_log('MPAI: ⚠️ WARNING - Missing content for create_post action');
+            }
+            
+            error_log('MPAI: create_post parameters: action=' . $parameters['action'] 
+                . ', title=' . (isset($parameters['title']) ? $parameters['title'] : 'NOT SET')
+                . ', content length=' . (isset($parameters['content']) ? strlen($parameters['content']) : 'NOT SET')
+                . ', status=' . (isset($parameters['status']) ? $parameters['status'] : 'NOT SET'));
+        }
         
         // Initialize WP API Tool if needed
         if (!isset($this->wp_api_tool)) {
@@ -702,9 +741,91 @@ class MPAI_Context_Manager {
             }
         }
         
+        // Special handling for create_post/create_page action
+        if (isset($parameters['action']) && ($parameters['action'] === 'create_post' || $parameters['action'] === 'create_page')) {
+            // First, ensure title is populated
+            if (empty($parameters['title']) || $parameters['title'] === 'New Post') {
+                error_log('MPAI: Post title is missing or default, will try to extract from message');
+                $parameters['title'] = 'New Blog Post';  // Default fallback value
+            }
+            
+            // Then, try to get content if missing
+            if (empty($parameters['content'])) {
+                error_log('MPAI: Post content is missing, will try to extract from message');
+                
+                // Get content from chat history
+                if (isset($this->chat_instance)) {
+                    try {
+                        error_log('MPAI: Chat instance is available, attempting to extract content');
+                        $latest_message = $this->chat_instance->get_latest_assistant_message();
+                        
+                        if ($latest_message && !empty($latest_message['content'])) {
+                            error_log('MPAI: Got message content of length: ' . strlen($latest_message['content']));
+                            
+                            // Extract title if needed
+                            if (empty($parameters['title']) || $parameters['title'] === 'New Post' || $parameters['title'] === 'New Blog Post') {
+                                if (preg_match('/#+\s*(?:Title:|)([^\n]+)/i', $latest_message['content'], $title_matches)) {
+                                    $parameters['title'] = trim($title_matches[1]);
+                                    error_log('MPAI: Extracted title: ' . $parameters['title']);
+                                }
+                            }
+                            
+                            // Extract content - try to find content section first
+                            if (preg_match('/(?:#+\s*Content:?|Content:)[\r\n]+([\s\S]+?)(?:$|#+\s|```json)/i', $latest_message['content'], $content_matches)) {
+                                $cleaned_content = trim($content_matches[1]);
+                                error_log('MPAI: Extracted content from dedicated content section');
+                            } else {
+                                // If no content section, use whole message
+                                $content = $latest_message['content'];
+                                
+                                // Remove code blocks and JSON blocks
+                                $cleaned_content = preg_replace('/```(?:json)?.*?```/s', '', $content);
+                                
+                                // Remove markdown headers but keep their text
+                                $cleaned_content = preg_replace('/^#+\s*(.+?)[\r\n]+/im', "$1\n\n", $cleaned_content);
+                                error_log('MPAI: Using full message content for extraction');
+                            }
+                            
+                            // Set the content
+                            $parameters['content'] = trim($cleaned_content);
+                            error_log('MPAI: Using extracted content from message, length: ' . strlen($parameters['content']));
+                            
+                            // Make sure we have a status
+                            if (empty($parameters['status'])) {
+                                $parameters['status'] = 'draft';  // Default to draft status
+                                error_log('MPAI: Setting default status: draft');
+                            }
+                        } else {
+                            error_log('MPAI: No usable assistant message found');
+                        }
+                    } catch (Exception $e) {
+                        error_log('MPAI: Error extracting content: ' . $e->getMessage());
+                        // Continue with default values
+                    } catch (Error $e) {
+                        error_log('MPAI: PHP Error extracting content: ' . $e->getMessage());
+                        // Continue with default values
+                    }
+                } else {
+                    error_log('MPAI: No chat instance available for content extraction');
+                }
+                
+                // Set empty content as fallback if still empty
+                if (empty($parameters['content'])) {
+                    $parameters['content'] = 'This is a draft post created by MemberPress AI Assistant.';
+                    error_log('MPAI: Using fallback content');
+                }
+            }
+            
+            // Log final parameters for debugging
+            error_log('MPAI: Final create_post parameters: ' . 
+                'title=' . (isset($parameters['title']) ? $parameters['title'] : 'NOT SET') . 
+                ', content length=' . (isset($parameters['content']) ? strlen($parameters['content']) : 'NOT SET') . 
+                ', status=' . (isset($parameters['status']) ? $parameters['status'] : 'NOT SET'));
+        }
+        
         // Execute the tool with the provided parameters
         try {
-            error_log('MPAI: Executing WordPress API function: ' . $parameters['action']);
+            error_log('MPAI: Executing WordPress API function: ' . $parameters['action'] . ' with parameter count: ' . count($parameters));
             $result = $this->wp_api_tool->execute($parameters);
             
             // Format the result for display
@@ -957,6 +1078,78 @@ class MPAI_Context_Manager {
         } else {
             // Try to validate the command, but don't block execution if validation fails
             try {
+                // Special handling for wp_api create_post/create_page to extract content from the assistant's message
+                if (isset($request['name']) && $request['name'] === 'wp_api' && 
+                    isset($request['parameters']) && isset($request['parameters']['action']) && 
+                    in_array($request['parameters']['action'], ['create_post', 'create_page'])) {
+                    
+                    try {
+                        // Check if content is missing or empty
+                        if (!isset($request['parameters']['content']) || empty($request['parameters']['content'])) {
+                            // Try to find content from the latest assistant message
+                            if (isset($this->chat_instance) && method_exists($this->chat_instance, 'get_latest_assistant_message')) {
+                                $latest_message = $this->chat_instance->get_latest_assistant_message();
+                                if ($latest_message && !empty($latest_message['content'])) {
+                                    // First, check for title if it's missing or default
+                                    if (!isset($request['parameters']['title']) || empty($request['parameters']['title']) || 
+                                        $request['parameters']['title'] === 'New Post') {
+                                        // Try multiple title patterns
+                                        if (preg_match('/(?:#+\s*Title:?\s*|Title:\s*)([^\n]+)/i', $latest_message['content'], $title_matches)) {
+                                            $request['parameters']['title'] = trim($title_matches[1]);
+                                            error_log('MPAI: Extracted title from assistant message: ' . $request['parameters']['title']);
+                                        } else if (preg_match('/^#+\s*([^\n]+)/i', $latest_message['content'], $heading_matches)) {
+                                            // Try the first heading as a title
+                                            $request['parameters']['title'] = trim($heading_matches[1]);
+                                            error_log('MPAI: Using first heading as title: ' . $request['parameters']['title']);
+                                        }
+                                    }
+                                    
+                                    // Now extract content using several approaches
+                                    // 1. Try to find a dedicated content section
+                                    if (preg_match('/(?:#+\s*Content:?|Content:)[\r\n]+([\s\S]+?)(?:$|#+\s|```json)/i', $latest_message['content'], $content_matches)) {
+                                        $request['parameters']['content'] = trim($content_matches[1]);
+                                        error_log('MPAI: Extracted content from dedicated section - length: ' . strlen($request['parameters']['content']));
+                                    } else {
+                                        // 2. If no content section found, use the whole message excluding tool calls and formatting
+                                        $content = $latest_message['content'];
+                                        
+                                        // Remove tool call blocks (JSON code blocks)
+                                        $cleaned_content = preg_replace('/```(?:json)?\s*\{.*?\}\s*```/is', '', $content);
+                                        
+                                        // Remove all code blocks
+                                        $cleaned_content = preg_replace('/```.*?```/s', '', $cleaned_content);
+                                        
+                                        // Clean up any remaining markdown headers (keeping their text)
+                                        $cleaned_content = preg_replace('/^#+\s*(.+?)[\r\n]+/im', "$1\n\n", $cleaned_content);
+                                        
+                                        // Clean up any "Title:" or "Content:" markers
+                                        $cleaned_content = preg_replace('/(?:Title:|Content:)\s*/i', '', $cleaned_content);
+                                        
+                                        $request['parameters']['content'] = trim($cleaned_content);
+                                        error_log('MPAI: Using full assistant message as content - length: ' . strlen($request['parameters']['content']));
+                                    }
+                                    
+                                    // Set default status if not provided
+                                    if (!isset($request['parameters']['status']) || empty($request['parameters']['status'])) {
+                                        $request['parameters']['status'] = 'draft';
+                                        error_log('MPAI: Setting default status: draft');
+                                    }
+                                } else {
+                                    error_log('MPAI: No valid assistant message found for content extraction');
+                                }
+                            } else {
+                                error_log('MPAI: Chat instance unavailable for content extraction');
+                            }
+                        }
+                    } catch (Exception $e) {
+                        error_log('MPAI: Error in tool request content extraction: ' . $e->getMessage());
+                        // Continue with the original request
+                    } catch (Error $e) {
+                        error_log('MPAI: PHP Error in tool request content extraction: ' . $e->getMessage());
+                        // Continue with the original request
+                    }
+                }
+                
                 $validated_request = $this->validate_command($request);
                 
                 // Use the validated request for further processing if validation succeeded
@@ -1103,8 +1296,14 @@ class MPAI_Context_Manager {
             // Skip validation for wp_api post-related actions (create_post, update_post, etc.)
             if (isset($request['name']) && $request['name'] === 'wp_api' && 
                 isset($request['parameters']) && isset($request['parameters']['action']) && 
-                in_array($request['parameters']['action'], ['create_post', 'update_post', 'delete_post', 'get_post'])) {
+                in_array($request['parameters']['action'], ['create_post', 'update_post', 'delete_post', 'get_post', 'create_page'])) {
                 error_log('MPAI: Skipping validation for wp_api post action - high priority bypass');
+                return $result;
+            }
+            
+            // Also check for post-related actions directly in the parameters object
+            if (isset($request['action']) && in_array($request['action'], ['create_post', 'update_post', 'delete_post', 'get_post', 'create_page'])) {
+                error_log('MPAI: Skipping validation for direct post action - high priority bypass');
                 return $result;
             }
             

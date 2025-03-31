@@ -43,16 +43,17 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
         
         // Initialize fallback logger if none was provided
         if (!isset($this->logger) || !is_object($this->logger)) {
-            // Create a default logger that uses error_log
-            $this->logger = new stdClass();
-            $this->logger->info = function($message) { 
-                error_log('MPAI INFO: ' . $message); 
-            };
-            $this->logger->error = function($message) { 
-                error_log('MPAI ERROR: ' . $message); 
-            };
-            $this->logger->warning = function($message) { 
-                error_log('MPAI WARNING: ' . $message); 
+            // Create a default logger class that uses error_log
+            $this->logger = new class {
+                public function info($message) { 
+                    error_log('MPAI INFO: ' . $message); 
+                }
+                public function error($message) { 
+                    error_log('MPAI ERROR: ' . $message); 
+                }
+                public function warning($message) { 
+                    error_log('MPAI WARNING: ' . $message); 
+                }
             };
             error_log('MPAI: Command validation agent initialized with fallback logger');
         }

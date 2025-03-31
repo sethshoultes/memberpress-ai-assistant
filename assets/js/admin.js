@@ -466,56 +466,7 @@
         });
     }
     
-    // Check MemberPress API status on page load
-    function checkMemberPressStatus() {
-        var apiKey = $('#mpai_memberpress_api_key').val();
-        var $statusIcon = $('#memberpress-api-status .mpai-api-status-icon');
-        var $statusText = $('#memberpress-api-status .mpai-api-status-text');
-        
-        if (!apiKey) {
-            $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
-            $statusText.text('Not Configured');
-            return;
-        }
-        
-        $statusIcon.removeClass('mpai-status-connected mpai-status-disconnected').addClass('mpai-status-unknown');
-        $statusText.text('Checking...');
-        
-        // Create the form data object directly to ensure proper formatting
-        var formData = new FormData();
-        formData.append('action', 'test_memberpress');
-        formData.append('nonce', mpai_data.nonce);
-        formData.append('api_key', apiKey);
-        
-        // Use the direct AJAX handler
-        var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
-        
-        fetch(directHandlerUrl, {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        })
-        .then(function(response) {
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(function(data) {
-            if (data.success) {
-                $statusIcon.removeClass('mpai-status-disconnected mpai-status-unknown').addClass('mpai-status-connected');
-                $statusText.text('Connected');
-            } else {
-                $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
-                $statusText.text('Error');
-            }
-        })
-        .catch(function(error) {
-            console.error('MPAI: MemberPress status check error:', error);
-            $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
-            $statusText.text('Connection Error');
-        });
-    }
+    // MemberPress API status check removed - not needed
 
     // Test OpenAI API Connection
     function initApiTests() {
@@ -649,89 +600,7 @@
             });
         });
         
-        // Test MemberPress API Connection
-        $('#mpai-test-memberpress-api').on('click', function() {
-            var apiKey = $('#mpai_memberpress_api_key').val();
-            var $resultContainer = $('#mpai-memberpress-test-result');
-            var $statusIcon = $('#memberpress-api-status .mpai-api-status-icon');
-            var $statusText = $('#memberpress-api-status .mpai-api-status-text');
-            
-            console.log('Test MemberPress API clicked with localized nonce');
-            
-            if (!apiKey) {
-                $resultContainer.html('Please enter an API key first');
-                $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-success mpai-test-loading');
-                $resultContainer.show();
-                
-                $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
-                $statusText.text('Not Configured');
-                return;
-            }
-            
-            // Show loading state
-            $(this).prop('disabled', true);
-            $resultContainer.html('Testing...');
-            $resultContainer.addClass('mpai-test-loading').removeClass('mpai-test-success mpai-test-error');
-            $resultContainer.show();
-            
-            $statusIcon.removeClass('mpai-status-connected mpai-status-disconnected').addClass('mpai-status-unknown');
-            $statusText.text('Checking...');
-            
-            console.log('MPAI: Testing MemberPress API with nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
-            
-            // Create the form data object directly to ensure proper formatting
-            var formData = new FormData();
-            formData.append('action', 'test_memberpress');
-            formData.append('nonce', mpai_data.nonce);
-            formData.append('api_key', apiKey);
-            
-            // Use direct AJAX handler
-            var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
-            
-            console.log('MPAI: FormData prepared with direct AJAX handler and nonce length:', 
-                        mpai_data.nonce ? mpai_data.nonce.length : 0);
-            console.log('MPAI: Direct handler URL:', directHandlerUrl);
-            
-            // Use fetch API with direct handler
-            fetch(directHandlerUrl, {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin'
-            })
-            .then(function(response) {
-                console.log('MPAI: Fetch response status:', response.status);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(function(data) {
-                console.log('MPAI: MemberPress API test response:', data);
-                if (data.success) {
-                    $resultContainer.html(data.data);
-                    $resultContainer.addClass('mpai-test-success').removeClass('mpai-test-loading mpai-test-error');
-                    
-                    $statusIcon.removeClass('mpai-status-disconnected mpai-status-unknown').addClass('mpai-status-connected');
-                    $statusText.text('Connected');
-                } else {
-                    $resultContainer.html(data.data);
-                    $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
-                    
-                    $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
-                    $statusText.text('Error');
-                }
-                $('#mpai-test-memberpress-api').prop('disabled', false);
-            })
-            .catch(function(error) {
-                console.error('MPAI: Fetch error:', error);
-                $resultContainer.html('Error: ' + error.message);
-                $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
-                $('#mpai-test-memberpress-api').prop('disabled', false);
-                
-                $statusIcon.removeClass('mpai-status-connected mpai-status-unknown').addClass('mpai-status-disconnected');
-                $statusText.text('Connection Error');
-            });
-        });
+        // MemberPress API test handler removed - not needed
     }
 
     $(document).ready(function() {
@@ -762,12 +631,14 @@
         initApiTests();
         
         // Initialize API status indicators on page load if we're on the settings page
-        if ($('#openai-api-status').length > 0 && $('#memberpress-api-status').length > 0) {
+        if ($('#openai-api-status').length > 0) {
             // Check status after a short delay to ensure everything is loaded
             setTimeout(function() {
+                // Only check OpenAI and Anthropic APIs by default
                 checkOpenAIStatus();
                 checkAnthropicStatus();
-                checkMemberPressStatus();
+                
+                // MemberPress API check removed - not needed
             }, 500);
         }
         
