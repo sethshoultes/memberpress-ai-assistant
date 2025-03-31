@@ -43,16 +43,104 @@ class MPAI_Chat {
      * Constructor
      */
     public function __construct() {
-        $this->api_router = new MPAI_API_Router();
-        $this->memberpress_api = new MPAI_MemberPress_API();
-        $this->context_manager = new MPAI_Context_Manager();
-        
-        // Set this instance in the context manager to enable message extraction
-        if (method_exists($this->context_manager, 'set_chat_instance')) {
-            $this->context_manager->set_chat_instance($this);
+        try {
+            error_log('MPAI Chat: Constructor started');
+            
+            // Make sure all required classes are loaded
+            if (!class_exists('MPAI_API_Router')) {
+                error_log('MPAI Chat: MPAI_API_Router class not found, attempting to load');
+                if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-api-router.php')) {
+                    require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-api-router.php';
+                    error_log('MPAI Chat: MPAI_API_Router file loaded');
+                } else {
+                    error_log('MPAI Chat: MPAI_API_Router file not found at: ' . MPAI_PLUGIN_DIR . 'includes/class-mpai-api-router.php');
+                    throw new Exception('Required class file MPAI_API_Router not found');
+                }
+            }
+            
+            if (!class_exists('MPAI_MemberPress_API')) {
+                error_log('MPAI Chat: MPAI_MemberPress_API class not found, attempting to load');
+                if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-memberpress-api.php')) {
+                    require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-memberpress-api.php';
+                    error_log('MPAI Chat: MPAI_MemberPress_API file loaded');
+                } else {
+                    error_log('MPAI Chat: MPAI_MemberPress_API file not found at: ' . MPAI_PLUGIN_DIR . 'includes/class-mpai-memberpress-api.php');
+                    throw new Exception('Required class file MPAI_MemberPress_API not found');
+                }
+            }
+            
+            if (!class_exists('MPAI_Context_Manager')) {
+                error_log('MPAI Chat: MPAI_Context_Manager class not found, attempting to load');
+                if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-context-manager.php')) {
+                    require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-context-manager.php';
+                    error_log('MPAI Chat: MPAI_Context_Manager file loaded');
+                } else {
+                    error_log('MPAI Chat: MPAI_Context_Manager file not found at: ' . MPAI_PLUGIN_DIR . 'includes/class-mpai-context-manager.php');
+                    throw new Exception('Required class file MPAI_Context_Manager not found');
+                }
+            }
+            
+            // Now create instances
+            try {
+                error_log('MPAI Chat: Creating API Router instance');
+                $this->api_router = new MPAI_API_Router();
+                error_log('MPAI Chat: API Router instance created successfully');
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error creating API Router instance: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+                error_log('MPAI Chat: ' . $e->getTraceAsString());
+                throw new Exception('Failed to initialize API Router: ' . $e->getMessage());
+            }
+            
+            try {
+                error_log('MPAI Chat: Creating MemberPress API instance');
+                $this->memberpress_api = new MPAI_MemberPress_API();
+                error_log('MPAI Chat: MemberPress API instance created successfully');
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error creating MemberPress API instance: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+                error_log('MPAI Chat: ' . $e->getTraceAsString());
+                throw new Exception('Failed to initialize MemberPress API: ' . $e->getMessage());
+            }
+            
+            try {
+                error_log('MPAI Chat: Creating Context Manager instance');
+                $this->context_manager = new MPAI_Context_Manager();
+                error_log('MPAI Chat: Context Manager instance created successfully');
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error creating Context Manager instance: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+                error_log('MPAI Chat: ' . $e->getTraceAsString());
+                throw new Exception('Failed to initialize Context Manager: ' . $e->getMessage());
+            }
+            
+            // Set this instance in the context manager to enable message extraction
+            try {
+                error_log('MPAI Chat: Setting chat instance in context manager');
+                if (method_exists($this->context_manager, 'set_chat_instance')) {
+                    $this->context_manager->set_chat_instance($this);
+                    error_log('MPAI Chat: Chat instance set in context manager successfully');
+                } else {
+                    error_log('MPAI Chat: set_chat_instance method not found in context manager');
+                }
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error setting chat instance in context manager: ' . $e->getMessage());
+                // Continue even if this fails
+            }
+            
+            try {
+                error_log('MPAI Chat: Loading conversation history');
+                $this->load_conversation();
+                error_log('MPAI Chat: Conversation history loaded successfully');
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error loading conversation history: ' . $e->getMessage());
+                error_log('MPAI Chat: ' . $e->getTraceAsString());
+                // Not throwing here since we can continue without conversation history
+            }
+            
+            error_log('MPAI Chat: Constructor completed successfully');
+        } catch (Throwable $e) {
+            error_log('MPAI Chat: CRITICAL ERROR in constructor: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            error_log('MPAI Chat: ' . $e->getTraceAsString());
+            throw $e; // Re-throw to be caught by caller
         }
-        
-        $this->load_conversation();
     }
 
     /**
@@ -279,139 +367,314 @@ class MPAI_Chat {
      */
     public function process_message($message) {
         try {
-            error_log('MPAI: Processing chat message: ' . $message);
+            error_log('MPAI Chat: process_message started with message: ' . $message);
             
-            // We don't need to verify tables exist here anymore since the main class handles it,
-            // and tables are created during plugin activation. This simplifies the code flow.
+            // First check if we have all required dependencies initialized
+            if (!isset($this->api_router) || !is_object($this->api_router)) {
+                error_log('MPAI Chat: API Router not initialized, attempting to create');
+                try {
+                    if (class_exists('MPAI_API_Router')) {
+                        $this->api_router = new MPAI_API_Router();
+                        error_log('MPAI Chat: API Router created successfully in process_message');
+                    } else {
+                        error_log('MPAI Chat: MPAI_API_Router class not available');
+                        return array(
+                            'success' => false,
+                            'message' => 'Internal error: API Router not available'
+                        );
+                    }
+                } catch (Throwable $e) {
+                    error_log('MPAI Chat: Failed to create API Router: ' . $e->getMessage());
+                    return array(
+                        'success' => false,
+                        'message' => 'Failed to initialize API router: ' . $e->getMessage()
+                    );
+                }
+            }
             
             // Initialize conversation if empty
-            if (empty($this->conversation)) {
-                $this->conversation = array(
-                    array('role' => 'system', 'content' => $this->get_system_prompt())
-                );
+            try {
+                if (empty($this->conversation)) {
+                    error_log('MPAI Chat: Conversation is empty, initializing with system prompt');
+                    $system_prompt = $this->get_system_prompt();
+                    error_log('MPAI Chat: Got system prompt of length: ' . strlen($system_prompt));
+                    $this->conversation = array(
+                        array('role' => 'system', 'content' => $system_prompt)
+                    );
+                    error_log('MPAI Chat: Conversation initialized with system prompt');
+                }
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error initializing conversation: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+                error_log('MPAI Chat: ' . $e->getTraceAsString());
+                // Continue without system prompt if it fails
+                if (empty($this->conversation)) {
+                    $this->conversation = array();
+                    error_log('MPAI Chat: Created empty conversation array');
+                }
             }
             
             // Check if the previous message was from the assistant and contained a WP-CLI fallback message
-            $prev_assistant_message = null;
-            $has_wp_cli_fallback = false;
-            
-            if (count($this->conversation) >= 2) {
-                $prev_assistant_index = count($this->conversation) - 1;
-                if ($this->conversation[$prev_assistant_index]['role'] == 'assistant') {
-                    $prev_assistant_message = $this->conversation[$prev_assistant_index]['content'];
-                    if (strpos($prev_assistant_message, 'WP-CLI is not available in this browser environment') != false) {
-                        $has_wp_cli_fallback = true;
+            try {
+                error_log('MPAI Chat: Checking for previous WP-CLI fallback messages');
+                $prev_assistant_message = null;
+                $has_wp_cli_fallback = false;
+                
+                if (count($this->conversation) >= 2) {
+                    $prev_assistant_index = count($this->conversation) - 1;
+                    if (isset($this->conversation[$prev_assistant_index]['role']) && $this->conversation[$prev_assistant_index]['role'] == 'assistant') {
+                        $prev_assistant_message = $this->conversation[$prev_assistant_index]['content'];
+                        if (is_string($prev_assistant_message) && strpos($prev_assistant_message, 'WP-CLI is not available in this browser environment') !== false) {
+                            $has_wp_cli_fallback = true;
+                            error_log('MPAI Chat: Found WP-CLI fallback message');
+                        }
                     }
                 }
-            }
-            
-            // If the previous message had a WP-CLI fallback suggestion, add a system message
-            if ($has_wp_cli_fallback) {
-                $system_reminder = "IMPORTANT: WP-CLI is not available in browser environment. You MUST use the wp_api tool instead of wp_cli for operations. ";
-                $system_reminder .= "For example, to create a post use: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"...\", \"content\": \"...\"}}";
                 
-                $this->conversation[] = array('role' => 'system', 'content' => $system_reminder);
+                // If the previous message had a WP-CLI fallback suggestion, add a system message
+                if ($has_wp_cli_fallback) {
+                    error_log('MPAI Chat: Adding WP-CLI fallback reminder');
+                    $system_reminder = "IMPORTANT: WP-CLI is not available in browser environment. You MUST use the wp_api tool instead of wp_cli for operations. ";
+                    $system_reminder .= "For example, to create a post use: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"...\", \"content\": \"...\"}}";
+                    
+                    $this->conversation[] = array('role' => 'system', 'content' => $system_reminder);
+                    error_log('MPAI Chat: Added system reminder about WP-CLI fallback');
+                }
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error checking for WP-CLI fallback: ' . $e->getMessage());
+                // Continue even if this fails
             }
             
             // Add user message to conversation
-            $this->conversation[] = array('role' => 'user', 'content' => $message);
+            try {
+                error_log('MPAI Chat: Adding user message to conversation');
+                $this->conversation[] = array('role' => 'user', 'content' => $message);
+                error_log('MPAI Chat: User message added to conversation');
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error adding user message to conversation: ' . $e->getMessage());
+                // Initialize conversation with just the user message if adding fails
+                $this->conversation = array(
+                    array('role' => 'user', 'content' => $message)
+                );
+                error_log('MPAI Chat: Created new conversation with only user message');
+            }
             
             // Get response using the API Router
-            error_log('MPAI: Generating chat completion using API Router');
-            $response = $this->api_router->generate_completion($this->conversation);
-            
-            // Handle different response formats
-            if (is_wp_error($response)) {
-                error_log('MPAI: API returned error: ' . $response->get_error_message());
+            try {
+                error_log('MPAI Chat: Generating chat completion using API Router');
+                $response = $this->api_router->generate_completion($this->conversation);
+                error_log('MPAI Chat: Received response from API Router');
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error generating completion: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+                error_log('MPAI Chat: ' . $e->getTraceAsString());
                 return array(
                     'success' => false,
-                    'message' => 'AI Assistant Error: ' . $response->get_error_message(),
+                    'message' => 'Error generating AI response: ' . $e->getMessage()
                 );
+            }
+            
+            // Handle different response formats
+            try {
+                error_log('MPAI Chat: Checking response format');
+                if (is_wp_error($response)) {
+                    error_log('MPAI Chat: API returned WP_Error: ' . $response->get_error_message());
+                    return array(
+                        'success' => false,
+                        'message' => 'AI Assistant Error: ' . $response->get_error_message(),
+                    );
+                }
+                error_log('MPAI Chat: Response is not a WP_Error');
+            } catch (Throwable $e) {
+                error_log('MPAI Chat: Error checking if response is WP_Error: ' . $e->getMessage());
+                // Continue processing in case it's not a WP_Error
             }
             
             // Handle array response (structured with tool calls)
-            if (is_array($response) && isset($response['message'])) {
-                $message_content = $response['message'];
-                $has_tool_calls = isset($response['tool_calls']) && !empty($response['tool_calls']);
-                
-                // Check if this response looks like it contains a blog post or page
-                // and add a marker if it does
-                $modified_content = $message_content;
-                
-                // Check for blog post content patterns
-                if (preg_match('/(?:#+\s*Title:?|Title:)\s*([^\n]+)/i', $message_content) ||
-                    (preg_match('/^#+\s*([^\n]+)/i', $message_content) && 
-                     preg_match('/introduction|summary|overview|content|body|conclusion/i', $message_content))) {
+            try {
+                error_log('MPAI Chat: Processing array response format');
+                if (is_array($response) && isset($response['message'])) {
+                    error_log('MPAI Chat: Response has message field');
+                    $message_content = $response['message'];
+                    $has_tool_calls = isset($response['tool_calls']) && !empty($response['tool_calls']);
+                    error_log('MPAI Chat: Response has tool calls: ' . ($has_tool_calls ? 'yes' : 'no'));
                     
-                    // This looks like a blog post or article
-                    $modified_content = $this->add_content_marker($message_content, 'blog-post');
-                    error_log('MPAI: Added blog-post marker to response');
-                } 
-                // Check for page content patterns
-                else if (strpos(strtolower($message), 'create a page') !== false && 
-                         (preg_match('/(?:#+\s*Title:?|Title:)\s*([^\n]+)/i', $message_content) ||
-                          preg_match('/^#+\s*([^\n]+)/i', $message_content))) {
+                    // Check if this response looks like it contains a blog post or page
+                    // and add a marker if it does
+                    $modified_content = $message_content;
                     
-                    // This looks like a page
-                    $modified_content = $this->add_content_marker($message_content, 'page');
-                    error_log('MPAI: Added page marker to response');
-                }
-                // Check for membership content patterns
-                else if (strpos(strtolower($message), 'membership') !== false && 
-                         (strpos(strtolower($message_content), 'membership') !== false) &&
-                         preg_match('/(?:title|name):\s*([^\n]+)/i', $message_content)) {
-                         
-                    // This looks like a membership
-                    $modified_content = $this->add_content_marker($message_content, 'membership');
-                    error_log('MPAI: Added membership marker to response');
-                }
-                
-                // Add assistant response to conversation
-                $this->conversation[] = array('role' => 'assistant', 'content' => $modified_content);
-                
-                // Save conversation to database
-                error_log('MPAI: Saving message to database');
-                $this->save_message($message, $modified_content);
-                
-                if ($has_tool_calls) {
-                    error_log('MPAI: Processing tool calls from structured response');
-                    // Process tool calls from structure
-                    $processed_response = $this->process_structured_tool_calls($message_content, $response['tool_calls']);
+                    try {
+                        error_log('MPAI Chat: Checking for content patterns');
+                        // Check for blog post content patterns
+                        if (preg_match('/(?:#+\s*Title:?|Title:)\s*([^\n]+)/i', $message_content) ||
+                            (preg_match('/^#+\s*([^\n]+)/i', $message_content) && 
+                             preg_match('/introduction|summary|overview|content|body|conclusion/i', $message_content))) {
+                            
+                            // This looks like a blog post or article
+                            if (method_exists($this, 'add_content_marker')) {
+                                $modified_content = $this->add_content_marker($message_content, 'blog-post');
+                                error_log('MPAI Chat: Added blog-post marker to response');
+                            } else {
+                                error_log('MPAI Chat: add_content_marker method not available');
+                            }
+                        }
+                        
+                        // Check for page content patterns
+                        if (strpos(strtolower($message), 'create a page') !== false && 
+                            (preg_match('/(?:#+\s*Title:?|Title:)\s*([^\n]+)/i', $message_content) ||
+                            preg_match('/^#+\s*([^\n]+)/i', $message_content))) {
+                            
+                            // This looks like a page
+                            if (method_exists($this, 'add_content_marker')) {
+                                $modified_content = $this->add_content_marker($message_content, 'page');
+                                error_log('MPAI Chat: Added page marker to response');
+                            } else {
+                                error_log('MPAI Chat: add_content_marker method not available for page');
+                            }
+                        }
+                        
+                        // Check for membership content patterns
+                        if (strpos(strtolower($message), 'membership') !== false && 
+                            (strpos(strtolower($message_content), 'membership') !== false) &&
+                            preg_match('/(?:title|name):\s*([^\n]+)/i', $message_content)) {
+                                
+                            // This looks like a membership
+                            if (method_exists($this, 'add_content_marker')) {
+                                $modified_content = $this->add_content_marker($message_content, 'membership');
+                                error_log('MPAI Chat: Added membership marker to response');
+                            } else {
+                                error_log('MPAI Chat: add_content_marker method not available for membership');
+                            }
+                        }
+                    } catch (Throwable $pattern_e) {
+                        error_log('MPAI Chat: Error checking content patterns: ' . $pattern_e->getMessage());
+                        // Continue without adding marker
+                    }
+                    
+                    // Add assistant response to conversation
+                    try {
+                        error_log('MPAI Chat: Adding assistant response to conversation');
+                        $this->conversation[] = array('role' => 'assistant', 'content' => $modified_content);
+                        error_log('MPAI Chat: Added assistant response to conversation');
+                    } catch (Throwable $conv_e) {
+                        error_log('MPAI Chat: Error adding assistant response to conversation: ' . $conv_e->getMessage());
+                        // Continue even if this fails
+                    }
+                    
+                    // Save conversation to database
+                    try {
+                        error_log('MPAI Chat: Saving message to database');
+                        $this->save_message($message, $modified_content);
+                        error_log('MPAI Chat: Message saved to database');
+                    } catch (Throwable $save_e) {
+                        error_log('MPAI Chat: Error saving message to database: ' . $save_e->getMessage());
+                        // Continue even if save fails
+                    }
+                    
+                    if ($has_tool_calls) {
+                        try {
+                            error_log('MPAI Chat: Processing tool calls from structured response');
+                            // Process tool calls from structure
+                            $processed_response = $this->process_structured_tool_calls($message_content, $response['tool_calls']);
+                            error_log('MPAI Chat: Tool calls processed successfully');
+                        } catch (Throwable $tool_e) {
+                            error_log('MPAI Chat: Error processing tool calls: ' . $tool_e->getMessage() . ' in ' . $tool_e->getFile() . ' on line ' . $tool_e->getLine());
+                            error_log('MPAI Chat: ' . $tool_e->getTraceAsString());
+                            $processed_response = $message_content;
+                            // Continue with original content if processing fails
+                        }
+                    } else {
+                        // Just process the message content
+                        try {
+                            error_log('MPAI Chat: Processing content for tool calls');
+                            $processed_response = $this->process_tool_calls($message_content);
+                            error_log('MPAI Chat: Processing content for commands');
+                            $processed_response = $this->process_commands($processed_response);
+                            error_log('MPAI Chat: Content processing completed successfully');
+                        } catch (Throwable $proc_e) {
+                            error_log('MPAI Chat: Error processing content: ' . $proc_e->getMessage());
+                            $processed_response = $message_content;
+                            // Continue with original content if processing fails
+                        }
+                    }
+                    
+                    error_log('MPAI Chat: Returning successful response');
+                    return array(
+                        'success' => true,
+                        'message' => $processed_response,
+                        'raw_response' => $message_content,
+                        'api_used' => isset($response['api']) ? $response['api'] : 'unknown',
+                    );
                 } else {
-                    // Just process the message content
-                    $processed_response = $this->process_tool_calls($message_content);
-                    $processed_response = $this->process_commands($processed_response);
+                    error_log('MPAI Chat: Response is not an array with message field');
                 }
-                
-                return array(
-                    'success' => true,
-                    'message' => $processed_response,
-                    'raw_response' => $message_content,
-                    'api_used' => isset($response['api']) ? $response['api'] : 'unknown',
-                );
-            } else {
-                // Handle simple string response
-                // Add assistant response to conversation
-                $this->conversation[] = array('role' => 'assistant', 'content' => $response);
-                
-                // Save conversation to database
-                error_log('MPAI: Saving message to database');
-                $this->save_message($message, $response);
-                
-                // Process any tool calls in the response
-                $processed_response = $this->process_tool_calls($response);
-                
-                // Process CLI commands (backward compatibility)
-                $processed_response = $this->process_commands($processed_response);
-                
-                return array(
-                    'success' => true,
-                    'message' => $processed_response,
-                    'raw_response' => $response,
-                );
+            } catch (Throwable $arr_e) {
+                error_log('MPAI Chat: Error processing array response: ' . $arr_e->getMessage());
+                // Continue to next format check
             }
-        } catch (Exception $e) {
-            error_log('MPAI: Exception in process_message: ' . $e->getMessage());
+            
+            // Handle simple string response
+            try {
+                error_log('MPAI Chat: Checking for string response');
+                if (is_string($response)) {
+                    error_log('MPAI Chat: Response is a string');
+                    
+                    // Add assistant response to conversation
+                    try {
+                        error_log('MPAI Chat: Adding string response to conversation');
+                        $this->conversation[] = array('role' => 'assistant', 'content' => $response);
+                        error_log('MPAI Chat: Added string response to conversation');
+                    } catch (Throwable $str_conv_e) {
+                        error_log('MPAI Chat: Error adding string response to conversation: ' . $str_conv_e->getMessage());
+                        // Continue even if this fails
+                    }
+                    
+                    // Save conversation to database
+                    try {
+                        error_log('MPAI Chat: Saving string message to database');
+                        $this->save_message($message, $response);
+                        error_log('MPAI Chat: String message saved to database');
+                    } catch (Throwable $str_save_e) {
+                        error_log('MPAI Chat: Error saving string message to database: ' . $str_save_e->getMessage());
+                        // Continue even if save fails
+                    }
+                    
+                    // Process any tool calls in the response
+                    try {
+                        error_log('MPAI Chat: Processing string response for tool calls');
+                        $processed_response = $this->process_tool_calls($response);
+                        error_log('MPAI Chat: Processing string response for commands');
+                        $processed_response = $this->process_commands($processed_response);
+                        error_log('MPAI Chat: String response processing completed');
+                    } catch (Throwable $str_proc_e) {
+                        error_log('MPAI Chat: Error processing string response: ' . $str_proc_e->getMessage());
+                        $processed_response = $response;
+                        // Continue with original response if processing fails
+                    }
+                    
+                    error_log('MPAI Chat: Returning successful string response');
+                    return array(
+                        'success' => true,
+                        'message' => $processed_response,
+                        'raw_response' => $response,
+                    );
+                } else {
+                    error_log('MPAI Chat: Response is not a string: ' . gettype($response));
+                }
+            } catch (Throwable $str_e) {
+                error_log('MPAI Chat: Error processing string response: ' . $str_e->getMessage());
+                // Continue to fallback
+            }
+            
+            // Fallback for unrecognized response format
+            error_log('MPAI Chat: Unrecognized response format, using fallback');
+            return array(
+                'success' => true,
+                'message' => 'The assistant responded in an unexpected format. Please try rephrasing your request.',
+                'raw_response' => (is_string($response) ? $response : (is_array($response) ? json_encode($response) : 'Unknown response format')),
+            );
+            
+        } catch (Throwable $e) {
+            error_log('MPAI Chat: CRITICAL ERROR in process_message: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            error_log('MPAI Chat: ' . $e->getTraceAsString());
             return array(
                 'success' => false,
                 'message' => 'Error processing message: ' . $e->getMessage(),

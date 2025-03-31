@@ -397,6 +397,9 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
         ];
         
         try {
+            // Debug log all incoming data
+            $this->logger->info('Starting plugin validation with data: ' . json_encode($command_data));
+            
             // Check if plugin parameter exists
             if ( ! isset( $command_data['plugin'] ) ) {
                 $result['success'] = false;
@@ -408,6 +411,8 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             
             // Clean up any escaped slashes
             $plugin_path = str_replace( '\\/', '/', $plugin_path );
+            
+            $this->logger->info('Validating plugin path: ' . $plugin_path);
             
             // Get available plugins
             $available_plugins = $this->get_available_plugins();
@@ -422,21 +427,29 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
                 return $result;
             }
             
+            $this->logger->info('Found ' . count($available_plugins) . ' available plugins');
+            
             // Check if the plugin path exists exactly as provided
             if ( isset( $available_plugins[$plugin_path] ) ) {
                 // Plugin path is already correct
+                $this->logger->info('Plugin path exists exactly as provided: ' . $plugin_path);
                 $result['validated_command']['plugin'] = $plugin_path;
                 return $result;
             }
+            
+            $this->logger->info('Plugin path not found exactly, trying to correct it');
             
             // Try to find the correct plugin path
             $corrected_path = $this->find_plugin_path( $plugin_path, $available_plugins );
             
             if ( $corrected_path ) {
+                $this->logger->info('Found corrected plugin path: ' . $corrected_path);
                 $result['validated_command']['plugin'] = $corrected_path;
                 $result['message'] = "Plugin path corrected from '{$plugin_path}' to '{$corrected_path}'";
                 return $result;
             }
+            
+            $this->logger->warning('Plugin path not found and could not be corrected: ' . $plugin_path);
             
             // If we get here, the plugin wasn't found
             // But we'll bypass the validation rather than block the operation
@@ -478,6 +491,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
     private function get_available_plugins() {
         // Return cached plugins if available
         if ( isset( $this->cache['plugins'] ) && !empty( $this->cache['plugins'] ) ) {
+            $this->logger->info('Using cached plugins list with ' . count($this->cache['plugins']) . ' plugins');
             return $this->cache['plugins'];
         }
         
@@ -485,22 +499,87 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
         $plugins = [];
         
         try {
+            $this->logger->info('Loading plugins list...');
+            
             // Load plugin functions if needed
             if ( ! function_exists( 'get_plugins' ) ) {
-                if ( file_exists( ABSPATH . 'wp-admin/includes/plugin.php' ) ) {
-                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                $plugin_php_path = ABSPATH . 'wp-admin/includes/plugin.php';
+                $this->logger->info('get_plugins function not available, trying to load from: ' . $plugin_php_path);
+                
+                if ( file_exists( $plugin_php_path ) ) {
+                    require_once $plugin_php_path;
+                    $this->logger->info('Successfully loaded plugin.php');
                 } else {
-                    $this->logger->error( 'Failed to load plugin.php' );
-                    return [];
+                    $this->logger->error( 'Failed to load plugin.php - file not found at: ' . $plugin_php_path );
+                    // Try alternative method to find the file
+                    $alt_path = WP_PLUGIN_DIR . '/../../../wp-admin/includes/plugin.php';
+                    $this->logger->info('Trying alternative path: ' . $alt_path);
+                    
+                    if (file_exists($alt_path)) {
+                        require_once $alt_path;
+                        $this->logger->info('Successfully loaded plugin.php from alternative path');
+                    } else {
+                        $this->logger->error('Could not find plugin.php at alternative path either');
+                        return [];
+                    }
                 }
             }
             
             // Get the plugins
             if ( function_exists( 'get_plugins' ) ) {
+                $this->logger->info('Calling get_plugins() function...');
                 $plugins = get_plugins();
-                $this->cache['plugins'] = $plugins;
+                $this->logger->info('Got ' . count($plugins) . ' plugins from get_plugins()');
+                
+                if (!empty($plugins)) {
+                    $this->cache['plugins'] = $plugins;
+                    
+                    // Log first few plugins for debugging
+                    $sample_plugins = array_slice($plugins, 0, 3, true);
+                    foreach ($sample_plugins as $path => $plugin) {
+                        $this->logger->info('Sample plugin: ' . $path . ' - ' . $plugin['Name']);
+                    }
+                } else {
+                    $this->logger->warning('get_plugins() returned empty array');
+                    
+                    // Try direct directory scanning as a fallback
+                    $this->logger->info('Trying fallback method: Direct plugin directory scanning');
+                    $plugins_dir = WP_PLUGIN_DIR;
+                    $this->logger->info('Scanning plugins directory: ' . $plugins_dir);
+                    
+                    if (is_dir($plugins_dir)) {
+                        $plugin_folders = glob($plugins_dir . '/*', GLOB_ONLYDIR);
+                        foreach ($plugin_folders as $folder) {
+                            $folder_name = basename($folder);
+                            $main_files = glob($folder . '/*.php');
+                            
+                            if (!empty($main_files)) {
+                                foreach ($main_files as $file) {
+                                    $file_name = basename($file);
+                                    $plugin_path = $folder_name . '/' . $file_name;
+                                    
+                                    // Create a simple plugin entry
+                                    $plugins[$plugin_path] = [
+                                        'Name' => $folder_name,
+                                        'Version' => '1.0',
+                                        'Description' => 'Found via directory scanning',
+                                    ];
+                                    
+                                    $this->logger->info('Added plugin via directory scan: ' . $plugin_path);
+                                }
+                            }
+                        }
+                        
+                        if (!empty($plugins)) {
+                            $this->logger->info('Fallback method found ' . count($plugins) . ' plugins');
+                            $this->cache['plugins'] = $plugins;
+                        }
+                    } else {
+                        $this->logger->error('Could not access plugins directory: ' . $plugins_dir);
+                    }
+                }
             } else {
-                $this->logger->error( 'get_plugins function not available' );
+                $this->logger->error( 'get_plugins function still not available after loading plugin.php' );
             }
         } catch ( Exception $e ) {
             $this->logger->error( 'Error getting plugins: ' . $e->getMessage() );
@@ -521,22 +600,89 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
         try {
             // Bail early if plugin_slug is empty
             if (empty($plugin_slug) || empty($available_plugins)) {
+                $this->logger->warning('Empty plugin slug or available plugins list');
                 return false;
             }
             
+            $this->logger->info('Finding plugin path for: ' . $plugin_slug);
+            
             // Check for direct matches first
             if (isset($available_plugins[$plugin_slug])) {
+                $this->logger->info('Direct match found for: ' . $plugin_slug);
                 return $plugin_slug;
+            }
+            
+            // Clean up plugin slug for better matching
+            $plugin_slug = trim($plugin_slug);
+            // Remove quotes if present
+            $plugin_slug = trim($plugin_slug, '"\'');
+            
+            $this->logger->info('Cleaned plugin slug for matching: ' . $plugin_slug);
+            
+            // Handle special case for MemberPress plugins by name
+            if (stripos($plugin_slug, 'memberpress') !== false) {
+                $this->logger->info('MemberPress plugin detected, trying special matching');
+                
+                // Extract potential specific addon name
+                $memberpress_addon = '';
+                if (stripos($plugin_slug, 'memberpress-') !== false) {
+                    $memberpress_addon = str_ireplace('memberpress-', '', $plugin_slug);
+                    $memberpress_addon = str_ireplace(' plugin', '', $memberpress_addon);
+                    $memberpress_addon = str_ireplace(' add-on', '', $memberpress_addon);
+                    $memberpress_addon = str_ireplace(' addon', '', $memberpress_addon);
+                    $memberpress_addon = trim($memberpress_addon);
+                    $this->logger->info('Extracted MemberPress addon name: ' . $memberpress_addon);
+                }
+                
+                // First check exact matches for the addon 
+                foreach ($available_plugins as $path => $plugin_data) {
+                    // Match against folder names for MemberPress plugins
+                    if (strpos($path, 'memberpress-' . strtolower($memberpress_addon) . '/') === 0) {
+                        $this->logger->info('Found MemberPress addon by folder: ' . $path);
+                        return $path;
+                    }
+                    
+                    // Match plugin names
+                    if (!empty($memberpress_addon) && isset($plugin_data['Name']) && 
+                        (stripos($plugin_data['Name'], 'memberpress ' . $memberpress_addon) !== false ||
+                         stripos($plugin_data['Name'], 'memberpress-' . $memberpress_addon) !== false)) {
+                        $this->logger->info('Found MemberPress addon by name: ' . $path);
+                        return $path;
+                    }
+                }
+                
+                // Then check if there's any MemberPress plugin with this word
+                if (!empty($memberpress_addon)) {
+                    foreach ($available_plugins as $path => $plugin_data) {
+                        if (strpos($path, 'memberpress-') === 0 && 
+                            (stripos($path, $memberpress_addon) !== false || 
+                             (isset($plugin_data['Name']) && stripos($plugin_data['Name'], $memberpress_addon) !== false))) {
+                            $this->logger->info('Found MemberPress addon by partial match: ' . $path);
+                            return $path;
+                        }
+                    }
+                }
+                
+                // Last resort - return the first MemberPress plugin
+                foreach ($available_plugins as $path => $plugin_data) {
+                    if (strpos($path, 'memberpress') === 0 || 
+                        (isset($plugin_data['Name']) && stripos($plugin_data['Name'], 'memberpress') !== false)) {
+                        $this->logger->info('Falling back to first MemberPress plugin: ' . $path);
+                        return $path;
+                    }
+                }
             }
             
             // Case where plugin path is partially correct (correct folder, wrong main file)
             if (strpos($plugin_slug, '/') !== false) {
+                $this->logger->info('Path contains slash, trying to match folder');
                 list($folder, $file) = explode('/', $plugin_slug, 2);
                 
                 // Check if any plugin has this folder
                 foreach (array_keys($available_plugins) as $plugin_path) {
                     if (strpos($plugin_path, $folder . '/') === 0) {
                         // Found a plugin with the correct folder
+                        $this->logger->info('Found plugin with matching folder: ' . $plugin_path);
                         return $plugin_path;
                     }
                 }
@@ -544,12 +690,14 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             
             // Check for name-based matches
             $plugin_slug_lower = strtolower($plugin_slug);
+            $this->logger->info('Checking name-based matches for: ' . $plugin_slug_lower);
             
-            // First pass - check for direct name matches 
+            // First pass - check for direct name matches
             foreach ($available_plugins as $path => $plugin_data) {
                 // Check exact plugin name match
                 if (isset($plugin_data['Name']) && 
                     strtolower($plugin_data['Name']) === $plugin_slug_lower) {
+                    $this->logger->info('Found exact name match: ' . $path);
                     return $path;
                 }
                 
@@ -557,8 +705,40 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
                 if (strpos($path, '/') !== false) {
                     list($folder, $file) = explode('/', $path, 2);
                     if (strtolower($folder) === $plugin_slug_lower) {
+                        $this->logger->info('Found folder match: ' . $path);
                         return $path;
                     }
+                }
+            }
+            
+            // Check for word-by-word matching (handle cases like "memberpress gifting" vs "memberpress-gifting")
+            $words = preg_split('/[\s-]+/', $plugin_slug_lower);
+            if (count($words) > 1) {
+                $this->logger->info('Trying word-by-word matching with: ' . implode(', ', $words));
+                
+                $matches = [];
+                foreach ($available_plugins as $path => $plugin_data) {
+                    $path_lower = strtolower($path);
+                    $name_lower = isset($plugin_data['Name']) ? strtolower($plugin_data['Name']) : '';
+                    
+                    $match_score = 0;
+                    foreach ($words as $word) {
+                        if (!empty($word) && (strpos($path_lower, $word) !== false || strpos($name_lower, $word) !== false)) {
+                            $match_score++;
+                        }
+                    }
+                    
+                    if ($match_score > 0) {
+                        $matches[$path] = $match_score;
+                    }
+                }
+                
+                if (!empty($matches)) {
+                    // Sort by match score (highest first)
+                    arsort($matches);
+                    $best_match = key($matches);
+                    $this->logger->info('Best word match found: ' . $best_match . ' with score: ' . $matches[$best_match]);
+                    return $best_match;
                 }
             }
             
@@ -567,10 +747,18 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
                 // Check if the slug is in the plugin name (case insensitive)
                 if (isset($plugin_data['Name']) && 
                     stripos($plugin_data['Name'], $plugin_slug) !== false) {
+                    $this->logger->info('Found partial name match: ' . $path);
+                    return $path;
+                }
+                
+                // Check if the slug is in the path
+                if (stripos($path, $plugin_slug) !== false) {
+                    $this->logger->info('Found partial path match: ' . $path);
                     return $path;
                 }
             }
             
+            $this->logger->warning('No matches found for plugin: ' . $plugin_slug);
             // No matches found
             return false;
         } catch (Exception $e) {

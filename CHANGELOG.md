@@ -5,6 +5,23 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.4] - 2025-03-31
+
+### Fixed
+- Fixed plugin activation and deactivation issues:
+  - Enhanced plugin path matching with improved logging
+  - Added robust error handling for plugin.php loading
+  - Implemented multi-tier plugin name matching for MemberPress plugins
+  - Added word-by-word matching for better plugin name recognition
+  - Enhanced logging throughout plugin activation process
+  - Improved fallback methods for plugin identification
+  - Fixed special case handling for MemberPress addon plugins
+  - Added enhanced debugging for plugin path resolution
+  - Implemented directory scanning fallback when get_plugins() fails
+  - Fixed plugin name to path conversion with fuzzy matching
+  - Resilient error handling with descriptive error messages
+  - Fixed 500 errors during plugin activation with comprehensive catch blocks
+  
 ## [1.5.3] - 2025-03-31
 
 ### Added

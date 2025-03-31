@@ -777,61 +777,267 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	 * @return array Activation result
 	 */
 	private function activate_plugin( $parameters ) {
-		// Check user capabilities
-		if ( ! current_user_can( 'activate_plugins' ) ) {
-			throw new Exception( 'You do not have sufficient permissions to activate plugins' );
-		}
-		
-		// Load plugin functions if needed
-		if ( ! function_exists( 'activate_plugin' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-		
-		// Check parameters
-		if ( ! isset( $parameters['plugin'] ) ) {
-			throw new Exception( 'Plugin parameter is required. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
-		}
-		
-		// Ensure proper format without escaped slashes
-		$plugin = $parameters['plugin'];
-		$plugin = str_replace('\\/', '/', $plugin); // Replace escaped slashes
-		
-		// Check if plugin exists
-		$all_plugins = get_plugins();
-		
-		// Debug
-		error_log('MPAI: Attempting to activate plugin: ' . $plugin);
-		error_log('MPAI: Available plugins: ' . implode(', ', array_keys($all_plugins)));
-		
-		if ( ! isset( $all_plugins[ $plugin ] ) ) {
-			throw new Exception( "Plugin '{$plugin}' does not exist" );
-		}
-		
-		// Check if plugin is already active
-		if ( is_plugin_active( $plugin ) ) {
+		try {
+			// Debug log inputs
+			error_log('MPAI WP_API activate_plugin: Starting with parameters: ' . json_encode($parameters));
+			
+			// Check user capabilities
+			if ( ! current_user_can( 'activate_plugins' ) ) {
+				error_log('MPAI WP_API: User does not have activate_plugins capability');
+				throw new Exception( 'You do not have sufficient permissions to activate plugins' );
+			}
+			
+			// Load plugin functions if needed
+			if ( ! function_exists( 'activate_plugin' ) || ! function_exists( 'get_plugins' ) ) {
+				$plugin_php_path = ABSPATH . 'wp-admin/includes/plugin.php';
+				error_log('MPAI WP_API: Loading plugin.php from: ' . $plugin_php_path);
+				
+				if (file_exists($plugin_php_path)) {
+					require_once $plugin_php_path;
+					error_log('MPAI WP_API: Successfully loaded plugin.php');
+				} else {
+					error_log('MPAI WP_API: plugin.php not found at expected path, trying alternative');
+					// Try alternative method to find the file
+					$alt_path = WP_PLUGIN_DIR . '/../../../wp-admin/includes/plugin.php';
+					
+					if (file_exists($alt_path)) {
+						require_once $alt_path;
+						error_log('MPAI WP_API: Successfully loaded plugin.php from alternative path');
+					} else {
+						error_log('MPAI WP_API: Failed to load plugin.php');
+						throw new Exception('Required WordPress plugin functions not available');
+					}
+				}
+			}
+			
+			// Check parameters
+			if ( ! isset( $parameters['plugin'] ) ) {
+				error_log('MPAI WP_API: Missing plugin parameter');
+				throw new Exception( 'Plugin parameter is required. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
+			}
+			
+			// Ensure proper format without escaped slashes
+			$plugin = $parameters['plugin'];
+			$plugin = str_replace('\\/', '/', $plugin); // Replace escaped slashes
+			
+			error_log('MPAI WP_API: Cleaned plugin path: ' . $plugin);
+			
+			// Get available plugins
+			$all_plugins = get_plugins();
+			
+			// Debug
+			error_log('MPAI WP_API: Attempting to activate plugin: ' . $plugin);
+			error_log('MPAI WP_API: Available plugins: ' . implode(', ', array_keys($all_plugins)));
+			
+			// Check if plugin exists exactly as specified
+			if ( ! isset( $all_plugins[ $plugin ] ) ) {
+				error_log('MPAI WP_API: Plugin not found directly, trying to find match');
+				
+				// Try to find the plugin by partial matching - similar to what validation agent does
+				$matching_plugin = $this->find_plugin_path($plugin, $all_plugins);
+				
+				if ($matching_plugin) {
+					error_log('MPAI WP_API: Found matching plugin: ' . $matching_plugin);
+					$plugin = $matching_plugin;
+				} else {
+					error_log('MPAI WP_API: No matching plugin found');
+					throw new Exception( "Plugin '{$plugin}' does not exist. Available plugins include: " . 
+						implode(', ', array_slice(array_keys($all_plugins), 0, 5)) );
+				}
+			}
+			
+			// Check if plugin is already active
+			if ( is_plugin_active( $plugin ) ) {
+				error_log('MPAI WP_API: Plugin already active: ' . $plugin);
+				return array(
+					'success' => true,
+					'plugin' => $plugin,
+					'message' => "Plugin '{$all_plugins[$plugin]['Name']}' is already active",
+					'status' => 'active',
+				);
+			}
+			
+			// Activate the plugin
+			error_log('MPAI WP_API: Activating plugin: ' . $plugin);
+			$result = activate_plugin( $plugin );
+			
+			// Check for errors
+			if ( is_wp_error( $result ) ) {
+				error_log('MPAI WP_API: Plugin activation failed: ' . $result->get_error_message());
+				throw new Exception( "Failed to activate plugin: " . $result->get_error_message() );
+			}
+			
+			error_log('MPAI WP_API: Plugin activated successfully: ' . $plugin);
 			return array(
 				'success' => true,
 				'plugin' => $plugin,
-				'message' => "Plugin '{$all_plugins[$plugin]['Name']}' is already active",
+				'plugin_name' => $all_plugins[$plugin]['Name'],
+				'message' => "Plugin '{$all_plugins[$plugin]['Name']}' has been activated successfully",
 				'status' => 'active',
 			);
+		} catch (Exception $e) {
+			error_log('MPAI WP_API activate_plugin exception: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+			throw $e;
 		}
-		
-		// Activate the plugin
-		$result = activate_plugin( $plugin );
-		
-		// Check for errors
-		if ( is_wp_error( $result ) ) {
-			throw new Exception( "Failed to activate plugin: " . $result->get_error_message() );
+	}
+	
+	/**
+	 * Find the correct plugin path based on a slug or partial path
+	 *
+	 * @param string $plugin_slug The plugin slug or partial path
+	 * @param array $available_plugins List of available plugins
+	 * @return string|false The correct plugin path or false if not found
+	 */
+	private function find_plugin_path($plugin_slug, $available_plugins) {
+		try {
+			// Bail early if plugin_slug is empty
+			if (empty($plugin_slug) || empty($available_plugins)) {
+				error_log('MPAI WP_API: Empty plugin slug or plugins list');
+				return false;
+			}
+			
+			error_log('MPAI WP_API: Finding plugin path for: ' . $plugin_slug);
+			
+			// Check for direct matches first
+			if (isset($available_plugins[$plugin_slug])) {
+				error_log('MPAI WP_API: Direct match found');
+				return $plugin_slug;
+			}
+			
+			// Clean up plugin slug for better matching
+			$plugin_slug = trim($plugin_slug);
+			// Remove quotes if present
+			$plugin_slug = trim($plugin_slug, '"\'');
+			
+			// Handle special case for MemberPress plugins by name
+			if (stripos($plugin_slug, 'memberpress') !== false) {
+				error_log('MPAI WP_API: MemberPress plugin detected');
+				
+				// Extract specific addon name
+				$memberpress_addon = '';
+				if (stripos($plugin_slug, 'memberpress-') !== false) {
+					$memberpress_addon = str_ireplace('memberpress-', '', $plugin_slug);
+					$memberpress_addon = str_ireplace(' plugin', '', $memberpress_addon);
+					$memberpress_addon = str_ireplace(' add-on', '', $memberpress_addon);
+					$memberpress_addon = str_ireplace(' addon', '', $memberpress_addon);
+					$memberpress_addon = trim($memberpress_addon);
+				} else if (stripos($plugin_slug, 'memberpress ') !== false) {
+					$memberpress_addon = str_ireplace('memberpress ', '', $plugin_slug);
+					$memberpress_addon = str_ireplace(' plugin', '', $memberpress_addon);
+					$memberpress_addon = str_ireplace(' add-on', '', $memberpress_addon);
+					$memberpress_addon = str_ireplace(' addon', '', $memberpress_addon);
+					$memberpress_addon = trim($memberpress_addon);
+				}
+				
+				error_log('MPAI WP_API: Extracted MemberPress addon: ' . $memberpress_addon);
+				
+				// Check for exact matches first
+				foreach ($available_plugins as $path => $plugin_data) {
+					// Check folder name
+					if (!empty($memberpress_addon) && strpos($path, 'memberpress-' . strtolower($memberpress_addon)) === 0) {
+						error_log('MPAI WP_API: Found exact MemberPress addon match: ' . $path);
+						return $path;
+					}
+					
+					// Check plugin name
+					if (!empty($memberpress_addon) && isset($plugin_data['Name']) && 
+						(stripos($plugin_data['Name'], 'memberpress ' . $memberpress_addon) !== false || 
+						 stripos($plugin_data['Name'], 'memberpress-' . $memberpress_addon) !== false)) {
+						error_log('MPAI WP_API: Found MemberPress addon by name: ' . $path);
+						return $path;
+					}
+				}
+				
+				// Check for partial matches
+				if (!empty($memberpress_addon)) {
+					foreach ($available_plugins as $path => $plugin_data) {
+						// Check if the path has memberpress and the addon name
+						if (strpos($path, 'memberpress-') === 0 && stripos($path, $memberpress_addon) !== false) {
+							error_log('MPAI WP_API: Found partial MemberPress match in path: ' . $path);
+							return $path;
+						}
+						
+						// Check if the plugin name has memberpress and the addon name
+						if (isset($plugin_data['Name']) && 
+							stripos($plugin_data['Name'], 'memberpress') !== false && 
+							stripos($plugin_data['Name'], $memberpress_addon) !== false) {
+							error_log('MPAI WP_API: Found partial MemberPress match in name: ' . $path);
+							return $path;
+						}
+					}
+				}
+				
+				// Last resort - return any MemberPress plugin
+				foreach ($available_plugins as $path => $plugin_data) {
+					if (strpos($path, 'memberpress') === 0) {
+						error_log('MPAI WP_API: Falling back to first MemberPress plugin in path: ' . $path);
+						return $path;
+					}
+					
+					if (isset($plugin_data['Name']) && stripos($plugin_data['Name'], 'memberpress') !== false) {
+						error_log('MPAI WP_API: Falling back to first MemberPress plugin by name: ' . $path);
+						return $path;
+					}
+				}
+			}
+			
+			// Case where plugin path is partially correct (correct folder, wrong main file)
+			if (strpos($plugin_slug, '/') !== false) {
+				error_log('MPAI WP_API: Plugin path contains slash, checking folder');
+				list($folder, $file) = explode('/', $plugin_slug, 2);
+				
+				// Check if any plugin has this folder
+				foreach (array_keys($available_plugins) as $plugin_path) {
+					if (strpos($plugin_path, $folder . '/') === 0) {
+						error_log('MPAI WP_API: Found plugin with matching folder: ' . $plugin_path);
+						return $plugin_path;
+					}
+				}
+			}
+			
+			// Check for name-based matches
+			$plugin_slug_lower = strtolower($plugin_slug);
+			
+			// Check exact matches
+			foreach ($available_plugins as $path => $plugin_data) {
+				// Check plugin name
+				if (isset($plugin_data['Name']) && strtolower($plugin_data['Name']) === $plugin_slug_lower) {
+					error_log('MPAI WP_API: Found exact name match: ' . $path);
+					return $path;
+				}
+				
+				// Check folder name
+				if (strpos($path, '/') !== false) {
+					list($folder, $file) = explode('/', $path, 2);
+					if (strtolower($folder) === $plugin_slug_lower) {
+						error_log('MPAI WP_API: Found folder match: ' . $path);
+						return $path;
+					}
+				}
+			}
+			
+			// Check partial matches
+			foreach ($available_plugins as $path => $plugin_data) {
+				// Check if slug is in the plugin name
+				if (isset($plugin_data['Name']) && stripos($plugin_data['Name'], $plugin_slug) !== false) {
+					error_log('MPAI WP_API: Found partial name match: ' . $path);
+					return $path;
+				}
+				
+				// Check if slug is in the path
+				if (stripos($path, $plugin_slug) !== false) {
+					error_log('MPAI WP_API: Found partial path match: ' . $path);
+					return $path;
+				}
+			}
+			
+			// No matches found
+			error_log('MPAI WP_API: No matching plugin found for: ' . $plugin_slug);
+			return false;
+		} catch (Exception $e) {
+			error_log('MPAI WP_API find_plugin_path exception: ' . $e->getMessage());
+			return false;
 		}
-		
-		return array(
-			'success' => true,
-			'plugin' => $plugin,
-			'plugin_name' => $all_plugins[$plugin]['Name'],
-			'message' => "Plugin '{$all_plugins[$plugin]['Name']}' has been activated successfully",
-			'status' => 'active',
-		);
 	}
 	
 	/**
@@ -841,56 +1047,102 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	 * @return array Deactivation result
 	 */
 	private function deactivate_plugin( $parameters ) {
-		// Check user capabilities
-		if ( ! current_user_can( 'activate_plugins' ) ) {
-			throw new Exception( 'You do not have sufficient permissions to deactivate plugins' );
-		}
-		
-		// Load plugin functions if needed
-		if ( ! function_exists( 'deactivate_plugins' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-		
-		// Check parameters
-		if ( ! isset( $parameters['plugin'] ) ) {
-			throw new Exception( 'Plugin parameter is required. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
-		}
-		
-		// Ensure proper format without escaped slashes
-		$plugin = $parameters['plugin'];
-		$plugin = str_replace('\\/', '/', $plugin); // Replace escaped slashes
-		
-		// Check if plugin exists
-		$all_plugins = get_plugins();
-		
-		// Debug
-		error_log('MPAI: Attempting to deactivate plugin: ' . $plugin);
-		error_log('MPAI: Available plugins: ' . implode(', ', array_keys($all_plugins)));
-		
-		if ( ! isset( $all_plugins[ $plugin ] ) ) {
-			throw new Exception( "Plugin '{$plugin}' does not exist" );
-		}
-		
-		// Check if plugin is already inactive
-		if ( ! is_plugin_active( $plugin ) ) {
+		try {
+			// Debug log inputs
+			error_log('MPAI WP_API deactivate_plugin: Starting with parameters: ' . json_encode($parameters));
+			
+			// Check user capabilities
+			if ( ! current_user_can( 'activate_plugins' ) ) {
+				error_log('MPAI WP_API: User does not have activate_plugins capability');
+				throw new Exception( 'You do not have sufficient permissions to deactivate plugins' );
+			}
+			
+			// Load plugin functions if needed
+			if ( ! function_exists( 'deactivate_plugins' ) || ! function_exists( 'get_plugins' ) ) {
+				$plugin_php_path = ABSPATH . 'wp-admin/includes/plugin.php';
+				error_log('MPAI WP_API: Loading plugin.php from: ' . $plugin_php_path);
+				
+				if (file_exists($plugin_php_path)) {
+					require_once $plugin_php_path;
+					error_log('MPAI WP_API: Successfully loaded plugin.php');
+				} else {
+					error_log('MPAI WP_API: plugin.php not found at expected path, trying alternative');
+					// Try alternative method to find the file
+					$alt_path = WP_PLUGIN_DIR . '/../../../wp-admin/includes/plugin.php';
+					
+					if (file_exists($alt_path)) {
+						require_once $alt_path;
+						error_log('MPAI WP_API: Successfully loaded plugin.php from alternative path');
+					} else {
+						error_log('MPAI WP_API: Failed to load plugin.php');
+						throw new Exception('Required WordPress plugin functions not available');
+					}
+				}
+			}
+			
+			// Check parameters
+			if ( ! isset( $parameters['plugin'] ) ) {
+				error_log('MPAI WP_API: Missing plugin parameter');
+				throw new Exception( 'Plugin parameter is required. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
+			}
+			
+			// Ensure proper format without escaped slashes
+			$plugin = $parameters['plugin'];
+			$plugin = str_replace('\\/', '/', $plugin); // Replace escaped slashes
+			
+			error_log('MPAI WP_API: Cleaned plugin path: ' . $plugin);
+			
+			// Get available plugins
+			$all_plugins = get_plugins();
+			
+			// Debug
+			error_log('MPAI WP_API: Attempting to deactivate plugin: ' . $plugin);
+			error_log('MPAI WP_API: Available plugins: ' . implode(', ', array_keys($all_plugins)));
+			
+			// Check if plugin exists exactly as specified
+			if ( ! isset( $all_plugins[ $plugin ] ) ) {
+				error_log('MPAI WP_API: Plugin not found directly, trying to find match');
+				
+				// Try to find the plugin by partial matching
+				$matching_plugin = $this->find_plugin_path($plugin, $all_plugins);
+				
+				if ($matching_plugin) {
+					error_log('MPAI WP_API: Found matching plugin: ' . $matching_plugin);
+					$plugin = $matching_plugin;
+				} else {
+					error_log('MPAI WP_API: No matching plugin found');
+					throw new Exception( "Plugin '{$plugin}' does not exist. Available plugins include: " . 
+						implode(', ', array_slice(array_keys($all_plugins), 0, 5)) );
+				}
+			}
+			
+			// Check if plugin is already inactive
+			if ( ! is_plugin_active( $plugin ) ) {
+				error_log('MPAI WP_API: Plugin already inactive: ' . $plugin);
+				return array(
+					'success' => true,
+					'plugin' => $plugin,
+					'message' => "Plugin '{$all_plugins[$plugin]['Name']}' is already inactive",
+					'status' => 'inactive',
+				);
+			}
+			
+			// Deactivate the plugin
+			error_log('MPAI WP_API: Deactivating plugin: ' . $plugin);
+			deactivate_plugins( $plugin );
+			
+			error_log('MPAI WP_API: Plugin deactivated successfully: ' . $plugin);
 			return array(
 				'success' => true,
 				'plugin' => $plugin,
-				'message' => "Plugin '{$all_plugins[$plugin]['Name']}' is already inactive",
+				'plugin_name' => $all_plugins[$plugin]['Name'],
+				'message' => "Plugin '{$all_plugins[$plugin]['Name']}' has been deactivated successfully",
 				'status' => 'inactive',
 			);
+		} catch (Exception $e) {
+			error_log('MPAI WP_API deactivate_plugin exception: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+			throw $e;
 		}
-		
-		// Deactivate the plugin
-		deactivate_plugins( $plugin );
-		
-		return array(
-			'success' => true,
-			'plugin' => $plugin,
-			'plugin_name' => $all_plugins[$plugin]['Name'],
-			'message' => "Plugin '{$all_plugins[$plugin]['Name']}' has been deactivated successfully",
-			'status' => 'inactive',
-		);
 	}
 
 	/**
