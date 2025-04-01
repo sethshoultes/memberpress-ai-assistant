@@ -363,7 +363,8 @@
             // More flexible regex patterns to catch different code block formats
             const jsonBlockRegex = /```(?:json)?\s*\n({[\s\S]*?})\s*\n```/g;  // Allow optional json tag and extra whitespace
             const jsonObjectBlockRegex = /```(?:json-object)?\s*\n({[\s\S]*?})\s*\n```/g;  // More flexible parsing
-            const directJsonRegex = /\{[\s\S]*?["']tool["'][\s\S]*?["']parameters["'][\s\S]*?\}/g;  // Allow single or double quotes
+            // Improved regex for direct JSON that better handles nested objects 
+            const directJsonRegex = /\{[\s\S]*?["']tool["'][\s\S]*?["']parameters["'][\s\S]*?(?:\{[\s\S]*?\})[\s\S]*?\}/g;  // Better handling of nested objects
             
             // Log the regex patterns we're using to find tool calls
             console.log('MPAI: Using regex patterns:', {
@@ -465,7 +466,15 @@
                     }
                     
                     console.log('MPAI: Found direct JSON', jsonStr);
-                    const jsonData = JSON.parse(jsonStr);
+                    
+                    // Check for potential malformed plugin_logs JSON (missing closing brace)
+                    let fixedJsonStr = jsonStr;
+                    if (jsonStr.includes('"tool": "plugin_logs"') && !jsonStr.endsWith('}')) {
+                        console.log('MPAI: Attempting to fix malformed plugin_logs JSON');
+                        fixedJsonStr = jsonStr + '}';
+                    }
+                    
+                    const jsonData = JSON.parse(fixedJsonStr);
                     
                     // Check if this is a formatted tabular result that we can display directly
                     if (jsonData.success && jsonData.tool && jsonData.result && 
@@ -602,6 +611,17 @@
                             // Format plugin logs result - direct handler returns direct response, not in response.data
                             let resultContent = formatPluginLogsResult(response);
                             $result.html(resultContent);
+                            
+                            // Make JSON code block collapsible instead of hiding it completely
+                            $toolCall.find('.mpai-tool-call-content').hide();
+                            if (!$toolCall.find('.mpai-tool-toggle').length) {
+                                $toolCall.find('.mpai-tool-call-status').after(
+                                    '<span class="mpai-tool-toggle">' +
+                                    '<a href="#" class="mpai-show-tools">Show Tools</a>' +
+                                    '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tools</a>' +
+                                    '</span>'
+                                );
+                            }
                         } else {
                             // Update status to error
                             $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-error');
@@ -610,6 +630,17 @@
                             // Display the error
                             const errorMessage = response.message || 'Error getting plugin logs';
                             $result.html(`<div class="mpai-tool-call-error-message">${errorMessage}</div>`);
+                            
+                            // Make JSON code block collapsible in error case too
+                            $toolCall.find('.mpai-tool-call-content').hide();
+                            if (!$toolCall.find('.mpai-tool-toggle').length) {
+                                $toolCall.find('.mpai-tool-call-status').after(
+                                    '<span class="mpai-tool-toggle">' +
+                                    '<a href="#" class="mpai-show-tools">Show Tools</a>' +
+                                    '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tools</a>' +
+                                    '</span>'
+                                );
+                            }
                         }
                         
                         // Scroll to bottom to show results
@@ -632,6 +663,17 @@
                         
                         // Display the error
                         $result.html(`<div class="mpai-tool-call-error-message">Error getting plugin logs: ${error}</div>`);
+                        
+                        // Make JSON code block collapsible in AJAX error case too
+                        $toolCall.find('.mpai-tool-call-content').hide();
+                        if (!$toolCall.find('.mpai-tool-toggle').length) {
+                            $toolCall.find('.mpai-tool-call-status').after(
+                                '<span class="mpai-tool-toggle">' +
+                                '<a href="#" class="mpai-show-tools">Show Tools</a>' +
+                                '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tools</a>' +
+                                '</span>'
+                            );
+                        }
                         
                         // Scroll to bottom to show results
                         setTimeout(scrollToBottom, 100);
@@ -1552,6 +1594,24 @@
         // Auto-resize the input when the window is resized
         $(window).on('resize', function() {
             adjustInputHeight();
+        });
+        
+        // Show tools when the show tools link is clicked
+        $(document).on('click', '.mpai-show-tools', function(e) {
+            e.preventDefault();
+            const $toolCall = $(this).closest('.mpai-tool-call');
+            $toolCall.find('.mpai-tool-call-content').show();
+            $(this).hide();
+            $toolCall.find('.mpai-hide-tools').show();
+        });
+        
+        // Hide tools when the hide tools link is clicked  
+        $(document).on('click', '.mpai-hide-tools', function(e) {
+            e.preventDefault();
+            const $toolCall = $(this).closest('.mpai-tool-call');
+            $toolCall.find('.mpai-tool-call-content').hide();
+            $(this).hide();
+            $toolCall.find('.mpai-show-tools').show();
         });
         
         /**
