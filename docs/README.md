@@ -19,6 +19,7 @@ Welcome to the MemberPress AI Assistant documentation hub. This directory contai
 - [Tool Call Detection](tool-call-detection.md) - Documentation for the enhanced tool call detection system
 - [Content Marker System](CONTENT_MARKER_SYSTEM.md) - Documentation for the content marker system
 - [Blog Post Fix Summary](BLOG_POST_FIX_SUMMARY.md) - Detailed summary of the blog post publishing fix
+- [Content Tools Specification](content-tools-specification.md) - Specification for enhanced content creation and workflow tools
 
 ## Security Framework
 

@@ -31,38 +31,76 @@ class MPAI_Plugin_Logs_Tool extends MPAI_Base_Tool {
      */
     public function get_tool_definition() {
         return [
-            'name' => 'get_plugin_logs',
-            'description' => 'Retrieve and analyze logs of WordPress plugin installations, activations, deactivations, and deletions',
-            'parameters' => [
-                'type' => 'object',
-                'properties' => [
-                    'action' => [
-                        'type' => 'string',
-                        'enum' => ['installed', 'updated', 'activated', 'deactivated', 'deleted', ''],
-                        'description' => 'Filter logs by action type (installed, updated, activated, deactivated, deleted) or empty for all actions'
+            'type' => 'function',
+            'function' => [
+                'name' => 'get_plugin_logs',
+                'description' => 'Retrieve and analyze logs of WordPress plugin installations, activations, deactivations, and deletions',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'action' => [
+                            'type' => 'string',
+                            'enum' => ['installed', 'updated', 'activated', 'deactivated', 'deleted', ''],
+                            'description' => 'Filter logs by action type (installed, updated, activated, deactivated, deleted) or empty for all actions'
+                        ],
+                        'plugin_name' => [
+                            'type' => 'string',
+                            'description' => 'Filter logs by plugin name (partial match)'
+                        ],
+                        'days' => [
+                            'type' => 'integer',
+                            'description' => 'Number of days to look back in the logs (0 for all time)',
+                            'default' => 30
+                        ],
+                        'limit' => [
+                            'type' => 'integer',
+                            'description' => 'Maximum number of logs to return',
+                            'default' => 25
+                        ],
+                        'summary_only' => [
+                            'type' => 'boolean',
+                            'description' => 'Return only summary information instead of detailed logs',
+                            'default' => false
+                        ]
                     ],
-                    'plugin_name' => [
-                        'type' => 'string',
-                        'description' => 'Filter logs by plugin name (partial match)'
-                    ],
-                    'days' => [
-                        'type' => 'integer',
-                        'description' => 'Number of days to look back in the logs (0 for all time)',
-                        'default': 30
-                    ],
-                    'limit' => [
-                        'type' => 'integer',
-                        'description' => 'Maximum number of logs to return',
-                        'default': 25
-                    ],
-                    'summary_only' => [
-                        'type' => 'boolean',
-                        'description' => 'Return only summary information instead of detailed logs',
-                        'default': false
-                    ]
-                ],
-                'required' => []
+                    'required' => []
+                ]
+            ]
+        ];
+    }
+    
+    /**
+     * Get tool parameters for OpenAI function calling
+     *
+     * @return array Tool parameters
+     */
+    public function get_parameters() {
+        // Return the parameters part of the tool definition
+        return [
+            'action' => [
+                'type' => 'string',
+                'enum' => ['installed', 'updated', 'activated', 'deactivated', 'deleted', ''],
+                'description' => 'Filter logs by action type (installed, updated, activated, deactivated, deleted) or empty for all actions'
             ],
+            'plugin_name' => [
+                'type' => 'string',
+                'description' => 'Filter logs by plugin name (partial match)'
+            ],
+            'days' => [
+                'type' => 'integer',
+                'description' => 'Number of days to look back in the logs (0 for all time)',
+                'default' => 30
+            ],
+            'limit' => [
+                'type' => 'integer',
+                'description' => 'Maximum number of logs to return',
+                'default' => 25
+            ],
+            'summary_only' => [
+                'type' => 'boolean',
+                'description' => 'Return only summary information instead of detailed logs',
+                'default' => false
+            ]
         ];
     }
     

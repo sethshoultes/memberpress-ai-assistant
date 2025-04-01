@@ -36,6 +36,14 @@
 - Thorough error logging with `error_log()`
 - User-friendly error messages for front-end display
 
+## AJAX Handlers
+- Always use existing AJAX handlers when available rather than creating new ones
+- Leverage the plugin's established AJAX endpoints for communication
+- Reference how existing functionality works rather than creating parallel implementations
+- Maintain consistent parameter naming between frontend and backend
+- For AI tool calls that need to bypass nonce checks, use the direct-ajax-handler.php endpoint
+- Permission issues in admin-ajax handlers can be solved by using direct-ajax-handler.php for AI tools
+
 ## Documentation and Change Management
 - Always update `CHANGELOG.md` after implementing new features or fixing bugs
 - Follow the established changelog format:

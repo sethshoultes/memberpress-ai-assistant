@@ -331,7 +331,7 @@ class MPAI_SDK_Integration {
 					'headers' => [
 						'Authorization' => 'Bearer ' . $api_key,
 						'Content-Type' => 'application/json',
-						'OpenAI-Beta' => 'assistants=v2'
+						'OpenAI-Beta' => 'assistants=v1'
 					],
 					'body' => json_encode( $request_body ),
 					'timeout' => 30,
@@ -522,7 +522,7 @@ class MPAI_SDK_Integration {
 					'headers' => [
 						'Authorization' => 'Bearer ' . get_option( 'mpai_api_key', '' ),
 						'Content-Type' => 'application/json',
-						'OpenAI-Beta' => 'assistants=v2'
+						'OpenAI-Beta' => 'assistants=v1'
 					],
 					'body' => json_encode( [] ),  // Empty body for default thread
 					'timeout' => 30,
@@ -566,7 +566,7 @@ class MPAI_SDK_Integration {
 					'headers' => [
 						'Authorization' => 'Bearer ' . get_option( 'mpai_api_key', '' ),
 						'Content-Type' => 'application/json',
-						'OpenAI-Beta' => 'assistants=v2'
+						'OpenAI-Beta' => 'assistants=v1'
 					],
 					'body' => json_encode( [
 						'role' => $role,
@@ -612,7 +612,7 @@ class MPAI_SDK_Integration {
 					'headers' => [
 						'Authorization' => 'Bearer ' . get_option( 'mpai_api_key', '' ),
 						'Content-Type' => 'application/json',
-						'OpenAI-Beta' => 'assistants=v2'
+						'OpenAI-Beta' => 'assistants=v1'
 					],
 					'body' => json_encode( [
 						'assistant_id' => $assistant_id,
@@ -704,7 +704,7 @@ class MPAI_SDK_Integration {
 					'headers' => [
 						'Authorization' => 'Bearer ' . get_option( 'mpai_api_key', '' ),
 						'Content-Type' => 'application/json',
-						'OpenAI-Beta' => 'assistants=v2'
+						'OpenAI-Beta' => 'assistants=v1'
 					],
 					'timeout' => 30,
 				]
@@ -1215,7 +1215,7 @@ class MPAI_SDK_Integration {
 					'headers' => [
 						'Authorization' => 'Bearer ' . get_option( 'mpai_api_key', '' ),
 						'Content-Type' => 'application/json',
-						'OpenAI-Beta' => 'assistants=v2'
+						'OpenAI-Beta' => 'assistants=v1'
 					],
 					'body' => json_encode( [
 						'tool_outputs' => $tool_outputs,
@@ -1259,7 +1259,7 @@ class MPAI_SDK_Integration {
 					'headers' => [
 						'Authorization' => 'Bearer ' . get_option( 'mpai_api_key', '' ),
 						'Content-Type' => 'application/json',
-						'OpenAI-Beta' => 'assistants=v2'
+						'OpenAI-Beta' => 'assistants=v1'
 					],
 					'timeout' => 30,
 				]

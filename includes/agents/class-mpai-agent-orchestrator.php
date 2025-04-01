@@ -1,198 +1,221 @@
 <?php
 /**
- * Main orchestrator for the agent system
- *
- * @package MemberPress AI Assistant
+ * Agent Orchestrator Class
+ * 
+ * Handles routing and coordination between different specialized agents
  */
 
-// Prevent direct access.
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+// If this file is called directly, abort.
+if ( ! defined( 'WPINC' ) ) {
+	die;
 }
 
 /**
- * Main orchestrator for the agent system
+ * Agent Orchestrator
  */
 class MPAI_Agent_Orchestrator {
 	/**
-	 * Registry of available agents
+	 * Available agents
+	 *
 	 * @var array
 	 */
 	private $agents = [];
 	
 	/**
-	 * Tool registry instance
+	 * Tool registry
+	 *
 	 * @var MPAI_Tool_Registry
 	 */
 	private $tool_registry;
 	
 	/**
-	 * Logger instance
-	 * @var object
+	 * Whether the SDK integration is available
+	 * 
+	 * @var bool
 	 */
-	private $logger;
+	private $sdk_available = false;
 	
 	/**
-	 * Context manager
-	 * @var MPAI_Context_Manager
-	 */
-	private $context_manager;
-	
-	/**
-	 * SDK integration instance
-	 * @var MPAI_SDK_Integration
-	 */
-	private $sdk_integration = null;
-	
-	/**
-	 * Whether SDK is initialized
+	 * Whether the SDK integration is initialized
+	 * 
 	 * @var bool
 	 */
 	private $sdk_initialized = false;
 	
 	/**
+	 * SDK integration instance
+	 * 
+	 * @var MPAI_SDK_Integration
+	 */
+	private $sdk_integration = null;
+	
+	/**
+	 * Logger instance
+	 * 
+	 * @var object
+	 */
+	private $logger = null;
+	
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
-		$this->tool_registry = $this->get_tool_registry();
-		$this->logger = $this->get_logger();
-		$this->context_manager = $this->get_context_manager();
+		// Initialize logger
+		$this->logger = $this->get_default_logger();
 		
-		// Register core agents
+		// Initialize the tool registry
+		$this->tool_registry = new MPAI_Tool_Registry();
+		
+		// Register all available tools
+		$this->register_tools();
+		
+		// Initialize SDK integration
+		$this->init_sdk_integration();
+		
+		// Register all core agents
 		$this->register_core_agents();
-		
-		// Initialize OpenAI Agents SDK integration
-		$this->initialize_sdk();
-	}
-	
-	/**
-	 * Get tool registry instance
-	 *
-	 * @return MPAI_Tool_Registry Tool registry
-	 */
-	private function get_tool_registry() {
-		// Check if Tool Registry class exists
-		if ( ! class_exists( 'MPAI_Tool_Registry' ) ) {
-			$tool_registry_path = plugin_dir_path( __FILE__ ) . '../tools/class-mpai-tool-registry.php';
-			if ( file_exists( $tool_registry_path ) ) {
-				require_once $tool_registry_path;
-			}
-		}
-		
-		if ( class_exists( 'MPAI_Tool_Registry' ) ) {
-			return new MPAI_Tool_Registry();
-		}
-		
-		return null;
 	}
 	
 	/**
 	 * Get default logger
-	 *
-	 * @return object Logger
+	 * 
+	 * @return object Default logger
 	 */
-	private function get_logger() {
+	private function get_default_logger() {
 		return (object) [
-			'info'    => function( $message, $context = [] ) { error_log( 'MPAI INFO: ' . $message ); },
-			'warning' => function( $message, $context = [] ) { error_log( 'MPAI WARNING: ' . $message ); },
-			'error'   => function( $message, $context = [] ) { error_log( 'MPAI ERROR: ' . $message ); },
-			'log'     => function( $level, $message, $context = [] ) { error_log( "MPAI {$level}: " . $message ); },
+			'info'    => function( $message, $context = [] ) { error_log( 'MPAI ORCHESTRATOR INFO: ' . $message ); },
+			'warning' => function( $message, $context = [] ) { error_log( 'MPAI ORCHESTRATOR WARNING: ' . $message ); },
+			'error'   => function( $message, $context = [] ) { error_log( 'MPAI ORCHESTRATOR ERROR: ' . $message ); },
+			'debug'   => function( $message, $context = [] ) { error_log( 'MPAI ORCHESTRATOR DEBUG: ' . $message ); },
 		];
 	}
 	
 	/**
-	 * Get context manager
-	 *
-	 * @return MPAI_Context_Manager Context manager
+	 * Register tools
 	 */
-	private function get_context_manager() {
-		if ( ! class_exists( 'MPAI_Context_Manager' ) ) {
-			$context_manager_path = plugin_dir_path( dirname( __FILE__ ) ) . 'class-mpai-context-manager.php';
-			if ( file_exists( $context_manager_path ) ) {
-				require_once $context_manager_path;
-			}
+	private function register_tools() {
+		// Register CommandTool
+		if (class_exists('MPAI_Command_Tool')) {
+			$command_tool = new MPAI_Command_Tool();
+			$this->tool_registry->register_tool('command', $command_tool);
 		}
 		
-		if ( class_exists( 'MPAI_Context_Manager' ) ) {
-			return new MPAI_Context_Manager();
+		// Register WordPress Tool
+		if (class_exists('MPAI_WordPress_Tool')) {
+			$wp_tool = new MPAI_WordPress_Tool();
+			$this->tool_registry->register_tool('wordpress', $wp_tool);
 		}
 		
-		return null;
+		// Register Content_Tool
+		if (class_exists('MPAI_Content_Tool')) {
+			$content_tool = new MPAI_Content_Tool();
+			$this->tool_registry->register_tool('content', $content_tool);
+		}
+		
+		// Register MemberPress Tool
+		if (class_exists('MPAI_MemberPress_Tool')) {
+			$memberpress_tool = new MPAI_MemberPress_Tool();
+			$this->tool_registry->register_tool('memberpress', $memberpress_tool);
+		}
+		
+		// Register Search Tool for content searching
+		if (class_exists('MPAI_Search_Tool')) {
+			$search_tool = new MPAI_Search_Tool();
+			$this->tool_registry->register_tool('search', $search_tool);
+		}
+		
+		// Register Embedding Tool for content embedding
+		if (class_exists('MPAI_Embedding_Tool')) {
+			$embedding_tool = new MPAI_Embedding_Tool();
+			$this->tool_registry->register_tool('embed', $embedding_tool);
+		}
+		
+		// Register Security Tool
+		if (class_exists('MPAI_Security_Tool')) {
+			$security_tool = new MPAI_Security_Tool();
+			$this->tool_registry->register_tool('security', $security_tool);
+		}
+		
+		// Register Analytics Tool
+		if (class_exists('MPAI_Analytics_Tool')) {
+			$analytics_tool = new MPAI_Analytics_Tool();
+			$this->tool_registry->register_tool('analytics', $analytics_tool);
+		}
 	}
 	
 	/**
 	 * Initialize SDK integration
-	 *
-	 * @return bool Whether SDK was initialized
+	 * 
+	 * @return bool Whether initialization was successful
 	 */
-	private function initialize_sdk() {
+	private function init_sdk_integration() {
 		try {
 			// Check if SDK files exist
 			$sdk_path = plugin_dir_path( __FILE__ ) . 'sdk/class-mpai-sdk-integration.php';
 			if ( ! file_exists( $sdk_path ) ) {
-				$this->logger->warning( 'SDK integration file not found: ' . $sdk_path );
+				error_log( 'MPAI: Warning - SDK integration file not found: ' . $sdk_path );
 				return false;
 			}
 			
 			// Include SDK files
 			require_once $sdk_path;
 			
-			// Create SDK integration instance
+			// Check if SDK Integration class is available
 			if ( class_exists( 'MPAI_SDK_Integration' ) ) {
-				$this->sdk_integration = new MPAI_SDK_Integration( 
-					$this->tool_registry, 
-					$this->context_manager, 
-					$this->logger 
-				);
+				// Create SDK integration instance
+				$this->sdk_integration = new MPAI_SDK_Integration();
+				$this->sdk_available = true;
 				
-				// Check if initialization was successful
-				$this->sdk_initialized = $this->sdk_integration->is_initialized();
-				
-				if ( $this->sdk_initialized ) {
-					$this->logger->info( 'SDK integration initialized successfully' );
+				// Initialize the SDK integration
+				if ( $this->sdk_integration->init() ) {
+					// Check if initialization was successful
+					$this->sdk_initialized = $this->sdk_integration->is_initialized();
 					
-					// Register existing agents with SDK
-					foreach ( $this->agents as $agent_id => $agent_instance ) {
-						$this->sdk_integration->register_agent( $agent_id, $agent_instance );
+					if ( $this->sdk_initialized ) {
+						error_log( 'MPAI: SDK integration initialized successfully' );
+						
+						// Register existing agents with SDK
+						foreach ( $this->agents as $agent_id => $agent_instance ) {
+							$this->sdk_integration->register_agent( $agent_id, $agent_instance );
+						}
+					} else {
+						error_log( 'MPAI: Warning - SDK integration failed to initialize: ' . $this->sdk_integration->get_error() );
 					}
+					
+					return $this->sdk_initialized;
 				} else {
-					$this->logger->warning( 'SDK integration failed to initialize: ' . $this->sdk_integration->get_error() );
+					error_log( 'MPAI: Warning - SDK integration class not found' );
+					return false;
 				}
-				
-				return $this->sdk_initialized;
-			} else {
-				$this->logger->warning( 'SDK integration class not found' );
-				return false;
 			}
 		} catch ( Exception $e ) {
-			$this->logger->error( 'Error initializing SDK: ' . $e->getMessage() );
+			error_log( 'MPAI: Error initializing SDK: ' . $e->getMessage() );
 			return false;
 		}
 	}
 	
 	/**
-	 * Register a new agent
-	 *
-	 * @param string $agent_id Unique identifier for the agent
-	 * @param MPAI_Agent $agent_instance Instance of the agent
+	 * Register an agent
+	 * 
+	 * @param string $agent_id Unique agent identifier
+	 * @param object $agent_instance Agent instance
 	 * @return bool Success status
 	 */
 	public function register_agent( $agent_id, $agent_instance ) {
 		if ( isset( $this->agents[$agent_id] ) ) {
-			$this->logger->warning( "Agent with ID {$agent_id} already registered" );
+			error_log( "MPAI: Warning - Agent with ID {$agent_id} already registered" );
 			return false;
 		}
 		
 		$this->agents[$agent_id] = $agent_instance;
 		
-		// If SDK is initialized, also register the agent with the SDK
+		// Register with SDK if available
 		if ( $this->sdk_initialized && $this->sdk_integration ) {
 			try {
 				$this->sdk_integration->register_agent( $agent_id, $agent_instance );
-				$this->logger->info( "Agent {$agent_id} registered with SDK" );
+				error_log( "MPAI: Agent {$agent_id} registered with SDK" );
 			} catch ( Exception $e ) {
-				$this->logger->warning( "Failed to register agent {$agent_id} with SDK: " . $e->getMessage() );
-				// Continue even if SDK registration fails
+				error_log( "MPAI: Warning - Failed to register agent {$agent_id} with SDK: " . $e->getMessage() );
 			}
 		}
 		
@@ -200,23 +223,19 @@ class MPAI_Agent_Orchestrator {
 	}
 	
 	/**
-	 * Process a user request
-	 *
-	 * @param string $user_message The natural language request
+	 * Process a user request and route to appropriate agent
+	 * 
+	 * @param string $user_message User message
 	 * @param int $user_id User ID
 	 * @return array Response data
 	 */
-	public function process_request( $user_message, $user_id = null ) {
+	public function process_request( $user_message, $user_id = 0 ) {
 		try {
 			// Get user context
 			$user_context = $this->get_user_context( $user_id );
 			
 			// Log the request
-			$this->logger->info( "Processing request", [
-				'user_id' => $user_id,
-				'message' => $user_message,
-				'using_sdk' => $this->sdk_initialized,
-			] );
+			error_log( "MPAI: Processing request - User ID: " . $user_id . ", Using SDK: " . ($this->sdk_initialized ? "Yes" : "No"));
 			
 			// If SDK is initialized, use it for processing
 			if ( $this->sdk_initialized && $this->sdk_integration ) {
@@ -226,7 +245,7 @@ class MPAI_Agent_Orchestrator {
 			// Otherwise use the traditional processing method
 			return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
 		} catch ( Exception $e ) {
-			$this->logger->error( "Error processing request: " . $e->getMessage() );
+			error_log( "MPAI: Error processing request: " . $e->getMessage() );
 			
 			return [
 				'success' => false,
@@ -237,69 +256,70 @@ class MPAI_Agent_Orchestrator {
 	}
 	
 	/**
-	 * Process a request using the SDK
-	 *
-	 * @param string $user_message The natural language request
+	 * Process request with SDK integration
+	 * 
+	 * @param string $user_message User message
 	 * @param int $user_id User ID
 	 * @param array $user_context User context data
 	 * @return array Response data
 	 */
-	private function process_with_sdk( $user_message, $user_id, $user_context ) {
+	private function process_with_sdk( $user_message, $user_id = 0, $user_context = [] ) {
 		try {
-			// Use the SDK integration to process the request
-			$sdk_result = $this->sdk_integration->process_request(
-				$user_message,
-				$user_id,
-				$user_context
-			);
+			// Create intent data
+			$intent_data = [
+				'message' => $user_message,
+				'user_context' => $user_context,
+			];
+			
+			// Process the request with the SDK
+			$sdk_result = $this->sdk_integration->process_request( $intent_data, $user_id );
 			
 			// Update memory with results
 			$this->update_memory( $user_id, ['original_message' => $user_message], $sdk_result );
 			
 			// Log the successful completion
-			$this->logger->info( "Successfully processed request with SDK", [
-				'user_id' => $user_id,
-				'agent' => isset( $sdk_result['agent'] ) ? $sdk_result['agent'] : 'unknown',
-			] );
+			error_log( "MPAI: Successfully processed request with SDK" );
 			
 			return $sdk_result;
 		} catch ( Exception $e ) {
-			$this->logger->error( "Error processing with SDK: " . $e->getMessage() );
+			error_log( "MPAI: Error processing with SDK: " . $e->getMessage() );
 			
 			// Fall back to traditional method if SDK processing fails
-			$this->logger->info( "Falling back to traditional processing method" );
+			error_log( "MPAI: Falling back to traditional processing method" );
 			return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
 		}
 	}
 	
 	/**
-	 * Process a request using the traditional method
-	 *
-	 * @param string $user_message The natural language request
+	 * Process request with traditional method
+	 * 
+	 * @param string $user_message User message
 	 * @param int $user_id User ID
 	 * @param array $user_context User context data
 	 * @return array Response data
 	 */
-	private function process_with_traditional_method( $user_message, $user_id, $user_context ) {
+	private function process_with_traditional_method( $user_message, $user_id = 0, $user_context = [] ) {
 		try {
-			// Analyze intent
-			$intent_data = $this->determine_intent( $user_message, $user_context );
-			
-			// Find appropriate agent(s)
+			// Determine primary intent and agent
+			$intent_data = $this->parse_intent( $user_message );
 			$primary_agent_id = $intent_data['primary_agent'];
 			
-			// Dispatch to primary agent
+			// Check if agent exists
 			if ( ! isset( $this->agents[$primary_agent_id] ) ) {
 				throw new Exception( "Agent {$primary_agent_id} not found" );
 			}
 			
-			$result = $this->agents[$primary_agent_id]->process_request( $intent_data, $user_context );
+			// Get the primary agent
+			$primary_agent = $this->agents[$primary_agent_id];
+			
+			// Process the request with the primary agent
+			$result = $primary_agent->process_request( $intent_data, $user_context );
 			
 			// Update memory with results
 			$this->update_memory( $user_id, $intent_data, $result );
 			
 			// Log the successful completion
-			$this->logger->info( "Successfully processed request for agent {$primary_agent_id}" );
+			error_log( "MPAI: Successfully processed request for agent {$primary_agent_id}" );
 			
 			return [
 				'success' => true,
@@ -308,93 +328,129 @@ class MPAI_Agent_Orchestrator {
 				'agent' => $primary_agent_id,
 			];
 		} catch ( Exception $e ) {
-			$this->logger->error( "Error processing with traditional method: " . $e->getMessage() );
+			error_log( "MPAI: Error processing with traditional method: " . $e->getMessage() );
 			
 			throw $e; // Re-throw to be caught by the main process_request method
 		}
 	}
 	
 	/**
-	 * Get user context from memory
-	 *
-	 * @param int $user_id User ID
-	 * @return array User context
-	 */
-	private function get_user_context( $user_id ) {
-		// This would be expanded to retrieve context from a proper storage system
-		return [];
-	}
-	
-	/**
-	 * Update memory with results
-	 *
+	 * Update memory with request/response data
+	 * 
 	 * @param int $user_id User ID
 	 * @param array $intent_data Intent data
-	 * @param array $result Result data
+	 * @param array $result Processing result
 	 */
-	private function update_memory( $user_id, $intent_data, $result ) {
-		// This would be expanded to store in a proper storage system
-	}
-	
-	/**
-	 * Determine the user's intent and which agent should handle it
-	 *
-	 * @param string $message User message
-	 * @param array $context User context
-	 * @return array Intent data including primary agent
-	 */
-	private function determine_intent( $message, $context = [] ) {
-		$intent_category = $this->analyze_intent( $message );
-		
-		// Map intent category to primary agent
-		$agent_map = [
-			'memberpress_management' => 'memberpress',
-			'content_creation' => 'content',
-			'system_management' => 'system',
-			'security_audit' => 'security',
-			'analytics' => 'analytics',
-			'general_question' => 'memberpress', // Default to MemberPress agent for general questions
-		];
-		
-		$primary_agent = isset( $agent_map[$intent_category] ) ? $agent_map[$intent_category] : 'memberpress';
-		
-		// If preferred agent isn't available, use MemberPress agent as fallback
-		if ( ! isset( $this->agents[$primary_agent] ) ) {
-			$primary_agent = 'memberpress';
+	private function update_memory( $user_id = 0, $intent_data = [], $result = [] ) {
+		// For now, just store in user meta
+		if ( $user_id > 0 ) {
+			// Get existing memory
+			$memory = get_user_meta( $user_id, 'mpai_memory', true );
+			if ( ! is_array( $memory ) ) {
+				$memory = [];
+			}
+			
+			// Add new entry
+			$memory[] = [
+				'timestamp' => current_time( 'mysql' ),
+				'intent' => $intent_data,
+				'result' => $result,
+			];
+			
+			// Limit memory size
+			if ( count( $memory ) > 10 ) {
+				$memory = array_slice( $memory, -10 );
+			}
+			
+			// Save updated memory
+			update_user_meta( $user_id, 'mpai_memory', $memory );
 		}
-		
-		return [
-			'intent' => $intent_category,
-			'primary_agent' => $primary_agent,
-			'original_message' => $message,
-			'context' => $context,
-			'timestamp' => time(),
-		];
 	}
 	
 	/**
-	 * Analyze intent from message
-	 *
-	 * @param string $message User message
-	 * @return string Intent category
+	 * Get user context data
+	 * 
+	 * @param int $user_id User ID
+	 * @return array User context data
 	 */
-	private function analyze_intent( $message ) {
-		$message = strtolower( $message );
+	private function get_user_context( $user_id = 0 ) {
+		$context = [
+			'user_id' => $user_id,
+			'current_time' => current_time( 'mysql' ),
+			'site_name' => get_bloginfo( 'name' ),
+		];
 		
-		// Check for MemberPress-specific keywords
-		$memberpress_keywords = ['membership', 'subscription', 'transaction', 'mepr', 'memberpress', 'coupon'];
-		foreach ( $memberpress_keywords as $keyword ) {
-			if ( strpos( $message, $keyword ) !== false ) {
-				return 'memberpress_management';
+		// Add user-specific context if user is logged in
+		if ( $user_id > 0 ) {
+			$user = get_userdata( $user_id );
+			if ( $user ) {
+				$context['user_name'] = $user->display_name;
+				$context['user_email'] = $user->user_email;
+				$context['user_roles'] = $user->roles;
+				
+				// Get memory
+				$memory = get_user_meta( $user_id, 'mpai_memory', true );
+				if ( is_array( $memory ) ) {
+					$context['memory'] = $memory;
+				}
+				
+				// Get preferences
+				$preferences = get_user_meta( $user_id, 'mpai_preferences', true );
+				if ( is_array( $preferences ) ) {
+					$context['preferences'] = $preferences;
+				}
 			}
 		}
 		
-		// Simple keyword matching for other intents
-		if ( strpos( $message, 'content' ) !== false || strpos( $message, 'post' ) !== false || strpos( $message, 'page' ) !== false ) {
-			return 'content_creation';
-		} else if ( strpos( $message, 'plugin' ) !== false || strpos( $message, 'update' ) !== false || strpos( $message, 'install' ) !== false ) {
-			return 'system_management';
-		} else if ( strpos( $message, 'security' ) !== false || strpos( $message, 'hack' ) !== false || strpos( $message, 'protect' ) !== false ) {
+		return $context;
+	}
+	
+	/**
+	 * Parse intent from user message
+	 * 
+	 * @param string $message User message
+	 * @return array Intent data
+	 */
+	private function parse_intent( $message ) {
+		// Default intent data
+		$intent_data = [
+			'original_message' => $message,
+			'primary_agent' => 'memberpress', // Default to MemberPress agent
+			'tool_calls' => [],
+		];
+		
+		// Determine primary intent
+		$intent = $this->determine_primary_intent( $message );
+		
+		// Set primary agent based on intent
+		$intent_data['primary_agent'] = $intent;
+		
+		return $intent_data;
+	}
+	
+	/**
+	 * Determine primary intent from user message
+	 * 
+	 * @param string $message User message
+	 * @return string Intent identifier
+	 */
+	private function determine_primary_intent( $message ) {
+		// Default to memberpress management
+		if ( empty( $message ) ) {
+			return 'memberpress_management';
+		}
+		
+		// Simple keyword-based routing
+		$message = strtolower( $message );
+		
+		if ( strpos( $message, 'content' ) !== false || strpos( $message, 'blog' ) !== false || 
+			 strpos( $message, 'post' ) !== false || strpos( $message, 'page' ) !== false ) {
+			return 'content_management';
+		} else if ( strpos( $message, 'wordpress' ) !== false || strpos( $message, 'wp' ) !== false || 
+				   strpos( $message, 'plugin' ) !== false || strpos( $message, 'theme' ) !== false ) {
+			return 'wordpress_management';
+		} else if ( strpos( $message, 'secure' ) !== false || strpos( $message, 'security' ) !== false || 
+				   strpos( $message, 'hack' ) !== false || strpos( $message, 'protect' ) !== false ) {
 			return 'security_audit';
 		} else if ( strpos( $message, 'report' ) !== false || strpos( $message, 'stat' ) !== false || strpos( $message, 'analytic' ) !== false ) {
 			return 'analytics';
@@ -433,9 +489,9 @@ class MPAI_Agent_Orchestrator {
 		if (class_exists('MPAI_Command_Validation_Agent')) {
 			$validation_agent = new MPAI_Command_Validation_Agent($this->tool_registry, $this->logger);
 			$this->register_agent('command_validation', $validation_agent);
-			$this->logger->info('Command Validation Agent registered successfully');
+			error_log('MPAI: Command Validation Agent registered successfully');
 		} else {
-			$this->logger->warning('Command Validation Agent class not found');
+			error_log('MPAI: Warning - Command Validation Agent class not found');
 		}
 	}
 	
@@ -473,12 +529,6 @@ class MPAI_Agent_Orchestrator {
 				'capabilities' => $agent->get_capabilities(),
 			];
 			
-			// Add SDK status if available
-			if ( $this->sdk_initialized && $this->sdk_integration ) {
-				$agent_info['sdk_enabled'] = $this->sdk_integration->is_agent_registered( $agent_id );
-				$agent_info['sdk_status'] = $this->sdk_initialized ? 'active' : 'inactive';
-			}
-			
 			$result[$agent_id] = $agent_info;
 		}
 		
@@ -487,7 +537,7 @@ class MPAI_Agent_Orchestrator {
 	
 	/**
 	 * Execute a background task
-	 *
+	 * 
 	 * @param string $thread_id Thread ID
 	 * @param string $assistant_id Assistant ID
 	 * @param string $task_id Task ID
@@ -496,7 +546,7 @@ class MPAI_Agent_Orchestrator {
 	 */
 	public function execute_background_task( $thread_id, $assistant_id, $task_id, $user_id = 0 ) {
 		if ( ! $this->sdk_initialized || ! $this->sdk_integration ) {
-			$this->logger->error( "Cannot execute background task: SDK not initialized" );
+			error_log( "MPAI: Cannot execute background task: SDK not initialized" );
 			return false;
 		}
 		
@@ -505,12 +555,13 @@ class MPAI_Agent_Orchestrator {
 			$this->sdk_integration->execute_background_task( $thread_id, $assistant_id, $task_id, $user_id );
 			return true;
 		} catch ( Exception $e ) {
-			$this->logger->error( "Error executing background task: " . $e->getMessage() );
+			error_log( "MPAI: Error executing background task: " . $e->getMessage() );
 			
 			// Update task status with error
 			$task_info = get_option( "mpai_task_{$task_id}", [] );
 			$task_info['status'] = 'failed';
 			$task_info['error'] = $e->getMessage();
+			$task_info['completed_at'] = current_time( 'mysql' );
 			update_option( "mpai_task_{$task_id}", $task_info );
 			
 			return false;
@@ -518,124 +569,118 @@ class MPAI_Agent_Orchestrator {
 	}
 	
 	/**
-	 * Handle agent handoff
-	 *
+	 * Handle a handoff from one agent to another
+	 * 
 	 * @param string $from_agent_id Source agent ID
 	 * @param string $to_agent_id Target agent ID
-	 * @param string $message User message
-	 * @param array $context Context data
+	 * @param array $handoff_data Handoff data
+	 * @param int $user_id User ID
 	 * @return array Handoff result
 	 */
-	public function handle_agent_handoff( $from_agent_id, $to_agent_id, $message, $context = [] ) {
-		// Check if both agents exist
-		if ( ! isset( $this->agents[$from_agent_id] ) ) {
-			throw new Exception( "Source agent {$from_agent_id} not found" );
-		}
-		
-		if ( ! isset( $this->agents[$to_agent_id] ) ) {
-			throw new Exception( "Target agent {$to_agent_id} not found" );
-		}
-		
-		// Handle using SDK if available
+	public function handle_handoff( $from_agent_id, $to_agent_id, $handoff_data, $user_id = 0 ) {
+		// Check if SDK integration can handle this
 		if ( $this->sdk_initialized && $this->sdk_integration ) {
 			try {
-				$handoff_result = $this->sdk_integration->handle_agent_handoff(
-					$from_agent_id,
-					$to_agent_id,
-					$message,
-					$context
-				);
+				// Add some context to the handoff data
+				$handoff_data['user_id'] = $user_id;
+				$handoff_data['from_agent'] = $from_agent_id;
+				$handoff_data['to_agent'] = $to_agent_id;
 				
-				$this->logger->info( "Successfully handled handoff with SDK from {$from_agent_id} to {$to_agent_id}" );
+				// Execute the handoff using the SDK
+				$handoff_result = $this->sdk_integration->handle_handoff( $from_agent_id, $to_agent_id, $handoff_data, $user_id );
+				
+				error_log( "MPAI: Successfully handled handoff with SDK from {$from_agent_id} to {$to_agent_id}" );
 				
 				return $handoff_result;
 			} catch ( Exception $e ) {
-				$this->logger->error( "Error handling handoff with SDK: " . $e->getMessage() );
+				error_log( "MPAI: Error handling handoff with SDK: " . $e->getMessage() );
 				// Fall back to traditional handoff if SDK fails
 			}
 		}
 		
 		// Traditional handoff (simple re-routing)
-		$this->logger->info( "Performing traditional handoff from {$from_agent_id} to {$to_agent_id}" );
+		error_log( "MPAI: Performing traditional handoff from {$from_agent_id} to {$to_agent_id}" );
 		
 		// Create intent data for target agent
 		$intent_data = [
 			'intent' => 'handoff',
 			'primary_agent' => $to_agent_id,
-			'original_message' => $message,
-			'from_agent' => $from_agent_id,
-			'context' => $context,
-			'timestamp' => time(),
+			'original_message' => isset( $handoff_data['message'] ) ? $handoff_data['message'] : '',
+			'handoff_data' => $handoff_data,
+			'from_agent' => $from_agent_id
 		];
 		
-		// Process with target agent
-		$result = $this->agents[$to_agent_id]->process_request( $intent_data, $context );
+		// Get user context
+		$user_context = $this->get_user_context( $user_id );
 		
-		return [
-			'success' => true,
-			'agent' => $to_agent_id,
-			'message' => $result['message'],
-			'data' => isset( $result['data'] ) ? $result['data'] : [],
-		];
+		// Check if target agent exists
+		if ( ! isset( $this->agents[$to_agent_id] ) ) {
+			throw new Exception( "Target agent {$to_agent_id} not found" );
+		}
+		
+		// Get the target agent
+		$target_agent = $this->agents[$to_agent_id];
+		
+		// Process the request with the target agent
+		$result = $target_agent->process_request( $intent_data, $user_context );
+		
+		// Update memory
+		$this->update_memory( $user_id, $intent_data, $result );
+		
+		return $result;
 	}
 	
 	/**
-	 * Start a running agent for a long-running task
-	 *
+	 * Run an agent with specific parameters
+	 * 
 	 * @param string $agent_id Agent ID
-	 * @param string $task_description Task description
-	 * @param array $parameters Task parameters
+	 * @param array $params Agent parameters
 	 * @param int $user_id User ID
-	 * @return array Task information
+	 * @return array Agent result
 	 */
-	public function start_running_agent( $agent_id, $task_description, $parameters = [], $user_id = 0 ) {
-		// Check if agent exists
-		if ( ! isset( $this->agents[$agent_id] ) ) {
-			throw new Exception( "Agent {$agent_id} not found" );
-		}
-		
-		// Use SDK if available
+	public function run_agent( $agent_id, $params = [], $user_id = 0 ) {
+		// Check if SDK integration can handle this
 		if ( $this->sdk_initialized && $this->sdk_integration ) {
 			try {
-				$run_result = $this->sdk_integration->start_running_agent(
-					$agent_id,
-					$task_description,
-					$parameters,
-					$user_id
-				);
+				// Add user ID to the parameters
+				$params['user_id'] = $user_id;
 				
-				$this->logger->info( "Successfully started running agent with SDK: {$agent_id}" );
+				// Execute the agent run using the SDK
+				$run_result = $this->sdk_integration->run_agent( $agent_id, $params, $user_id );
+				
+				error_log( "MPAI: Successfully started running agent with SDK: {$agent_id}" );
 				
 				return $run_result;
 			} catch ( Exception $e ) {
-				$this->logger->error( "Error starting running agent with SDK: " . $e->getMessage() );
+				error_log( "MPAI: Error starting running agent with SDK: " . $e->getMessage() );
 				// Fall back to traditional processing
 			}
 		}
 		
-		// Simple implementation for traditional method
-		// In a real implementation, this would use WP Cron or similar
-		$task_id = uniqid( 'task_' );
+		// Traditional direct agent execution
+		if ( ! isset( $this->agents[$agent_id] ) ) {
+			throw new Exception( "Agent {$agent_id} not found" );
+		}
+		
+		// Get user context
+		$user_context = $this->get_user_context( $user_id );
 		
 		// Create intent data
 		$intent_data = [
-			'intent' => 'background_task',
+			'intent' => 'direct_run',
 			'primary_agent' => $agent_id,
-			'task_id' => $task_id,
-			'original_message' => $task_description,
-			'parameters' => $parameters,
-			'timestamp' => time(),
+			'params' => $params
 		];
 		
-		// Process the task directly (blocking)
-		// In a real implementation, this would be asynchronous
-		$result = $this->agents[$agent_id]->process_request( $intent_data, [] );
+		// Get the agent
+		$agent = $this->agents[$agent_id];
 		
-		return [
-			'success' => true,
-			'task_id' => $task_id,
-			'status' => 'completed', // Since it's processed immediately
-			'result' => $result,
-		];
+		// Process the request with the agent
+		$result = $agent->process_request( $intent_data, $user_context );
+		
+		// Update memory
+		$this->update_memory( $user_id, $intent_data, $result );
+		
+		return $result;
 	}
 }

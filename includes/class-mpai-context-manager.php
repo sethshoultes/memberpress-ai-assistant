@@ -104,6 +104,23 @@ class MPAI_Context_Manager {
      * Initialize available tools
      */
     private function init_tools() {
+        // Initialize tool registry if available
+        $tool_registry = null;
+        if (class_exists('MPAI_Tool_Registry')) {
+            $tool_registry = new MPAI_Tool_Registry();
+            error_log('MPAI Context Manager: Tool Registry initialized');
+            
+            // Get plugin_logs tool from registry
+            $plugin_logs_tool = $tool_registry->get_tool('plugin_logs');
+            if ($plugin_logs_tool) {
+                error_log('MPAI Context Manager: Found plugin_logs tool in registry');
+            } else {
+                error_log('MPAI Context Manager: plugin_logs tool not found in registry');
+            }
+        } else {
+            error_log('MPAI Context Manager: MPAI_Tool_Registry class not available');
+        }
+        
         $this->available_tools = array(
             'wp_cli' => array(
                 'name' => 'wp_cli',
@@ -122,8 +139,8 @@ class MPAI_Context_Manager {
                 'parameters' => array(
                     'type' => array(
                         'type' => 'string',
-                        'description' => 'Type of information (memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info)',
-                        'enum' => array('memberships', 'members', 'transactions', 'subscriptions', 'summary', 'new_members_this_month', 'system_info', 'all')
+                        'description' => 'Type of information (memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info, best_selling)',
+                        'enum' => array('memberships', 'members', 'transactions', 'subscriptions', 'summary', 'new_members_this_month', 'system_info', 'best_selling', 'all')
                     ),
                     'include_system_info' => array(
                         'type' => 'boolean',
@@ -151,6 +168,37 @@ class MPAI_Context_Manager {
                     // Other parameters are dynamic based on the action
                 ),
                 'callback' => array($this, 'execute_wp_api')
+            ),
+            'plugin_logs' => array(
+                'name' => 'plugin_logs',
+                'description' => 'Retrieve and analyze logs of plugin installations, activations, deactivations, and deletions',
+                'parameters' => array(
+                    'action' => array(
+                        'type' => 'string',
+                        'enum' => array('installed', 'updated', 'activated', 'deactivated', 'deleted', ''),
+                        'description' => 'Filter logs by action type (installed, updated, activated, deactivated, deleted) or empty for all actions'
+                    ),
+                    'plugin_name' => array(
+                        'type' => 'string',
+                        'description' => 'Filter logs by plugin name (partial match)'
+                    ),
+                    'days' => array(
+                        'type' => 'integer',
+                        'description' => 'Number of days to look back in the logs (0 for all time)',
+                        'default' => 30
+                    ),
+                    'limit' => array(
+                        'type' => 'integer',
+                        'description' => 'Maximum number of logs to return',
+                        'default' => 25
+                    ),
+                    'summary_only' => array(
+                        'type' => 'boolean',
+                        'description' => 'Return only summary information instead of detailed logs',
+                        'default' => false
+                    )
+                ),
+                'callback' => array($this, 'execute_plugin_logs')
             )
         );
 
@@ -492,11 +540,60 @@ class MPAI_Context_Manager {
                 }
                 $site_health = new MPAI_Site_Health();
                 
+                // Get system info from site health
+                $system_info = $site_health->get_complete_info();
+                
+                // Format the response - ensure it's a string, not an array
+                $formatted_info = '';
+                
+                // Format WordPress core info
+                if (isset($system_info['wp-core'])) {
+                    $formatted_info .= "WordPress Core Information:\n";
+                    foreach ($system_info['wp-core'] as $key => $item) {
+                        if (isset($item['label']) && isset($item['value'])) {
+                            $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                        }
+                    }
+                    $formatted_info .= "\n";
+                }
+                
+                // Format Server info
+                if (isset($system_info['wp-server'])) {
+                    $formatted_info .= "Server Information:\n";
+                    foreach ($system_info['wp-server'] as $key => $item) {
+                        if (isset($item['label']) && isset($item['value'])) {
+                            $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                        }
+                    }
+                    $formatted_info .= "\n";
+                }
+                
+                // Format MemberPress info
+                if (isset($system_info['memberpress'])) {
+                    $formatted_info .= "MemberPress Information:\n";
+                    foreach ($system_info['memberpress'] as $key => $item) {
+                        if (isset($item['label']) && isset($item['value'])) {
+                            $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                        }
+                    }
+                    $formatted_info .= "\n";
+                }
+                
+                // Format MemberPress AI info
+                if (isset($system_info['mpai'])) {
+                    $formatted_info .= "MemberPress AI Assistant Information:\n";
+                    foreach ($system_info['mpai'] as $key => $item) {
+                        if (isset($item['label']) && isset($item['value'])) {
+                            $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                        }
+                    }
+                }
+                
                 $response = array(
                     'success' => true,
                     'tool' => 'memberpress_info',
                     'command_type' => 'system_info',
-                    'result' => $site_health->get_complete_info()
+                    'result' => $formatted_info
                 );
                 return json_encode($response);
                 
@@ -510,7 +607,55 @@ class MPAI_Context_Manager {
                         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-site-health.php';
                     }
                     $site_health = new MPAI_Site_Health();
-                    $summary['system_info'] = $site_health->get_complete_info();
+                    $system_info = $site_health->get_complete_info();
+                    
+                    // Format the system info - ensure it's a string, not an array
+                    $formatted_info = '';
+                    
+                    // Format WordPress core info
+                    if (isset($system_info['wp-core'])) {
+                        $formatted_info .= "WordPress Core Information:\n";
+                        foreach ($system_info['wp-core'] as $key => $item) {
+                            if (isset($item['label']) && isset($item['value'])) {
+                                $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                            }
+                        }
+                        $formatted_info .= "\n";
+                    }
+                    
+                    // Format Server info
+                    if (isset($system_info['wp-server'])) {
+                        $formatted_info .= "Server Information:\n";
+                        foreach ($system_info['wp-server'] as $key => $item) {
+                            if (isset($item['label']) && isset($item['value'])) {
+                                $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                            }
+                        }
+                        $formatted_info .= "\n";
+                    }
+                    
+                    // Format MemberPress info
+                    if (isset($system_info['memberpress'])) {
+                        $formatted_info .= "MemberPress Information:\n";
+                        foreach ($system_info['memberpress'] as $key => $item) {
+                            if (isset($item['label']) && isset($item['value'])) {
+                                $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                            }
+                        }
+                        $formatted_info .= "\n";
+                    }
+                    
+                    // Format MemberPress AI info
+                    if (isset($system_info['mpai'])) {
+                        $formatted_info .= "MemberPress AI Assistant Information:\n";
+                        foreach ($system_info['mpai'] as $key => $item) {
+                            if (isset($item['label']) && isset($item['value'])) {
+                                $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                            }
+                        }
+                    }
+                    
+                    $summary['system_info'] = $formatted_info;
                 }
                 
                 // Format as either JSON or tabular based on what's already in summary
@@ -684,6 +829,25 @@ class MPAI_Context_Manager {
                     return json_encode($subscriptions);
                 }
                 
+            case 'best_selling':
+                // Get best-selling memberships
+                $best_selling = $this->memberpress_api->get_best_selling_membership(array(), true);
+                
+                if (is_string($best_selling)) {
+                    error_log('MPAI: Returning formatted best-selling memberships table');
+                    // Already formatted as tabular data
+                    $response = array(
+                        'success' => true,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'best_selling_list',
+                        'result' => $best_selling
+                    );
+                    return json_encode($response);
+                } else {
+                    error_log('MPAI: Returning regular best-selling memberships JSON');
+                    return json_encode($best_selling);
+                }
+                
             case 'summary':
             default:
                 $summary = $this->memberpress_api->get_data_summary();
@@ -694,7 +858,55 @@ class MPAI_Context_Manager {
                         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-site-health.php';
                     }
                     $site_health = new MPAI_Site_Health();
-                    $summary['system_info'] = $site_health->get_complete_info();
+                    $system_info = $site_health->get_complete_info();
+                    
+                    // Format the system info - ensure it's a string, not an array
+                    $formatted_info = '';
+                    
+                    // Format WordPress core info
+                    if (isset($system_info['wp-core'])) {
+                        $formatted_info .= "WordPress Core Information:\n";
+                        foreach ($system_info['wp-core'] as $key => $item) {
+                            if (isset($item['label']) && isset($item['value'])) {
+                                $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                            }
+                        }
+                        $formatted_info .= "\n";
+                    }
+                    
+                    // Format Server info
+                    if (isset($system_info['wp-server'])) {
+                        $formatted_info .= "Server Information:\n";
+                        foreach ($system_info['wp-server'] as $key => $item) {
+                            if (isset($item['label']) && isset($item['value'])) {
+                                $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                            }
+                        }
+                        $formatted_info .= "\n";
+                    }
+                    
+                    // Format MemberPress info
+                    if (isset($system_info['memberpress'])) {
+                        $formatted_info .= "MemberPress Information:\n";
+                        foreach ($system_info['memberpress'] as $key => $item) {
+                            if (isset($item['label']) && isset($item['value'])) {
+                                $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                            }
+                        }
+                        $formatted_info .= "\n";
+                    }
+                    
+                    // Format MemberPress AI info
+                    if (isset($system_info['mpai'])) {
+                        $formatted_info .= "MemberPress AI Assistant Information:\n";
+                        foreach ($system_info['mpai'] as $key => $item) {
+                            if (isset($item['label']) && isset($item['value'])) {
+                                $formatted_info .= "- {$item['label']}: {$item['value']}\n";
+                            }
+                        }
+                    }
+                    
+                    $summary['system_info'] = $formatted_info;
                 }
                 
                 // Format the summary as a table
@@ -747,6 +959,167 @@ class MPAI_Context_Manager {
     }
     
     /**
+     * Execute the Plugin Logs tool
+     *
+     * @param array $parameters Parameters for the tool
+     * @return array Execution result
+     */
+    public function execute_plugin_logs($parameters) {
+        error_log('MPAI Context Manager: execute_plugin_logs called with: ' . json_encode($parameters));
+        
+        // Initialize the plugin logger
+        if (!function_exists('mpai_init_plugin_logger')) {
+            if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
+                require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+                error_log('MPAI Context Manager: Loaded plugin logger class');
+            } else {
+                error_log('MPAI Context Manager: Plugin logger class not found');
+                return array(
+                    'success' => false,
+                    'message' => 'Plugin logger class not found'
+                );
+            }
+        }
+        
+        $plugin_logger = mpai_init_plugin_logger();
+        
+        if (!$plugin_logger) {
+            error_log('MPAI Context Manager: Failed to initialize plugin logger');
+            return array(
+                'success' => false,
+                'message' => 'Failed to initialize plugin logger'
+            );
+        }
+        
+        error_log('MPAI Context Manager: Plugin logger initialized successfully');
+        
+        // Parse parameters
+        $action = isset($parameters['action']) ? sanitize_text_field($parameters['action']) : '';
+        $plugin_name = isset($parameters['plugin_name']) ? sanitize_text_field($parameters['plugin_name']) : '';
+        $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
+        $limit = isset($parameters['limit']) ? intval($parameters['limit']) : 25;
+        $summary_only = isset($parameters['summary_only']) ? (bool)$parameters['summary_only'] : false;
+        
+        // Calculate date range
+        $date_from = '';
+        if ($days > 0) {
+            $date_from = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+        }
+        
+        // Get summary data
+        $summary_days = $days > 0 ? $days : 365; // If all time, limit to 1 year for summary
+        $summary = $plugin_logger->get_activity_summary($summary_days);
+        
+        // Create a simplified summary
+        $action_counts = [
+            'total' => 0,
+            'installed' => 0,
+            'updated' => 0,
+            'activated' => 0,
+            'deactivated' => 0,
+            'deleted' => 0
+        ];
+        
+        if (isset($summary['action_counts']) && is_array($summary['action_counts'])) {
+            foreach ($summary['action_counts'] as $count_data) {
+                if (isset($count_data['action']) && isset($count_data['count'])) {
+                    $action_counts[$count_data['action']] = intval($count_data['count']);
+                    $action_counts['total'] += intval($count_data['count']);
+                }
+            }
+        }
+        
+        // If summary_only is true, return just the summary data
+        if ($summary_only) {
+            error_log('MPAI Context Manager: Returning summary data for plugin logs');
+            return array(
+                'success' => true,
+                'summary' => $action_counts,
+                'time_period' => $days > 0 ? "past {$days} days" : "all time",
+                'most_active_plugins' => $summary['most_active_plugins'] ?? [],
+                'logs_exist' => $action_counts['total'] > 0,
+                'message' => $action_counts['total'] > 0 
+                    ? "Found {$action_counts['total']} plugin log entries"
+                    : "No plugin logs found for the specified criteria"
+            );
+        }
+        
+        // Prepare query arguments for detailed logs
+        $args = [
+            'plugin_name' => $plugin_name,
+            'action'      => $action,
+            'date_from'   => $date_from,
+            'orderby'     => 'date_time',
+            'order'       => 'DESC',
+            'limit'       => $limit
+        ];
+        
+        // Get logs
+        $logs = $plugin_logger->get_logs($args);
+        error_log('MPAI Context Manager: Retrieved ' . count($logs) . ' plugin logs');
+        
+        // Get total count for the query
+        $count_args = [
+            'plugin_name' => $plugin_name,
+            'action'      => $action,
+            'date_from'   => $date_from
+        ];
+        $total = $plugin_logger->count_logs($count_args);
+        
+        // Enhance the logs with readable timestamps
+        foreach ($logs as &$log) {
+            // Convert the MySQL timestamp to a readable format
+            $timestamp = strtotime($log['date_time']);
+            $log['readable_date'] = date('F j, Y, g:i a', $timestamp);
+            
+            // Calculate time ago
+            $now = current_time('timestamp');
+            $diff = $now - $timestamp;
+            
+            if ($diff < 60) {
+                $log['time_ago'] = 'just now';
+            } else {
+                $intervals = [
+                    31536000 => 'year',
+                    2592000 => 'month',
+                    604800 => 'week',
+                    86400 => 'day',
+                    3600 => 'hour',
+                    60 => 'minute'
+                ];
+                
+                foreach ($intervals as $seconds => $label) {
+                    $count = floor($diff / $seconds);
+                    if ($count > 0) {
+                        $log['time_ago'] = $count == 1 ? "1 {$label} ago" : "{$count} {$label}s ago";
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Format the result for readability
+        $result = array(
+            'success' => true,
+            'summary' => $action_counts,
+            'time_period' => $days > 0 ? "past {$days} days" : "all time",
+            'total_records' => $total,
+            'returned_records' => count($logs),
+            'has_more' => $total > count($logs),
+            'logs' => $logs,
+            'query' => [
+                'action' => $action,
+                'plugin_name' => $plugin_name,
+                'days' => $days,
+                'limit' => $limit
+            ]
+        );
+        
+        error_log('MPAI Context Manager: Plugin logs executed successfully');
+        return $result;
+    }
+
+    /**
      * Get a helpful message about tool usage when WP-CLI is not available
      *
      * @param string $command The original command that was attempted
@@ -767,7 +1140,7 @@ class MPAI_Context_Manager {
         } else if (strpos($command, 'wp mepr') !== false || strpos($command, 'memberpress') !== false) {
             $message .= "1. For MemberPress operations, use the memberpress_info tool:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n\n";
-            $message .= "2. Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info, all\n";
+            $message .= "2. Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info, best_selling, all\n";
             $message .= "3. You can get system information along with MemberPress data:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"all\", \"include_system_info\": true}}\n   ```\n";
         } else {
@@ -775,7 +1148,7 @@ class MPAI_Context_Manager {
             $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"action_name\", \"param1\": \"value1\"}}\n   ```\n\n";
             $message .= "2. For MemberPress operations, use the memberpress_info tool:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n";
-            $message .= "   - Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info, all\n";
+            $message .= "   - Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info, best_selling, all\n";
             $message .= "3. For system information, use:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"system_info\"}}\n   ```\n\n";
         }
@@ -1380,6 +1753,12 @@ class MPAI_Context_Manager {
             );
         }
         
+        // Special handling for plugin_logs tool
+        if ($tool['name'] === 'plugin_logs') {
+            error_log('MPAI: Processing plugin_logs tool request: ' . json_encode($request));
+            // Plugin logs tool is always enabled if available
+        }
+        
         // Validate parameters
         $parameters = isset($request['parameters']) ? $request['parameters'] : array();
         $validated_params = array();
@@ -1425,6 +1804,43 @@ class MPAI_Context_Manager {
                 // Special handling for memberpress_info tool
                 error_log('MPAI: Getting MemberPress info with parameters: ' . json_encode($validated_params));
                 $result = $this->get_memberpress_info($validated_params);
+            } else if ($tool['name'] === 'plugin_logs') {
+                // Special handling for plugin_logs tool
+                error_log('MPAI: Getting plugin logs with parameters: ' . json_encode($validated_params));
+                $result = $this->execute_plugin_logs($validated_params);
+                
+                // Format the result for better display
+                if (isset($result['logs']) && is_array($result['logs']) && !empty($result['logs'])) {
+                    $formatted_logs = "Plugin Activity Logs for the " . $result['time_period'] . ":\n\n";
+                    
+                    // Add summary counts
+                    $formatted_logs .= "Summary:\n";
+                    $formatted_logs .= "- Total logs: " . $result['summary']['total'] . "\n";
+                    $formatted_logs .= "- Installed: " . $result['summary']['installed'] . "\n";
+                    $formatted_logs .= "- Activated: " . $result['summary']['activated'] . "\n";
+                    $formatted_logs .= "- Deactivated: " . $result['summary']['deactivated'] . "\n";
+                    $formatted_logs .= "- Updated: " . $result['summary']['updated'] . "\n";
+                    $formatted_logs .= "- Deleted: " . $result['summary']['deleted'] . "\n\n";
+                    
+                    // Add detailed logs
+                    $formatted_logs .= "Recent Activity:\n";
+                    foreach ($result['logs'] as $log) {
+                        $action = ucfirst($log['action']);
+                        $plugin_name = $log['plugin_name'];
+                        $version = $log['plugin_version'];
+                        $time_ago = $log['time_ago'] ?? '';
+                        $user = $log['user_login'] ? " by user {$log['user_login']}" : '';
+                        
+                        $formatted_logs .= "- {$action}: {$plugin_name} v{$version} ({$time_ago}){$user}\n";
+                    }
+                    
+                    // Return the formatted logs as the result
+                    return array(
+                        'success' => true,
+                        'tool' => $request['name'],
+                        'result' => $formatted_logs
+                    );
+                }
             } else {
                 // Generic callback execution
                 error_log('MPAI: Executing tool callback for: ' . $tool['name']);

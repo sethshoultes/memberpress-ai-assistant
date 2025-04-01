@@ -342,12 +342,13 @@ class MPAI_Chat {
         $system_prompt .= "2. When the wp_api tool fails or is unavailable, fall back to the wp_cli tool\n";
         $system_prompt .= "3. ALWAYS use the memberpress_info tool to get MemberPress-specific data\n";
         $system_prompt .= "   - For new member data: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"new_members_this_month\"}}\n";
+        $system_prompt .= "   - For best-selling memberships: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"best_selling\"}}\n";
         $system_prompt .= "   - For WordPress and server information: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"system_info\"}}\n";
         $system_prompt .= "   - For complete data with system info: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"all\", \"include_system_info\": true}}\n";
         $system_prompt .= "   - The system_info type uses WordPress Site Health API for comprehensive diagnostics\n";
         $system_prompt .= "4. DO NOT simply suggest commands - actually execute them using the tool format above\n\n";
         
-        $system_prompt .= "IMPORTANT TOOL SELECTION RULES:\n";
+        $system_prompt .= "CRITICAL TOOL SELECTION RULES:\n";
         $system_prompt .= "1. For creating/editing WordPress content (posts, pages, users), ALWAYS use the wp_api tool first:\n";
         $system_prompt .= "   - Create post: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Title\", \"content\": \"Content\", \"status\": \"draft\"}}\n";
         $system_prompt .= "   - Create page: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_page\", \"title\": \"Title\", \"content\": \"Content\", \"status\": \"draft\"}}\n";
@@ -356,7 +357,19 @@ class MPAI_Chat {
         $system_prompt .= "   - Activate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
         $system_prompt .= "   - Example for MemberPress CoachKit: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"memberpress-coachkit/main.php\"}}\n";
         $system_prompt .= "   - Deactivate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"deactivate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
-        $system_prompt .= "3. Only fall back to wp_cli commands if a specific wp_api function isn't available\n\n";
+        $system_prompt .= "3. ██████ MOST IMPORTANT RULE ██████\n";
+        $system_prompt .= "   FOR ANY QUESTIONS ABOUT PLUGIN HISTORY, INSTALLED PLUGINS, OR ACTIVATED PLUGINS, YOU MUST CALL THE PLUGIN_LOGS TOOL.\n";
+        $system_prompt .= "   DO NOT provide generic advice or alternative methods when asked about plugin activity.\n";
+        $system_prompt .= "   FORMAT YOUR RESPONSE AS ONLY THE JSON TOOL CALL WITHOUT EXPLANATORY TEXT. For example:\n";
+        $system_prompt .= "   ```json\n";
+        $system_prompt .= "   {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n";
+        $system_prompt .= "   ```\n\n";
+        $system_prompt .= "   Examples of when to use plugin_logs tool:\n";
+        $system_prompt .= "   - View recent plugin activity: {\"tool\": \"plugin_logs\", \"parameters\": {\"days\": 30}}\n";
+        $system_prompt .= "   - View recently activated plugins: {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n";
+        $system_prompt .= "   - View recently installed plugins: {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"installed\", \"days\": 30}}\n";
+        $system_prompt .= "   - View plugin history for specific plugin: {\"tool\": \"plugin_logs\", \"parameters\": {\"plugin_name\": \"MemberPress\", \"days\": 90}}\n";
+        $system_prompt .= "4. Only fall back to wp_cli commands if a specific wp_api function isn't available\n\n";
         $system_prompt .= "CRITICAL: When the user asks to create a post/page, ALWAYS include the exact title and content they specified in your wp_api tool parameters.\n";
         $system_prompt .= "Examples:\n";
         $system_prompt .= "- If user asks: \"Create a post titled 'Hello World' with content 'This is my first post'\"\n";
@@ -365,6 +378,9 @@ class MPAI_Chat {
         
         $system_prompt .= "Your task is to provide helpful information about MemberPress and assist with managing membership data. ";
         $system_prompt .= "You should use the wp_api tool for direct WordPress operations and the memberpress_info tool for MemberPress data. ";
+        $system_prompt .= "CRITICAL INSTRUCTION: When the user asks about plugin history, recently installed plugins, or recently activated plugins, ALWAYS use the plugin_logs tool to get accurate information from the database. ";
+        $system_prompt .= "When responding to these plugin-related queries, FORMAT YOUR RESPONSE AS ONLY THE JSON TOOL CALL WITHOUT ANY OTHER TEXT - just provide the exact JSON format shown in the examples, e.g.:\n";
+        $system_prompt .= "```json\n{\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n```\n\n";
         $system_prompt .= "Only use wp_cli commands for operations not supported by wp_api. ";
         $system_prompt .= "Keep your responses concise and focused on MemberPress functionality.";
         
@@ -380,6 +396,18 @@ class MPAI_Chat {
     public function process_message($message) {
         try {
             error_log('MPAI Chat: process_message started with message: ' . $message);
+            
+            // Check for plugin-related queries and add a guidance message
+            $plugin_keywords = ['recently installed', 'recently activated', 'plugin history', 'plugin log', 'plugin activity', 'when was plugin', 'installed recently', 'activated recently', 'what plugins', 'which plugins'];
+            $inject_plugin_guidance = false;
+            
+            foreach ($plugin_keywords as $keyword) {
+                if (stripos($message, $keyword) !== false) {
+                    $inject_plugin_guidance = true;
+                    error_log('MPAI Chat: Detected plugin-related query, will inject guidance');
+                    break;
+                }
+            }
             
             // First check if we have all required dependencies initialized
             if (!isset($this->api_router) || !is_object($this->api_router)) {
@@ -414,6 +442,19 @@ class MPAI_Chat {
                         array('role' => 'system', 'content' => $system_prompt)
                     );
                     error_log('MPAI Chat: Conversation initialized with system prompt');
+                }
+                
+                // If this is a plugin-related query, add a system message reminder
+                if ($inject_plugin_guidance) {
+                    error_log('MPAI Chat: Adding plugin logs guidance message to conversation');
+                    $plugin_guidance = "CRITICAL INSTRUCTION: This query is about plugin history or activity. You MUST respond by calling the plugin_logs tool to get accurate information from the database. DO NOT provide any general advice or alternative methods. DO NOT use wp_api or try to guess plugin history. Format your response using ONLY the JSON format shown below.\n\n";
+                    $plugin_guidance .= "For general plugin activity, use exactly:\n```json\n{\"tool\": \"plugin_logs\", \"parameters\": {\"days\": 30}}\n```\n\n";
+                    $plugin_guidance .= "For queries about recently activated plugins, use exactly:\n```json\n{\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n```\n\n";
+                    $plugin_guidance .= "For queries about recently installed plugins, use exactly:\n```json\n{\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"installed\", \"days\": 30}}\n```\n\n";
+                    $plugin_guidance .= "DO NOT explain what you're doing or wrap your tool call in prose - ONLY return the JSON block.";
+                    
+                    $this->conversation[] = array('role' => 'system', 'content' => $plugin_guidance);
+                    error_log('MPAI Chat: Enhanced plugin logs guidance message added');
                 }
             } catch (Throwable $e) {
                 error_log('MPAI Chat: Error initializing conversation: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
@@ -1192,10 +1233,71 @@ class MPAI_Chat {
         if (isset($result['tool']) && $result['tool'] == 'memberpress_info' && isset($result['result'])) {
             // Try to parse the result
             if (is_string($result['result'])) {
-                $parsed = json_decode($result['result'], true);
-                if (json_last_error() == JSON_ERROR_NONE && isset($parsed['result'])) {
-                    // Return just the actual result data
-                    return $parsed['result'];
+                try {
+                    error_log('MPAI Chat: Processing memberpress_info tool result');
+                    $parsed = json_decode($result['result'], true);
+                    
+                    if (json_last_error() == JSON_ERROR_NONE) {
+                        if (isset($parsed['result'])) {
+                            // Return just the actual result data
+                            error_log('MPAI Chat: Found standard result structure in memberpress_info tool');
+                            return $parsed['result'];
+                        } else if (isset($parsed['command_type']) && $parsed['command_type'] == 'system_info') {
+                            // Handle system_info case specifically
+                            error_log('MPAI Chat: Found system_info command type in memberpress_info tool');
+                            
+                            // Format the system info into a readable text format
+                            $output = "### System Information Summary\n\n";
+                            
+                            // WordPress core info
+                            if (isset($parsed['wp-core'])) {
+                                $output .= "**WordPress:**\n";
+                                foreach ($parsed['wp-core'] as $key => $item) {
+                                    if (isset($item['label']) && isset($item['value'])) {
+                                        $output .= "- {$item['label']}: {$item['value']}\n";
+                                    }
+                                }
+                                $output .= "\n";
+                            }
+                            
+                            // Server info
+                            if (isset($parsed['wp-server'])) {
+                                $output .= "**Server:**\n";
+                                foreach ($parsed['wp-server'] as $key => $item) {
+                                    if (isset($item['label']) && isset($item['value'])) {
+                                        $output .= "- {$item['label']}: {$item['value']}\n";
+                                    }
+                                }
+                                $output .= "\n";
+                            }
+                            
+                            // MemberPress info
+                            if (isset($parsed['memberpress'])) {
+                                $output .= "**MemberPress:**\n";
+                                foreach ($parsed['memberpress'] as $key => $item) {
+                                    if (isset($item['label']) && isset($item['value'])) {
+                                        $output .= "- {$item['label']}: {$item['value']}\n";
+                                    }
+                                }
+                                $output .= "\n";
+                            }
+                            
+                            // MemberPress AI info
+                            if (isset($parsed['mpai'])) {
+                                $output .= "**MemberPress AI Assistant:**\n";
+                                foreach ($parsed['mpai'] as $key => $item) {
+                                    if (isset($item['label']) && isset($item['value'])) {
+                                        $output .= "- {$item['label']}: {$item['value']}\n";
+                                    }
+                                }
+                            }
+                            
+                            return $output;
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log('MPAI Chat: Error processing memberpress_info result: ' . $e->getMessage());
+                    // Fall through to default handling
                 }
             }
         }

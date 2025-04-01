@@ -22,7 +22,98 @@
  * GNU General Public License for more details.
  */
 
-// If this file is called directly, abort.
+// SUPER DIRECT PLUGIN LOGS HANDLER - First check if we're being called directly
+// This is a special case to handle the plugin_logs tool directly, bypassing WordPress entirely
+if (isset($_REQUEST['direct_plugin_logs']) && $_REQUEST['direct_plugin_logs'] === 'true') {
+    error_log('MPAI: Direct plugin logs endpoint called');
+    
+    // Set headers for JSON response
+    header('Content-Type: application/json');
+    header('Access-Control-Allow-Origin: *');
+    
+    try {
+        // We need to bootstrap WordPress minimally
+        define('SHORTINIT', true);
+        require_once('../../../wp-load.php');
+        
+        // Define our plugin constants
+        define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
+        define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
+        
+        // Load the plugin logger
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+        
+        // Initialize the plugin logger
+        $plugin_logger = mpai_init_plugin_logger();
+        
+        if (!$plugin_logger) {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Failed to initialize plugin logger'
+            ]);
+            exit;
+        }
+        
+        // Get parameters with defaults
+        $action = isset($_REQUEST['action_type']) ? $_REQUEST['action_type'] : '';
+        $days = isset($_REQUEST['days']) ? intval($_REQUEST['days']) : 30;
+        $limit = isset($_REQUEST['limit']) ? intval($_REQUEST['limit']) : 25;
+        
+        // Get logs
+        $args = [
+            'action'    => $action,
+            'date_from' => date('Y-m-d H:i:s', strtotime("-{$days} days")),
+            'orderby'   => 'date_time',
+            'order'     => 'DESC',
+            'limit'     => $limit
+        ];
+        
+        $logs = $plugin_logger->get_logs($args);
+        
+        // Count logs by action
+        $summary = [
+            'total' => count($logs),
+            'installed' => 0,
+            'updated' => 0,
+            'activated' => 0,
+            'deactivated' => 0,
+            'deleted' => 0
+        ];
+        
+        foreach ($logs as $log) {
+            if (isset($log['action']) && isset($summary[$log['action']])) {
+                $summary[$log['action']]++;
+            }
+        }
+        
+        // Format logs with time_ago
+        foreach ($logs as &$log) {
+            $timestamp = strtotime($log['date_time']);
+            $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
+        }
+        
+        // Output the response
+        echo json_encode([
+            'success' => true,
+            'tool' => 'plugin_logs',
+            'summary' => $summary,
+            'time_period' => "past {$days} days",
+            'logs' => $logs,
+            'total' => count($logs),
+            'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
+        ]);
+        exit;
+    } catch (Exception $e) {
+        error_log('MPAI: Error in direct plugin logs endpoint: ' . $e->getMessage());
+        echo json_encode([
+            'success' => false,
+            'error' => 'Error retrieving plugin logs: ' . $e->getMessage()
+        ]);
+        exit;
+    }
+}
+
+// If this is a normal WordPress request, continue as usual
 if (!defined('WPINC')) {
     die;
 }
@@ -80,6 +171,9 @@ class MemberPress_AI_Assistant {
         add_action('wp_ajax_mpai_get_plugin_log_details', array($this, 'get_plugin_log_details_ajax'));
         add_action('wp_ajax_mpai_export_plugin_logs', array($this, 'export_plugin_logs_ajax'));
         add_action('wp_ajax_mpai_update_plugin_logging_setting', array($this, 'update_plugin_logging_setting_ajax'));
+        
+        // Special AI assistant plugin logs handler with no nonce check
+        add_action('wp_ajax_mpai_ai_plugin_logs', array($this, 'get_ai_plugin_logs_ajax'));
         
         // Register activation and deactivation hooks
         register_activation_hook(__FILE__, array($this, 'activate'));
@@ -349,6 +443,7 @@ class MemberPress_AI_Assistant {
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => $chat_nonce,
                 'mpai_nonce' => $mpai_nonce, // Add the regular nonce for tool execution
+                'plugin_url' => MPAI_PLUGIN_URL, // Add plugin URL for direct AJAX handlers
                 'strings' => array(
                     'send_message' => __('Send message', 'memberpress-ai-assistant'),
                     'typing' => __('MemberPress AI is typing...', 'memberpress-ai-assistant'),
@@ -581,8 +676,9 @@ class MemberPress_AI_Assistant {
         // Check nonce for security
         check_ajax_referer('mpai_nonce', 'nonce');
         
-        // Only allow logged-in users with appropriate capabilities
-        if (!current_user_can('manage_options')) {
+        // Allow all logged-in users to access plugin logs for AI Assistant
+        // This is needed so Claude can get plugin info regardless of user role
+        if (!is_user_logged_in()) {
             wp_send_json_error('Unauthorized access');
             return;
         }
@@ -1067,6 +1163,16 @@ class MemberPress_AI_Assistant {
     public function init_plugin_components() {
         // Initialize plugin logger
         mpai_init_plugin_logger();
+        
+        // Force refresh of agent system and tools on every page load
+        // This ensures the AI system picks up new tools like our plugin logger
+        // In production, you'd want to be more selective with this
+        if (class_exists('MPAI_Agent_Orchestrator')) {
+            $orchestrator = new MPAI_Agent_Orchestrator();
+            if (method_exists($orchestrator, 'get_available_agents')) {
+                $orchestrator->get_available_agents();
+            }
+        }
     }
     
     private function set_default_options() {

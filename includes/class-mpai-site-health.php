@@ -263,6 +263,60 @@ class MPAI_Site_Health {
     }
 
     /**
+     * Get all site health information including custom sections
+     * 
+     * @return array Complete site health information
+     */
+    public function get_complete_info() {
+        $debug_data = $this->get_all_debug_data();
+        
+        // Add our custom sections
+        $debug_data['memberpress'] = $this->get_memberpress_info();
+        $debug_data['mpai'] = $this->get_mpai_info();
+        
+        // Format data for better display in API response
+        $formatted_data = array();
+        
+        foreach ($debug_data as $section_key => $section) {
+            $formatted_section = array();
+            
+            // Make sure each item is properly formatted with at least a value property
+            foreach ($section as $item_key => $item) {
+                if (is_array($item) && isset($item['value'])) {
+                    // Already properly formatted with value property
+                    $formatted_section[$item_key] = $item;
+                } else {
+                    // Convert simple values to standard format
+                    $formatted_section[$item_key] = array(
+                        'label' => $this->format_label($item_key),
+                        'value' => is_array($item) ? json_encode($item) : $item,
+                    );
+                }
+            }
+            
+            $formatted_data[$section_key] = $formatted_section;
+        }
+        
+        return $formatted_data;
+    }
+    
+    /**
+     * Format a key into a readable label
+     * 
+     * @param string $key The key to format
+     * @return string Formatted label
+     */
+    private function format_label($key) {
+        // Replace underscores and dashes with spaces
+        $label = str_replace(array('_', '-'), ' ', $key);
+        
+        // Capitalize each word
+        $label = ucwords($label);
+        
+        return $label;
+    }
+
+    /**
      * Fallback method to get debug data for WordPress versions without Site Health API
      * 
      * @return array Debug data in a format similar to wp_get_debug_data()
