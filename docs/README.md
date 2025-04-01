@@ -20,6 +20,17 @@ Welcome to the MemberPress AI Assistant documentation hub. This directory contai
 - [Content Marker System](CONTENT_MARKER_SYSTEM.md) - Documentation for the content marker system
 - [Blog Post Fix Summary](BLOG_POST_FIX_SUMMARY.md) - Detailed summary of the blog post publishing fix
 
+## Security Framework
+
+- [Agentic Security Framework](agentic-security-framework.md) - Comprehensive security model for AI agents
+- [WordPress Security Integration](wp-security-integration-plan.md) - Integration with WordPress security features
+- [Integrated Security Implementation Plan](integrated-security-implementation-plan.md) - Combined security implementation approach
+
+## Integration Plans
+
+- [Site Health Integration Plan](site-health-integration-plan.md) - Integration with WordPress Site Health system
+- [Support Routing System Plan](support-routing-system-plan.md) - System for routing support requests to human agents
+
 ## Testing and Status
 
 - [Test Procedures](../tests/test-procedures.md) - Testing procedures and checklists

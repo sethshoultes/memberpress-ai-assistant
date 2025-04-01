@@ -359,7 +359,8 @@ class MemberPress_AI_Assistant {
                     'mcp' => get_option('mpai_enable_mcp', true) ? true : false,
                     'cli_commands' => get_option('mpai_enable_cli_commands', true) ? true : false,
                     'wp_cli_tool' => get_option('mpai_enable_wp_cli_tool', true) ? true : false,
-                    'memberpress_info_tool' => get_option('mpai_enable_memberpress_info_tool', true) ? true : false
+                    'memberpress_info_tool' => get_option('mpai_enable_memberpress_info_tool', true) ? true : false,
+                    'plugin_logs_tool' => get_option('mpai_enable_plugin_logs_tool', true) ? true : false
                 )
             )
         );
@@ -1096,6 +1097,7 @@ class MemberPress_AI_Assistant {
             'enable_cli_commands' => true,
             'enable_wp_cli_tool' => true,
             'enable_memberpress_info_tool' => true,
+            'enable_plugin_logs_tool' => true,
             'allowed_cli_commands' => array('wp user list', 'wp post list', 'wp plugin list'),
             
             // Agent system settings
