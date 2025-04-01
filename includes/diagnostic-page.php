@@ -18,26 +18,35 @@ $result = array();
 $test_type = isset($_GET['test']) ? sanitize_text_field($_GET['test']) : '';
 
 if (!empty($test_type)) {
-    // Create diagnostic tool instance
-    if (!class_exists('MPAI_Diagnostic_Tool')) {
-        $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-diagnostic-tool.php';
-        if (file_exists($tool_path)) {
-            require_once $tool_path;
-        }
-    }
-    
-    if (class_exists('MPAI_Diagnostic_Tool')) {
-        $diagnostic_tool = new MPAI_Diagnostic_Tool();
-        
-        // Execute the diagnostic test
-        $result = $diagnostic_tool->execute(array(
-            'test_type' => $test_type
-        ));
-    } else {
+    // Validate the test type
+    if (!in_array($test_type, ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'site_health', 'all'])) {
         $result = array(
             'success' => false,
-            'message' => 'Diagnostic tool class not found'
+            'message' => 'Invalid test type: ' . $test_type,
+            'available_tests' => ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'site_health', 'all']
         );
+    } else {
+        // Create diagnostic tool instance
+        if (!class_exists('MPAI_Diagnostic_Tool')) {
+            $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-diagnostic-tool.php';
+            if (file_exists($tool_path)) {
+                require_once $tool_path;
+            }
+        }
+        
+        if (class_exists('MPAI_Diagnostic_Tool')) {
+            $diagnostic_tool = new MPAI_Diagnostic_Tool();
+            
+            // Execute the diagnostic test
+            $result = $diagnostic_tool->execute(array(
+                'test_type' => $test_type
+            ));
+        } else {
+            $result = array(
+                'success' => false,
+                'message' => 'Diagnostic tool class not found'
+            );
+        }
     }
 }
 
@@ -63,6 +72,9 @@ switch ($test_type) {
         $next_test = 'plugin_status'; 
         break;
     case 'plugin_status': 
+        $next_test = 'site_health'; 
+        break;
+    case 'site_health': 
         $next_test = ''; 
         break;
     default: 
@@ -273,6 +285,12 @@ switch ($test_type) {
                 <h3>Plugin Status</h3>
                 <p>Checks the status of the MemberPress AI Assistant plugin and its dependencies.</p>
                 <a href="?test=plugin_status" class="button">Run Test</a>
+            </div>
+            
+            <div class="test-card">
+                <h3>WordPress Site Health</h3>
+                <p>Get comprehensive system information using WordPress Site Health API.</p>
+                <a href="?test=site_health" class="button">Run Test</a>
             </div>
             
             <div class="test-card">
@@ -512,6 +530,34 @@ switch ($test_type) {
                         <p><?php echo esc_html($result['message']); ?></p>
                     <?php endif; ?>
                 
+                <?php elseif ($test_type === 'site_health'): ?>
+                    <?php if ($result['success']): ?>
+                        <div class="success"><strong>✓ Site Health Information</strong></div>
+                        
+                        <?php foreach ($result['data'] as $section => $items): ?>
+                            <h3><?php echo esc_html(ucwords(str_replace('-', ' ', $section))); ?></h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Setting</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($items as $key => $item): ?>
+                                    <tr>
+                                        <td><strong><?php echo esc_html($item['label']); ?></strong></td>
+                                        <td><?php echo esc_html($item['value']); ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="error"><strong>✗ Failed to get Site Health information</strong></div>
+                        <p><?php echo esc_html($result['message']); ?></p>
+                    <?php endif; ?>
+                
                 <?php elseif ($test_type === 'all'): ?>
                     <h3>Complete Diagnostic Results</h3>
                     
@@ -577,6 +623,18 @@ switch ($test_type) {
                         <?php else: ?>
                             <div class="error"><strong>✗ Failed to get plugin status</strong></div>
                             <p><?php echo isset($result['plugin_status']) ? esc_html($result['plugin_status']['message']) : 'Test failed'; ?></p>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <h4>Site Health</h4>
+                    <div class="result-subsection">
+                        <?php if (isset($result['site_health']) && $result['site_health']['success']): ?>
+                            <div class="success"><strong>✓ Site Health information available</strong></div>
+                            <p><strong>Sections:</strong> <?php echo esc_html(implode(', ', array_keys($result['site_health']['data']))); ?></p>
+                            <p><a href="?test=site_health" class="button">View Full Site Health Report</a></p>
+                        <?php else: ?>
+                            <div class="error"><strong>✗ Failed to get Site Health information</strong></div>
+                            <p><?php echo isset($result['site_health']) ? esc_html($result['site_health']['message']) : 'Test failed'; ?></p>
                         <?php endif; ?>
                     </div>
                 

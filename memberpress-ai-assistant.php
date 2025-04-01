@@ -57,6 +57,9 @@ class MemberPress_AI_Assistant {
         // Load required files
         $this->load_dependencies();
         
+        // Initialize plugin components
+        add_action('init', array($this, 'init_plugin_components'));
+        
         // Initialize admin section
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
@@ -71,6 +74,12 @@ class MemberPress_AI_Assistant {
         add_action('wp_ajax_mpai_process_chat', array($this, 'process_chat_ajax'));
         add_action('wp_ajax_mpai_clear_chat_history', array($this, 'clear_chat_history_ajax'));
         add_action('wp_ajax_mpai_get_chat_history', array($this, 'get_chat_history_ajax'));
+        
+        // Plugin Logger AJAX handlers
+        add_action('wp_ajax_mpai_get_plugin_logs', array($this, 'get_plugin_logs_ajax'));
+        add_action('wp_ajax_mpai_get_plugin_log_details', array($this, 'get_plugin_log_details_ajax'));
+        add_action('wp_ajax_mpai_export_plugin_logs', array($this, 'export_plugin_logs_ajax'));
+        add_action('wp_ajax_mpai_update_plugin_logging_setting', array($this, 'update_plugin_logging_setting_ajax'));
         
         // Register activation and deactivation hooks
         register_activation_hook(__FILE__, array($this, 'activate'));
@@ -123,6 +132,7 @@ class MemberPress_AI_Assistant {
         // Functionality Classes
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-chat.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-context-manager.php';
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
         
         // Admin and Settings
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-admin.php';
@@ -562,6 +572,208 @@ class MemberPress_AI_Assistant {
         
         return $conversations_exists && $messages_exists;
     }
+    
+    /**
+     * AJAX handler for getting plugin logs
+     */
+    public function get_plugin_logs_ajax() {
+        // Check nonce for security
+        check_ajax_referer('mpai_nonce', 'nonce');
+        
+        // Only allow logged-in users with appropriate capabilities
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+        
+        try {
+            // Initialize the plugin logger
+            $plugin_logger = mpai_init_plugin_logger();
+            
+            // Get filter parameters
+            $action = isset($_POST['log_action']) ? sanitize_text_field($_POST['log_action']) : '';
+            $plugin_name = isset($_POST['plugin_name']) ? sanitize_text_field($_POST['plugin_name']) : '';
+            $days = isset($_POST['days']) ? intval($_POST['days']) : 30;
+            $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+            $per_page = isset($_POST['per_page']) ? intval($_POST['per_page']) : 10;
+            
+            // Calculate date range
+            $date_from = '';
+            if ($days > 0) {
+                $date_from = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+            }
+            
+            // Prepare query arguments
+            $args = array(
+                'plugin_name' => $plugin_name,
+                'action'      => $action,
+                'date_from'   => $date_from,
+                'orderby'     => 'date_time',
+                'order'       => 'DESC',
+                'limit'       => $per_page,
+                'offset'      => ($page - 1) * $per_page,
+            );
+            
+            // Get logs
+            $logs = $plugin_logger->get_logs($args);
+            
+            // Get total count for pagination
+            $count_args = array(
+                'plugin_name' => $plugin_name,
+                'action'      => $action,
+                'date_from'   => $date_from,
+            );
+            $total = $plugin_logger->count_logs($count_args);
+            
+            // Get summary data
+            $summary_days = $days > 0 ? $days : 365; // If all time, limit to 1 year for summary
+            $summary = $plugin_logger->get_activity_summary($summary_days);
+            
+            // Count by action type 
+            $action_counts = array(
+                'total'       => 0,
+                'installed'   => 0,
+                'updated'     => 0,
+                'activated'   => 0,
+                'deactivated' => 0,
+                'deleted'     => 0
+            );
+            
+            if (isset($summary['action_counts']) && is_array($summary['action_counts'])) {
+                foreach ($summary['action_counts'] as $count_data) {
+                    if (isset($count_data['action']) && isset($count_data['count'])) {
+                        $action_counts[$count_data['action']] = intval($count_data['count']);
+                        $action_counts['total'] += intval($count_data['count']);
+                    }
+                }
+            }
+            
+            wp_send_json_success(array(
+                'logs'    => $logs,
+                'total'   => $total,
+                'summary' => $action_counts,
+            ));
+        } catch (Exception $e) {
+            wp_send_json_error('Error retrieving plugin logs: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * AJAX handler for getting plugin log details
+     */
+    public function get_plugin_log_details_ajax() {
+        // Check nonce for security
+        check_ajax_referer('mpai_nonce', 'nonce');
+        
+        // Only allow logged-in users with appropriate capabilities
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+        
+        try {
+            // Initialize the plugin logger
+            $plugin_logger = mpai_init_plugin_logger();
+            
+            // Get log ID
+            $log_id = isset($_POST['log_id']) ? intval($_POST['log_id']) : 0;
+            
+            if ($log_id <= 0) {
+                wp_send_json_error('Invalid log ID');
+                return;
+            }
+            
+            // Get log details
+            $logs = $plugin_logger->get_logs(array(
+                'id' => $log_id,
+                'limit' => 1,
+            ));
+            
+            if (empty($logs)) {
+                wp_send_json_error('Log not found');
+                return;
+            }
+            
+            wp_send_json_success($logs[0]);
+        } catch (Exception $e) {
+            wp_send_json_error('Error retrieving log details: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * AJAX handler for exporting plugin logs to CSV
+     */
+    public function export_plugin_logs_ajax() {
+        // Check nonce for security
+        check_ajax_referer('mpai_nonce', 'nonce');
+        
+        // Only allow logged-in users with appropriate capabilities
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+        
+        try {
+            // Initialize the plugin logger
+            $plugin_logger = mpai_init_plugin_logger();
+            
+            // Get filter parameters
+            $action = isset($_POST['log_action']) ? sanitize_text_field($_POST['log_action']) : '';
+            $plugin_name = isset($_POST['plugin_name']) ? sanitize_text_field($_POST['plugin_name']) : '';
+            $days = isset($_POST['days']) ? intval($_POST['days']) : 30;
+            
+            // Calculate date range
+            $date_from = '';
+            if ($days > 0) {
+                $date_from = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+            }
+            
+            // Prepare export arguments
+            $args = array(
+                'plugin_name' => $plugin_name,
+                'action'      => $action,
+                'date_from'   => $date_from,
+                'orderby'     => 'date_time',
+                'order'       => 'DESC',
+                'limit'       => 1000, // Limit to 1000 records for export
+            );
+            
+            // Generate CSV data
+            $csv_data = $plugin_logger->export_csv($args);
+            
+            wp_send_json_success($csv_data);
+        } catch (Exception $e) {
+            wp_send_json_error('Error exporting plugin logs: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * AJAX handler for updating plugin logging setting
+     */
+    public function update_plugin_logging_setting_ajax() {
+        // Check nonce for security
+        check_ajax_referer('mpai_nonce', 'nonce');
+        
+        // Only allow logged-in users with appropriate capabilities
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+        
+        try {
+            // Get setting value
+            $enabled = isset($_POST['enabled']) ? (bool) intval($_POST['enabled']) : true;
+            
+            // Update the setting
+            update_option('mpai_enable_plugin_logging', $enabled);
+            
+            wp_send_json_success(array(
+                'message' => $enabled ? 'Plugin logging enabled' : 'Plugin logging disabled',
+            ));
+        } catch (Exception $e) {
+            wp_send_json_error('Error updating setting: ' . $e->getMessage());
+        }
+    }
 
     /**
      * Clear chat history via AJAX
@@ -849,8 +1061,13 @@ class MemberPress_AI_Assistant {
     }
 
     /**
-     * Set default options
+     * Initialize plugin components
      */
+    public function init_plugin_components() {
+        // Initialize plugin logger
+        mpai_init_plugin_logger();
+    }
+    
     private function set_default_options() {
         $default_options = array(
             // OpenAI Settings
@@ -885,6 +1102,10 @@ class MemberPress_AI_Assistant {
             'agent_system_enabled' => true,
             'agent_system_version' => MPAI_VERSION,
             'agent_system_model' => 'gpt-4o',
+            
+            // Plugin logger settings
+            'enable_plugin_logging' => true,
+            'plugin_logs_retention_days' => 90,
         );
         
         foreach ($default_options as $option => $value) {

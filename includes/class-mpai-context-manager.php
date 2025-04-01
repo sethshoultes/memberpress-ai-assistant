@@ -118,12 +118,17 @@ class MPAI_Context_Manager {
             ),
             'memberpress_info' => array(
                 'name' => 'memberpress_info',
-                'description' => 'Get information about MemberPress',
+                'description' => 'Get information about MemberPress data and system settings',
                 'parameters' => array(
                     'type' => array(
                         'type' => 'string',
-                        'description' => 'Type of information (memberships, members, transactions, subscriptions, new_members_this_month)',
-                        'enum' => array('memberships', 'members', 'transactions', 'subscriptions', 'summary', 'new_members_this_month')
+                        'description' => 'Type of information (memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info)',
+                        'enum' => array('memberships', 'members', 'transactions', 'subscriptions', 'summary', 'new_members_this_month', 'system_info', 'all')
+                    ),
+                    'include_system_info' => array(
+                        'type' => 'boolean',
+                        'description' => 'Whether to include system information in the response',
+                        'default' => false
                     )
                 ),
                 'callback' => array($this, 'get_memberpress_info')
@@ -469,13 +474,54 @@ class MPAI_Context_Manager {
     /**
      * Get MemberPress information
      *
-     * @param string $type Type of information to retrieve
+     * @param array $parameters Tool parameters
      * @return mixed MemberPress data
      */
-    public function get_memberpress_info($type = 'summary') {
-        error_log('MPAI: Getting MemberPress info for type: ' . $type);
+    public function get_memberpress_info($parameters) {
+        // Extract parameters
+        $type = isset($parameters['type']) ? $parameters['type'] : 'summary';
+        $include_system_info = isset($parameters['include_system_info']) ? (bool)$parameters['include_system_info'] : false;
+        
+        error_log('MPAI: Getting MemberPress info for type: ' . $type . ', include_system_info: ' . ($include_system_info ? 'true' : 'false'));
         
         switch($type) {
+            case 'system_info':
+                // Handle system_info type - get Site Health data
+                if (!class_exists('MPAI_Site_Health')) {
+                    require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-site-health.php';
+                }
+                $site_health = new MPAI_Site_Health();
+                
+                $response = array(
+                    'success' => true,
+                    'tool' => 'memberpress_info',
+                    'command_type' => 'system_info',
+                    'result' => $site_health->get_complete_info()
+                );
+                return json_encode($response);
+                
+            case 'all':
+                // Get MemberPress data
+                $summary = $this->memberpress_api->get_data_summary();
+                
+                // Add system info if requested
+                if ($include_system_info) {
+                    if (!class_exists('MPAI_Site_Health')) {
+                        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-site-health.php';
+                    }
+                    $site_health = new MPAI_Site_Health();
+                    $summary['system_info'] = $site_health->get_complete_info();
+                }
+                
+                // Format as either JSON or tabular based on what's already in summary
+                $response = array(
+                    'success' => true,
+                    'tool' => 'memberpress_info',
+                    'command_type' => 'all',
+                    'result' => $summary
+                );
+                return json_encode($response);
+                
             case 'memberships':
                 // Get formatted memberships as table
                 $memberships = $this->memberpress_api->get_memberships(array(), true);
@@ -642,6 +688,15 @@ class MPAI_Context_Manager {
             default:
                 $summary = $this->memberpress_api->get_data_summary();
                 
+                // Add system info if requested
+                if ($include_system_info) {
+                    if (!class_exists('MPAI_Site_Health')) {
+                        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-site-health.php';
+                    }
+                    $site_health = new MPAI_Site_Health();
+                    $summary['system_info'] = $site_health->get_complete_info();
+                }
+                
                 // Format the summary as a table
                 $output = "Metric\tValue\n";
                 $output .= "Total Members\t" . (isset($summary['total_members']) ? $summary['total_members'] : '0') . "\n";
@@ -712,13 +767,17 @@ class MPAI_Context_Manager {
         } else if (strpos($command, 'wp mepr') !== false || strpos($command, 'memberpress') !== false) {
             $message .= "1. For MemberPress operations, use the memberpress_info tool:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n\n";
-            $message .= "2. Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month\n";
+            $message .= "2. Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info, all\n";
+            $message .= "3. You can get system information along with MemberPress data:\n";
+            $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"all\", \"include_system_info\": true}}\n   ```\n";
         } else {
             $message .= "1. For WordPress operations, you can use the WordPress API:\n";
             $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"action_name\", \"param1\": \"value1\"}}\n   ```\n\n";
             $message .= "2. For MemberPress operations, use the memberpress_info tool:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n";
-            $message .= "   - Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month\n\n";
+            $message .= "   - Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info, all\n";
+            $message .= "3. For system information, use:\n";
+            $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"system_info\"}}\n   ```\n\n";
         }
         
         return $message;
@@ -1364,9 +1423,8 @@ class MPAI_Context_Manager {
         try {
             if ($tool['name'] === 'memberpress_info') {
                 // Special handling for memberpress_info tool
-                $type = isset($validated_params['type']) ? $validated_params['type'] : 'summary';
-                error_log('MPAI: Getting MemberPress info type: ' . $type);
-                $result = $this->get_memberpress_info($type);
+                error_log('MPAI: Getting MemberPress info with parameters: ' . json_encode($validated_params));
+                $result = $this->get_memberpress_info($validated_params);
             } else {
                 // Generic callback execution
                 error_log('MPAI: Executing tool callback for: ' . $tool['name']);

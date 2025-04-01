@@ -17,11 +17,24 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
     /**
+     * Site Health instance
+     */
+    private $site_health;
+    
+    /**
      * Constructor
      */
     public function __construct() {
         $this->name = 'diagnostic';
         $this->description = 'Run various diagnostic tests and status checks for the MemberPress AI Assistant';
+        
+        // Load Site Health class if needed
+        if (!class_exists('MPAI_Site_Health') && file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-site-health.php')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-site-health.php';
+        }
+        
+        // Initialize Site Health
+        $this->site_health = new MPAI_Site_Health();
     }
     
     /**
@@ -38,7 +51,7 @@ class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
                 'properties' => [
                     'test_type' => [
                         'type' => 'string',
-                        'enum' => ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'all'],
+                        'enum' => ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'site_health', 'all'],
                         'description' => 'The type of diagnostic test to run'
                     ],
                     'api_key' => [
@@ -62,7 +75,7 @@ class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
             return [
                 'success' => false,
                 'message' => 'Missing required parameter: test_type',
-                'available_tests' => ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'all']
+                'available_tests' => ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'site_health', 'all']
             ];
         }
         
@@ -90,6 +103,10 @@ class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
                 $result = $this->get_plugin_status();
                 break;
                 
+            case 'site_health':
+                $result = $this->get_site_health_info();
+                break;
+                
             case 'all':
                 $result = [
                     'openai' => $this->test_openai_connection($parameters),
@@ -97,6 +114,7 @@ class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
                     'memberpress' => $this->test_memberpress_connection($parameters),
                     'wordpress' => $this->get_wordpress_info(),
                     'plugin_status' => $this->get_plugin_status(),
+                    'site_health' => $this->get_site_health_info(),
                 ];
                 break;
                 
@@ -104,7 +122,7 @@ class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
                 $result = [
                     'success' => false,
                     'message' => 'Invalid test type: ' . $test_type,
-                    'available_tests' => ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'all']
+                    'available_tests' => ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'site_health', 'all']
                 ];
         }
         
@@ -365,6 +383,18 @@ class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
      * @return array WordPress information
      */
     public function get_wordpress_info() {
+        // Use Site Health if available
+        if (isset($this->site_health)) {
+            return [
+                'success' => true,
+                'wordpress' => $this->convert_site_health_data($this->site_health->get_wordpress_info()),
+                'php' => $this->convert_site_health_data($this->site_health->get_server_info(), 'php_'),
+                'database' => $this->convert_site_health_data($this->site_health->get_database_info()),
+                'server' => $this->convert_site_health_data($this->site_health->get_server_info(), '', 'php_')
+            ];
+        }
+        
+        // Fall back to traditional method if Site Health is not available
         global $wpdb;
         
         $wp_version = get_bloginfo('version');
@@ -422,6 +452,83 @@ class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
                 'software' => $server_software
             ]
         ];
+    }
+    
+    /**
+     * Get Site Health information
+     * 
+     * @return array Site Health information
+     */
+    public function get_site_health_info() {
+        if (!isset($this->site_health)) {
+            return [
+                'success' => false,
+                'message' => 'Site Health class not available'
+            ];
+        }
+        
+        try {
+            // Get all debug data
+            $debug_data = $this->site_health->get_all_debug_data();
+            
+            // Get MemberPress specific info
+            $mp_info = $this->site_health->get_memberpress_info();
+            
+            // Get MemberPress AI specific info
+            $mpai_info = $this->site_health->get_mpai_info();
+            
+            // Combine all data
+            $site_health_data = [
+                'wordpress' => $this->site_health->get_wordpress_info(),
+                'server' => $this->site_health->get_server_info(),
+                'database' => $this->site_health->get_database_info(),
+                'plugins' => $this->site_health->get_plugins_info(),
+                'themes' => $this->site_health->get_themes_info(),
+                'security' => $this->site_health->get_security_info(),
+                'memberpress' => $mp_info,
+                'mpai' => $mpai_info
+            ];
+            
+            return [
+                'success' => true,
+                'message' => 'Site Health information retrieved successfully',
+                'data' => $site_health_data
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error retrieving Site Health information: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Helper method to convert Site Health data format to a flat array
+     * 
+     * @param array $data Site Health data section
+     * @param string $prefix_to_remove Prefix to remove from keys (e.g., 'php_')
+     * @param string $prefix_to_exclude Prefix to use for excluding items
+     * @return array Converted data
+     */
+    private function convert_site_health_data($data, $prefix_to_remove = '', $prefix_to_exclude = '') {
+        $result = [];
+        
+        foreach ($data as $key => $item) {
+            // Skip items with the excluded prefix
+            if (!empty($prefix_to_exclude) && strpos($key, $prefix_to_exclude) === 0) {
+                continue;
+            }
+            
+            // Remove prefix if needed
+            $new_key = $key;
+            if (!empty($prefix_to_remove) && strpos($key, $prefix_to_remove) === 0) {
+                $new_key = substr($key, strlen($prefix_to_remove));
+            }
+            
+            $result[$new_key] = $item['value'];
+        }
+        
+        return $result;
     }
     
     /**

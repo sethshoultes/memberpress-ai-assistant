@@ -342,6 +342,9 @@ class MPAI_Chat {
         $system_prompt .= "2. When the wp_api tool fails or is unavailable, fall back to the wp_cli tool\n";
         $system_prompt .= "3. ALWAYS use the memberpress_info tool to get MemberPress-specific data\n";
         $system_prompt .= "   - For new member data: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"new_members_this_month\"}}\n";
+        $system_prompt .= "   - For WordPress and server information: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"system_info\"}}\n";
+        $system_prompt .= "   - For complete data with system info: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"all\", \"include_system_info\": true}}\n";
+        $system_prompt .= "   - The system_info type uses WordPress Site Health API for comprehensive diagnostics\n";
         $system_prompt .= "4. DO NOT simply suggest commands - actually execute them using the tool format above\n\n";
         
         $system_prompt .= "IMPORTANT TOOL SELECTION RULES:\n";
