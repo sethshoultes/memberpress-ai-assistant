@@ -112,13 +112,14 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 	 * @return string Formatted plugin list output
 	 */
 	private function handle_plugin_list_command($command, $parameters) {
-		error_log('MPAI_WP_CLI_Tool: Using internal WordPress functions for plugin list');
+		error_log('MPAI_WP_CLI_Tool: Using internal WordPress functions for plugin list at ' . date('H:i:s'));
 		
 		// Load WP API Tool to use the enhanced get_plugins method
 		if (!class_exists('MPAI_WP_API_Tool')) {
 			$tool_path = dirname(__FILE__) . '/class-mpai-wp-api-tool.php';
 			if (file_exists($tool_path)) {
 				require_once $tool_path;
+				error_log('MPAI_WP_CLI_Tool: Loaded WP API Tool class at ' . date('H:i:s'));
 			} else {
 				error_log('MPAI_WP_CLI_Tool: Could not find WP API Tool file');
 				throw new Exception('Could not load WP API Tool for plugin list');
@@ -127,11 +128,13 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		
 		// Initialize WP API Tool
 		$wp_api_tool = new MPAI_WP_API_Tool();
+		error_log('MPAI_WP_CLI_Tool: Created WP API Tool instance at ' . date('H:i:s'));
 		
 		// Extract any flags from the command (--status=active, etc.)
 		$status_filter = null;
 		if (preg_match('/--status=(\w+)/', $command, $matches)) {
 			$status_filter = $matches[1];
+			error_log('MPAI_WP_CLI_Tool: Detected status filter: ' . $status_filter);
 		}
 		
 		// Call get_plugins with appropriate parameters
@@ -146,19 +149,30 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		
 		// Get timestamp for generated output
 		$current_time = date('H:i:s');
-		error_log('MPAI_WP_CLI_Tool: Generated at ' . $current_time);
+		error_log('MPAI_WP_CLI_Tool: Generating plugin list at ' . $current_time);
 		
 		// Execute the API call to get plugins
 		$result = $wp_api_tool->execute($api_params);
 		
+		if (is_array($result)) {
+			error_log('MPAI_WP_CLI_Tool: WP API returned array result with keys: ' . implode(', ', array_keys($result)));
+		} else {
+			error_log('MPAI_WP_CLI_Tool: WP API did not return array result, type: ' . gettype($result));
+		}
+		
 		// Format output
 		if (is_array($result) && isset($result['table_data'])) {
 			// Already formatted as table
+			error_log('MPAI_WP_CLI_Tool: Found table_data in result, length: ' . strlen($result['table_data']));
+			error_log('MPAI_WP_CLI_Tool: Table data preview: ' . substr($result['table_data'], 0, 100));
 			return $result['table_data'];
 		} elseif (is_array($result) && isset($result['plugins'])) {
 			// Format plugins as table
 			$plugins = $result['plugins'];
-			$output = "Name\tStatus\tVersion\tLast Activity (Generated at $current_time)\n";
+			error_log('MPAI_WP_CLI_Tool: Formatting ' . count($plugins) . ' plugins as table');
+			
+			// Use clean consistent formatting with tabs as separators
+			$output = "Name\tStatus\tVersion\tLast Activity\n";
 			
 			foreach ($plugins as $plugin) {
 				// Apply status filter if specified
@@ -174,10 +188,13 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 				$output .= "$name\t$status\t$version\t$activity\n";
 			}
 			
+			error_log('MPAI_WP_CLI_Tool: Formatted table output length: ' . strlen($output));
+			error_log('MPAI_WP_CLI_Tool: Table output preview: ' . substr($output, 0, 100));
 			return $output;
 		} else {
 			// Return raw result if not in expected format
-			return json_encode($result);
+			error_log('MPAI_WP_CLI_Tool: Unexpected result format, returning JSON');
+			return "Name\tStatus\tVersion\tLast Activity\nNo plugin data available\tinactive\t-\tError retrieving data";
 		}
 	}
 	

@@ -226,7 +226,60 @@ class MPAI_Context_Manager {
      * @return string Command output
      */
     public function run_command($command) {
-        error_log('MPAI: run_command called with command: ' . $command . ' (v' . self::VERSION . ')');
+        $current_time = date('H:i:s');
+        error_log('MPAI: run_command called with command: ' . $command . ' (v' . self::VERSION . ') at ' . $current_time);
+        
+        // Special handling for wp plugin list
+        if (trim($command) === 'wp plugin list') {
+            error_log('MPAI: Context Manager handling wp plugin list command at ' . $current_time);
+            
+            // Initialize the WP CLI Tool which has special handling for this command
+            if (!class_exists('MPAI_WP_CLI_Tool')) {
+                $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-wpcli-tool.php';
+                if (file_exists($tool_path)) {
+                    require_once $tool_path;
+                    error_log('MPAI: Loaded MPAI_WP_CLI_Tool class at ' . date('H:i:s'));
+                } else {
+                    error_log('MPAI: Could not find MPAI_WP_CLI_Tool at: ' . $tool_path);
+                    return 'Error: Could not load required tool class.';
+                }
+            }
+            
+            try {
+                $wp_cli_tool = new MPAI_WP_CLI_Tool();
+                error_log('MPAI: Created MPAI_WP_CLI_Tool instance at ' . date('H:i:s'));
+                
+                // Execute the command with a clean tabular format
+                $result = $wp_cli_tool->execute(array(
+                    'command' => 'wp plugin list',
+                    'format' => 'table' // Force table format
+                ));
+                
+                error_log('MPAI: wp_cli_tool execution complete at ' . date('H:i:s') . ', result length: ' . strlen($result));
+                error_log('MPAI: Result preview: ' . substr($result, 0, 100) . '...');
+                
+                // Check if the result is a JSON-encoded string and extract the tabular data
+                if (is_string($result) && strpos($result, '{"success":true,"tool":"wp_cli","command_type":"plugin_list","result":') === 0) {
+                    error_log('MPAI: Detected JSON format in result, extracting tabular data');
+                    
+                    try {
+                        $decoded = json_decode($result, true);
+                        if (json_last_error() === JSON_ERROR_NONE && isset($decoded['result']) && is_string($decoded['result'])) {
+                            error_log('MPAI: Successfully extracted tabular data from JSON');
+                            // Return just the tabular data part
+                            return $decoded['result'];
+                        }
+                    } catch (Exception $e) {
+                        error_log('MPAI: Error decoding JSON result: ' . $e->getMessage());
+                    }
+                }
+                
+                return $result;
+            } catch (Exception $e) {
+                error_log('MPAI: Error executing wp plugin list with WP CLI Tool: ' . $e->getMessage());
+                return 'Error executing command: ' . $e->getMessage();
+            }
+        }
         
         // Check if CLI commands are enabled in settings - temporarily bypass for debugging
         error_log('MPAI: ⚠️ TEMPORARILY BYPASSING CLI COMMANDS ENABLED CHECK FOR DEBUGGING');

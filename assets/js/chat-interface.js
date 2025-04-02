@@ -115,22 +115,137 @@
                     // Hide typing indicator
                     hideTypingIndicator();
 
+                    // Log the actual response structure to debug
+                    console.log('MPAI: Raw AJAX response:', {
+                        responseType: typeof response,
+                        hasSuccess: response && response.success,
+                        hasData: response && response.data,
+                        hasResponse: response && response.data && response.data.response,
+                        responseContent: response && response.data ? (response.data.response || (typeof response.data === 'string' ? response.data : 'No response content')) : 'No data'
+                    });
+                    
+                    // Enhanced response handling to be more forgiving of different formats
+                    let processedResponse = '';
+                    let validResponseFormat = false;
+                    
+                    // Case 1: Standard format with nested response
                     if (response.success && response.data && response.data.response) {
-                        let processedResponse = response.data.response;
-                        
+                        processedResponse = response.data.response;
+                        console.log('MPAI: Using standard response format');
+                        validResponseFormat = true;
+                    }
+                    // Case 2: Format where response is directly in data
+                    else if (response.success && response.data && typeof response.data === 'string') {
+                        processedResponse = response.data;
+                        console.log('MPAI: Using direct string response format');
+                        validResponseFormat = true;
+                    }
+                    // Case 3: Format where response is direct
+                    else if (response.success && typeof response.response === 'string') {
+                        processedResponse = response.response;
+                        console.log('MPAI: Using top-level response format');
+                        validResponseFormat = true;
+                    }
+                    // Case 4: Format with direct response property
+                    else if (typeof response === 'string') {
+                        processedResponse = response;
+                        console.log('MPAI: Using direct string format');
+                        validResponseFormat = true;
+                    }
+                    // No valid format found
+                    else {
+                        console.error('MPAI: Could not determine response format:', response);
+                        hideTypingIndicator();
+                        addMessageToChat('assistant', mpai_chat_data.strings.error_message);
+                        setTimeout(scrollToBottom, 100);
+                        return;
+                    }
+                    
+                    if (validResponseFormat) {
                         // Special handling for wp plugin list command
                         if (message.trim().toLowerCase() === 'wp plugin list') {
                             console.log('MPAI: Detected wp plugin list command, applying special formatting');
+                            console.log('MPAI: RESPONSE STRUCTURE:', {
+                                length: processedResponse.length,
+                                containsPluginList: processedResponse.includes('plugin list'),
+                                containsListOfPlugins: processedResponse.includes('list of plugins'),
+                                containsCodeBlock: processedResponse.includes('```'),
+                                first100Chars: processedResponse.substring(0, 100),
+                                containsTable: processedResponse.includes('Name') && processedResponse.includes('Status') && processedResponse.includes('Version')
+                            });
                             
-                            // Check if response includes plugin list data in a format we can parse
-                            if (processedResponse.includes('plugin list') || processedResponse.includes('list of plugins')) {
-                                // Try to extract tabular data from code block
-                                const codeBlockRegex = /```([\s\S]*?)```/;
-                                const match = processedResponse.match(codeBlockRegex);
+                            // First check if this might be in JSON format
+                            if (processedResponse.includes('{"success":true,"tool":"wp_cli","command_type":"plugin_list","result":')) {
+                                console.log('MPAI: Detected JSON format plugin list response');
                                 
-                                if (match && match[1]) {
-                                    const tableData = match[1].trim();
-                                    console.log('MPAI: Found code block with table data:', tableData.substring(0, 100));
+                                // Try to extract and process the JSON data
+                                const jsonRegex = /{("success":true,"tool":"wp_cli","command_type":"plugin_list"[^}]+)}/;
+                                const jsonMatch = processedResponse.match(jsonRegex);
+                                
+                                if (jsonMatch && jsonMatch[0]) {
+                                    try {
+                                        const jsonData = JSON.parse(jsonMatch[0]);
+                                        console.log('MPAI: Parsed JSON data from response:', jsonData);
+                                        
+                                        if (jsonData.result) {
+                                            // Create a simple code block with just the tabular data
+                                            const codeBlock = '```\n' + jsonData.result + '\n```';
+                                            
+                                            // Replace the JSON with the plain table data
+                                            processedResponse = processedResponse.replace(jsonMatch[0], codeBlock);
+                                            console.log('MPAI: Replaced JSON with plain table data');
+                                        }
+                                    } catch (e) {
+                                        console.error('MPAI: Error parsing JSON data:', e);
+                                    }
+                                }
+                            }
+                            
+                            // Now process any code blocks in the response
+                            if (processedResponse.includes('```')) {
+                                // Extract all code blocks to check their contents - make sure to capture the blocks with delimiters
+                                const allCodeBlocks = processedResponse.match(/```[\s\S]*?```/g) || [];
+                                console.log('MPAI: Found ' + allCodeBlocks.length + ' code blocks in response');
+                                
+                                // Debug each code block
+                                allCodeBlocks.forEach((block, index) => {
+                                    // Remove only the delimiter lines, keeping the content
+                                    const content = block.replace(/```\n?|\n?```/g, '').trim();
+                                    console.log(`MPAI: Code block ${index} content (first 100 chars):`, content.substring(0, 100));
+                                    console.log(`MPAI: Code block ${index} indicators:`, {
+                                        hasName: content.includes('Name'),
+                                        hasStatus: content.includes('Status'),
+                                        hasVersion: content.includes('Version'),
+                                        hasTabs: content.includes('\t'),
+                                        hasNewlines: content.includes('\n'),
+                                        lineCount: content.split('\n').length
+                                    });
+                                });
+                                
+                                // Try to extract tabular data from ANY code block that looks like a plugin list
+                                let tableData = null;
+                                let matchingBlock = null;
+                                
+                                for (const block of allCodeBlocks) {
+                                    const content = block.replace(/```\n?|\n?```/g, '').trim();
+                                    
+                                    // Skip empty blocks or JSON that might have slipped through
+                                    if (!content || content.startsWith('{') || content.length < 10) {
+                                        continue;
+                                    }
+                                    
+                                    // More specific matching to ensure we get the right data
+                                    if ((content.includes('Name') && content.includes('Status') && content.includes('Version')) ||
+                                        (content.includes('Plugin Name') && content.includes('Status'))) {
+                                        tableData = content;
+                                        matchingBlock = block;
+                                        console.log('MPAI: Found matching plugin list block:', content.substring(0, 100));
+                                        break;
+                                    }
+                                }
+                                
+                                if (tableData) {
+                                    console.log('MPAI: Found table data with length:', tableData.length);
                                     
                                     // Format as HTML table
                                     const tableResult = {
@@ -140,9 +255,13 @@
                                     
                                     // Replace the code block with our formatted table
                                     const formattedTable = formatTabularResult(tableResult);
-                                    processedResponse = processedResponse.replace(match[0], formattedTable);
+                                    processedResponse = processedResponse.replace(matchingBlock, formattedTable);
                                     console.log('MPAI: Formatted plugin list as HTML table');
+                                } else {
+                                    console.log('MPAI: No valid plugin list table data found in code blocks');
                                 }
+                            } else {
+                                console.log('MPAI: No code blocks found in response');
                             }
                         }
                         

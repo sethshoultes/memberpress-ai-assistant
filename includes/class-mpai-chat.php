@@ -422,9 +422,25 @@ class MPAI_Chat {
                     $plugin_list_output = $this->context_manager->run_command('wp plugin list');
                     error_log('MPAI Chat: Direct execution successful, output length: ' . strlen($plugin_list_output));
                     
-                    // Create a response with the direct output
+                    // Create a response with the direct output, using a clean code block format
+                    // that's easier for our JavaScript to parse
+                    
+                    // Extract actual table data if it's a JSON string
+                    if (strpos($plugin_list_output, '{"success":true,"tool":"wp_cli","command_type":"plugin_list","result":') === 0) {
+                        error_log('MPAI Chat: Plugin list is in JSON format, extracting tabular data');
+                        try {
+                            $decoded = json_decode($plugin_list_output, true);
+                            if (json_last_error() === JSON_ERROR_NONE && isset($decoded['result'])) {
+                                $plugin_list_output = $decoded['result'];
+                                error_log('MPAI Chat: Successfully extracted tabular data from plugin list JSON');
+                            }
+                        } catch (Exception $e) {
+                            error_log('MPAI Chat: Error decoding plugin list JSON: ' . $e->getMessage());
+                        }
+                    }
+                    
                     $ai_response = "Here is the current list of plugins:\n\n";
-                    $ai_response .= "```\n" . $plugin_list_output . "\n```\n\n";
+                    $ai_response .= "```\n" . trim($plugin_list_output) . "\n```\n\n";
                     $ai_response .= "This information was generated directly from your WordPress database.";
                     
                     // Save this message and response
@@ -432,10 +448,10 @@ class MPAI_Chat {
                     
                     error_log('MPAI Chat: Direct handling complete for wp plugin list command');
                     
-                    // Return the response immediately
+                    // Return the response immediately in a format that the AJAX handler expects
                     return array(
                         'success' => true,
-                        'response' => $ai_response,
+                        'message' => $ai_response,
                     );
                 } catch (Exception $e) {
                     error_log('MPAI Chat: Error in direct execution of wp plugin list: ' . $e->getMessage());
