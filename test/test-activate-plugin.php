@@ -4,10 +4,21 @@
  */
 
 // Load WordPress
-require_once dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
+// Calculate the path to wp-load.php
+$wp_load_path = dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/wp-load.php';
+
+// Verify path exists
+if (!file_exists($wp_load_path)) {
+    echo "Error: wp-load.php not found at {$wp_load_path}<br>";
+    // Try alternative relative path
+    $wp_load_path = '../../../../wp-load.php';
+    echo "Trying alternative path: {$wp_load_path}<br>";
+}
+
+require_once($wp_load_path);
 
 // Load the WP API Tool class
-require_once __DIR__ . '/includes/tools/implementations/class-mpai-wp-api-tool.php';
+require_once dirname(__DIR__) . '/includes/tools/implementations/class-mpai-wp-api-tool.php';
 
 // Create the tool instance
 $wp_api_tool = new MPAI_WP_API_Tool();

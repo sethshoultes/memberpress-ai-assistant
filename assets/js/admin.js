@@ -672,6 +672,32 @@
             }, 500);
         }
         
+        // Check if the diagnostic tab is already active and trigger load if it is
+        if (window.location.hash === '#tab-diagnostic' || $('.nav-tab-wrapper a.nav-tab-active[href="#tab-diagnostic"]').length > 0) {
+            console.log('MPAI: Diagnostic tab is active on page load, triggering plugin logs load');
+            setTimeout(function() {
+                $(document).trigger('mpai-load-plugin-logs');
+            }, 100);
+        }
+        
+        // Handle tab navigation for the settings page
+        // This ensures that content is properly loaded when tabs are clicked
+        $('.nav-tab-wrapper a.nav-tab').on('click', function(e) {
+            e.preventDefault();
+            
+            const tabId = $(this).attr('href');
+            
+            // Dispatch a custom event that other parts of the code can listen for
+            $(document).trigger('mpai-tab-shown', [tabId]);
+            
+            // For diagnostic tab specifically, trigger plugin logs loading
+            if (tabId === '#tab-diagnostic') {
+                console.log('MPAI: Diagnostic tab clicked, triggering plugin logs load');
+                // Trigger a custom event that the logs section can listen for
+                $(document).trigger('mpai-load-plugin-logs');
+            }
+        });
+        
         console.log('MPAI: Admin script initialization complete');
     });
 

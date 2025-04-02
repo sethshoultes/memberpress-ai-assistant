@@ -5,6 +5,40 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.5] - 2025-03-31
+
+### Added
+- Implemented WordPress Site Health API integration for comprehensive system diagnostics:
+  - Created MPAI_Site_Health class as a wrapper for WordPress Site Health API
+  - Added detailed MemberPress-specific diagnostics to Site Health data
+  - Enhanced Diagnostic Tool with Site Health integration
+  - Added site_health test type to diagnostic page
+  - Updated memberpress_info tool to include system_info option
+  - Added include_system_info parameter to combine MemberPress and system data
+  - Created comprehensive system information retrieval capabilities
+  - Added fallback methods for environments without Site Health API (WP < 5.2)
+  - Enhanced system prompt with instructions for accessing system information
+  - Updated tool usage messages with system information examples
+
+### Changed
+- Improved diagnostic capabilities with more comprehensive system information
+- Enhanced troubleshooting capabilities with detailed WordPress environment data
+- Updated context manager to support system information in memberpress_info tool
+- Added system_info type to memberpress_info tool parameter options
+- Improved system prompt with guidance on accessing system information
+
+## [1.5.6] - 2025-04-01
+
+### Fixed
+- Fixed duplicate membership creation issue:
+  - Implemented tool call fingerprinting to identify and track previously executed tools
+  - Added a global Set to store processed tool calls and prevent redundant execution
+  - Enhanced executeToolCall function with duplicate detection and visual feedback
+  - Improved UI to show "Skipped (duplicate)" status for duplicate tool executions
+  - Added detailed logging of duplicate tool call prevention
+  - Fixed issue where the same tool call was being detected and executed multiple times
+  - Created comprehensive documentation of the deduplication system
+
 ## [1.5.4] - 2025-03-31
 
 ### Fixed

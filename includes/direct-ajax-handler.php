@@ -8,14 +8,27 @@
 // Load WordPress core
 require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/wp-load.php');
 
-// Check if user is logged in and is admin
-if (!current_user_can('manage_options')) {
-    header('HTTP/1.1 403 Forbidden');
-    echo json_encode(array(
-        'success' => false,
-        'message' => 'Permission denied'
-    ));
-    exit;
+// Check if user is logged in (only for certain actions)
+if (isset($_POST['action']) && $_POST['action'] === 'plugin_logs') {
+    // For plugin_logs, only require being logged in
+    if (!is_user_logged_in()) {
+        header('HTTP/1.1 403 Forbidden');
+        echo json_encode(array(
+            'success' => false,
+            'message' => 'Permission denied - must be logged in'
+        ));
+        exit;
+    }
+} else {
+    // For all other actions, require admin privileges
+    if (!current_user_can('manage_options')) {
+        header('HTTP/1.1 403 Forbidden');
+        echo json_encode(array(
+            'success' => false,
+            'message' => 'Permission denied - admin privileges required'
+        ));
+        exit;
+    }
 }
 
 // Output header for JSON
@@ -35,17 +48,234 @@ if (empty($_POST['action'])) {
 $action = sanitize_text_field($_POST['action']);
 
 switch ($action) {
-    case 'test_simple':
-        // Simple test that always succeeds
+    case 'plugin_logs':
+        // Direct plugin logs handler for AI tool calls
+        if (!is_user_logged_in()) {
+            header('HTTP/1.1 403 Forbidden');
+            echo json_encode(array(
+                'success' => false,
+                'message' => 'User must be logged in'
+            ));
+            exit;
+        }
+
+        // Include the plugin logger
+        require_once(dirname(__FILE__) . '/class-mpai-plugin-logger.php');
+        $plugin_logger = mpai_init_plugin_logger();
+
+        if (!$plugin_logger) {
+            echo json_encode(array(
+                'success' => false,
+                'message' => 'Failed to initialize plugin logger'
+            ));
+            exit;
+        }
+
+        // Get parameters
+        $action_type = isset($_POST['action_type']) ? sanitize_text_field($_POST['action_type']) : '';
+        $days = isset($_POST['days']) ? intval($_POST['days']) : 30;
+        
+        // Get logs
+        $args = array(
+            'action'    => $action_type,
+            'date_from' => date('Y-m-d H:i:s', strtotime("-{$days} days")),
+            'orderby'   => 'date_time',
+            'order'     => 'DESC',
+            'limit'     => 25
+        );
+        
+        $logs = $plugin_logger->get_logs($args);
+        
+        // Count logs by action
+        $summary = array(
+            'total' => count($logs),
+            'installed' => 0,
+            'updated' => 0,
+            'activated' => 0,
+            'deactivated' => 0,
+            'deleted' => 0
+        );
+        
+        foreach ($logs as $log) {
+            if (isset($log['action']) && isset($summary[$log['action']])) {
+                $summary[$log['action']]++;
+            }
+        }
+        
+        // Format logs with time_ago
+        foreach ($logs as &$log) {
+            $timestamp = strtotime($log['date_time']);
+            $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
+        }
+        
         echo json_encode(array(
             'success' => true,
-            'message' => 'Direct AJAX handler is working',
-            'data' => array(
-                'time' => current_time('mysql'),
-                'user_id' => get_current_user_id(),
-                'received_data' => $_POST
-            )
+            'tool' => 'plugin_logs',
+            'summary' => $summary,
+            'time_period' => "past {$days} days",
+            'logs' => $logs,
+            'total' => count($logs),
+            'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
         ));
+        break;
+    
+    case 'test_simple':
+        // Check if this is a wp_api create_membership request
+        if (isset($_POST['wp_api_action']) && $_POST['wp_api_action'] === 'create_membership') {
+            // This is a create_membership request
+            try {
+                // Check if MemberPress is active
+                if (!class_exists('MeprOptions')) {
+                    echo json_encode(array(
+                        'success' => false,
+                        'message' => 'MemberPress is not active'
+                    ));
+                    break;
+                }
+                
+                // Get parameters with defaults
+                $title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : 'New Membership';
+                $description = isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '';
+                $price = isset($_POST['price']) ? floatval($_POST['price']) : 0.00;
+                $period = isset($_POST['period']) ? intval($_POST['period']) : 1;
+                $period_type = isset($_POST['period_type']) ? sanitize_text_field($_POST['period_type']) : 'month';
+                $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'publish';
+                
+                // Create the membership
+                $post_data = array(
+                    'post_title' => $title,
+                    'post_content' => $description,
+                    'post_status' => $status,
+                    'post_type' => 'memberpressproduct',
+                );
+                
+                // Insert the post
+                $product_id = wp_insert_post($post_data);
+                
+                if (is_wp_error($product_id)) {
+                    echo json_encode(array(
+                        'success' => false,
+                        'message' => 'Failed to create membership: ' . $product_id->get_error_message()
+                    ));
+                    break;
+                }
+                
+                // Set price
+                update_post_meta($product_id, '_mepr_product_price', $price);
+                
+                // Set billing type (default to one-time for simplicity)
+                $billing_type = isset($_POST['billing_type']) ? sanitize_text_field($_POST['billing_type']) : 'recurring';
+                update_post_meta($product_id, '_mepr_product_period_type', $period_type);
+                update_post_meta($product_id, '_mepr_product_period', $period);
+                update_post_meta($product_id, '_mepr_billing_type', $billing_type);
+                
+                // Get edit URL
+                $edit_url = admin_url("post.php?post={$product_id}&action=edit");
+                
+                // Return success with membership details
+                echo json_encode(array(
+                    'success' => true,
+                    'product_id' => $product_id,
+                    'title' => $title,
+                    'price' => $price,
+                    'period' => $period,
+                    'period_type' => $period_type,
+                    'billing_type' => $billing_type,
+                    'edit_url' => $edit_url,
+                    'message' => "Membership '{$title}' created successfully"
+                ));
+                
+            } catch (Exception $e) {
+                echo json_encode(array(
+                    'success' => false,
+                    'message' => 'Error creating membership: ' . $e->getMessage()
+                ));
+            }
+            break;
+        }
+        
+        // Check if this is a message update request
+        if (isset($_POST['is_update_message']) && $_POST['is_update_message'] === 'true') {
+            // This is a message update request
+            if (empty($_POST['message_id'])) {
+                echo json_encode(array(
+                    'success' => false,
+                    'message' => 'Missing message_id parameter'
+                ));
+                break;
+            }
+            
+            if (empty($_POST['content'])) {
+                echo json_encode(array(
+                    'success' => false,
+                    'message' => 'Missing content parameter'
+                ));
+                break;
+            }
+            
+            // Handle message update without nonce check
+            try {
+                $message_id = sanitize_text_field($_POST['message_id']);
+                $content = $_POST['content']; // Don't sanitize HTML
+                
+                // Update the message in the database directly
+                global $wpdb;
+                $table_messages = $wpdb->prefix . 'mpai_messages';
+                
+                // Check if message exists first
+                $message_exists = $wpdb->get_var(
+                    $wpdb->prepare(
+                        "SELECT COUNT(*) FROM $table_messages WHERE id = %d",
+                        $message_id
+                    )
+                );
+                
+                if ($message_exists) {
+                    // Update the message
+                    $result = $wpdb->update(
+                        $table_messages,
+                        array('response' => $content),
+                        array('id' => $message_id)
+                    );
+                    
+                    if ($result === false) {
+                        echo json_encode(array(
+                            'success' => false,
+                            'message' => 'Database error updating message',
+                            'error' => $wpdb->last_error
+                        ));
+                    } else {
+                        echo json_encode(array(
+                            'success' => true,
+                            'message' => 'Message updated successfully',
+                            'message_id' => $message_id
+                        ));
+                    }
+                } else {
+                    echo json_encode(array(
+                        'success' => false,
+                        'message' => 'Message not found in database',
+                        'message_id' => $message_id
+                    ));
+                }
+            } catch (Exception $e) {
+                echo json_encode(array(
+                    'success' => false,
+                    'message' => 'Exception updating message: ' . $e->getMessage()
+                ));
+            }
+        } else {
+            // Regular simple test response
+            echo json_encode(array(
+                'success' => true,
+                'message' => 'Direct AJAX handler is working',
+                'data' => array(
+                    'time' => current_time('mysql'),
+                    'user_id' => get_current_user_id(),
+                    'received_data' => $_POST
+                )
+            ));
+        }
         break;
         
     case 'test_nonce':

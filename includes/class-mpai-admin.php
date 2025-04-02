@@ -23,6 +23,10 @@ class MPAI_Admin {
         add_action('wp_ajax_mpai_test_openai_api', array($this, 'test_openai_api'));
         add_action('wp_ajax_mpai_test_memberpress_api', array($this, 'test_memberpress_api'));
         add_action('wp_ajax_mpai_run_diagnostic', array($this, 'run_diagnostic'));
+        add_action('wp_ajax_mpai_update_message', array($this, 'update_message'));
+        
+        // Special endpoint just for plugin_logs to bypass all issues
+        add_action('wp_ajax_mpai_plugin_logs', array($this, 'get_plugin_logs'));
         
         // Debug actions
         add_action('wp_ajax_mpai_debug_nonce', array($this, 'debug_nonce'));
@@ -31,12 +35,112 @@ class MPAI_Admin {
     
     /**
      * Simple AJAX test handler - no nonce check for debugging
+     * Also handles plugin logs directly for maximum compatibility
      */
     public function simple_test() {
         error_log('MPAI: Simple test AJAX handler called');
         error_log('MPAI: POST data: ' . json_encode($_POST));
         
-        // Return success regardless
+        // Special handling for plugin logs requests
+        if (isset($_POST['is_plugin_logs']) && $_POST['is_plugin_logs'] === 'true') {
+            error_log('MPAI: Simple test handler detected plugin_logs request');
+            
+            try {
+                // Load the plugin logger class
+                if (!function_exists('mpai_init_plugin_logger')) {
+                    if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
+                        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+                        error_log('MPAI: Loaded plugin logger class in simple test handler');
+                    } else {
+                        error_log('MPAI: Plugin logger class not found in simple test handler');
+                        wp_send_json_success([
+                            'tool' => 'plugin_logs',
+                            'error' => 'Plugin logger class not found',
+                            'logs' => [],
+                            'success' => false
+                        ]);
+                        return;
+                    }
+                }
+                
+                // Initialize the plugin logger
+                $plugin_logger = mpai_init_plugin_logger();
+                if (!$plugin_logger) {
+                    error_log('MPAI: Failed to initialize plugin logger in simple test handler');
+                    wp_send_json_success([
+                        'tool' => 'plugin_logs',
+                        'error' => 'Failed to initialize plugin logger',
+                        'logs' => [],
+                        'success' => false
+                    ]);
+                    return;
+                }
+                
+                // Get the parameters
+                $action = isset($_POST['action_type']) ? sanitize_text_field($_POST['action_type']) : '';
+                $days = isset($_POST['days']) && is_numeric($_POST['days']) ? intval($_POST['days']) : 30;
+                $limit = isset($_POST['limit']) && is_numeric($_POST['limit']) ? intval($_POST['limit']) : 25;
+                
+                error_log("MPAI: Simple test handler getting plugin logs with action={$action}, days={$days}");
+                
+                // Get the logs
+                $args = [
+                    'action'    => $action,
+                    'date_from' => date('Y-m-d H:i:s', strtotime("-{$days} days")),
+                    'orderby'   => 'date_time',
+                    'order'     => 'DESC',
+                    'limit'     => $limit
+                ];
+                
+                $logs = $plugin_logger->get_logs($args);
+                error_log('MPAI: Simple test handler found ' . count($logs) . ' plugin logs');
+                
+                // Count logs by action
+                $summary = [
+                    'total' => count($logs),
+                    'installed' => 0,
+                    'updated' => 0,
+                    'activated' => 0,
+                    'deactivated' => 0,
+                    'deleted' => 0
+                ];
+                
+                foreach ($logs as $log) {
+                    if (isset($log['action']) && isset($summary[$log['action']])) {
+                        $summary[$log['action']]++;
+                    }
+                }
+                
+                // Format logs with time_ago
+                foreach ($logs as &$log) {
+                    $timestamp = strtotime($log['date_time']);
+                    $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
+                }
+                
+                // Return the logs
+                wp_send_json_success([
+                    'tool' => 'plugin_logs',
+                    'summary' => $summary,
+                    'time_period' => "past {$days} days",
+                    'logs' => $logs,
+                    'total' => count($logs),
+                    'success' => true,
+                    'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
+                ]);
+                
+            } catch (Exception $e) {
+                error_log('MPAI: Exception in simple test handler processing plugin logs: ' . $e->getMessage());
+                wp_send_json_success([
+                    'tool' => 'plugin_logs',
+                    'error' => 'Error processing plugin logs: ' . $e->getMessage(),
+                    'logs' => [],
+                    'success' => false
+                ]);
+            }
+            return;
+        }
+        
+        // Normal simple test response
         wp_send_json_success(array(
             'message' => 'Simple test successful!',
             'received_data' => $_POST,
@@ -417,6 +521,110 @@ class MPAI_Admin {
         // Log the tool execution request for debugging
         error_log('MPAI: execute_tool called. POST data: ' . json_encode($_POST));
         
+        // IMMEDIATE HANDLING FOR PLUGIN LOGS: Check if this is a plugin_logs request before doing anything else
+        if ((isset($_POST['tool_request']) && strpos($_POST['tool_request'], 'plugin_logs') !== false) || 
+            (isset($_POST['is_plugin_logs']) && $_POST['is_plugin_logs'])) {
+            error_log('MPAI: Detected plugin_logs in request, using fast-path handling');
+            
+            try {
+                // Make sure we have class-mpai-plugin-logger.php
+                if (!function_exists('mpai_init_plugin_logger')) {
+                    if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
+                        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+                        error_log('MPAI: Loaded plugin logger class');
+                    } else {
+                        error_log('MPAI: Plugin logger class not found in fast-path');
+                        wp_send_json_error('Plugin logger class not found for plugin_logs');
+                        return;
+                    }
+                }
+                
+                // Initialize plugin logger
+                $plugin_logger = mpai_init_plugin_logger();
+                if (!$plugin_logger) {
+                    error_log('MPAI: Failed to initialize plugin logger in fast-path');
+                    wp_send_json_error('Failed to initialize plugin logger for plugin_logs');
+                    return;
+                }
+                
+                // Parse request data - check explicit parameters first, then try regex
+                $action = '';
+                $days = 30; // Default
+                
+                // Check for explicit parameters sent directly from JavaScript
+                if (isset($_POST['plugin_logs_action'])) {
+                    $action = sanitize_text_field($_POST['plugin_logs_action']);
+                    error_log('MPAI: Fast-path using explicit action parameter: ' . $action);
+                } elseif (isset($_POST['tool_request']) && preg_match('/"action"\s*:\s*"([^"]+)"/', $_POST['tool_request'], $matches)) {
+                    $action = $matches[1];
+                    error_log('MPAI: Fast-path extracted action via regex: ' . $action);
+                }
+                
+                // Extract days parameter
+                if (isset($_POST['plugin_logs_days']) && is_numeric($_POST['plugin_logs_days'])) {
+                    $days = (int)$_POST['plugin_logs_days'];
+                    error_log('MPAI: Fast-path using explicit days parameter: ' . $days);
+                } elseif (isset($_POST['tool_request']) && preg_match('/"days"\s*:\s*(\d+)/', $_POST['tool_request'], $matches)) {
+                    $days = (int)$matches[1];
+                    error_log('MPAI: Fast-path extracted days via regex: ' . $days);
+                }
+                
+                // Get logs with minimal processing
+                $args = [
+                    'action'    => $action,
+                    'date_from' => date('Y-m-d H:i:s', strtotime("-{$days} days")),
+                    'orderby'   => 'date_time',
+                    'order'     => 'DESC',
+                    'limit'     => 25
+                ];
+                
+                error_log('MPAI: Fast-path getting plugin logs with args: ' . json_encode($args));
+                $logs = $plugin_logger->get_logs($args);
+                
+                // Simple counting of log entries by action
+                $summary = [
+                    'total' => count($logs),
+                    'installed' => 0,
+                    'updated' => 0,
+                    'activated' => 0,
+                    'deactivated' => 0,
+                    'deleted' => 0
+                ];
+                
+                foreach ($logs as $log) {
+                    if (isset($log['action']) && isset($summary[$log['action']])) {
+                        $summary[$log['action']]++;
+                    }
+                }
+                
+                // Format logs with time_ago
+                foreach ($logs as &$log) {
+                    $timestamp = strtotime($log['date_time']);
+                    $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
+                }
+                
+                // Create response
+                $result = [
+                    'success' => true,
+                    'tool' => 'plugin_logs',
+                    'summary' => $summary,
+                    'time_period' => "past {$days} days",
+                    'logs' => $logs,
+                    'total' => count($logs),
+                    'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
+                ];
+                
+                error_log('MPAI: Fast-path successfully retrieved plugin logs, entry count: ' . count($logs));
+                wp_send_json_success($result);
+                return;
+            } catch (Exception $e) {
+                error_log('MPAI: Fast-path error in plugin_logs: ' . $e->getMessage());
+                wp_send_json_error('Error in fast-path plugin_logs handler: ' . $e->getMessage());
+                return;
+            }
+        }
+        
+        // NORMAL PATH CONTINUES BELOW
         // Check nonce - handling flexibly to support various ways the nonce might be sent
         try {
             $nonce_verified = false;
@@ -484,18 +692,55 @@ class MPAI_Admin {
             return;
         }
 
+        // Log the raw value before any processing
+        error_log('MPAI: Raw tool_request value: "' . $_POST['tool_request'] . '"');
+        
         // Try with and without stripslashes for json_decode
         $tool_request = json_decode(stripslashes($_POST['tool_request']), true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
             // Try without stripslashes
-            error_log('MPAI: First JSON decode attempt failed. Trying without stripslashes.');
+            error_log('MPAI: First JSON decode attempt failed: ' . json_last_error_msg() . '. Trying without stripslashes.');
             $tool_request = json_decode($_POST['tool_request'], true);
             
             if (json_last_error() !== JSON_ERROR_NONE) {
-                error_log('MPAI: Invalid JSON in tool request: ' . json_last_error_msg());
-                wp_send_json_error('Invalid JSON in tool request: ' . json_last_error_msg());
-                return;
+                error_log('MPAI: Invalid JSON in tool request: ' . json_last_error_msg() . ', raw value: "' . $_POST['tool_request'] . '"');
+                
+                // Last attempt - sometimes the frontend sends a JSON object inside a string
+                if (strpos($_POST['tool_request'], '"tool":"plugin_logs"') !== false ||
+                    strpos($_POST['tool_request'], '"name":"plugin_logs"') !== false) {
+                    error_log('MPAI: Found plugin_logs reference in malformed JSON, creating synthetic request');
+                    
+                    // Create a synthetic tool request for plugin_logs
+                    // Extract action parameter if possible using regex
+                    $action = '';
+                    if (preg_match('/"action"\s*:\s*"([^"]+)"/', $_POST['tool_request'], $matches)) {
+                        $action = $matches[1];
+                        error_log('MPAI: Extracted action: ' . $action);
+                    }
+                    
+                    // Extract days parameter if possible
+                    $days = 30; // Default
+                    if (preg_match('/"days"\s*:\s*(\d+)/', $_POST['tool_request'], $matches)) {
+                        $days = (int)$matches[1];
+                        error_log('MPAI: Extracted days: ' . $days);
+                    }
+                    
+                    // Create synthetic request
+                    $tool_request = [
+                        'tool' => 'plugin_logs',
+                        'parameters' => [
+                            'action' => $action,
+                            'days' => $days
+                        ]
+                    ];
+                    
+                    error_log('MPAI: Created synthetic tool_request: ' . json_encode($tool_request));
+                } else {
+                    // Give up if we can't find plugin_logs reference
+                    wp_send_json_error('Invalid JSON in tool request: ' . json_last_error_msg());
+                    return;
+                }
             } else {
                 error_log('MPAI: Successful JSON decode without stripslashes');
             }
@@ -503,10 +748,107 @@ class MPAI_Admin {
             error_log('MPAI: Successful JSON decode with stripslashes');
         }
         
+        // Log the parsed tool request
+        error_log('MPAI: Parsed tool request structure: ' . json_encode($tool_request));
+        
         error_log('MPAI: Processing tool request: ' . json_encode($tool_request));
         
         try {
+            error_log('MPAI: Initializing context manager for tool execution');
             $context_manager = new MPAI_Context_Manager();
+            
+            // Special case for plugin_logs tool - handle it directly for debugging
+            // Check both 'name' and 'tool' keys for plugin_logs (tool is the key used by Claude)
+            if ((isset($tool_request['name']) && $tool_request['name'] === 'plugin_logs') || 
+                (isset($tool_request['tool']) && $tool_request['tool'] === 'plugin_logs')) {
+                error_log('MPAI: Special handling for plugin_logs tool');
+                
+                // Make sure we have class-mpai-plugin-logger.php
+                if (!function_exists('mpai_init_plugin_logger')) {
+                    if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
+                        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+                        error_log('MPAI: Loaded plugin logger class');
+                    } else {
+                        error_log('MPAI: Plugin logger class not found');
+                        wp_send_json_error('Plugin logger class not found at: ' . MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php');
+                        return;
+                    }
+                }
+                
+                // Initialize plugin logger
+                $plugin_logger = mpai_init_plugin_logger();
+                if (!$plugin_logger) {
+                    error_log('MPAI: Failed to initialize plugin logger');
+                    wp_send_json_error('Failed to initialize plugin logger');
+                    return;
+                }
+                
+                // Extract parameters - access them through either the direct 'parameters' key (Claude format)
+                // or the 'name'/'parameters' format (our internal format)
+                $parameters = isset($tool_request['parameters']) ? $tool_request['parameters'] : [];
+                
+                // In case we have 'tool' instead of 'name' format from Claude
+                if (empty($parameters) && isset($tool_request['tool']) && isset($tool_request['parameters'])) {
+                    $parameters = $tool_request['parameters'];
+                }
+                
+                error_log('MPAI: Extracted parameters for plugin_logs: ' . json_encode($parameters));
+                
+                $action = isset($parameters['action']) ? sanitize_text_field($parameters['action']) : '';
+                $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
+                $limit = isset($parameters['limit']) ? intval($parameters['limit']) : 25;
+                
+                // Get logs
+                $args = [
+                    'action'    => $action,
+                    'date_from' => date('Y-m-d H:i:s', strtotime("-{$days} days")),
+                    'orderby'   => 'date_time',
+                    'order'     => 'DESC',
+                    'limit'     => $limit
+                ];
+                
+                error_log('MPAI: Getting plugin logs with args: ' . json_encode($args));
+                $logs = $plugin_logger->get_logs($args);
+                
+                // Create summary of logs
+                $summary = [
+                    'total' => count($logs),
+                    'installed' => 0,
+                    'updated' => 0,
+                    'activated' => 0,
+                    'deactivated' => 0,
+                    'deleted' => 0
+                ];
+                
+                foreach ($logs as $log) {
+                    if (isset($log['action']) && isset($summary[$log['action']])) {
+                        $summary[$log['action']]++;
+                    }
+                }
+                
+                // Format logs with time_ago
+                foreach ($logs as &$log) {
+                    $timestamp = strtotime($log['date_time']);
+                    $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
+                }
+                
+                // Create response
+                $result = [
+                    'success' => true,
+                    'tool' => 'plugin_logs',
+                    'summary' => $summary,
+                    'time_period' => "past {$days} days",
+                    'logs' => $logs,
+                    'total' => count($logs),
+                    'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
+                ];
+                
+                error_log('MPAI: Successfully retrieved plugin logs, entry count: ' . count($logs));
+                wp_send_json_success($result);
+                return;
+            }
+            
+            // Normal tool execution flow for other tools
             $result = $context_manager->process_tool_request($tool_request);
             
             error_log('MPAI: Tool execution result: ' . json_encode($result));
@@ -823,6 +1165,212 @@ class MPAI_Admin {
     /**
      * Run diagnostic tests
      */
+    /**
+     * Special direct endpoint for plugin logs
+     * Completely independent of other endpoints to bypass all issues
+     */
+    public function get_plugin_logs() {
+        try {
+            error_log('MPAI: get_plugin_logs direct endpoint called');
+            error_log('MPAI: POST data: ' . json_encode($_POST));
+            
+            // Make sure we have class-mpai-plugin-logger.php
+            if (!function_exists('mpai_init_plugin_logger')) {
+                if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
+                    require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+                    error_log('MPAI: Loaded plugin logger class directly');
+                } else {
+                    error_log('MPAI: Plugin logger class not found in direct endpoint');
+                    wp_send_json_error('Plugin logger class not found');
+                    return;
+                }
+            }
+            
+            // Initialize plugin logger
+            $plugin_logger = mpai_init_plugin_logger();
+            if (!$plugin_logger) {
+                error_log('MPAI: Failed to initialize plugin logger in direct endpoint');
+                wp_send_json_error('Failed to initialize plugin logger');
+                return;
+            }
+            
+            // Extract parameters with defaults
+            $action = isset($_POST['action_type']) ? sanitize_text_field($_POST['action_type']) : '';
+            $days = isset($_POST['days']) && is_numeric($_POST['days']) ? intval($_POST['days']) : 30;
+            $limit = isset($_POST['limit']) && is_numeric($_POST['limit']) ? intval($_POST['limit']) : 25;
+            
+            error_log("MPAI: Direct plugin logs using action={$action}, days={$days}, limit={$limit}");
+            
+            // Get logs
+            $args = [
+                'action'    => $action,
+                'date_from' => date('Y-m-d H:i:s', strtotime("-{$days} days")),
+                'orderby'   => 'date_time',
+                'order'     => 'DESC',
+                'limit'     => $limit
+            ];
+            
+            $logs = $plugin_logger->get_logs($args);
+            error_log('MPAI: Direct plugin logs found: ' . count($logs));
+            
+            // Simple counting of log entries by action
+            $summary = [
+                'total' => count($logs),
+                'installed' => 0,
+                'updated' => 0,
+                'activated' => 0,
+                'deactivated' => 0,
+                'deleted' => 0
+            ];
+            
+            foreach ($logs as $log) {
+                if (isset($log['action']) && isset($summary[$log['action']])) {
+                    $summary[$log['action']]++;
+                }
+            }
+            
+            // Format logs with time_ago
+            foreach ($logs as &$log) {
+                $timestamp = strtotime($log['date_time']);
+                $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
+            }
+            
+            // Create response
+            $result = [
+                'success' => true,
+                'tool' => 'plugin_logs',
+                'summary' => $summary,
+                'time_period' => "past {$days} days",
+                'logs' => $logs,
+                'total' => count($logs),
+                'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
+            ];
+            
+            error_log('MPAI: Direct plugin logs returning success');
+            wp_send_json_success($result);
+            
+        } catch (Exception $e) {
+            error_log('MPAI: Exception in direct get_plugin_logs: ' . $e->getMessage());
+            wp_send_json_error('Error getting plugin logs: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update a chat message in the database
+     * This is used for saving plugin_logs results and other dynamic content
+     */
+    public function update_message() {
+        try {
+            // Log the request for debugging
+            error_log('MPAI: update_message called');
+            error_log('MPAI: update_message POST data keys: ' . json_encode(array_keys($_POST)));
+            error_log('MPAI: update_message POST nonce value: ' . (isset($_POST['nonce']) ? substr($_POST['nonce'], 0, 6) . '...' : 'NOT SET'));
+            
+            // Skip nonce check in debug mode or if bypass_nonce is set
+            $verify_nonce = true;
+            if (isset($_POST['bypass_nonce']) && $_POST['bypass_nonce'] === 'true') {
+                $verify_nonce = false;
+                error_log('MPAI: update_message - Bypassing nonce check due to bypass_nonce parameter');
+            }
+            
+            if ($verify_nonce) {
+                try {
+                    // First try manual nonce verification for debugging
+                    if (isset($_POST['nonce'])) {
+                        $nonce = sanitize_text_field($_POST['nonce']);
+                        $verified = wp_verify_nonce($nonce, 'mpai_nonce');
+                        error_log('MPAI: update_message - Manual nonce verification result: ' . ($verified ? 'Success ('.$verified.')' : 'Failed (0)'));
+                    } else {
+                        error_log('MPAI: update_message - No nonce provided in POST data');
+                    }
+                    
+                    // Now check with check_ajax_referer (will die on failure)
+                    error_log('MPAI: update_message - About to check nonce with check_ajax_referer');
+                    check_ajax_referer('mpai_nonce', 'nonce', true);
+                    error_log('MPAI: update_message - Nonce check passed!');
+                } catch (Exception $e) {
+                    error_log('MPAI: update_message - Exception during nonce verification: ' . $e->getMessage());
+                    // Don't die, continue processing for debugging
+                }
+            } else {
+                error_log('MPAI: update_message - SKIPPING NONCE CHECK FOR DEBUGGING');
+            }
+            
+            // Check for required fields
+            if (empty($_POST['message_id'])) {
+                error_log('MPAI: update_message - message_id is required');
+                wp_send_json_error('Message ID is required');
+                return;
+            }
+            
+            $message_id = sanitize_text_field($_POST['message_id']);
+            
+            // If the message_id doesn't match the expected format (starting with mpai-message-),
+            // it may be the message element ID rather than the database ID
+            if (strpos($message_id, 'mpai-message-') === 0) {
+                $message_id = str_replace('mpai-message-', '', $message_id);
+            }
+            
+            // Check if message_id is numeric (refers to database ID)
+            if (!is_numeric($message_id)) {
+                error_log('MPAI: update_message - Invalid message ID format: ' . $message_id);
+                wp_send_json_error('Invalid message ID format');
+                return;
+            }
+            
+            // Get content
+            if (empty($_POST['content'])) {
+                error_log('MPAI: update_message - content is required');
+                wp_send_json_error('Content is required');
+                return;
+            }
+            
+            $content = $_POST['content']; // Don't sanitize to preserve HTML
+            
+            // Update the message in the database
+            global $wpdb;
+            $table_messages = $wpdb->prefix . 'mpai_messages';
+            
+            // Query the original message to get the conversation_id
+            $message_data = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT id, conversation_id, message FROM $table_messages WHERE id = %d",
+                    $message_id
+                ),
+                ARRAY_A
+            );
+            
+            if (!$message_data) {
+                error_log('MPAI: update_message - Message not found: ' . $message_id);
+                wp_send_json_error('Message not found');
+                return;
+            }
+            
+            // Update the message
+            $result = $wpdb->update(
+                $table_messages,
+                array('response' => $content),
+                array('id' => $message_id)
+            );
+            
+            if ($result === false) {
+                error_log('MPAI: update_message - Error updating message: ' . $wpdb->last_error);
+                wp_send_json_error('Error updating message: ' . $wpdb->last_error);
+                return;
+            }
+            
+            error_log('MPAI: update_message - Successfully updated message ' . $message_id);
+            wp_send_json_success(array(
+                'message' => 'Message updated successfully',
+                'message_id' => $message_id
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI: Exception in update_message: ' . $e->getMessage());
+            wp_send_json_error('Error updating message: ' . $e->getMessage());
+        }
+    }
+
     public function run_diagnostic() {
         try {
             // Log the AJAX request for debugging

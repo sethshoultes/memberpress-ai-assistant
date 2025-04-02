@@ -18,26 +18,35 @@ $result = array();
 $test_type = isset($_GET['test']) ? sanitize_text_field($_GET['test']) : '';
 
 if (!empty($test_type)) {
-    // Create diagnostic tool instance
-    if (!class_exists('MPAI_Diagnostic_Tool')) {
-        $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-diagnostic-tool.php';
-        if (file_exists($tool_path)) {
-            require_once $tool_path;
-        }
-    }
-    
-    if (class_exists('MPAI_Diagnostic_Tool')) {
-        $diagnostic_tool = new MPAI_Diagnostic_Tool();
-        
-        // Execute the diagnostic test
-        $result = $diagnostic_tool->execute(array(
-            'test_type' => $test_type
-        ));
-    } else {
+    // Validate the test type
+    if (!in_array($test_type, ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'site_health', 'all'])) {
         $result = array(
             'success' => false,
-            'message' => 'Diagnostic tool class not found'
+            'message' => 'Invalid test type: ' . $test_type,
+            'available_tests' => ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'site_health', 'all']
         );
+    } else {
+        // Create diagnostic tool instance
+        if (!class_exists('MPAI_Diagnostic_Tool')) {
+            $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-diagnostic-tool.php';
+            if (file_exists($tool_path)) {
+                require_once $tool_path;
+            }
+        }
+        
+        if (class_exists('MPAI_Diagnostic_Tool')) {
+            $diagnostic_tool = new MPAI_Diagnostic_Tool();
+            
+            // Execute the diagnostic test
+            $result = $diagnostic_tool->execute(array(
+                'test_type' => $test_type
+            ));
+        } else {
+            $result = array(
+                'success' => false,
+                'message' => 'Diagnostic tool class not found'
+            );
+        }
     }
 }
 
@@ -63,6 +72,9 @@ switch ($test_type) {
         $next_test = 'plugin_status'; 
         break;
     case 'plugin_status': 
+        $next_test = 'site_health'; 
+        break;
+    case 'site_health': 
         $next_test = ''; 
         break;
     default: 
@@ -276,6 +288,12 @@ switch ($test_type) {
             </div>
             
             <div class="test-card">
+                <h3>WordPress Site Health</h3>
+                <p>Get comprehensive system information using WordPress Site Health API.</p>
+                <a href="?test=site_health" class="button">Run Test</a>
+            </div>
+            
+            <div class="test-card">
                 <h3>Complete System Check</h3>
                 <p>Runs all diagnostic tests to provide a comprehensive health report.</p>
                 <a href="?test=all" class="button">Run All Tests</a>
@@ -286,11 +304,33 @@ switch ($test_type) {
         <p>These standalone test pages provide additional diagnostic capabilities for debugging specific issues:</p>
         
         <div class="action-buttons">
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/debug-info.php'); ?>" class="button" target="_blank">Debug Info</a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/ajax-test.php'); ?>" class="button" target="_blank">AJAX Test</a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/openai-test.php'); ?>" class="button" target="_blank">OpenAI API Test</a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/memberpress-test.php'); ?>" class="button" target="_blank">MemberPress API Test</a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/anthropic-test.php'); ?>" class="button" target="_blank">Anthropic API Test</a>
+            <?php
+            // Define test files to check and display
+            $test_files = array(
+                'debug-info.php' => 'Debug Info',
+                'ajax-test.php' => 'AJAX Test',
+                'openai-test.php' => 'OpenAI API Test',
+                'memberpress-test.php' => 'MemberPress API Test',
+                'anthropic-test.php' => 'Anthropic API Test',
+                'test-validate-command.php' => 'Validate Command',
+                'test-best-selling.php' => 'Best Selling Test'
+            );
+            
+            // Check both includes and test directories
+            $include_dir = plugin_dir_path(dirname(__FILE__)) . 'includes/';
+            $test_dir = plugin_dir_path(dirname(__FILE__)) . 'test/';
+            
+            foreach ($test_files as $file => $label) {
+                // First check in includes directory
+                if (file_exists($include_dir . $file)) {
+                    echo '<a href="' . esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/' . $file) . '" class="button" target="_blank">' . $label . '</a> ';
+                }
+                // Then check in test directory
+                elseif (file_exists($test_dir . $file)) {
+                    echo '<a href="' . esc_url(plugin_dir_url(dirname(__FILE__)) . 'test/' . $file) . '" class="button" target="_blank">' . $label . '</a> ';
+                }
+            }
+            ?>
         </div>
         
         <?php else: ?>
@@ -512,6 +552,34 @@ switch ($test_type) {
                         <p><?php echo esc_html($result['message']); ?></p>
                     <?php endif; ?>
                 
+                <?php elseif ($test_type === 'site_health'): ?>
+                    <?php if ($result['success']): ?>
+                        <div class="success"><strong>✓ Site Health Information</strong></div>
+                        
+                        <?php foreach ($result['data'] as $section => $items): ?>
+                            <h3><?php echo esc_html(ucwords(str_replace('-', ' ', $section))); ?></h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Setting</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($items as $key => $item): ?>
+                                    <tr>
+                                        <td><strong><?php echo esc_html($item['label']); ?></strong></td>
+                                        <td><?php echo esc_html($item['value']); ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="error"><strong>✗ Failed to get Site Health information</strong></div>
+                        <p><?php echo esc_html($result['message']); ?></p>
+                    <?php endif; ?>
+                
                 <?php elseif ($test_type === 'all'): ?>
                     <h3>Complete Diagnostic Results</h3>
                     
@@ -577,6 +645,18 @@ switch ($test_type) {
                         <?php else: ?>
                             <div class="error"><strong>✗ Failed to get plugin status</strong></div>
                             <p><?php echo isset($result['plugin_status']) ? esc_html($result['plugin_status']['message']) : 'Test failed'; ?></p>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <h4>Site Health</h4>
+                    <div class="result-subsection">
+                        <?php if (isset($result['site_health']) && $result['site_health']['success']): ?>
+                            <div class="success"><strong>✓ Site Health information available</strong></div>
+                            <p><strong>Sections:</strong> <?php echo esc_html(implode(', ', array_keys($result['site_health']['data']))); ?></p>
+                            <p><a href="?test=site_health" class="button">View Full Site Health Report</a></p>
+                        <?php else: ?>
+                            <div class="error"><strong>✗ Failed to get Site Health information</strong></div>
+                            <p><?php echo isset($result['site_health']) ? esc_html($result['site_health']['message']) : 'Test failed'; ?></p>
                         <?php endif; ?>
                     </div>
                 
