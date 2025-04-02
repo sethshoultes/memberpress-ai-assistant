@@ -1,5 +1,17 @@
 # MemberPress AI Assistant Development Guidelines
 
+## Quick Reference
+- **System Map**: `/docs/current/system-map.md` - Complete system architecture overview
+- **Key Files**:
+  - `memberpress-ai-assistant.php` - Main plugin file
+  - `class-mpai-chat.php` - Core chat processing
+  - `class-mpai-context-manager.php` - Tool execution
+  - `class-mpai-api-router.php` - AI provider management
+- **Documentation Structure**:
+  - `/docs/current/` - Implemented features
+  - `/docs/roadmap/` - Planned features
+  - `/docs/archive/` - Outdated documentation
+
 ## Build & Development Commands
 - Build JS/CSS: `npm run build` (in individual plugin folders)
 - Development: `npm run start` or `npm run dev` (hot reload in some plugins)
