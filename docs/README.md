@@ -1,51 +1,53 @@
 # MemberPress AI Assistant Documentation
 
-Welcome to the MemberPress AI Assistant documentation hub. This directory contains comprehensive documentation for both users and developers.
+Welcome to the MemberPress AI Assistant documentation hub. This directory contains comprehensive documentation organized by implementation status and purpose.
 
-## User Documentation
+## Documentation Structure
 
-- [User Guide](user-guide.md) - Complete guide for setting up and using the MemberPress AI Assistant
-- [Agent System User Guide](agent-system-user-guide.md) - How to use the AI agent system and its specialized agents
-- [Agent System Quickstart](agent-system-quickstart.md) - Quick start guide for the agent system
+The documentation is organized into three main categories:
 
-## Developer Documentation
+- [**Current Features**](current/) - Documentation for implemented and active features
+- [**Feature Roadmap**](roadmap/) - Documentation for features in planning or development
+- [**Archive**](archive/) - Historical documentation that has been superseded
 
-- [Developer Guide](developer-guide.md) - Technical guide for developers including hooks and integration examples
-- [Project Specification](project-specification.md) - Detailed project overview and architecture
-- [Agent System Specification](agent-system-spec.md) - Technical specification of the agent system architecture
-- [Agent System Implementation](agent-system-implementation.md) - Implementation details of the agent system
-- [Command Validation Agent](command-validation-agent.md) - Documentation for the command validation system
-- [Console Logging System](console-logging-system.md) - Documentation for the browser console logging system
-- [Tool Call Detection](tool-call-detection.md) - Documentation for the enhanced tool call detection system
-- [Content Marker System](CONTENT_MARKER_SYSTEM.md) - Documentation for the content marker system
-- [Blog Post Fix Summary](BLOG_POST_FIX_SUMMARY.md) - Detailed summary of the blog post publishing fix
-- [Content Tools Specification](content-tools-specification.md) - Specification for enhanced content creation and workflow tools
+## Navigation
 
-## Security Framework
+### Current Features
 
-- [Agentic Security Framework](agentic-security-framework.md) - Comprehensive security model for AI agents
-- [WordPress Security Integration](wp-security-integration-plan.md) - Integration with WordPress security features
-- [Integrated Security Implementation Plan](integrated-security-implementation-plan.md) - Combined security implementation approach
+Our current implemented features documentation can be found in the [current](current/) directory, including:
 
-## Integration Plans
+- User and developer guides
+- Agent system implementation and usage
+- Content management tools
+- Technical infrastructure
+- Data analysis features
 
-- [Site Health Integration Plan](site-health-integration-plan.md) - Integration with WordPress Site Health system
-- [Support Routing System Plan](support-routing-system-plan.md) - System for routing support requests to human agents
+### Feature Roadmap
 
-## Testing and Status
+Future planned features are documented in the [roadmap](roadmap/) directory, including:
 
-- [Test Procedures](../tests/test-procedures.md) - Testing procedures and checklists
-- [Logging and Tool Detection Tests](../tests/logging-and-tool-detection-tests.md) - Specific tests for the console logging and tool call detection
-- [Changelog](../CHANGELOG.md) - Version history with detailed changes
+- Support routing system with Docsbot
+- Agentic security framework
+- WordPress security integration
+- Enhanced content creation tools
 
-## SDK Integration
+### Archive
 
-- [SDK README](../sdk/README.md) - Documentation for the Python SDK integration
+Historical documentation that has been superseded is stored in the [archive](archive/) directory for reference.
+
+## Documentation Templates
+
+When creating new documentation, please use the templates from the [templates](templates/) directory to ensure consistency.
 
 ## Media and Assets
 
-- [Images](images/) - Images used in documentation
+Images and other media assets are stored in the [images](images/) directory.
 
-## Archived Files
+## Contributing to Documentation
 
-- [Archive](archive/) - Archived test files and deprecated functionality
+When updating documentation:
+
+1. Place files in the appropriate directory based on implementation status
+2. Include metadata (status, version, date) at the top of each file
+3. Follow the established format from the templates
+4. Update the main README.md when adding significant new documentation

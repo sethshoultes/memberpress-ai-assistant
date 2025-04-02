@@ -676,10 +676,56 @@ class MPAI_MemberPress_API {
      * Get subscriptions directly from database
      *
      * @param array $params Query parameters
-     * @return array|WP_Error The subscriptions or error
+     * @param bool $formatted Whether to return formatted tabular data
+     * @return array|WP_Error|string The subscriptions or error
      */
-    public function get_subscriptions($params = array()) {
-        return $this->get_subscriptions_from_db($params);
+    public function get_subscriptions($params = array(), $formatted = false) {
+        $result = $this->get_subscriptions_from_db($params);
+        
+        if ($formatted && !is_wp_error($result)) {
+            return $this->format_subscriptions_as_table($result);
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Get active subscriptions
+     *
+     * @param array $params Query parameters
+     * @param bool $formatted Whether to return formatted tabular data
+     * @return array|WP_Error|string The active subscriptions or error
+     */
+    public function get_active_subscriptions($params = array(), $formatted = false) {
+        $params['status'] = 'active';
+        return $this->get_subscriptions($params, $formatted);
+    }
+    
+    /**
+     * Format subscriptions data as a tab-separated table
+     *
+     * @param array $subscriptions The subscriptions data
+     * @return string Formatted tabular data
+     */
+    private function format_subscriptions_as_table($subscriptions) {
+        if (empty($subscriptions) || !is_array($subscriptions)) {
+            return "ID\tUser\tMembership\tPrice\tStatus\tCreated Date\nNo subscriptions found.";
+        }
+        
+        $output = "ID\tUser\tMembership\tPrice\tStatus\tCreated Date\n";
+        
+        foreach ($subscriptions as $sub) {
+            $id = isset($sub['id']) ? $sub['id'] : 'N/A';
+            $user = isset($sub['username']) ? $sub['username'] : 'N/A';
+            $membership = isset($sub['product_title']) ? $sub['product_title'] : 'N/A';
+            $price = isset($sub['price']) ? '$' . $sub['price'] : 'N/A';
+            $status = isset($sub['status']) ? $sub['status'] : 'N/A';
+            $created = isset($sub['created_at']) ? date('Y-m-d', strtotime($sub['created_at'])) : 'N/A';
+            
+            $output .= "$id\t$user\t$membership\t$price\t$status\t$created\n";
+        }
+        
+        return $output;
     }
 
     /**
@@ -780,68 +826,170 @@ class MPAI_MemberPress_API {
     public function get_best_selling_membership($params = array(), $formatted = false) {
         global $wpdb;
         
-        // Get the transactions table name
-        $table_name = $wpdb->prefix . 'mepr_transactions';
-        
-        // Check if the table exists
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
-        if (!$table_exists) {
-            return $formatted ? "No transaction data found. Table does not exist." : array();
-        }
-        
-        // Build query to count sales by product
-        $query = "SELECT product_id, COUNT(*) as sale_count 
-                  FROM {$table_name} 
-                  WHERE status IN ('complete', 'confirmed')";
-                  
-        $query_args = array();
-                  
-        // Add date range filtering if provided
-        if (!empty($params['start_date'])) {
-            $query .= " AND created_at >= %s";
-            $query_args[] = $params['start_date'];
-        }
-        
-        if (!empty($params['end_date'])) {
-            $query .= " AND created_at <= %s";
-            $query_args[] = $params['end_date'];
-        }
-        
-        $query .= " GROUP BY product_id ORDER BY sale_count DESC LIMIT 5";
-        
-        // Execute the query
-        if (!empty($query_args)) {
-            $best_sellers = $wpdb->get_results($wpdb->prepare($query, $query_args));
-        } else {
-            $best_sellers = $wpdb->get_results($query);
-        }
-        
-        if (empty($best_sellers)) {
-            return $formatted ? "No completed transactions found." : array();
-        }
-        
-        // Format the results
-        $results = array();
-        foreach ($best_sellers as $index => $seller) {
-            // Get product details
-            $product = get_post($seller->product_id);
-            $product_title = $product ? $product->post_title : "Product #{$seller->product_id}";
+        try {
+            // Get the transactions table name
+            $table_name = $wpdb->prefix . 'mepr_transactions';
             
+            // Check if the table exists
+            $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+            if (!$table_exists) {
+                error_log('MPAI: mepr_transactions table does not exist');
+                return $this->get_fallback_membership_data($formatted);
+            }
+            
+            // Check if the table has any records
+            $record_count = $wpdb->get_var("SELECT COUNT(*) FROM {$table_name} LIMIT 1");
+            if (empty($record_count) || $record_count == 0) {
+                error_log('MPAI: mepr_transactions table exists but is empty');
+                return $this->get_fallback_membership_data($formatted);
+            }
+            
+            // Build query to count sales by product
+            $query = "SELECT product_id, COUNT(*) as sale_count 
+                      FROM {$table_name} 
+                      WHERE status IN ('complete', 'confirmed')";
+                      
+            $query_args = array();
+                      
+            // Add date range filtering if provided
+            if (!empty($params['start_date'])) {
+                $query .= " AND created_at >= %s";
+                $query_args[] = $params['start_date'];
+            }
+            
+            if (!empty($params['end_date'])) {
+                $query .= " AND created_at <= %s";
+                $query_args[] = $params['end_date'];
+            }
+            
+            $query .= " GROUP BY product_id ORDER BY sale_count DESC LIMIT 5";
+            
+            // Execute the query
+            if (!empty($query_args)) {
+                $best_sellers = $wpdb->get_results($wpdb->prepare($query, $query_args));
+            } else {
+                $best_sellers = $wpdb->get_results($query);
+            }
+            
+            if (empty($best_sellers)) {
+                error_log('MPAI: No completed transactions found in mepr_transactions table');
+                return $this->get_fallback_membership_data($formatted);
+            }
+            
+            // Format the results
+            $results = array();
+            foreach ($best_sellers as $index => $seller) {
+                // Get product details
+                $product = get_post($seller->product_id);
+                $product_title = $product ? $product->post_title : "Product #{$seller->product_id}";
+                
+                // Get price
+                $price = get_post_meta($seller->product_id, '_mepr_product_price', true);
+                
+                $results[] = array(
+                    'rank' => $index + 1,
+                    'product_id' => $seller->product_id,
+                    'product_title' => $product_title,
+                    'sale_count' => $seller->sale_count,
+                    'price' => $price
+                );
+            }
+            
+            // If formatted output is requested
+            if ($formatted) {
+                $output = "Best-Selling Memberships:\n\n";
+                $output .= "Rank\tTitle\tSales\tPrice\n";
+                
+                foreach ($results as $result) {
+                    $rank = $result['rank'];
+                    $title = $result['product_title'];
+                    $sales = $result['sale_count'];
+                    $price = isset($result['price']) ? '$' . $result['price'] : 'N/A';
+                    
+                    $output .= "{$rank}\t{$title}\t{$sales}\t{$price}\n";
+                }
+                
+                return $output;
+            }
+            
+            return $results;
+        } catch (Exception $e) {
+            error_log('MPAI: Error in get_best_selling_membership: ' . $e->getMessage());
+            return $this->get_fallback_membership_data($formatted);
+        }
+    }
+    
+    /**
+     * Get fallback membership data for best-selling when transaction data is unavailable
+     * 
+     * @param bool $formatted Whether to return formatted data
+     * @return array|string Fallback data
+     */
+    private function get_fallback_membership_data($formatted = false) {
+        // Get all membership products
+        $args = array(
+            'post_type' => 'memberpressproduct',
+            'posts_per_page' => 10,  // Increased to get more memberships
+            'post_status' => 'publish'
+        );
+        
+        $memberships = get_posts($args);
+        
+        if (empty($memberships)) {
+            if ($formatted) {
+                return "No membership data available. Transaction history and membership products could not be found.";
+            }
+            return array();
+        }
+        
+        // Create sample data with more realistic random numbers
+        $results = array();
+        foreach ($memberships as $index => $membership) {
             // Get price
-            $price = get_post_meta($seller->product_id, '_mepr_product_price', true);
+            $price = get_post_meta($membership->ID, '_mepr_product_price', true);
+            
+            // Generate a random number for sample data with wider range and more variation
+            // Generate more spread out numbers to better differentiate best sellers
+            $sample_sales = rand(10, 500); 
+            
+            // Use post date to influence randomness - newer products might have fewer sales
+            $post_date = strtotime($membership->post_date);
+            $days_old = (time() - $post_date) / (60 * 60 * 24);
+            // Adjust sales based on age - newer products might have lower sales numbers
+            $sales_adjustment = min($days_old / 30, 5); // Up to 5x multiplier for older products
+            $sample_sales = intval($sample_sales * (1 + $sales_adjustment / 10));
             
             $results[] = array(
                 'rank' => $index + 1,
-                'product_id' => $seller->product_id,
-                'product_title' => $product_title,
-                'sale_count' => $seller->sale_count,
-                'price' => $price
+                'product_id' => $membership->ID,
+                'product_title' => $membership->post_title,
+                'sale_count' => $sample_sales . ' (sample data)',  // Indicate that this is sample data
+                'price' => $price,
+                '_raw_sales' => $sample_sales // Hidden value for sorting
             );
         }
         
+        // Sort by the sample sales
+        usort($results, function($a, $b) {
+            $a_sales = isset($a['_raw_sales']) ? $a['_raw_sales'] : intval($a['sale_count']);
+            $b_sales = isset($b['_raw_sales']) ? $b['_raw_sales'] : intval($b['sale_count']);
+            return $b_sales - $a_sales;
+        });
+        
+        // Update ranks after sorting and remove temporary _raw_sales field
+        foreach ($results as $index => $result) {
+            $results[$index]['rank'] = $index + 1;
+            if (isset($results[$index]['_raw_sales'])) {
+                unset($results[$index]['_raw_sales']);
+            }
+        }
+        
+        // Limit to top 5 best sellers after sorting
+        $results = array_slice($results, 0, 5);
+        
         // If formatted output is requested
         if ($formatted) {
-            $output = "Best-Selling Memberships:\n\n";
+            $output = "Best-Selling Membership Products (Sample Data - No Transaction History):\n\n";
             $output .= "Rank\tTitle\tSales\tPrice\n";
             
             foreach ($results as $result) {

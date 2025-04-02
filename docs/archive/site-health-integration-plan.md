@@ -1,4 +1,6 @@
-# WordPress Site Health Integration Plan
+# [ARCHIVED] WordPress Site Health Integration Plan
+
+> **Archive Notice**: This document is archived as the integration plan has been fully implemented in version 1.5.5 (2025-03-31). Please refer to the current implementation documentation in [site-health-implementation-example.md](../site-health-implementation-example.md) for up-to-date information.
 
 ## Overview
 

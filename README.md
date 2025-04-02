@@ -2,7 +2,7 @@
 
 ## Description
 
-MemberPress AI Assistant integrates powerful AI language models (OpenAI and Anthropic) with your MemberPress WordPress plugin, providing intelligent insights, content analysis, and WP-CLI command assistance. This plugin helps site administrators better understand their membership data and streamline site management tasks.
+MemberPress AI Assistant integrates powerful AI language models (OpenAI and Anthropic) with your MemberPress WordPress plugin, providing intelligent insights, content analysis, and WP-CLI command assistance. This plugin helps site administrators better understand their membership data and streamline site management tasks with features like best-selling membership analysis, tiered support routing, and comprehensive diagnostic capabilities.
 
 ## Features
 
@@ -10,6 +10,8 @@ MemberPress AI Assistant integrates powerful AI language models (OpenAI and Anth
 - **Agent System**: Specialized AI agents that perform specific tasks through natural language commands
 - **Multi-Agent Data Processing**: Two-stage data processing to optimize the display and formatting of results
 - **MemberPress Data Analysis**: Get insights about memberships, transactions, subscriptions, and more
+- **Best-Selling Membership Analysis**: Identify your top-performing membership products with sales data
+- **Multi-Tier Support Routing**: Integrated support system using Docsbot for documentation before human escalation
 - **WP-CLI Integration**: Run WordPress CLI commands with AI assistance
 - **Command Recommendations**: Get AI-suggested commands based on your goals
 - **Secure Command Execution**: Only pre-approved commands from a whitelist can be executed
@@ -21,6 +23,7 @@ MemberPress AI Assistant integrates powerful AI language models (OpenAI and Anth
 - **Content Marker System**: Automatic tagging and identification of blog posts and pages for reliable publishing
 - **Smart Content Extraction**: Multi-tiered content retrieval system with fallbacks for blog post publishing
 - **Improved User Experience**: Streamlined interface with real-time feedback during command execution
+- **Site Health Integration**: Comprehensive system diagnostics with WordPress Site Health integration
 
 ## Requirements
 

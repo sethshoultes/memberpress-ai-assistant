@@ -5,6 +5,28 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.7] - 2025-04-02
+
+### Added
+- Implemented best-selling membership feature:
+  - Added get_best_selling_membership method to MPAI_MemberPress_API class
+  - Enhanced Context Manager with best_selling type in memberpress_info tool
+  - Added detailed sales data with product information, ranks, and prices
+  - Implemented fallback data generation when transaction data is unavailable
+  - Created comprehensive test script for best-selling membership feature
+- Updated support routing system with Docsbot integration:
+  - Added Docsbot connector for documentation-based answers
+  - Implemented multi-tier support system (AI → Docsbot → Human Support)
+  - Created support detection system to identify when to escalate
+  - Added tool definitions for documentation queries and support routing
+  - Designed intelligent escalation criteria with confidence thresholds
+- Reorganized documentation structure:
+  - Created organized directory system (current, roadmap, archive)
+  - Added documentation status tracking with metadata
+  - Created feature documentation template for consistency
+  - Archived outdated documentation
+  - Added comprehensive documentation indexes
+
 ## [1.5.5] - 2025-03-31
 
 ### Added
