@@ -6,14 +6,13 @@ This directory contains documentation for features that have been implemented an
 
 | Feature | Version Added | Description | Documentation |
 |---------|--------------|-------------|--------------|
-| Best-Selling Membership | 1.5.7 (2025-04-02) | Analyze top-performing membership products based on sales data | [best-selling-membership.md](../best-selling-membership.md) |
-| Duplicate Tool Execution Prevention | 1.5.6 (2025-04-01) | Solution for preventing duplicate tool executions | [SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md](../SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md) |
-| Enhanced Tool Call Detection | 1.5.2 (2025-03-31) | Improved pattern matching for tool call recognition | [tool-call-detection.md](../tool-call-detection.md) |
-| Console Logging System | 1.5.0 (2025-03-30) | Browser console logging with categories and levels | [console-logging-system.md](../console-logging-system.md) |
-| Content Marker System | 1.5.3 (2025-03-31) | HTML comment-based markers for blog content identification | [CONTENT_MARKER_SYSTEM.md](../CONTENT_MARKER_SYSTEM.md) |
-| Site Health Integration | 1.5.5 (2025-03-31) | Integration with WordPress Site Health diagnostics | [site-health-implementation-example.md](../site-health-implementation-example.md) |
-| Command Validation Agent | 1.5.0 (2025-03-30) | Specialized agent for validating commands before execution | [command-validation-agent.md](../command-validation-agent.md) |
-| Blog Post Fix | 1.5.1 (2025-03-31) | Fix for blog post creation and publishing issues | [BLOG_POST_FIX_SUMMARY.md](../BLOG_POST_FIX_SUMMARY.md) |
+| Support Routing System | 1.5.8 (2025-04-02) | Tiered support system with Docsbot integration | [support-routing-system.md](support-routing-system.md) |
+| Duplicate Tool Execution Prevention | 1.5.6 (2025-04-01) | Solution for preventing duplicate tool executions | [SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md](SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md) |
+| Enhanced Tool Call Detection | 1.5.2 (2025-03-31) | Improved pattern matching for tool call recognition | [tool-call-detection.md](tool-call-detection.md) |
+| Console Logging System | 1.5.0 (2025-03-30) | Browser console logging with categories and levels | [console-logging-system.md](console-logging-system.md) |
+| Content Marker System | 1.5.3 (2025-03-31) | HTML comment-based markers for blog content identification | [CONTENT_MARKER_SYSTEM.md](CONTENT_MARKER_SYSTEM.md) |
+| Command Validation Agent | 1.5.0 (2025-03-30) | Specialized agent for validating commands before execution | [command-validation-agent.md](command-validation-agent.md) |
+| Blog Post Fix | 1.5.1 (2025-03-31) | Fix for blog post creation and publishing issues | [BLOG_POST_FIX_SUMMARY.md](BLOG_POST_FIX_SUMMARY.md) |
 
 ## Core Documentation
 

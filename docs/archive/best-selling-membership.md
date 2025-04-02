@@ -1,5 +1,7 @@
 # Best-Selling Membership Feature
 
+**STATUS: ARCHIVED - Fully implemented in version 1.5.8 (2025-04-02)**
+
 This document provides detailed information about the Best-Selling Membership feature implemented in MemberPress AI Assistant.
 
 ## Overview

@@ -32,8 +32,24 @@ $stats = $api->get_data_summary();
             <p><?php _e('The AI assistant is available via the chat bubble in the bottom-right corner of your screen (or wherever you positioned it in settings).', 'memberpress-ai-assistant'); ?></p>
             <p><?php _e('You can use it to ask questions about your site, get insights, and run commands.', 'memberpress-ai-assistant'); ?></p>
             
-            <div class="mpai-welcome-buttons">
-                <button id="mpai-open-chat" class="button button-primary"><?php _e('Open Chat', 'memberpress-ai-assistant'); ?></button>
+            <div class="mpai-consent-container">
+                <?php
+                // Check if user has already consented
+                $user_id = get_current_user_id();
+                $has_consented = get_user_meta($user_id, 'mpai_has_consented', true);
+                ?>
+                <label>
+                    <input type="checkbox" id="mpai-consent-checkbox" class="mpai-consent-checkbox" <?php checked($has_consented, true); ?>>
+                    <?php _e('I agree to the <a href="#" id="mpai-terms-link">MemberPress AI Terms & Conditions</a>', 'memberpress-ai-assistant'); ?>
+                </label>
+                
+                <div class="mpai-consent-notice">
+                    <p><strong><?php _e('Important Notice:', 'memberpress-ai-assistant'); ?></strong> <?php _e('The MemberPress AI Assistant is an AI-powered tool. While it strives for accuracy, it may occasionally provide incorrect or incomplete information. Always verify important information before taking action.', 'memberpress-ai-assistant'); ?></p>
+                </div>
+            </div>
+            
+            <div class="mpai-welcome-buttons <?php echo !$has_consented ? 'consent-required' : ''; ?>" id="mpai-welcome-buttons">
+                <button id="mpai-open-chat" class="button button-primary" <?php disabled(!$has_consented); ?>><?php _e('Open Chat', 'memberpress-ai-assistant'); ?></button>
                 <a href="<?php echo admin_url('admin.php?page=memberpress-ai-assistant-settings'); ?>" class="button"><?php _e('Settings', 'memberpress-ai-assistant'); ?></a>
             </div>
         </div>
@@ -130,6 +146,22 @@ $stats = $api->get_data_summary();
 jQuery(document).ready(function($) {
     // Handle opening the chat
     $('#mpai-open-chat').on('click', function() {
+        // Check if consent has been given
+        var hasConsented = $('#mpai-consent-checkbox').prop('checked');
+        
+        if (!hasConsented) {
+            // If not consented, show an alert
+            alert('Please agree to the terms and conditions before using the AI Assistant.');
+            return;
+        }
+        
+        // If the chat elements don't exist yet (because page hasn't been refreshed after consent)
+        if (!$('#mpai-chat-toggle').length) {
+            // Reload the page to ensure the chat interface is properly loaded
+            window.location.reload();
+            return;
+        }
+        
         // Trigger the chat to open by simulating a click on the chat toggle
         $('#mpai-chat-toggle').click();
     });
@@ -137,6 +169,22 @@ jQuery(document).ready(function($) {
     // Handle example question clicks
     $('.mpai-example-question').on('click', function(e) {
         e.preventDefault();
+        
+        // Check if consent has been given
+        var hasConsented = $('#mpai-consent-checkbox').prop('checked');
+        
+        if (!hasConsented) {
+            // If not consented, show an alert
+            alert('Please agree to the terms and conditions before using the AI Assistant.');
+            return;
+        }
+        
+        // If the chat elements don't exist yet (because page hasn't been refreshed after consent)
+        if (!$('#mpai-chat-toggle').length || !$('#mpai-chat-container').length) {
+            // Reload the page to ensure the chat interface is properly loaded
+            window.location.reload();
+            return;
+        }
         
         // Get the question
         var question = $(this).text();

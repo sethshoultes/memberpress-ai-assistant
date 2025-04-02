@@ -6,6 +6,9 @@ This directory contains documentation that is no longer current or has been supe
 
 | Document | Replaced By | Archival Date | Reason for Archival |
 |----------|------------|--------------|---------------------|
+| best-selling-membership.md | N/A | 2025-04-02 | Feature fully implemented in version 1.5.8 |
+| MEMBERPRESS_INDEPENDENT_OPERATION.md | N/A | 2025-04-02 | Feature fully implemented in version 1.5.8 |
+| CHAT_INTERFACE_COPY_ICON_FIX.md | N/A | 2025-04-02 | Fix implemented in version 1.5.8 |
 | site-health-integration-plan.md | site-health-implementation-example.md | 2025-04-02 | Plan implemented in version 1.5.5 |
 | agent-system-spec.md | agent-system-implementation.md | 2025-04-02 | Initial spec replaced by actual implementation |
 | site-health-migration-guide.md | N/A | 2025-04-02 | Migration complete, no longer needed |
