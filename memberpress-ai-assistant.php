@@ -499,10 +499,10 @@ class MemberPress_AI_Assistant {
             true
         );
 
-        // Load the main chat interface script
+        // Load the main chat interface loader script
         wp_enqueue_script(
             'mpai-chat-js',
-            MPAI_PLUGIN_URL . 'assets/js/chat-interface.js',
+            MPAI_PLUGIN_URL . 'assets/js/modules/chat-interface-loader.js',
             array(
                 'jquery', 
                 'mpai-logger-js', 

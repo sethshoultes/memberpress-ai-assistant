@@ -65,9 +65,17 @@ var MPAI_UIUtils = (function($) {
         elements.chatToggle.hide();
         elements.chatInput.focus();
         
-        // Refresh chat history when opening
-        if (window.MPAI_History && typeof window.MPAI_History.loadChatHistory === 'function') {
-            window.MPAI_History.loadChatHistory();
+        // Save state to localStorage
+        localStorage.setItem('mpai_chat_open', 'true');
+        
+        // Refresh chat history when opening only if it's empty
+        if (elements.chatMessages.children().length === 0) {
+            if (window.MPAI_History && typeof window.MPAI_History.loadChatHistory === 'function') {
+                window.MPAI_History.loadChatHistory();
+            }
+        } else {
+            // Just scroll to bottom if messages exist
+            scrollToBottom();
         }
         
         if (window.mpaiLogger) {
@@ -82,6 +90,9 @@ var MPAI_UIUtils = (function($) {
         elements.chatContainer.fadeOut(300);
         elements.chatToggle.fadeIn(300);
         
+        // Save state to localStorage
+        localStorage.setItem('mpai_chat_open', 'false');
+        
         if (window.mpaiLogger) {
             window.mpaiLogger.info('Chat closed', 'ui');
         }
@@ -93,6 +104,9 @@ var MPAI_UIUtils = (function($) {
     function minimizeChat() {
         elements.chatContainer.fadeOut(300);
         elements.chatToggle.fadeIn(300);
+        
+        // Save state to localStorage
+        localStorage.setItem('mpai_chat_open', 'false');
         
         if (window.mpaiLogger) {
             window.mpaiLogger.info('Chat minimized', 'ui');
@@ -109,10 +123,16 @@ var MPAI_UIUtils = (function($) {
             elements.chatContainer.addClass('mpai-chat-expanded');
             elements.chatExpand.html('<span class="dashicons dashicons-editor-contract"></span>');
             elements.chatExpand.attr('title', 'Collapse chat');
+            
+            // Save expansion state to localStorage
+            localStorage.setItem('mpai_chat_expanded', 'true');
         } else {
             elements.chatContainer.removeClass('mpai-chat-expanded');
             elements.chatExpand.html('<span class="dashicons dashicons-editor-expand"></span>');
             elements.chatExpand.attr('title', 'Expand chat');
+            
+            // Save expansion state to localStorage
+            localStorage.setItem('mpai_chat_expanded', 'false');
         }
         
         // Scroll to bottom after expansion change

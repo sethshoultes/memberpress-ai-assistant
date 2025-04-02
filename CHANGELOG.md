@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.5.7] - 2025-04-02
 
+### Fixed
+- Copy icon functionality in chat interface now correctly copies message content to clipboard
+- Enhanced clipboard operations with modern Clipboard API and fallback for older browsers
+- Fixed JavaScript modularization issues with chat interface functionality
+
 ### Added
 - Implemented best-selling membership feature:
   - Added get_best_selling_membership method to MPAI_MemberPress_API class

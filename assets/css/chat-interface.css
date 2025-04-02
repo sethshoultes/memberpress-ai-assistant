@@ -172,6 +172,43 @@
     border: 1px solid #eee;
 }
 
+/* Lists styling */
+#mpai-chat-container .mpai-chat-message-content ul.mpai-list,
+#mpai-chat-container .mpai-chat-message-content ol.mpai-list {
+    margin: 8px 0;
+    padding-left: 25px;
+    display: block;
+    text-align: left;
+}
+
+#mpai-chat-container .mpai-chat-message-content ul.mpai-list li,
+#mpai-chat-container .mpai-chat-message-content ol.mpai-list li {
+    margin-bottom: 6px;
+    line-height: 1.4;
+    display: list-item;
+    text-align: left;
+}
+
+#mpai-chat-container .mpai-chat-message-content ul.mpai-list {
+    list-style-type: disc;
+}
+
+#mpai-chat-container .mpai-chat-message-content ol.mpai-list {
+    list-style-type: decimal;
+}
+
+/* Ensure list formatting is intact */
+#mpai-chat-container .mpai-chat-message-content ul.mpai-list li::marker {
+    color: #333;
+    font-size: 1em;
+    content: "• ";
+}
+
+#mpai-chat-container .mpai-chat-message-content ol.mpai-list li::marker {
+    color: #333;
+    font-weight: normal;
+}
+
 /* Typing indicator */
 #mpai-chat-container .mpai-chat-typing {
     align-self: flex-start;

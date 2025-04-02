@@ -41,7 +41,7 @@ var MPAI_Messages = (function($) {
         // Create message container
         const messageId = 'mpai-message-' + Date.now();
         const $message = $('<div>', {
-            'class': 'mpai-message mpai-message-' + role,
+            'class': 'mpai-chat-message mpai-chat-message-' + role,
             'id': messageId,
             'data-role': role,
             'data-timestamp': timestamp
@@ -49,7 +49,7 @@ var MPAI_Messages = (function($) {
         
         // Create message content container
         const $content = $('<div>', {
-            'class': 'mpai-message-content'
+            'class': 'mpai-chat-message-content'
         });
         
         // Format the message content
@@ -122,6 +122,16 @@ var MPAI_Messages = (function($) {
             return content;
         }
         
+        // Use the comprehensive formatter from MPAI_Formatters module if available
+        if (window.MPAI_Formatters && typeof window.MPAI_Formatters.formatMessage === 'function') {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.debug('Using comprehensive formatter from MPAI_Formatters', 'ui');
+            }
+            return window.MPAI_Formatters.formatMessage(content);
+        }
+        
+        // Fallback to basic formatting if the formatter module isn't available
+        
         // Convert markdown-style code blocks to HTML
         content = content.replace(/```(\w+)?\n([\s\S]*?)\n```/g, function(match, language, code) {
             language = language || '';
@@ -150,8 +160,8 @@ var MPAI_Messages = (function($) {
         
         if ($typingIndicator.length === 0) {
             const $indicator = $('<div>', {
-                'class': 'mpai-message mpai-message-assistant mpai-typing-indicator'
-            }).html('<div class="mpai-message-content">' + 
+                'class': 'mpai-chat-message mpai-chat-message-assistant mpai-typing-indicator'
+            }).html('<div class="mpai-chat-message-content">' + 
                    mpai_chat_data.strings.typing + 
                    '<span class="mpai-typing-dots"><span>.</span><span>.</span><span>.</span></span>' + 
                    '</div>');
@@ -295,12 +305,47 @@ var MPAI_Messages = (function($) {
      */
     function copyMessageToClipboard(messageId) {
         const $message = $('#' + messageId);
-        const content = $message.find('.mpai-message-content').text();
+        const content = $message.find('.mpai-chat-message-content').text();
         
+        if (window.mpaiLogger) {
+            window.mpaiLogger.info('Copying message content to clipboard: ' + messageId, 'ui');
+        }
+        
+        // Use the modern clipboard API if available
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(content)
+                .then(() => {
+                    // Show success confirmation
+                    const $copyBtn = $message.find('.mpai-copy-message');
+                    const $originalIcon = $copyBtn.html();
+                    
+                    $copyBtn.html('<span class="dashicons dashicons-yes"></span>');
+                    
+                    setTimeout(function() {
+                        $copyBtn.html($originalIcon);
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    fallbackCopyToClipboard(content);
+                });
+        } else {
+            // Fallback to older execCommand method
+            fallbackCopyToClipboard(content, $message);
+        }
+    }
+    
+    /**
+     * Fallback copy method using execCommand
+     * 
+     * @param {string} text - Text to copy
+     * @param {jQuery} $message - Message element (optional)
+     */
+    function fallbackCopyToClipboard(text, $message) {
         // Create a temporary textarea to copy from
         const $temp = $('<textarea>');
         $('body').append($temp);
-        $temp.val(content).select();
+        $temp.val(text).select();
         
         // Copy the text
         document.execCommand('copy');
@@ -308,15 +353,17 @@ var MPAI_Messages = (function($) {
         // Remove the temporary element
         $temp.remove();
         
-        // Show a confirmation
-        const $copyBtn = $message.find('.mpai-copy-message');
-        const $originalIcon = $copyBtn.html();
-        
-        $copyBtn.html('<span class="dashicons dashicons-yes"></span>');
-        
-        setTimeout(function() {
-            $copyBtn.html($originalIcon);
-        }, 2000);
+        // Show a confirmation if we have the message element
+        if ($message) {
+            const $copyBtn = $message.find('.mpai-copy-message');
+            const $originalIcon = $copyBtn.html();
+            
+            $copyBtn.html('<span class="dashicons dashicons-yes"></span>');
+            
+            setTimeout(function() {
+                $copyBtn.html($originalIcon);
+            }, 2000);
+        }
     }
     
     /**
@@ -339,7 +386,8 @@ var MPAI_Messages = (function($) {
         showTypingIndicator: showTypingIndicator,
         hideTypingIndicator: hideTypingIndicator,
         sendMessage: sendMessage,
-        completeToolCalls: completeToolCalls
+        completeToolCalls: completeToolCalls,
+        copyMessageToClipboard: copyMessageToClipboard
     };
 })(jQuery);
 
