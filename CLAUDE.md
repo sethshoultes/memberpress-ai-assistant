@@ -1,5 +1,17 @@
 # MemberPress AI Assistant Development Guidelines
 
+## Quick Reference
+- **System Map**: `/docs/current/system-map.md` - Complete system architecture overview
+- **Key Files**:
+  - `memberpress-ai-assistant.php` - Main plugin file
+  - `class-mpai-chat.php` - Core chat processing
+  - `class-mpai-context-manager.php` - Tool execution
+  - `class-mpai-api-router.php` - AI provider management
+- **Documentation Structure**:
+  - `/docs/current/` - Implemented features
+  - `/docs/roadmap/` - Planned features
+  - `/docs/archive/` - Outdated documentation
+
 ## Build & Development Commands
 - Build JS/CSS: `npm run build` (in individual plugin folders)
 - Development: `npm run start` or `npm run dev` (hot reload in some plugins)
@@ -33,9 +45,13 @@
 - Main plugin file: `memberpress-ai-assistant.php`
 - Class files in `includes/` directory
 - Assets (JS/CSS) in `assets/` directory
-- Documentation in `docs/` directory
+- Documentation in `docs/` directory:
+  - `docs/current/` - Current feature documentation
+  - `docs/roadmap/` - Planned feature documentation
+  - `docs/archive/` - Archived documentation
 - WP-CLI commands in `includes/cli/` directory
 - Follow MVC-like pattern where appropriate
+- **Important**: For complete system architecture, refer to `/docs/current/system-map.md`
 
 ## Error Handling
 - Use `wp_send_json_error()` for AJAX errors
@@ -59,13 +75,14 @@
   - Categorize changes as "Added", "Changed", "Fixed", or "Removed"
   - Use bullet points for each significant change
   - Group related changes with sub-bullet points
-- Create or update documentation in the `docs/` directory whenever:
-  - Implementing new features
-  - Making architectural changes
-  - Adding new configuration options
-  - Changing existing behavior
+- Create or update documentation in the proper directory:
+  - `/docs/current/` - For implemented features
+  - `/docs/roadmap/` - For planned features
+  - `/docs/archive/` - For outdated documentation
+- When working on existing features, first check the system map at `/docs/current/system-map.md`
 - Reference documentation in code comments for complex functionality
 - Update main `docs/README.md` when adding new documentation files
+- When adding new PHP files, update the system map to include them
 
 ## Console Logging System
 - Use the `mpaiLogger` object for all browser console logging
@@ -88,3 +105,115 @@
       window.mpaiLogger.info('Operation completed', 'category');
   }
   ```
+
+## System Architecture Exploration
+- When first approaching the codebase, begin by reviewing `/docs/current/system-map.md`
+- For AI-specific components, understand these key relationships:
+  - `memberpress-ai-assistant.php` initializes the plugin
+  - `class-mpai-chat.php` processes user messages and AI responses
+  - `class-mpai-api-router.php` routes requests between different AI providers
+  - `class-mpai-context-manager.php` manages tool execution and context
+  - Agent classes provide specialized functionality for different domains
+- Debug issues by examining error logs with the correct prefixes:
+  - PHP errors use the `MPAI:` prefix in error logs
+  - JavaScript issues log to console via `mpaiLogger`
+- When adding features, follow the established architecture:
+  - Add new agent classes to `/includes/agents/specialized/`
+  - Add new tools to `/includes/tools/implementations/`
+  - Register tools in the context manager
+  - Update system prompt to include new capabilities
+
+## Development Workflows
+
+### Understanding Data Flow
+- **User Message Processing Flow**:
+  1. User submits message via chat interface
+  2. `process_chat_ajax()` in main plugin file receives the AJAX request
+  3. `MPAI_Chat::process_message()` formats and sends request to API
+  4. `MPAI_API_Router` directs request to appropriate provider
+  5. Response is parsed and tool calls are executed via `MPAI_Context_Manager`
+  6. Final response is returned to user
+
+- **Tool Execution Flow**:
+  1. AI identifies a tool to use in its response
+  2. Chat class extracts tool calls using pattern matching
+  3. `Context_Manager` receives tool call and routes to handler method
+  4. Tool executes and formats response
+  5. Result is incorporated into conversation history
+
+### Common Patterns and Pitfalls
+- **Always use existing validation logic** rather than creating new validation methods
+- **Check for existing hooks** before adding similar functionality
+- **Understand context persistence** between API calls and browser sessions
+- **Tool call format variations**: Both AI providers have slightly different formats
+- **Avoid tight coupling** with MemberPress core to maintain compatibility across versions
+- **Use the logging system consistently** to ensure debugging information is available
+
+### Complex Component Documentation
+- **API Router**: Handles both OpenAI and Anthropic formats; see implementation details in `class-mpai-api-router.php`
+- **Tool Registry**: Centralizes tool registration; see examples in `class-mpai-tool-registry.php`
+- **Agent System**: Uses a modular approach; see architecture in `class-mpai-agent-orchestrator.php`
+- **Context Manager**: Central to tool execution; see implementation in `class-mpai-context-manager.php`
+
+## Project-Specific Guidelines
+
+### Security Considerations
+- **Always verify permissions** before executing commands or accessing data
+- **Never execute arbitrary user code** from AI suggestions without validation
+- **Sanitize all inputs** from both users and AI responses
+- **Use nonce verification** for all admin actions except designated direct-access endpoints
+- **Follow permission-checking patterns** found in existing code
+- **Log security-related events** to aid in troubleshooting
+
+### Cross-Plugin Integration
+- **MemberPress Core**: Access via `MPAI_MemberPress_API` to maintain abstraction
+- **WP-CLI Integration**: Use `MPAI_WPCLI_Tool` for command execution
+- **Database Access**: Use direct database queries sparingly and only when necessary
+
+### Testing and Debugging
+- When investigating bugs, first enable:
+  - System debug mode via `define('WP_DEBUG', true);` in wp-config.php
+  - Console logging via Settings > Debug tab
+- **Always test features** using the test procedures in `/test/test-procedures.md`
+- **Check recent error logs** for relevant issues before implementing fixes
+- **Verify both AI providers** (OpenAI and Anthropic) when making chat-related changes
+- **Test in different WordPress environments** (admin area, frontend, CLI)
+
+### Feature Implementation Strategy
+- First update the system map with your planned changes
+- Create tests before implementing the feature
+- Add tool definitions to the context manager
+- Update relevant agent implementations
+- Validate with both AI providers
+- Update documentation and changelog
+
+## AI Integration Guidelines
+
+### System Prompts and AI Behavior
+- System prompts are defined in `MPAI_Chat::get_system_message()`
+- **Be specific with instructions** to guide AI behavior
+- **Add examples** for complex tools or formatting expectations
+- **Update prompts** when adding new tools or capabilities
+- **Test prompt changes** with both AI providers
+
+### Tool Definition Best Practices
+- **Keep tool names consistent** with their functionality
+- **Use clear parameter names** that match internal usage
+- **Provide comprehensive descriptions** for the AI to understand usage
+- **Include enum values** when parameters have fixed options
+- **Mark required parameters** to prevent errors
+- **Document expected response format** in the tool description
+
+### Error Handling for AI
+- **Provide helpful error messages** that explain what went wrong
+- **Include usage examples** when a tool is used incorrectly
+- **Implement graceful fallbacks** when primary methods fail
+- **Add logging for AI-specific errors** to track issues
+- **Format errors consistently** to help the AI understand issues
+
+### Response Processing
+- **Handle both JSON and text responses** from AI models
+- **Implement robust pattern matching** for tool call extraction
+- **Validate tool calls** before execution
+- **Format responses consistently** for better AI understanding
+- **Use standardized formatters** for tabular data

@@ -458,10 +458,60 @@ class MemberPress_AI_Assistant {
             true
         );
 
+        // Load modular JavaScript files in the correct order
+        wp_enqueue_script(
+            'mpai-chat-formatters',
+            MPAI_PLUGIN_URL . 'assets/js/modules/mpai-chat-formatters.js',
+            array('jquery', 'mpai-logger-js'),
+            MPAI_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'mpai-chat-ui-utils',
+            MPAI_PLUGIN_URL . 'assets/js/modules/mpai-chat-ui-utils.js',
+            array('jquery', 'mpai-logger-js'),
+            MPAI_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'mpai-chat-messages',
+            MPAI_PLUGIN_URL . 'assets/js/modules/mpai-chat-messages.js',
+            array('jquery', 'mpai-logger-js', 'mpai-chat-formatters', 'mpai-chat-ui-utils'),
+            MPAI_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'mpai-chat-tools',
+            MPAI_PLUGIN_URL . 'assets/js/modules/mpai-chat-tools.js',
+            array('jquery', 'mpai-logger-js', 'mpai-chat-formatters', 'mpai-chat-messages'),
+            MPAI_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'mpai-chat-history',
+            MPAI_PLUGIN_URL . 'assets/js/modules/mpai-chat-history.js',
+            array('jquery', 'mpai-logger-js', 'mpai-chat-messages'),
+            MPAI_VERSION,
+            true
+        );
+
+        // Load the main chat interface script
         wp_enqueue_script(
             'mpai-chat-js',
             MPAI_PLUGIN_URL . 'assets/js/chat-interface.js',
-            array('jquery', 'mpai-logger-js'),
+            array(
+                'jquery', 
+                'mpai-logger-js', 
+                'mpai-chat-formatters', 
+                'mpai-chat-ui-utils', 
+                'mpai-chat-messages', 
+                'mpai-chat-tools', 
+                'mpai-chat-history'
+            ),
             MPAI_VERSION,
             true
         );

@@ -90,6 +90,8 @@
             // Scroll to the bottom with a slight delay to ensure content is rendered
             setTimeout(scrollToBottom, 100);
 
+            // Special handling for wp plugin list command removed - using server-side implementation
+            
             // Send the message to the server using AJAX
             $.ajax({
                 url: mpai_chat_data.ajax_url,
@@ -97,7 +99,9 @@
                 data: {
                     action: 'mpai_process_chat',
                     message: message,
-                    nonce: mpai_chat_data.nonce
+                    nonce: mpai_chat_data.nonce,
+                    cache_buster: new Date().getTime(), // Add timestamp to prevent caching
+                    force_refresh: true // Signal to backend to bypass any caching
                 },
                 success: function(response) {
                     // Log the response received
@@ -106,12 +110,163 @@
                         window.mpaiLogger.info('Received response in ' + (elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown time'), 'api_calls');
                     }
                     
+                    console.log('MPAI: Received AJAX response:', response);
+                    
                     // Hide typing indicator
                     hideTypingIndicator();
 
+                    // Log the actual response structure to debug
+                    console.log('MPAI: Raw AJAX response:', {
+                        responseType: typeof response,
+                        hasSuccess: response && response.success,
+                        hasData: response && response.data,
+                        hasResponse: response && response.data && response.data.response,
+                        responseContent: response && response.data ? (response.data.response || (typeof response.data === 'string' ? response.data : 'No response content')) : 'No data'
+                    });
+                    
+                    // Enhanced response handling to be more forgiving of different formats
+                    let processedResponse = '';
+                    let validResponseFormat = false;
+                    
+                    // Case 1: Standard format with nested response
                     if (response.success && response.data && response.data.response) {
+                        processedResponse = response.data.response;
+                        console.log('MPAI: Using standard response format');
+                        validResponseFormat = true;
+                    }
+                    // Case 2: Format where response is directly in data
+                    else if (response.success && response.data && typeof response.data === 'string') {
+                        processedResponse = response.data;
+                        console.log('MPAI: Using direct string response format');
+                        validResponseFormat = true;
+                    }
+                    // Case 3: Format where response is direct
+                    else if (response.success && typeof response.response === 'string') {
+                        processedResponse = response.response;
+                        console.log('MPAI: Using top-level response format');
+                        validResponseFormat = true;
+                    }
+                    // Case 4: Format with direct response property
+                    else if (typeof response === 'string') {
+                        processedResponse = response;
+                        console.log('MPAI: Using direct string format');
+                        validResponseFormat = true;
+                    }
+                    // No valid format found
+                    else {
+                        console.error('MPAI: Could not determine response format:', response);
+                        hideTypingIndicator();
+                        addMessageToChat('assistant', mpai_chat_data.strings.error_message);
+                        setTimeout(scrollToBottom, 100);
+                        return;
+                    }
+                    
+                    if (validResponseFormat) {
+                        // Special handling for wp plugin list command
+                        if (message.trim().toLowerCase() === 'wp plugin list') {
+                            console.log('MPAI: Detected wp plugin list command, applying special formatting');
+                            console.log('MPAI: RESPONSE STRUCTURE:', {
+                                length: processedResponse.length,
+                                containsPluginList: processedResponse.includes('plugin list'),
+                                containsListOfPlugins: processedResponse.includes('list of plugins'),
+                                containsCodeBlock: processedResponse.includes('```'),
+                                first100Chars: processedResponse.substring(0, 100),
+                                containsTable: processedResponse.includes('Name') && processedResponse.includes('Status') && processedResponse.includes('Version')
+                            });
+                            
+                            // First check if this might be in JSON format
+                            if (processedResponse.includes('{"success":true,"tool":"wp_cli","command_type":"plugin_list","result":')) {
+                                console.log('MPAI: Detected JSON format plugin list response');
+                                
+                                // Try to extract and process the JSON data
+                                const jsonRegex = /{("success":true,"tool":"wp_cli","command_type":"plugin_list"[^}]+)}/;
+                                const jsonMatch = processedResponse.match(jsonRegex);
+                                
+                                if (jsonMatch && jsonMatch[0]) {
+                                    try {
+                                        const jsonData = JSON.parse(jsonMatch[0]);
+                                        console.log('MPAI: Parsed JSON data from response:', jsonData);
+                                        
+                                        if (jsonData.result) {
+                                            // Create a simple code block with just the tabular data
+                                            const codeBlock = '```\n' + jsonData.result + '\n```';
+                                            
+                                            // Replace the JSON with the plain table data
+                                            processedResponse = processedResponse.replace(jsonMatch[0], codeBlock);
+                                            console.log('MPAI: Replaced JSON with plain table data');
+                                        }
+                                    } catch (e) {
+                                        console.error('MPAI: Error parsing JSON data:', e);
+                                    }
+                                }
+                            }
+                            
+                            // Now process any code blocks in the response
+                            if (processedResponse.includes('```')) {
+                                // Extract all code blocks to check their contents - make sure to capture the blocks with delimiters
+                                const allCodeBlocks = processedResponse.match(/```[\s\S]*?```/g) || [];
+                                console.log('MPAI: Found ' + allCodeBlocks.length + ' code blocks in response');
+                                
+                                // Debug each code block
+                                allCodeBlocks.forEach((block, index) => {
+                                    // Remove only the delimiter lines, keeping the content
+                                    const content = block.replace(/```\n?|\n?```/g, '').trim();
+                                    console.log(`MPAI: Code block ${index} content (first 100 chars):`, content.substring(0, 100));
+                                    console.log(`MPAI: Code block ${index} indicators:`, {
+                                        hasName: content.includes('Name'),
+                                        hasStatus: content.includes('Status'),
+                                        hasVersion: content.includes('Version'),
+                                        hasTabs: content.includes('\t'),
+                                        hasNewlines: content.includes('\n'),
+                                        lineCount: content.split('\n').length
+                                    });
+                                });
+                                
+                                // Try to extract tabular data from ANY code block that looks like a plugin list
+                                let tableData = null;
+                                let matchingBlock = null;
+                                
+                                for (const block of allCodeBlocks) {
+                                    const content = block.replace(/```\n?|\n?```/g, '').trim();
+                                    
+                                    // Skip empty blocks or JSON that might have slipped through
+                                    if (!content || content.startsWith('{') || content.length < 10) {
+                                        continue;
+                                    }
+                                    
+                                    // More specific matching to ensure we get the right data
+                                    if ((content.includes('Name') && content.includes('Status') && content.includes('Version')) ||
+                                        (content.includes('Plugin Name') && content.includes('Status'))) {
+                                        tableData = content;
+                                        matchingBlock = block;
+                                        console.log('MPAI: Found matching plugin list block:', content.substring(0, 100));
+                                        break;
+                                    }
+                                }
+                                
+                                if (tableData) {
+                                    console.log('MPAI: Found table data with length:', tableData.length);
+                                    
+                                    // Format as HTML table
+                                    const tableResult = {
+                                        command_type: 'plugin_list',
+                                        result: tableData
+                                    };
+                                    
+                                    // Replace the code block with our formatted table
+                                    const formattedTable = formatTabularResult(tableResult);
+                                    processedResponse = processedResponse.replace(matchingBlock, formattedTable);
+                                    console.log('MPAI: Formatted plugin list as HTML table');
+                                } else {
+                                    console.log('MPAI: No valid plugin list table data found in code blocks');
+                                }
+                            } else {
+                                console.log('MPAI: No code blocks found in response');
+                            }
+                        }
+                        
                         // Process response for tool calls
-                        let processedResponse = processToolCalls(response.data.response);
+                        processedResponse = processToolCalls(processedResponse);
                         
                         // Add the response to the chat
                         addMessageToChat('assistant', processedResponse);
@@ -212,34 +367,132 @@
             tableHtml += tableTitle;
             tableHtml += '<table>';
             
-            rows.forEach((row, index) => {
+            // Skip empty rows
+            const nonEmptyRows = rows.filter(row => row.trim() !== '');
+            
+            nonEmptyRows.forEach((row, index) => {
                 console.log(`MPAI: Processing direct format row ${index}:`, row.substring(0, 50));
                 
-                // Split by tab character or by string representation of tab if needed
-                const cells = row.includes('\t') ? 
-                    row.split('\t') : 
-                    row.split('t'); // Fallback if somehow we still have text "t" separators
+                // Try different delimiters to find the best match
+                let cells = [];
                 
-                console.log(`MPAI: Direct format row ${index} has ${cells.length} cells`);
+                // First try tab delimiter
+                if (row.includes('\t')) {
+                    cells = row.split('\t');
+                    console.log(`MPAI: Split row by tab, found ${cells.length} cells`);
+                } 
+                // Then try space delimiter with some intelligence
+                else if (commandType === 'plugin_list' && !row.includes('\t')) {
+                    // For plugin list, we'll try to intelligently split by multi-spaces
+                    // This matches the format: Name   Status   Version   Last Activity
+                    const matches = row.match(/([^\s]+(?:\s+[^\s]+)*)\s{2,}/g);
+                    
+                    if (matches && matches.length > 0) {
+                        // Add the remainder of the string after the last match
+                        const matchedText = matches.join('');
+                        const remainder = row.substring(matchedText.length).trim();
+                        
+                        cells = matches.map(m => m.trim());
+                        
+                        if (remainder) {
+                            cells.push(remainder);
+                        }
+                        
+                        console.log(`MPAI: Split row by multi-space, found ${cells.length} cells:`, cells);
+                    } else {
+                        // Fallback to standard tab or 4+ space split
+                        cells = row.split(/\t|\s{4,}/);
+                        console.log(`MPAI: Fallback split by tab or 4+ spaces, found ${cells.length} cells`);
+                    }
+                } 
+                // Generic fallback
+                else {
+                    // Split by multiple spaces (3 or more) for other types
+                    cells = row.split(/\s{3,}/);
+                    console.log(`MPAI: Split row by multiple spaces, found ${cells.length} cells`);
+                    
+                    // Fallback to basic split method if we didn't get at least 2 cells
+                    if (cells.length < 2) {
+                        cells = row.split(/\s{2,}/);
+                        console.log(`MPAI: Alternative split by 2+ spaces, found ${cells.length} cells`);
+                    }
+                }
+                
+                // Handle special case for column headers with timestamps/markers
+                if (commandType === 'plugin_list' && index === 0 && cells.some(c => c.includes('Generated at'))) {
+                    // Split the "Last Activity (Generated at X)" header appropriately
+                    const lastCell = cells[cells.length - 1];
+                    const match = lastCell.match(/(.*?)\s*\((Generated at .*?)\)/);
+                    
+                    if (match) {
+                        // Replace the last cell with just "Last Activity"
+                        cells[cells.length - 1] = match[1];
+                        console.log(`MPAI: Cleaned up Last Activity header: ${match[1]}`);
+                    }
+                }
                 
                 if (index === 0) {
                     // Header row
                     tableHtml += '<thead><tr>';
                     cells.forEach(cell => {
-                        tableHtml += `<th>${cell}</th>`;
+                        tableHtml += `<th>${cell.trim()}</th>`;
                     });
                     tableHtml += '</tr></thead><tbody>';
                 } else {
-                    // Data row
-                    tableHtml += '<tr>';
-                    cells.forEach(cell => {
-                        tableHtml += `<td>${cell}</td>`;
-                    });
-                    tableHtml += '</tr>';
+                    // Handle status formatting for plugin list with special coloring
+                    if (commandType === 'plugin_list') {
+                        tableHtml += '<tr>';
+                        cells.forEach((cell, cellIndex) => {
+                            cell = cell.trim();
+                            
+                            // Apply special formatting for Status column (typically index 1)
+                            if (cellIndex === 1 && (cell.toLowerCase() === 'active' || cell.toLowerCase() === 'inactive')) {
+                                const statusClass = cell.toLowerCase() === 'active' ? 'mpai-status-active' : 'mpai-status-inactive';
+                                tableHtml += `<td class="${statusClass}">${cell}</td>`;
+                            } else {
+                                tableHtml += `<td>${cell}</td>`;
+                            }
+                        });
+                        tableHtml += '</tr>';
+                    } else {
+                        // Standard data row
+                        tableHtml += '<tr>';
+                        cells.forEach(cell => {
+                            tableHtml += `<td>${cell.trim()}</td>`;
+                        });
+                        tableHtml += '</tr>';
+                    }
                 }
             });
             
             tableHtml += '</tbody></table></div>';
+            
+            // Add CSS for status indicators
+            tableHtml += `
+            <style>
+                .mpai-result-table table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 10px 0;
+                }
+                .mpai-result-table th, .mpai-result-table td {
+                    padding: 8px;
+                    text-align: left;
+                    border: 1px solid #ddd;
+                }
+                .mpai-result-table th {
+                    background-color: #f2f2f2;
+                    font-weight: bold;
+                }
+                .mpai-result-table .mpai-status-active {
+                    color: green;
+                    font-weight: bold;
+                }
+                .mpai-result-table .mpai-status-inactive {
+                    color: #999;
+                }
+            </style>`;
+            
             return tableHtml;
         }
         
@@ -1950,7 +2203,8 @@
                 type: 'POST',
                 data: {
                     action: 'mpai_get_chat_history',
-                    nonce: mpai_chat_data.nonce
+                    nonce: mpai_chat_data.nonce,
+                    cache_buster: new Date().getTime() // Add timestamp to prevent caching
                 },
                 success: function(response) {
                     if (response.success && response.data.history) {
