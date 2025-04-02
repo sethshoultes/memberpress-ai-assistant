@@ -11,6 +11,9 @@ if (!defined('WPINC')) {
 }
 
 class MPAI_Context_Manager {
+    // Version identifier to confirm the updated file is being used
+    const VERSION = '2.0.2'; // Updated April 2, 2025 - Added more debugging
+    
     /**
      * OpenAI integration instance
      *
@@ -50,6 +53,7 @@ class MPAI_Context_Manager {
      * Constructor
      */
     public function __construct() {
+        error_log('MPAI_Context_Manager v' . self::VERSION . ' initialized');
         $this->openai = new MPAI_OpenAI();
         $this->memberpress_api = new MPAI_MemberPress_API();
         $this->allowed_commands = get_option('mpai_allowed_cli_commands', array());
@@ -222,7 +226,7 @@ class MPAI_Context_Manager {
      * @return string Command output
      */
     public function run_command($command) {
-        error_log('MPAI: run_command called with command: ' . $command);
+        error_log('MPAI: run_command called with command: ' . $command . ' (v' . self::VERSION . ')');
         
         // Check if CLI commands are enabled in settings - temporarily bypass for debugging
         error_log('MPAI: ⚠️ TEMPORARILY BYPASSING CLI COMMANDS ENABLED CHECK FOR DEBUGGING');
@@ -417,21 +421,156 @@ class MPAI_Context_Manager {
             }
             
             if (strpos($command, 'wp plugin list') === 0) {
-                // Get plugins through WordPress API
-                if (!function_exists('get_plugins')) {
-                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                error_log('MPAI: Detected wp plugin list command - using WP API Tool: v' . self::VERSION);
+                
+                try {
+                    // Use the WP API Tool to get plugin list with activity data
+                    if (isset($this->wp_api_tool)) {
+                        // Get current time for verification
+                        $current_time = date('H:i:s');
+                        error_log('MPAI_Context_Manager: wp plugin list called at ' . $current_time);
+                        
+                        // Call the enhanced get_plugins method from our WP API Tool
+                        $result = $this->wp_api_tool->execute(array(
+                            'action' => 'get_plugins',
+                            'format' => 'table'
+                        ));
+                        
+                        if (is_array($result) && isset($result['table_data'])) {
+                            error_log('MPAI: Received formatted plugin table data');
+                            return $this->format_tabular_output($command, $result['table_data']);
+                        } else {
+                            error_log('MPAI: WP API Tool returned unexpected result format');
+                            throw new Exception('Unexpected result format from WP API Tool');
+                        }
+                    } else {
+                        error_log('MPAI: WP API Tool not initialized');
+                        throw new Exception('WP API Tool not initialized');
+                    }
+                } catch (Exception $e) {
+                    error_log('MPAI: Error using WP API Tool for plugin list: ' . $e->getMessage());
+                    // Let it fall through to the next handler
                 }
-                if (!function_exists('is_plugin_active')) {
-                    include_once ABSPATH . 'wp-admin/includes/plugin.php';
+            }
+            
+            if (strpos($command, 'wp plugin status') === 0 || strpos($command, 'wp plugin logs') === 0) {
+                // NEW COMMAND: Get plugins using the plugin logger for more detailed info
+                error_log('MPAI: Getting DETAILED plugin list using plugin logger - NEW COMMAND');
+                
+                try {
+                    // Initialize the plugin logger
+                    if (!function_exists('mpai_init_plugin_logger')) {
+                        if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
+                            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+                            error_log('MPAI: Loaded plugin logger class');
+                            // Check if the function is now defined after loading the file
+                            if (!function_exists('mpai_init_plugin_logger')) {
+                                error_log('MPAI: mpai_init_plugin_logger function not found after loading class file');
+                                // Define the function if not already defined
+                                function mpai_init_plugin_logger() {
+                                    return MPAI_Plugin_Logger::get_instance();
+                                }
+                                error_log('MPAI: mpai_init_plugin_logger function defined manually');
+                            }
+                        } else {
+                            error_log('MPAI: Plugin logger class not found');
+                            throw new Exception('Plugin logger class not found');
+                        }
+                    }
+                    
+                    error_log('MPAI: About to call mpai_init_plugin_logger()');
+                    $plugin_logger = mpai_init_plugin_logger();
+                    error_log('MPAI: Plugin logger initialized: ' . ($plugin_logger ? 'success' : 'failed'));
+                    
+                    // Check if the table exists
+                    global $wpdb;
+                    $table_name = $wpdb->prefix . 'mpai_plugin_logs';
+                    $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+                    error_log('MPAI: Plugin logs table exists: ' . ($table_exists ? 'YES' : 'NO'));
+                    
+                    if (!$plugin_logger) {
+                        error_log('MPAI: Failed to initialize plugin logger');
+                        throw new Exception('Failed to initialize plugin logger');
+                    }
+                    
+                    // Get plugin activity summary
+                    error_log('MPAI: Getting plugin activity summary');
+                    $summary = $plugin_logger->get_activity_summary(365); // Get data for the past year
+                    error_log('MPAI: Got summary: ' . json_encode($summary));
+                    
+                    // Get plugin data using WordPress API for current state
+                    if (!function_exists('get_plugins')) {
+                        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                    }
+                    if (!function_exists('is_plugin_active')) {
+                        include_once ABSPATH . 'wp-admin/includes/plugin.php';
+                    }
+                    
+                    $plugins = get_plugins();
+                    $current_time = date('H:i:s');
+                    $output = "Name\tStatus\tVersion\tLast Activity (Generated at $current_time)\n";
+                    
+                    // Create a lookup for the most recent activity
+                    $plugin_activity = array();
+                    if (isset($summary['most_active_plugins']) && is_array($summary['most_active_plugins'])) {
+                        foreach ($summary['most_active_plugins'] as $plugin_data) {
+                            if (isset($plugin_data['plugin_name']) && isset($plugin_data['last_action']) && isset($plugin_data['last_date'])) {
+                                $plugin_activity[$plugin_data['plugin_name']] = $plugin_data['last_action'] . ' ' . 
+                                                                             date('Y-m-d', strtotime($plugin_data['last_date']));
+                            }
+                        }
+                    }
+                    
+                    foreach ($plugins as $plugin_file => $plugin_data) {
+                        $status = is_plugin_active($plugin_file) ? 'active' : 'inactive';
+                        // Get the last activity for this plugin if available
+                        $activity = isset($plugin_activity[$plugin_data['Name']]) ? $plugin_activity[$plugin_data['Name']] : 'N/A';
+                        $output .= $plugin_data['Name'] . " [NEW]\t" . $status . "\t" . $plugin_data['Version'] . "\t" . $activity . "\n";
+                    }
+                    
+                    error_log('MPAI: Returning plugin list with activity data');
+                    return $this->format_tabular_output($command, $output);
+                    
+                } catch (Exception $e) {
+                    error_log('MPAI: Error getting plugin list with activity: ' . $e->getMessage());
+                    
+                    // Try using the WP API Tool as fallback
+                    try {
+                        if (isset($this->wp_api_tool)) {
+                            error_log('MPAI: Trying WP API Tool as fallback for plugin list');
+                            $result = $this->wp_api_tool->execute(array(
+                                'action' => 'get_plugins',
+                                'format' => 'table'
+                            ));
+                            
+                            if (is_array($result) && isset($result['table_data'])) {
+                                error_log('MPAI: Received formatted plugin table data from WP API Tool fallback');
+                                return $this->format_tabular_output($command, $result['table_data']);
+                            }
+                        }
+                    } catch (Exception $api_error) {
+                        error_log('MPAI: WP API Tool fallback also failed: ' . $api_error->getMessage());
+                    }
+                    
+                    // Final fallback to basic approach
+                    if (!function_exists('get_plugins')) {
+                        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                    }
+                    if (!function_exists('is_plugin_active')) {
+                        include_once ABSPATH . 'wp-admin/includes/plugin.php';
+                    }
+                    
+                    $plugins = get_plugins();
+                    $current_time = date('H:i:s');
+                    $output = "Name\tStatus\tVersion\t(Generated at $current_time)\n";
+                    foreach ($plugins as $plugin_file => $plugin_data) {
+                        $status = is_plugin_active($plugin_file) ? 'active' : 'inactive';
+                        $output .= $plugin_data['Name'] . "\t" . $status . "\t" . $plugin_data['Version'] . "\tNo activity data\n";
+                    }
+                    
+                    error_log('MPAI: Falling back to basic plugin list');
+                    return $this->format_tabular_output($command, $output);
                 }
-                $plugins = get_plugins();
-                $output = "Name\tStatus\tVersion\n";
-                foreach ($plugins as $plugin_file => $plugin_data) {
-                    $status = is_plugin_active($plugin_file) ? 'active' : 'inactive';
-                    $output .= $plugin_data['Name'] . "\t" . $status . "\t" . $plugin_data['Version'] . "\n";
-                }
-                error_log('MPAI: Returning simulated output for wp plugin list');
-                return $this->format_tabular_output($command, $output);
             }
             
             if (strpos($command, 'wp option get') === 0) {
@@ -1109,10 +1248,15 @@ class MPAI_Context_Manager {
      * @return string A helpful message about alternative tools
      */
     private function get_tool_usage_message($command = '') {
-        $message = "WP-CLI is not available in this browser environment. However, you can use the following tools instead:\n\n";
+        $message = "The AI assistant cannot directly run WP-CLI commands on your server. However, you can use these API tools instead:\n\n";
         
         // Determine what type of command was attempted
-        if (strpos($command, 'wp post') !== false) {
+        if (strpos($command, 'wp plugin list') !== false) {
+            $message .= "1. For plugin operations, you can use the WordPress API:\n";
+            $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_plugins\", \"format\": \"table\"}}\n   ```\n\n";
+            $message .= "2. For more detailed plugin information with activity data, use:\n";
+            $message .= "   ```json\n   {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"summary\", \"days\": 30}}\n   ```\n";
+        } else if (strpos($command, 'wp post') !== false) {
             $message .= "1. For post operations, you can use the WordPress API:\n";
             $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Your Title\", \"content\": \"Your content here\"}}\n   ```\n\n";
             $message .= "2. Available post actions: create_post, update_post, get_post, create_page\n";
@@ -1123,16 +1267,18 @@ class MPAI_Context_Manager {
         } else if (strpos($command, 'wp mepr') !== false || strpos($command, 'memberpress') !== false) {
             $message .= "1. For MemberPress operations, use the memberpress_info tool:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n\n";
-            $message .= "2. Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info, best_selling, all\n";
+            $message .= "2. Available types: memberships, members, transactions, subscriptions, active_subscriptions, summary, new_members_this_month, system_info, best_selling, all\n";
             $message .= "3. You can get system information along with MemberPress data:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"all\", \"include_system_info\": true}}\n   ```\n";
         } else {
             $message .= "1. For WordPress operations, you can use the WordPress API:\n";
             $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"action_name\", \"param1\": \"value1\"}}\n   ```\n\n";
-            $message .= "2. For MemberPress operations, use the memberpress_info tool:\n";
+            $message .= "2. For plugin information, use:\n";
+            $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_plugins\", \"format\": \"table\"}}\n   ```\n\n";
+            $message .= "3. For MemberPress operations, use the memberpress_info tool:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n";
-            $message .= "   - Available types: memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info, best_selling, all\n";
-            $message .= "3. For system information, use:\n";
+            $message .= "   - Available types: memberships, members, transactions, subscriptions, active_subscriptions, summary, new_members_this_month, system_info, best_selling, all\n";
+            $message .= "4. For system information, use:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"system_info\"}}\n   ```\n\n";
         }
         

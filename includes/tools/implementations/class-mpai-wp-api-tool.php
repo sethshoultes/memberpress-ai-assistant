@@ -736,36 +736,113 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	}
 
 	/**
-	 * Get plugins installed on the site
+	 * Get plugins installed on the site with activity data from plugin logger
 	 *
 	 * @param array $parameters Parameters for retrieving plugins
-	 * @return array List of plugins
+	 * @return array List of plugins with activity data
 	 */
 	private function get_plugins( $parameters ) {
+		error_log('MPAI_WP_API_Tool: get_plugins called with parameters: ' . json_encode($parameters));
+		$current_time = date('H:i:s');
+		error_log('MPAI_WP_API_Tool: Current time ' . $current_time);
+		
 		if ( ! function_exists( 'get_plugins' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 		
+		// Get basic plugin data
 		$plugins = get_plugins();
 		$result = array();
 		
-		foreach ( $plugins as $plugin_path => $plugin_data ) {
-			$is_active = is_plugin_active( $plugin_path );
+		// Get plugin logger data if available
+		$plugin_logger = null;
+		$activity_data = array();
+		
+		if (function_exists('mpai_init_plugin_logger')) {
+			error_log('MPAI_WP_API_Tool: Plugin logger function exists');
+			$plugin_logger = mpai_init_plugin_logger();
+			
+			if ($plugin_logger) {
+				error_log('MPAI_WP_API_Tool: Plugin logger initialized');
+				// Get activity summary for last 30 days
+				$activity_summary = $plugin_logger->get_activity_summary(30);
+				
+				// Create a lookup map for plugin activity data
+				if (!empty($activity_summary['most_active_plugins'])) {
+					foreach ($activity_summary['most_active_plugins'] as $plugin_activity) {
+						$activity_data[$plugin_activity['plugin_name']] = array(
+							'count' => $plugin_activity['count'],
+							'last_action' => $plugin_activity['last_action'] ?? 'unknown',
+							'last_date' => $plugin_activity['last_date'] ?? '',
+						);
+					}
+				}
+				error_log('MPAI_WP_API_Tool: Retrieved activity data for ' . count($activity_data) . ' plugins');
+			}
+		}
+		
+		// Merge plugin data with activity data
+		foreach ($plugins as $plugin_path => $plugin_data) {
+			$is_active = is_plugin_active($plugin_path);
+			$plugin_name = $plugin_data['Name'];
+			$plugin_slug = dirname($plugin_path);
+			
+			// Get activity info if available
+			$activity_info = isset($activity_data[$plugin_name]) ? $activity_data[$plugin_name] : null;
+			$activity_count = $activity_info ? $activity_info['count'] : 0;
+			$last_action = $activity_info ? $activity_info['last_action'] : 'unknown';
+			$last_date = $activity_info ? $activity_info['last_date'] : '';
+			
+			// Format the last activity date if available
+			$activity_display = 'No recent activity';
+			if (!empty($last_date)) {
+				$timestamp = strtotime($last_date);
+				$formatted_date = date('M j, Y', $timestamp);
+				$activity_display = ucfirst($last_action) . ' on ' . $formatted_date;
+			}
 			
 			$result[] = array(
-				'name' => $plugin_data['Name'],
+				'name' => $plugin_name,
 				'plugin_path' => $plugin_path,
+				'plugin_slug' => $plugin_slug,
 				'version' => $plugin_data['Version'],
 				'description' => $plugin_data['Description'],
 				'author' => $plugin_data['Author'],
 				'is_active' => $is_active,
 				'status' => $is_active ? 'active' : 'inactive',
+				'activity_count' => $activity_count,
+				'last_action' => $last_action,
+				'last_activity' => $activity_display,
+				'generated_at' => $current_time,
+			);
+		}
+		
+		// Format for tabular display if requested
+		if (isset($parameters['format']) && $parameters['format'] === 'table') {
+			error_log('MPAI_WP_API_Tool: Formatting plugins as table');
+			$table_output = "Name\tStatus\tVersion\tLast Activity (Generated at $current_time)\n";
+			
+			foreach ($result as $plugin) {
+				$name = $plugin['name'];
+				$status = $plugin['status'];
+				$version = $plugin['version'];
+				$activity = $plugin['last_activity'];
+				
+				$table_output .= "$name\t$status\t$version\t$activity\n";
+			}
+			
+			return array(
+				'success' => true,
+				'count' => count($result),
+				'format' => 'table',
+				'table_data' => $table_output,
+				'plugins' => $result,
 			);
 		}
 		
 		return array(
 			'success' => true,
-			'count' => count( $result ),
+			'count' => count($result),
 			'plugins' => $result,
 		);
 	}

@@ -63,16 +63,28 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		}
 		
 		$command = $parameters['command'];
+		error_log('MPAI_WP_CLI_Tool: Executing command: ' . $command);
 		
 		// Validate the command
 		if ( ! $this->validate_command( $command ) ) {
 			throw new Exception( 'Command validation failed: not in allowlist' );
 		}
 		
+		// Special handling for specific commands that should use internal WordPress functions
+		if (strpos($command, 'wp plugin list') === 0) {
+			return $this->handle_plugin_list_command($command, $parameters);
+		}
+		
 		// Set execution timeout
 		$timeout = isset( $parameters['timeout'] ) ? 
 			min( (int) $parameters['timeout'], 60 ) : 
 			$this->execution_timeout;
+		
+		// Check if WP-CLI is available
+		if (!class_exists('WP_CLI')) {
+			error_log('MPAI_WP_CLI_Tool: WP-CLI not available, using alternative methods');
+			return $this->handle_command_without_wpcli($command, $parameters);
+		}
 		
 		// Build the command
 		$wp_cli_command = $this->build_command( $command );
@@ -90,6 +102,107 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		$format = isset( $parameters['format'] ) ? $parameters['format'] : 'text';
 		
 		return $this->parse_output( $output, $format );
+	}
+	
+	/**
+	 * Handle plugin list command using internal WordPress functions
+	 *
+	 * @param string $command The original command
+	 * @param array $parameters Additional parameters
+	 * @return string Formatted plugin list output
+	 */
+	private function handle_plugin_list_command($command, $parameters) {
+		error_log('MPAI_WP_CLI_Tool: Using internal WordPress functions for plugin list');
+		
+		// Load WP API Tool to use the enhanced get_plugins method
+		if (!class_exists('MPAI_WP_API_Tool')) {
+			$tool_path = dirname(__FILE__) . '/class-mpai-wp-api-tool.php';
+			if (file_exists($tool_path)) {
+				require_once $tool_path;
+			} else {
+				error_log('MPAI_WP_CLI_Tool: Could not find WP API Tool file');
+				throw new Exception('Could not load WP API Tool for plugin list');
+			}
+		}
+		
+		// Initialize WP API Tool
+		$wp_api_tool = new MPAI_WP_API_Tool();
+		
+		// Extract any flags from the command (--status=active, etc.)
+		$status_filter = null;
+		if (preg_match('/--status=(\w+)/', $command, $matches)) {
+			$status_filter = $matches[1];
+		}
+		
+		// Call get_plugins with appropriate parameters
+		$api_params = array(
+			'action' => 'get_plugins',
+			'format' => 'table',  // Always return tabular format for CLI commands
+		);
+		
+		if ($status_filter) {
+			$api_params['status'] = $status_filter;
+		}
+		
+		// Get timestamp for generated output
+		$current_time = date('H:i:s');
+		error_log('MPAI_WP_CLI_Tool: Generated at ' . $current_time);
+		
+		// Execute the API call to get plugins
+		$result = $wp_api_tool->execute($api_params);
+		
+		// Format output
+		if (is_array($result) && isset($result['table_data'])) {
+			// Already formatted as table
+			return $result['table_data'];
+		} elseif (is_array($result) && isset($result['plugins'])) {
+			// Format plugins as table
+			$plugins = $result['plugins'];
+			$output = "Name\tStatus\tVersion\tLast Activity (Generated at $current_time)\n";
+			
+			foreach ($plugins as $plugin) {
+				// Apply status filter if specified
+				if ($status_filter && $plugin['status'] !== $status_filter) {
+					continue;
+				}
+				
+				$name = $plugin['name'];
+				$status = $plugin['status'];
+				$version = $plugin['version'];
+				$activity = isset($plugin['last_activity']) ? $plugin['last_activity'] : 'No recent activity';
+				
+				$output .= "$name\t$status\t$version\t$activity\n";
+			}
+			
+			return $output;
+		} else {
+			// Return raw result if not in expected format
+			return json_encode($result);
+		}
+	}
+	
+	/**
+	 * Handle commands when WP-CLI is not available
+	 *
+	 * @param string $command The command to handle
+	 * @param array $parameters Additional parameters
+	 * @return mixed Result of the alternative command handling
+	 */
+	private function handle_command_without_wpcli($command, $parameters) {
+		// Extract the command type
+		$command_parts = explode(' ', trim($command));
+		
+		// Handle different command types
+		if (count($command_parts) >= 3 && $command_parts[0] === 'wp' && $command_parts[1] === 'plugin') {
+			// wp plugin commands
+			if ($command_parts[2] === 'list') {
+				return $this->handle_plugin_list_command($command, $parameters);
+			}
+		}
+		
+		// Default message for unsupported commands
+		return "The AI assistant cannot directly run WP-CLI commands on your server. Command '$command' cannot be executed directly.\n"
+			 . "Please use WordPress API tools instead (wp_api, memberpress_info, plugin_logs, etc.).";
 	}
 	
 	/**

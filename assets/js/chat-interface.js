@@ -97,7 +97,9 @@
                 data: {
                     action: 'mpai_process_chat',
                     message: message,
-                    nonce: mpai_chat_data.nonce
+                    nonce: mpai_chat_data.nonce,
+                    cache_buster: new Date().getTime(), // Add timestamp to prevent caching
+                    force_refresh: true // Signal to backend to bypass any caching
                 },
                 success: function(response) {
                     // Log the response received
@@ -1950,7 +1952,8 @@
                 type: 'POST',
                 data: {
                     action: 'mpai_get_chat_history',
-                    nonce: mpai_chat_data.nonce
+                    nonce: mpai_chat_data.nonce,
+                    cache_buster: new Date().getTime() // Add timestamp to prevent caching
                 },
                 success: function(response) {
                     if (response.success && response.data.history) {

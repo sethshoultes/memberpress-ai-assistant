@@ -726,15 +726,17 @@ class MPAI_Plugin_Logger {
             $date
         ), ARRAY_A );
         
-        // Get most active plugins
+        // Get most active plugins with their most recent activity
         $most_active_plugins = $wpdb->get_results( $wpdb->prepare(
-            "SELECT plugin_name, COUNT(*) as count 
-            FROM {$this->table_name} 
-            WHERE date_time >= %s 
-            GROUP BY plugin_name 
+            "SELECT p.plugin_name, COUNT(*) as count,
+            (SELECT action FROM {$this->table_name} WHERE plugin_name = p.plugin_name AND date_time >= %s ORDER BY date_time DESC LIMIT 1) as last_action,
+            (SELECT date_time FROM {$this->table_name} WHERE plugin_name = p.plugin_name AND date_time >= %s ORDER BY date_time DESC LIMIT 1) as last_date
+            FROM {$this->table_name} p
+            WHERE p.date_time >= %s 
+            GROUP BY p.plugin_name 
             ORDER BY count DESC 
-            LIMIT 10",
-            $date
+            LIMIT 25",
+            $date, $date, $date
         ), ARRAY_A );
         
         // Get most recent activity
