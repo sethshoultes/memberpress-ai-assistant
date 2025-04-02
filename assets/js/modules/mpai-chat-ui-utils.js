@@ -148,7 +148,24 @@ var MPAI_UIUtils = (function($) {
      */
     function scrollToBottom() {
         const messagesContainer = elements.chatMessages[0];
+        if (!messagesContainer) {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.error('Unable to scroll to bottom - messages container not found', 'ui');
+            }
+            return;
+        }
+        
+        const previousScroll = messagesContainer.scrollTop;
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        if (window.mpaiLogger) {
+            window.mpaiLogger.debug('Scrolled to bottom of chat', 'ui', {
+                previous: previousScroll,
+                current: messagesContainer.scrollTop,
+                scrollHeight: messagesContainer.scrollHeight,
+                containerHeight: messagesContainer.clientHeight
+            });
+        }
     }
     
     /**
@@ -156,6 +173,14 @@ var MPAI_UIUtils = (function($) {
      */
     function adjustInputHeight() {
         const textarea = elements.chatInput[0];
+        if (!textarea) {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.error('Unable to adjust input height - textarea not found', 'ui');
+            }
+            return;
+        }
+        
+        const originalHeight = textarea.style.height;
         
         // Reset height to auto to get the correct scrollHeight
         textarea.style.height = 'auto';
@@ -163,6 +188,15 @@ var MPAI_UIUtils = (function($) {
         // Set the height based on scrollHeight, with a max of 150px
         const newHeight = Math.min(textarea.scrollHeight, 150);
         textarea.style.height = newHeight + 'px';
+        
+        if (window.mpaiLogger && originalHeight !== newHeight + 'px') {
+            window.mpaiLogger.debug('Adjusted input height', 'ui', {
+                original: originalHeight,
+                new: newHeight + 'px',
+                scrollHeight: textarea.scrollHeight,
+                content: textarea.value.length + ' chars'
+            });
+        }
     }
     
     /**
@@ -175,9 +209,19 @@ var MPAI_UIUtils = (function($) {
      * @return {jQuery} The modal element
      */
     function showModal(options) {
+        if (window.mpaiLogger) {
+            window.mpaiLogger.startTimer('show_modal');
+            window.mpaiLogger.info('Showing modal dialog', 'ui', {
+                title: options.title || 'Modal',
+                hasContent: !!options.content,
+                hasCloseCallback: typeof options.onClose === 'function'
+            });
+        }
+        
         // Create modal container
         const $modal = $('<div>', {
-            'class': 'mpai-modal'
+            'class': 'mpai-modal',
+            'id': 'mpai-modal-' + Date.now()
         });
         
         // Create modal content
@@ -202,6 +246,15 @@ var MPAI_UIUtils = (function($) {
         
         // Show modal
         $modal.fadeIn(300);
+        
+        if (window.mpaiLogger) {
+            const elapsed = window.mpaiLogger.endTimer('show_modal');
+            window.mpaiLogger.debug('Modal dialog displayed', 'ui', {
+                timeMs: elapsed,
+                modalId: $modal.attr('id'),
+                contentSize: $modalContent.html().length
+            });
+        }
         
         // Set up close button
         $closeBtn.on('click', function() {
@@ -232,6 +285,23 @@ var MPAI_UIUtils = (function($) {
      * @param {function} callback - Optional callback function
      */
     function closeModal($modal, callback) {
+        if (!$modal || $modal.length === 0) {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.error('Attempt to close non-existent modal', 'ui');
+            }
+            return;
+        }
+        
+        const modalId = $modal.attr('id') || 'unknown';
+        
+        if (window.mpaiLogger) {
+            window.mpaiLogger.startTimer('close_modal_' + modalId);
+            window.mpaiLogger.info('Closing modal dialog', 'ui', {
+                modalId: modalId,
+                hasCallback: typeof callback === 'function'
+            });
+        }
+        
         $modal.fadeOut(300, function() {
             $modal.remove();
             
@@ -240,7 +310,30 @@ var MPAI_UIUtils = (function($) {
             
             // Call callback if provided
             if (typeof callback === 'function') {
-                callback();
+                try {
+                    callback();
+                    
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.debug('Modal close callback executed successfully', 'ui');
+                    }
+                } catch (error) {
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.error('Error in modal close callback', 'ui', {
+                            error: error.message,
+                            stack: error.stack
+                        });
+                    } else {
+                        console.error('Error in modal close callback:', error);
+                    }
+                }
+            }
+            
+            if (window.mpaiLogger) {
+                const elapsed = window.mpaiLogger.endTimer('close_modal_' + modalId);
+                window.mpaiLogger.debug('Modal dialog closed', 'ui', {
+                    timeMs: elapsed,
+                    modalId: modalId
+                });
             }
         });
     }

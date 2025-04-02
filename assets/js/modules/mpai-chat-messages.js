@@ -190,16 +190,27 @@ var MPAI_Messages = (function($) {
      */
     function sendMessage(message) {
         if (!message.trim()) {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.warn('Attempted to send empty message', 'api_calls');
+            }
             return;
         }
         
-        // Log the message being sent
+        // Log the message being sent with comprehensive details
         if (window.mpaiLogger) {
             window.mpaiLogger.info('Sending user message: ' + message.substring(0, 50) + (message.length > 50 ? '...' : ''), 'api_calls');
             window.mpaiLogger.startTimer('message_processing');
             window.mpaiLogger.logApiCall('OpenAI/Anthropic', 'chat completions', {
                 message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
-                timestamp: new Date().toISOString()
+                messageLength: message.length,
+                timestamp: new Date().toISOString(),
+                messageId: 'msg_' + Date.now()
+            });
+            window.mpaiLogger.debug('Message details', 'api_calls', {
+                wordCount: message.split(/\s+/).length,
+                containsCode: message.includes('```'),
+                containsQuestion: message.includes('?'),
+                containsURL: /https?:\/\/[^\s]+/.test(message)
             });
         }
         
@@ -275,18 +286,47 @@ var MPAI_Messages = (function($) {
      * @param {string} response - The response from the AI
      */
     function processResponse(response) {
+        // Start processing timing
+        if (window.mpaiLogger) {
+            window.mpaiLogger.startTimer('process_response');
+            window.mpaiLogger.debug('Processing AI response', 'api_calls', {
+                responseLength: response ? response.length : 0,
+                responseType: typeof response
+            });
+        }
+        
         // Check if the response contains tool calls
         if (window.MPAI_Tools && typeof window.MPAI_Tools.processToolCalls === 'function') {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.debug('Checking for tool calls in response', 'tool_usage');
+            }
+            
             const hasToolCalls = window.MPAI_Tools.processToolCalls(response);
             pendingToolCalls = hasToolCalls;
             
             // If there are tool calls, don't add the response message yet
             if (hasToolCalls) {
+                if (window.mpaiLogger) {
+                    const elapsed = window.mpaiLogger.endTimer('process_response');
+                    window.mpaiLogger.info('Response contains tool calls - deferring message display', 'tool_usage', {
+                        processingTimeMs: elapsed
+                    });
+                }
                 return;
             }
         }
         
         // Add the assistant message to the chat
+        if (window.mpaiLogger) {
+            const elapsed = window.mpaiLogger.endTimer('process_response');
+            window.mpaiLogger.info('Adding assistant response to chat', 'ui', {
+                processingTimeMs: elapsed,
+                responseLength: response ? response.length : 0,
+                hasHtml: response && (response.includes('<') && response.includes('>')),
+                hasCodeBlocks: response && response.includes('```')
+            });
+        }
+        
         addMessage('assistant', response);
     }
     

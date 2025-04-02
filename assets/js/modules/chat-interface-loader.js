@@ -34,9 +34,20 @@
             exportChat: $('#mpai-export-chat')
         };
         
-        // Minimal logging for element availability
+        // Debug logging for element availability
         if (window.mpaiLogger) {
-            window.mpaiLogger.debug('Chat interface elements initialized', 'ui');
+            window.mpaiLogger.debug('Chat toggle element found: ' + (elements.chatToggle.length > 0), 'ui');
+            window.mpaiLogger.debug('Chat container element found: ' + (elements.chatContainer.length > 0), 'ui');
+            window.mpaiLogger.debug('Chat messages element found: ' + (elements.chatMessages.length > 0), 'ui');
+            window.mpaiLogger.debug('Chat input element found: ' + (elements.chatInput.length > 0), 'ui');
+            window.mpaiLogger.debug('Chat form element found: ' + (elements.chatForm.length > 0), 'ui');
+            
+            // Log the logger settings
+            window.mpaiLogger.info('Logger settings:', 'ui', {
+                enabled: window.mpaiLogger.enabled,
+                logLevel: window.mpaiLogger.logLevel,
+                categories: window.mpaiLogger.categories
+            });
         }
         
         // Check if modules are available

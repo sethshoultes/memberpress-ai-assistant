@@ -90,20 +90,68 @@ if (!defined('WPINC')) {
                             $resultContainer.html('<?php _e('Testing...', 'memberpress-ai-assistant'); ?>');
                             $resultContainer.show();
                             
+                            // Debug log for the logger existence
+                            console.log('MPAI: Test button clicked, checking for logger object');
+                            console.log('MPAI: window.mpaiLogger exists:', typeof window.mpaiLogger !== 'undefined');
+                            
                             // Check if window.mpaiLogger exists
                             if (typeof window.mpaiLogger === 'undefined') {
-                                $resultContainer.html('<?php _e('Error: Logger not initialized. Try reloading the page.', 'memberpress-ai-assistant'); ?>');
+                                console.error('MPAI: Logger not initialized, creating a temporary logger for testing');
+                                
+                                // Create a temporary logger for testing
+                                window.mpaiLogger = {
+                                    enabled: true,
+                                    logLevel: 'debug',
+                                    categories: {
+                                        api_calls: true,
+                                        tool_usage: true,
+                                        agent_activity: true,
+                                        timing: true,
+                                        ui: true
+                                    },
+                                    testLog: function() {
+                                        console.group('MPAI Logger Test');
+                                        console.log('Logger Status: TEMPORARY LOGGER CREATED FOR TESTING');
+                                        console.log('Log Level: debug');
+                                        console.log('Categories: all enabled');
+                                        console.error('This is an ERROR test message from temporary logger');
+                                        console.warn('This is a WARNING test message from temporary logger');
+                                        console.info('This is an INFO test message from temporary logger');
+                                        console.log('This is a DEBUG test message from temporary logger');
+                                        console.groupEnd();
+                                        
+                                        return {
+                                            enabled: true,
+                                            logLevel: 'debug',
+                                            categories: {
+                                                api_calls: true,
+                                                tool_usage: true,
+                                                agent_activity: true,
+                                                timing: true,
+                                                ui: true
+                                            }
+                                        };
+                                    }
+                                };
+                                
+                                $resultContainer.html('<?php _e('Created a temporary logger for testing - check console. The normal logger is not initializing properly.', 'memberpress-ai-assistant'); ?>');
+                            }
+                            
+                            // Always enable logger for testing
+                            window.mpaiLogger.enabled = true;
+                            console.log('MPAI: Temporarily enabling logger for test');
+                            
+                            // Run logger test with try/catch to handle any errors
+                            var testResult;
+                            try {
+                                console.log('MPAI: Attempting to run testLog() function');
+                                testResult = window.mpaiLogger.testLog();
+                                console.log('MPAI: testLog() function completed successfully');
+                            } catch (e) {
+                                console.error('MPAI: Error running testLog() function:', e);
+                                $resultContainer.html('<?php _e('Error running logger test. See console for details.', 'memberpress-ai-assistant'); ?>');
                                 return;
                             }
-                            
-                            // Ensure logger is enabled for testing
-                            if (!window.mpaiLogger.enabled) {
-                                window.mpaiLogger.enabled = true;
-                                console.log('MPAI: Temporarily enabling logger for test');
-                            }
-                            
-                            // Run logger test
-                            var testResult = window.mpaiLogger.testLog();
                             
                             // Show test results
                             var resultHtml = '<span style="color: ' + (testResult.enabled ? 'green' : 'red') + '; font-weight: bold;">';
@@ -132,6 +180,23 @@ if (!defined('WPINC')) {
                             
                             $resultContainer.html(resultHtml);
                             
+                            // Apply the settings to the current logger
+                            if (window.mpaiLogger) {
+                                // Update logger settings
+                                window.mpaiLogger.enabled = $('#mpai_enable_console_logging').is(':checked');
+                                window.mpaiLogger.logLevel = $('#mpai_console_log_level').val();
+                                window.mpaiLogger.categories = {
+                                    api_calls: $('#mpai_log_api_calls').is(':checked'),
+                                    tool_usage: $('#mpai_log_tool_usage').is(':checked'), 
+                                    agent_activity: $('#mpai_log_agent_activity').is(':checked'),
+                                    timing: $('#mpai_log_timing').is(':checked'),
+                                    ui: true // Always enable UI logging for tests
+                                };
+                                
+                                // Log the updated settings
+                                console.log('MPAI: Updated logger settings:', window.mpaiLogger.enabled, window.mpaiLogger.logLevel, window.mpaiLogger.categories);
+                            }
+                            
                             // Save settings to localStorage for persistence
                             try {
                                 localStorage.setItem('mpai_logger_settings', JSON.stringify({
@@ -141,10 +206,21 @@ if (!defined('WPINC')) {
                                         api_calls: $('#mpai_log_api_calls').is(':checked'),
                                         tool_usage: $('#mpai_log_tool_usage').is(':checked'), 
                                         agent_activity: $('#mpai_log_agent_activity').is(':checked'),
-                                        timing: $('#mpai_log_timing').is(':checked')
+                                        timing: $('#mpai_log_timing').is(':checked'),
+                                        ui: true // Always enable UI logging
                                     }
                                 }));
                                 console.log('MPAI: Saved logger settings to localStorage');
+                                
+                                // Also save the settings in WordPress options
+                                // We need to trigger the form submission to save settings on the server
+                                $('#mpai-settings-form input[name="mpai_enable_console_logging"]').prop('checked', $('#mpai_enable_console_logging').is(':checked'));
+                                $('#mpai-settings-form select[name="mpai_console_log_level"]').val($('#mpai_console_log_level').val());
+                                $('#mpai-settings-form input[name="mpai_log_api_calls"]').prop('checked', $('#mpai_log_api_calls').is(':checked'));
+                                $('#mpai-settings-form input[name="mpai_log_tool_usage"]').prop('checked', $('#mpai_log_tool_usage').is(':checked'));
+                                $('#mpai-settings-form input[name="mpai_log_agent_activity"]').prop('checked', $('#mpai_log_agent_activity').is(':checked'));
+                                $('#mpai-settings-form input[name="mpai_log_timing"]').prop('checked', $('#mpai_log_timing').is(':checked'));
+                                $('#mpai-settings-form input[name="mpai_log_ui"]').prop('checked', true);
                             } catch(e) {
                                 console.error('MPAI: Could not save logger settings to localStorage:', e);
                             }

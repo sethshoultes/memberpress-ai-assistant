@@ -30,6 +30,12 @@ var MPAI_History = (function($) {
      * Load chat history from the server
      */
     function loadChatHistory() {
+        // Start timer for history loading performance tracking
+        if (window.mpaiLogger) {
+            window.mpaiLogger.startTimer('load_chat_history');
+            window.mpaiLogger.info('Loading chat history', 'ui');
+        }
+        
         // Clear existing messages to avoid duplicates
         elements.chatMessages.empty();
         
@@ -42,6 +48,17 @@ var MPAI_History = (function($) {
                 cache_buster: new Date().getTime() // Add timestamp to prevent caching
             },
             success: function(response) {
+                // Log performance data
+                if (window.mpaiLogger) {
+                    const elapsed = window.mpaiLogger.endTimer('load_chat_history');
+                    window.mpaiLogger.debug('Chat history AJAX request completed', 'ui', {
+                        timeMs: elapsed,
+                        success: response.success,
+                        hasHistory: !!(response.success && response.data && response.data.history && response.data.history.length > 0),
+                        messageCount: response.success && response.data && response.data.history ? response.data.history.length : 0
+                    });
+                }
+                
                 if (response.success && response.data.history && response.data.history.length > 0) {
                     displayChatHistory(response.data.history);
                     
@@ -56,10 +73,16 @@ var MPAI_History = (function($) {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('MPAI: Failed to load chat history', error);
-                
                 if (window.mpaiLogger) {
-                    window.mpaiLogger.error('Failed to load chat history: ' + error, 'ui');
+                    window.mpaiLogger.endTimer('load_chat_history');
+                    window.mpaiLogger.error('Failed to load chat history', 'ui', {
+                        status: status,
+                        error: error,
+                        statusCode: xhr.status,
+                        responseText: xhr.responseText ? xhr.responseText.substring(0, 100) : null
+                    });
+                } else {
+                    console.error('MPAI: Failed to load chat history', error);
                 }
             }
         });
