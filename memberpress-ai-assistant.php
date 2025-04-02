@@ -149,17 +149,17 @@ class MemberPress_AI_Assistant {
      * Initialize the plugin.
      */
     private function __construct() {
-        // Check if MemberPress is active
-        add_action('admin_init', array($this, 'check_memberpress'));
-        
         // Load required files
         $this->load_dependencies();
         
         // Initialize plugin components
         add_action('init', array($this, 'init_plugin_components'));
         
-        // Initialize admin section
-        add_action('admin_menu', array($this, 'add_admin_menu'));
+        // Check if MemberPress is active - now we run this at a later priority to ensure MemberPress is loaded
+        add_action('plugins_loaded', array($this, 'check_memberpress'), 15);
+        
+        // Initialize admin section - use a higher priority to ensure it runs after MemberPress registers its menu
+        add_action('admin_menu', array($this, 'add_admin_menu'), 20);
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
         
         // Add chat interface to admin footer
@@ -205,8 +205,73 @@ class MemberPress_AI_Assistant {
      * Check if MemberPress is active, store status and display upsell notice if needed
      */
     public function check_memberpress() {
-        $this->has_memberpress = class_exists('MeprAppCtrl');
+        // Start with the assumption that MemberPress is not active
+        $has_memberpress = false;
         
+        // Check for MemberPress class definitions
+        $classes_to_check = [
+            'MeprAppCtrl',
+            'MeprOptions',
+            'MeprUser',
+            'MeprProduct',
+            'MeprTransaction',
+            'MeprSubscription'
+        ];
+        
+        foreach ($classes_to_check as $class) {
+            if (class_exists($class)) {
+                error_log('MPAI: MemberPress class found: ' . $class);
+                $has_memberpress = true;
+                break;
+            }
+        }
+        
+        // Check for MemberPress constants
+        $constants_to_check = [
+            'MEPR_VERSION',
+            'MEPR_PLUGIN_NAME',
+            'MEPR_PATH',
+            'MEPR_URL'
+        ];
+        
+        foreach ($constants_to_check as $constant) {
+            if (defined($constant)) {
+                error_log('MPAI: MemberPress constant found: ' . $constant);
+                $has_memberpress = true;
+                break;
+            }
+        }
+        
+        // Check if the MemberPress plugin is active (the most reliable method)
+        if (function_exists('is_plugin_active') && is_plugin_active('memberpress/memberpress.php')) {
+            error_log('MPAI: MemberPress plugin is active');
+            $has_memberpress = true;
+        }
+        
+        // Check if MemberPress API exists
+        if (class_exists('MeprApi') || class_exists('MeprRestApi')) {
+            error_log('MPAI: MemberPress API class found');
+            $has_memberpress = true;
+        }
+        
+        // Also check if the 'memberpress' admin menu exists as a last resort
+        global $menu;
+        if (is_array($menu)) {
+            foreach ($menu as $item) {
+                if (isset($item[2]) && $item[2] === 'memberpress') {
+                    error_log('MPAI: MemberPress admin menu found');
+                    $has_memberpress = true;
+                    break;
+                }
+            }
+        }
+        
+        // Store the result
+        $this->has_memberpress = $has_memberpress;
+        
+        error_log('MPAI: has_memberpress set to: ' . ($this->has_memberpress ? 'true' : 'false'));
+        
+        // Display upsell notice if MemberPress is not active
         if (!$this->has_memberpress) {
             add_action('admin_notices', array($this, 'memberpress_upsell_notice'));
         }
@@ -330,32 +395,55 @@ class MemberPress_AI_Assistant {
      * Add admin menu items
      */
     public function add_admin_menu() {
+        // Force a memberpress check right before creating menus
+        $this->check_memberpress();
+        
+        // Log the status for debugging
+        error_log('MPAI: Adding admin menu. MemberPress detected: ' . ($this->has_memberpress ? 'yes' : 'no'));
+        
+        // Main menu page slug
+        $main_page_slug = 'memberpress-ai-assistant';
+        
         if ($this->has_memberpress) {
             // If MemberPress is active, add as a submenu to MemberPress
-            add_submenu_page(
-                'memberpress',
-                __('AI Assistant', 'memberpress-ai-assistant'),
-                __('AI Assistant', 'memberpress-ai-assistant'),
-                'manage_options',
-                'memberpress-ai-assistant',
-                array($this, 'display_admin_page')
+            error_log('MPAI: Adding menu as submenu of MemberPress');
+            
+            $main_page = add_submenu_page(
+                'memberpress', // Parent menu slug
+                __('AI Assistant', 'memberpress-ai-assistant'), // Page title
+                __('AI Assistant', 'memberpress-ai-assistant'), // Menu title
+                'manage_options', // Capability
+                $main_page_slug, // Menu slug
+                array($this, 'display_admin_page') // Callback function
             );
         } else {
             // If MemberPress is not active, add as a top-level menu
-            add_menu_page(
-                __('MemberPress AI', 'memberpress-ai-assistant'),
-                __('MemberPress AI', 'memberpress-ai-assistant'),
+            error_log('MPAI: Adding menu as top-level menu');
+            
+            $main_page = add_menu_page(
+                __('MemberPress AI', 'memberpress-ai-assistant'), // Page title
+                __('MemberPress AI', 'memberpress-ai-assistant'), // Menu title
+                'manage_options', // Capability
+                $main_page_slug, // Menu slug
+                array($this, 'display_admin_page'), // Callback function
+                MPAI_PLUGIN_URL . 'assets/images/memberpress-logo.svg', // Icon
+                30 // Position
+            );
+            
+            // Add a submenu item that matches the parent for clarity
+            add_submenu_page(
+                $main_page_slug, 
+                __('Dashboard', 'memberpress-ai-assistant'),
+                __('Dashboard', 'memberpress-ai-assistant'),
                 'manage_options',
-                'memberpress-ai-assistant',
-                array($this, 'display_admin_page'),
-                MPAI_PLUGIN_URL . 'assets/images/memberpress-logo.svg',
-                30
+                $main_page_slug, 
+                array($this, 'display_admin_page')
             );
         }
         
         // Register the settings page (always as a submenu of our main page)
         $settings_page = add_submenu_page(
-            'memberpress-ai-assistant',
+            $main_page_slug, // Always add settings under our main page slug
             __('Settings', 'memberpress-ai-assistant'),
             __('Settings', 'memberpress-ai-assistant'),
             'manage_options',
