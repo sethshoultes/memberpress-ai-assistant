@@ -4,11 +4,17 @@
  * Handles formatting of messages and special content types in the chat interface
  */
 
-(function($) {
+var MPAI_Formatters = (function($) {
     'use strict';
     
-    // Define the MPAI Chat Formatters namespace
-    window.mpaiChatFormatters = window.mpaiChatFormatters || {};
+    /**
+     * Initialize the module
+     */
+    function init() {
+        if (window.mpaiLogger) {
+            window.mpaiLogger.info('Formatters module initialized', 'ui');
+        }
+    }
     
     /**
      * Format a message with markdown-like syntax
@@ -16,7 +22,7 @@
      * @param {*} content - The message content (any type)
      * @return {string} Formatted content
      */
-    mpaiChatFormatters.formatMessage = function(content) {
+    function formatMessage(content) {
         // Guard for null/undefined first
         if (content === null || content === undefined) {
             console.error('formatMessage received null or undefined content');
@@ -65,7 +71,26 @@
                 return '<div class="code-container"><pre><code>' + p1.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre></div>';
             });
             
-            // Process tables for markdown tables: | Header1 | Header2 |\n| --- | --- |\n| Data1 | Data2 |
+            // Convert markdown lists to HTML lists - this is the key improvement
+            
+            // Unordered lists with dashes or asterisks
+            content = content.replace(/^([\s]*)-[\s]+(.*?)$/gm, '<li>$2</li>');
+            content = content.replace(/^([\s]*)\*[\s]+(.*?)$/gm, '<li>$2</li>');
+            
+            // Wrap consecutive <li> elements with <ul> tags
+            content = content.replace(/(<li>.*?<\/li>(\s*\n\s*)?)+/g, function(match) {
+                return '<ul class="mpai-list">' + match + '</ul>';
+            });
+            
+            // Ordered lists with numbers
+            content = content.replace(/^([\s]*)\d+\.[\s]+(.*?)$/gm, '<li>$2</li>');
+            
+            // Wrap consecutive <li> elements with <ol> tags but only those not already in <ul>
+            content = content.replace(/(?<!<ul class="mpai-list">)(<li>.*?<\/li>(\s*\n\s*)?)+(?!<\/ul>)/g, function(match) {
+                return '<ol class="mpai-list">' + match + '</ol>';
+            });
+            
+            // Process tables
             const tableRegex = /\|(.+)\|\n\|([\s-:]+\|)+\n((\|.+\|\n)+)/g;
             content = content.replace(tableRegex, function(match) {
                 try {
@@ -189,7 +214,7 @@
                 return 'Error formatting message and unable to display raw content.';
             }
         }
-    };
+    }
     
     /**
      * Format plugin logs result
@@ -197,7 +222,7 @@
      * @param {object} data - The plugin logs data from the direct AJAX handler
      * @return {string} Formatted HTML for the plugin logs
      */
-    mpaiChatFormatters.formatPluginLogsResult = function(data) {
+    function formatPluginLogsResult(data) {
         // Handle the case where data is undefined or null
         if (!data) {
             return '<div class="mpai-plugin-logs-error">No plugin logs data available</div>';
@@ -280,6 +305,182 @@
         
         html += '</div>';
         return html;
-    };
+    }
     
+    /**
+     * Format tabular result data
+     *
+     * @param {object} resultData - The tabular result data object
+     * @return {string} Formatted HTML for the table
+     */
+    function formatTabularResult(resultData) {
+        if (!resultData || !resultData.result) {
+            return '<div class="mpai-tool-call-error-message">No result data to format</div>';
+        }
+        
+        const commandType = resultData.command_type || 'generic';
+        let result = resultData.result || '';
+        
+        // Process the result to handle escaped tabs and newlines
+        if (typeof result === 'string') {
+            if (result.includes('\\t')) {
+                result = result.replace(/\\t/g, '\t');
+            }
+            
+            if (result.includes('\\n')) {
+                result = result.replace(/\\n/g, '\n');
+            }
+        } else {
+            // If result is not a string, return a simple display
+            return `<pre class="mpai-command-result"><code>${JSON.stringify(result, null, 2)}</code></pre>`;
+        }
+        
+        // Generate title based on command type
+        let tableTitle = '';
+        switch(commandType) {
+            case 'user_list':
+                tableTitle = '<h3>WordPress Users</h3>';
+                break;
+            case 'post_list':
+                tableTitle = '<h3>WordPress Posts</h3>';
+                break;
+            case 'plugin_list':
+                tableTitle = '<h3>WordPress Plugins</h3>';
+                break;
+            case 'membership_list':
+                tableTitle = '<h3>MemberPress Memberships</h3>';
+                break;
+            case 'transaction_list':
+                tableTitle = '<h3>MemberPress Transactions</h3>';
+                break;
+            default:
+                tableTitle = '<h3>Command Results</h3>';
+                break;
+        }
+        
+        // Format as table
+        const rows = result.trim().split('\n');
+        
+        let tableHtml = '<div class="mpai-result-table">';
+        tableHtml += tableTitle;
+        tableHtml += '<table>';
+        
+        // Skip empty rows
+        const nonEmptyRows = rows.filter(row => row.trim() !== '');
+        
+        nonEmptyRows.forEach((row, index) => {
+            // Try different delimiters to find the best match
+            let cells = [];
+            
+            // First try tab delimiter
+            if (row.includes('\t')) {
+                cells = row.split('\t');
+            } 
+            // Then try space delimiter with some intelligence
+            else if (commandType === 'plugin_list' && !row.includes('\t')) {
+                // For plugin list, we'll try to intelligently split by multi-spaces
+                // This matches the format: Name   Status   Version   Last Activity
+                const matches = row.match(/([^\s]+(?:\s+[^\s]+)*)\s{2,}/g);
+                
+                if (matches && matches.length > 0) {
+                    // Add the remainder of the string after the last match
+                    const matchedText = matches.join('');
+                    const remainder = row.substring(matchedText.length).trim();
+                    
+                    cells = matches.map(m => m.trim());
+                    
+                    if (remainder) {
+                        cells.push(remainder);
+                    }
+                } else {
+                    // Fallback to standard tab or 4+ space split
+                    cells = row.split(/\t|\s{4,}/);
+                }
+            } 
+            // Generic fallback
+            else {
+                // Split by multiple spaces (3 or more) for other types
+                cells = row.split(/\s{3,}/);
+                
+                // Fallback to basic split method if we didn't get at least 2 cells
+                if (cells.length < 2) {
+                    cells = row.split(/\s{2,}/);
+                }
+            }
+            
+            if (index === 0) {
+                // Header row
+                tableHtml += '<thead><tr>';
+                cells.forEach(cell => {
+                    tableHtml += `<th>${cell.trim()}</th>`;
+                });
+                tableHtml += '</tr></thead><tbody>';
+            } else {
+                // Handle status formatting for plugin list with special coloring
+                if (commandType === 'plugin_list') {
+                    tableHtml += '<tr>';
+                    cells.forEach((cell, cellIndex) => {
+                        cell = cell.trim();
+                        
+                        // Apply special formatting for Status column (typically index 1)
+                        if (cellIndex === 1 && (cell.toLowerCase() === 'active' || cell.toLowerCase() === 'inactive')) {
+                            const statusClass = cell.toLowerCase() === 'active' ? 'mpai-status-active' : 'mpai-status-inactive';
+                            tableHtml += `<td class="${statusClass}">${cell}</td>`;
+                        } else {
+                            tableHtml += `<td>${cell}</td>`;
+                        }
+                    });
+                    tableHtml += '</tr>';
+                } else {
+                    // Standard data row
+                    tableHtml += '<tr>';
+                    cells.forEach(cell => {
+                        tableHtml += `<td>${cell.trim()}</td>`;
+                    });
+                    tableHtml += '</tr>';
+                }
+            }
+        });
+        
+        tableHtml += '</tbody></table></div>';
+        
+        // Add CSS for status indicators
+        tableHtml += `
+        <style>
+            .mpai-result-table table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 10px 0;
+            }
+            .mpai-result-table th, .mpai-result-table td {
+                padding: 8px;
+                text-align: left;
+                border: 1px solid #ddd;
+            }
+            .mpai-result-table th {
+                background-color: #f2f2f2;
+                font-weight: bold;
+            }
+            .mpai-result-table .mpai-status-active {
+                color: green;
+                font-weight: bold;
+            }
+            .mpai-result-table .mpai-status-inactive {
+                color: #999;
+            }
+        </style>`;
+        
+        return tableHtml;
+    }
+    
+    // Public API
+    return {
+        init: init,
+        formatMessage: formatMessage,
+        formatPluginLogsResult: formatPluginLogsResult,
+        formatTabularResult: formatTabularResult
+    };
 })(jQuery);
+
+// Expose the module globally
+window.MPAI_Formatters = MPAI_Formatters;
