@@ -676,10 +676,56 @@ class MPAI_MemberPress_API {
      * Get subscriptions directly from database
      *
      * @param array $params Query parameters
-     * @return array|WP_Error The subscriptions or error
+     * @param bool $formatted Whether to return formatted tabular data
+     * @return array|WP_Error|string The subscriptions or error
      */
-    public function get_subscriptions($params = array()) {
-        return $this->get_subscriptions_from_db($params);
+    public function get_subscriptions($params = array(), $formatted = false) {
+        $result = $this->get_subscriptions_from_db($params);
+        
+        if ($formatted && !is_wp_error($result)) {
+            return $this->format_subscriptions_as_table($result);
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Get active subscriptions
+     *
+     * @param array $params Query parameters
+     * @param bool $formatted Whether to return formatted tabular data
+     * @return array|WP_Error|string The active subscriptions or error
+     */
+    public function get_active_subscriptions($params = array(), $formatted = false) {
+        $params['status'] = 'active';
+        return $this->get_subscriptions($params, $formatted);
+    }
+    
+    /**
+     * Format subscriptions data as a tab-separated table
+     *
+     * @param array $subscriptions The subscriptions data
+     * @return string Formatted tabular data
+     */
+    private function format_subscriptions_as_table($subscriptions) {
+        if (empty($subscriptions) || !is_array($subscriptions)) {
+            return "ID\tUser\tMembership\tPrice\tStatus\tCreated Date\nNo subscriptions found.";
+        }
+        
+        $output = "ID\tUser\tMembership\tPrice\tStatus\tCreated Date\n";
+        
+        foreach ($subscriptions as $sub) {
+            $id = isset($sub['id']) ? $sub['id'] : 'N/A';
+            $user = isset($sub['username']) ? $sub['username'] : 'N/A';
+            $membership = isset($sub['product_title']) ? $sub['product_title'] : 'N/A';
+            $price = isset($sub['price']) ? '$' . $sub['price'] : 'N/A';
+            $status = isset($sub['status']) ? $sub['status'] : 'N/A';
+            $created = isset($sub['created_at']) ? date('Y-m-d', strtotime($sub['created_at'])) : 'N/A';
+            
+            $output .= "$id\t$user\t$membership\t$price\t$status\t$created\n";
+        }
+        
+        return $output;
     }
 
     /**

@@ -139,8 +139,8 @@ class MPAI_Context_Manager {
                 'parameters' => array(
                     'type' => array(
                         'type' => 'string',
-                        'description' => 'Type of information (memberships, members, transactions, subscriptions, summary, new_members_this_month, system_info, best_selling)',
-                        'enum' => array('memberships', 'members', 'transactions', 'subscriptions', 'summary', 'new_members_this_month', 'system_info', 'best_selling', 'all')
+                        'description' => 'Type of information (memberships, members, transactions, subscriptions, active_subscriptions, summary, new_members_this_month, system_info, best_selling)',
+                        'enum' => array('memberships', 'members', 'transactions', 'subscriptions', 'active_subscriptions', 'summary', 'new_members_this_month', 'system_info', 'best_selling', 'all')
                     ),
                     'include_system_info' => array(
                         'type' => 'boolean',
@@ -775,58 +775,41 @@ class MPAI_Context_Manager {
                 }
                 
             case 'subscriptions':
-                $subscriptions = $this->memberpress_api->get_subscriptions();
+                // Get formatted subscriptions as table
+                $subscriptions = $this->memberpress_api->get_subscriptions(array(), true);
                 
-                // Format subscriptions data as a table
-                if (is_array($subscriptions)) {
-                    error_log('MPAI: Formatting subscriptions as table');
-                    $output = "ID\tUser\tMembership\tPrice\tStatus\tCreated Date\n";
-                    foreach ($subscriptions as $sub) {
-                        $id = isset($sub['id']) ? $sub['id'] : 'N/A';
-                        
-                        // Get user info
-                        $user = 'N/A';
-                        if (isset($sub['member']) && is_numeric($sub['member'])) {
-                            $member_id = $sub['member'];
-                            // Try to get email from member ID
-                            $member = get_user_by('id', $member_id);
-                            if ($member) {
-                                $user = $member->user_email;
-                            } else {
-                                $user = "ID: $member_id";
-                            }
-                        }
-                        
-                        // Get membership info
-                        $membership = 'N/A';
-                        if (isset($sub['membership']) && is_numeric($sub['membership'])) {
-                            // Try to get membership title
-                            $post = get_post($sub['membership']);
-                            if ($post) {
-                                $membership = $post->post_title;
-                            } else {
-                                $membership = "ID: " . $sub['membership'];
-                            }
-                        }
-                        
-                        $price = isset($sub['price']) ? '$' . $sub['price'] : 'N/A';
-                        $status = isset($sub['status']) ? $sub['status'] : 'N/A';
-                        $created = isset($sub['created_at']) ? date('Y-m-d', strtotime($sub['created_at'])) : 'N/A';
-                        
-                        $output .= "$id\t$user\t$membership\t$price\t$status\t$created\n";
-                    }
-                    
-                    // Return formatted tabular data
+                if (is_string($subscriptions)) {
+                    error_log('MPAI: Returning formatted subscriptions table');
+                    // Already formatted as tabular data
                     $response = array(
                         'success' => true,
                         'tool' => 'memberpress_info',
                         'command_type' => 'subscription_list',
-                        'result' => $output
+                        'result' => $subscriptions
                     );
                     return json_encode($response);
                 } else {
-                    // Fallback to regular JSON if not an array
+                    error_log('MPAI: Returning regular subscriptions JSON');
                     return json_encode($subscriptions);
+                }
+                
+            case 'active_subscriptions':
+                // Get active subscriptions
+                $active_subscriptions = $this->memberpress_api->get_active_subscriptions(array(), true);
+                
+                if (is_string($active_subscriptions)) {
+                    error_log('MPAI: Returning formatted active subscriptions table');
+                    // Already formatted as tabular data
+                    $response = array(
+                        'success' => true,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'active_subscription_list',
+                        'result' => $active_subscriptions
+                    );
+                    return json_encode($response);
+                } else {
+                    error_log('MPAI: Returning regular active subscriptions JSON');
+                    return json_encode($active_subscriptions);
                 }
                 
             case 'best_selling':

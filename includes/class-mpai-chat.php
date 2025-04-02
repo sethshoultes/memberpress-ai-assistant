@@ -343,6 +343,8 @@ class MPAI_Chat {
         $system_prompt .= "3. ALWAYS use the memberpress_info tool to get MemberPress-specific data\n";
         $system_prompt .= "   - For new member data: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"new_members_this_month\"}}\n";
         $system_prompt .= "   - For best-selling memberships: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"best_selling\"}}\n";
+        $system_prompt .= "   - For active subscriptions: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"active_subscriptions\"}}\n";
+        $system_prompt .= "   - For all subscriptions: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"subscriptions\"}}\n";
         $system_prompt .= "   - For WordPress and server information: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"system_info\"}}\n";
         $system_prompt .= "   - For complete data with system info: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"all\", \"include_system_info\": true}}\n";
         $system_prompt .= "   - The system_info type uses WordPress Site Health API for comprehensive diagnostics\n";
@@ -405,6 +407,10 @@ class MPAI_Chat {
             $best_selling_keywords = ['best-selling membership', 'best selling membership', 'top selling membership', 'popular membership', 'best performing membership', 'top membership', 'most popular membership', 'most sold membership'];
             $inject_best_selling_guidance = false;
             
+            // Check for active subscriptions queries
+            $active_subscriptions_keywords = ['active subscription', 'current subscription', 'active member', 'current member', 'active membership', 'active membership list'];
+            $inject_active_subscriptions_guidance = false;
+            
             foreach ($plugin_keywords as $keyword) {
                 if (stripos($message, $keyword) !== false) {
                     $inject_plugin_guidance = true;
@@ -417,6 +423,14 @@ class MPAI_Chat {
                 if (stripos($message, $keyword) !== false) {
                     $inject_best_selling_guidance = true;
                     error_log('MPAI Chat: Detected best-selling membership query, will inject guidance');
+                    break;
+                }
+            }
+            
+            foreach ($active_subscriptions_keywords as $keyword) {
+                if (stripos($message, $keyword) !== false) {
+                    $inject_active_subscriptions_guidance = true;
+                    error_log('MPAI Chat: Detected active subscriptions query, will inject guidance');
                     break;
                 }
             }
@@ -478,6 +492,17 @@ class MPAI_Chat {
                     
                     $this->conversation[] = array('role' => 'system', 'content' => $best_selling_guidance);
                     error_log('MPAI Chat: Enhanced best-selling membership guidance message added');
+                }
+                
+                // If this is an active subscriptions query, add a system message reminder
+                if ($inject_active_subscriptions_guidance) {
+                    error_log('MPAI Chat: Adding active subscriptions guidance message to conversation');
+                    $active_subscriptions_guidance = "CRITICAL INSTRUCTION: This query is about active subscriptions or current members. You MUST respond by calling the memberpress_info tool with type=active_subscriptions to get accurate information from the database. DO NOT provide any general advice or theoretical explanations. Format your response using the JSON format shown below.\n\n";
+                    $active_subscriptions_guidance .= "For active subscriptions, use exactly:\n```json\n{\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"active_subscriptions\"}}\n```\n\n";
+                    $active_subscriptions_guidance .= "After executing the tool call, explain the results to the user.";
+                    
+                    $this->conversation[] = array('role' => 'system', 'content' => $active_subscriptions_guidance);
+                    error_log('MPAI Chat: Enhanced active subscriptions guidance message added');
                 }
             } catch (Throwable $e) {
                 error_log('MPAI Chat: Error initializing conversation: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
