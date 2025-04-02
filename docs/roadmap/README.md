@@ -6,11 +6,13 @@ This directory contains documentation for features that are planned or in develo
 
 | Feature | Target Version | Status | Documentation |
 |---------|---------------|--------|--------------|
-| Support Routing System | 1.6.0 | In active development | [support-routing-system-plan.md](../support-routing-system-plan.md) |
-| Agentic Security Framework | 1.6.0 | Research phase | [agentic-security-framework.md](../agentic-security-framework.md) |
-| WordPress Security Integration | 1.6.0 | Design phase | [wp-security-integration-plan.md](../wp-security-integration-plan.md) |
-| Integrated Security Implementation | 1.6.0 | Design phase | [integrated-security-implementation-plan.md](../integrated-security-implementation-plan.md) |
-| Enhanced Content Tools | 1.6.1 | Planning phase | [content-tools-specification.md](../content-tools-specification.md) |
+| Support Routing System | 1.6.0 | In active development | [support-routing-system-plan.md](support-routing-system-plan.md) |
+| Agentic Security Framework | 1.6.0 | Research phase | [agentic-security-framework.md](agentic-security-framework.md) |
+| WordPress Security Integration | 1.6.0 | Design phase | [wp-security-integration-plan.md](wp-security-integration-plan.md) |
+| Integrated Security Implementation | 1.6.0 | Design phase | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) |
+| Enhanced Content Tools | 1.6.1 | Planning phase | [content-tools-specification.md](content-tools-specification.md) |
+| Blog Post XML Formatting | 1.6.1 | Planning phase | [blog-post-formatting-plan.md](blog-post-formatting-plan.md) |
+| New Tools Enhancement Plan | 1.7.0 | Research phase | [new-tools-enhancement-plan.md](new-tools-enhancement-plan.md) |
 
 ## Development Status Definitions
 
