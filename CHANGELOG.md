@@ -5,6 +5,20 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.8] - 2025-04-02
+
+### Fixed
+- Fixed "wp plugin list" command functionality with proper error handling:
+  - Created missing JavaScript modules for better separation of concerns:
+    - mpai-chat-tools.js - Handles tool execution and formatting
+    - mpai-chat-formatters.js - Manages message formatting 
+    - mpai-chat-history.js - Handles chat history operations
+  - Fixed response format in MPAI_Chat to use 'message' instead of 'response' key
+  - Improved error handling in Context Manager and WP CLI Tool
+  - Enhanced JavaScript response format parsing to handle multiple formats
+  - Fixed code block detection and tabular data extraction in chat interface
+  - Added extensive logging for better troubleshooting
+
 ## [1.5.7] - 2025-04-02
 
 ### Added
