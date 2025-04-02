@@ -750,35 +750,85 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 		
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			include_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		
 		// Get basic plugin data
 		$plugins = get_plugins();
 		$result = array();
 		
 		// Get plugin logger data if available
-		$plugin_logger = null;
 		$activity_data = array();
+		$plugin_logger_working = false;
 		
-		if (function_exists('mpai_init_plugin_logger')) {
-			error_log('MPAI_WP_API_Tool: Plugin logger function exists');
-			$plugin_logger = mpai_init_plugin_logger();
-			
-			if ($plugin_logger) {
-				error_log('MPAI_WP_API_Tool: Plugin logger initialized');
-				// Get activity summary for last 30 days
-				$activity_summary = $plugin_logger->get_activity_summary(30);
-				
-				// Create a lookup map for plugin activity data
-				if (!empty($activity_summary['most_active_plugins'])) {
-					foreach ($activity_summary['most_active_plugins'] as $plugin_activity) {
-						$activity_data[$plugin_activity['plugin_name']] = array(
-							'count' => $plugin_activity['count'],
-							'last_action' => $plugin_activity['last_action'] ?? 'unknown',
-							'last_date' => $plugin_activity['last_date'] ?? '',
-						);
-					}
-				}
-				error_log('MPAI_WP_API_Tool: Retrieved activity data for ' . count($activity_data) . ' plugins');
-			}
+		try {
+		    if (function_exists('mpai_init_plugin_logger')) {
+		        error_log('MPAI_WP_API_Tool: Plugin logger function exists');
+		        
+		        // Try to initialize the plugin logger
+		        $plugin_logger = mpai_init_plugin_logger();
+		        
+		        if ($plugin_logger) {
+		            error_log('MPAI_WP_API_Tool: Plugin logger initialized');
+		            
+		            // Test database connection by checking if the table exists
+		            global $wpdb;
+		            $table_name = $wpdb->prefix . 'mpai_plugin_logs';
+		            $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+		            
+		            if ($table_exists) {
+		                error_log('MPAI_WP_API_Tool: Plugin logs table exists');
+		                
+		                // Get activity summary for last 30 days
+		                $activity_summary = $plugin_logger->get_activity_summary(30);
+		                
+		                // Create a lookup map for plugin activity data
+		                if (!empty($activity_summary['most_active_plugins'])) {
+		                    foreach ($activity_summary['most_active_plugins'] as $plugin_activity) {
+		                        $activity_data[$plugin_activity['plugin_name']] = array(
+		                            'count' => $plugin_activity['count'],
+		                            'last_action' => $plugin_activity['last_action'] ?? 'unknown',
+		                            'last_date' => $plugin_activity['last_date'] ?? '',
+		                        );
+		                    }
+		                    $plugin_logger_working = true;
+		                    error_log('MPAI_WP_API_Tool: Retrieved activity data for ' . count($activity_data) . ' plugins');
+		                } else {
+		                    error_log('MPAI_WP_API_Tool: No active plugins found in logs');
+		                }
+		            } else {
+		                error_log('MPAI_WP_API_Tool: Plugin logs table does not exist');
+		                // Try to create the table
+		                if (method_exists($plugin_logger, 'maybe_create_table')) {
+		                    error_log('MPAI_WP_API_Tool: Attempting to create plugin logs table');
+		                    $table_created = $plugin_logger->maybe_create_table(true); // Force table creation
+		                    if ($table_created) {
+		                        error_log('MPAI_WP_API_Tool: Successfully created plugin logs table');
+		                    } else {
+		                        error_log('MPAI_WP_API_Tool: Failed to create plugin logs table');
+		                    }
+		                }
+		            }
+		        } else {
+		            error_log('MPAI_WP_API_Tool: Failed to initialize plugin logger');
+		        }
+		    } else {
+		        error_log('MPAI_WP_API_Tool: Plugin logger function does not exist');
+		    }
+		} catch (Exception $e) {
+		    error_log('MPAI_WP_API_Tool: Exception in plugin logger initialization: ' . $e->getMessage());
+		}
+		
+		// Get last activation dates for plugins from wp_options
+		$recently_activated = get_option('recently_activated', array());
+		$recently_activated_time = get_option('recently_activated_time', time());
+		
+		// Get plugin update data
+		$update_data = get_site_transient('update_plugins');
+		$has_updates = array();
+		if (isset($update_data->response) && is_array($update_data->response)) {
+		    $has_updates = array_keys($update_data->response);
 		}
 		
 		// Merge plugin data with activity data
@@ -786,19 +836,35 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			$is_active = is_plugin_active($plugin_path);
 			$plugin_name = $plugin_data['Name'];
 			$plugin_slug = dirname($plugin_path);
+			$needs_update = in_array($plugin_path, $has_updates);
 			
-			// Get activity info if available
+			// Determine last activity - first try plugin logger data
 			$activity_info = isset($activity_data[$plugin_name]) ? $activity_data[$plugin_name] : null;
 			$activity_count = $activity_info ? $activity_info['count'] : 0;
 			$last_action = $activity_info ? $activity_info['last_action'] : 'unknown';
 			$last_date = $activity_info ? $activity_info['last_date'] : '';
 			
-			// Format the last activity date if available
+			// Format the last activity date if available from logger
 			$activity_display = 'No recent activity';
 			if (!empty($last_date)) {
 				$timestamp = strtotime($last_date);
 				$formatted_date = date('M j, Y', $timestamp);
 				$activity_display = ucfirst($last_action) . ' on ' . $formatted_date;
+			} 
+			// If no logger data but plugin is in recently activated, use that
+			else if (array_key_exists($plugin_path, $recently_activated)) {
+			    $deactivation_time = $recently_activated[$plugin_path];
+			    $formatted_date = date('M j, Y', $deactivation_time);
+			    $activity_display = 'Deactivated on ' . $formatted_date;
+			} 
+			// Otherwise use heuristics
+			else {
+			    if ($is_active) {
+			        if (filemtime(WP_PLUGIN_DIR . '/' . $plugin_path) > time() - 60*60*24*30) {
+			            $formatted_date = date('M j, Y', filemtime(WP_PLUGIN_DIR . '/' . $plugin_path));
+			            $activity_display = 'Last updated on ' . $formatted_date;
+			        }
+			    }
 			}
 			
 			$result[] = array(
@@ -810,6 +876,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				'author' => $plugin_data['Author'],
 				'is_active' => $is_active,
 				'status' => $is_active ? 'active' : 'inactive',
+				'needs_update' => $needs_update,
 				'activity_count' => $activity_count,
 				'last_action' => $last_action,
 				'last_activity' => $activity_display,
@@ -837,6 +904,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				'format' => 'table',
 				'table_data' => $table_output,
 				'plugins' => $result,
+				'plugin_logger_available' => $plugin_logger_working
 			);
 		}
 		
@@ -844,6 +912,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			'success' => true,
 			'count' => count($result),
 			'plugins' => $result,
+			'plugin_logger_available' => $plugin_logger_working
 		);
 	}
 	

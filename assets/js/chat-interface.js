@@ -90,6 +90,8 @@
             // Scroll to the bottom with a slight delay to ensure content is rendered
             setTimeout(scrollToBottom, 100);
 
+            // Special handling for wp plugin list command removed - using server-side implementation
+            
             // Send the message to the server using AJAX
             $.ajax({
                 url: mpai_chat_data.ajax_url,
@@ -108,12 +110,44 @@
                         window.mpaiLogger.info('Received response in ' + (elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown time'), 'api_calls');
                     }
                     
+                    console.log('MPAI: Received AJAX response:', response);
+                    
                     // Hide typing indicator
                     hideTypingIndicator();
 
                     if (response.success && response.data && response.data.response) {
+                        let processedResponse = response.data.response;
+                        
+                        // Special handling for wp plugin list command
+                        if (message.trim().toLowerCase() === 'wp plugin list') {
+                            console.log('MPAI: Detected wp plugin list command, applying special formatting');
+                            
+                            // Check if response includes plugin list data in a format we can parse
+                            if (processedResponse.includes('plugin list') || processedResponse.includes('list of plugins')) {
+                                // Try to extract tabular data from code block
+                                const codeBlockRegex = /```([\s\S]*?)```/;
+                                const match = processedResponse.match(codeBlockRegex);
+                                
+                                if (match && match[1]) {
+                                    const tableData = match[1].trim();
+                                    console.log('MPAI: Found code block with table data:', tableData.substring(0, 100));
+                                    
+                                    // Format as HTML table
+                                    const tableResult = {
+                                        command_type: 'plugin_list',
+                                        result: tableData
+                                    };
+                                    
+                                    // Replace the code block with our formatted table
+                                    const formattedTable = formatTabularResult(tableResult);
+                                    processedResponse = processedResponse.replace(match[0], formattedTable);
+                                    console.log('MPAI: Formatted plugin list as HTML table');
+                                }
+                            }
+                        }
+                        
                         // Process response for tool calls
-                        let processedResponse = processToolCalls(response.data.response);
+                        processedResponse = processToolCalls(processedResponse);
                         
                         // Add the response to the chat
                         addMessageToChat('assistant', processedResponse);
@@ -214,34 +248,132 @@
             tableHtml += tableTitle;
             tableHtml += '<table>';
             
-            rows.forEach((row, index) => {
+            // Skip empty rows
+            const nonEmptyRows = rows.filter(row => row.trim() !== '');
+            
+            nonEmptyRows.forEach((row, index) => {
                 console.log(`MPAI: Processing direct format row ${index}:`, row.substring(0, 50));
                 
-                // Split by tab character or by string representation of tab if needed
-                const cells = row.includes('\t') ? 
-                    row.split('\t') : 
-                    row.split('t'); // Fallback if somehow we still have text "t" separators
+                // Try different delimiters to find the best match
+                let cells = [];
                 
-                console.log(`MPAI: Direct format row ${index} has ${cells.length} cells`);
+                // First try tab delimiter
+                if (row.includes('\t')) {
+                    cells = row.split('\t');
+                    console.log(`MPAI: Split row by tab, found ${cells.length} cells`);
+                } 
+                // Then try space delimiter with some intelligence
+                else if (commandType === 'plugin_list' && !row.includes('\t')) {
+                    // For plugin list, we'll try to intelligently split by multi-spaces
+                    // This matches the format: Name   Status   Version   Last Activity
+                    const matches = row.match(/([^\s]+(?:\s+[^\s]+)*)\s{2,}/g);
+                    
+                    if (matches && matches.length > 0) {
+                        // Add the remainder of the string after the last match
+                        const matchedText = matches.join('');
+                        const remainder = row.substring(matchedText.length).trim();
+                        
+                        cells = matches.map(m => m.trim());
+                        
+                        if (remainder) {
+                            cells.push(remainder);
+                        }
+                        
+                        console.log(`MPAI: Split row by multi-space, found ${cells.length} cells:`, cells);
+                    } else {
+                        // Fallback to standard tab or 4+ space split
+                        cells = row.split(/\t|\s{4,}/);
+                        console.log(`MPAI: Fallback split by tab or 4+ spaces, found ${cells.length} cells`);
+                    }
+                } 
+                // Generic fallback
+                else {
+                    // Split by multiple spaces (3 or more) for other types
+                    cells = row.split(/\s{3,}/);
+                    console.log(`MPAI: Split row by multiple spaces, found ${cells.length} cells`);
+                    
+                    // Fallback to basic split method if we didn't get at least 2 cells
+                    if (cells.length < 2) {
+                        cells = row.split(/\s{2,}/);
+                        console.log(`MPAI: Alternative split by 2+ spaces, found ${cells.length} cells`);
+                    }
+                }
+                
+                // Handle special case for column headers with timestamps/markers
+                if (commandType === 'plugin_list' && index === 0 && cells.some(c => c.includes('Generated at'))) {
+                    // Split the "Last Activity (Generated at X)" header appropriately
+                    const lastCell = cells[cells.length - 1];
+                    const match = lastCell.match(/(.*?)\s*\((Generated at .*?)\)/);
+                    
+                    if (match) {
+                        // Replace the last cell with just "Last Activity"
+                        cells[cells.length - 1] = match[1];
+                        console.log(`MPAI: Cleaned up Last Activity header: ${match[1]}`);
+                    }
+                }
                 
                 if (index === 0) {
                     // Header row
                     tableHtml += '<thead><tr>';
                     cells.forEach(cell => {
-                        tableHtml += `<th>${cell}</th>`;
+                        tableHtml += `<th>${cell.trim()}</th>`;
                     });
                     tableHtml += '</tr></thead><tbody>';
                 } else {
-                    // Data row
-                    tableHtml += '<tr>';
-                    cells.forEach(cell => {
-                        tableHtml += `<td>${cell}</td>`;
-                    });
-                    tableHtml += '</tr>';
+                    // Handle status formatting for plugin list with special coloring
+                    if (commandType === 'plugin_list') {
+                        tableHtml += '<tr>';
+                        cells.forEach((cell, cellIndex) => {
+                            cell = cell.trim();
+                            
+                            // Apply special formatting for Status column (typically index 1)
+                            if (cellIndex === 1 && (cell.toLowerCase() === 'active' || cell.toLowerCase() === 'inactive')) {
+                                const statusClass = cell.toLowerCase() === 'active' ? 'mpai-status-active' : 'mpai-status-inactive';
+                                tableHtml += `<td class="${statusClass}">${cell}</td>`;
+                            } else {
+                                tableHtml += `<td>${cell}</td>`;
+                            }
+                        });
+                        tableHtml += '</tr>';
+                    } else {
+                        // Standard data row
+                        tableHtml += '<tr>';
+                        cells.forEach(cell => {
+                            tableHtml += `<td>${cell.trim()}</td>`;
+                        });
+                        tableHtml += '</tr>';
+                    }
                 }
             });
             
             tableHtml += '</tbody></table></div>';
+            
+            // Add CSS for status indicators
+            tableHtml += `
+            <style>
+                .mpai-result-table table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 10px 0;
+                }
+                .mpai-result-table th, .mpai-result-table td {
+                    padding: 8px;
+                    text-align: left;
+                    border: 1px solid #ddd;
+                }
+                .mpai-result-table th {
+                    background-color: #f2f2f2;
+                    font-weight: bold;
+                }
+                .mpai-result-table .mpai-status-active {
+                    color: green;
+                    font-weight: bold;
+                }
+                .mpai-result-table .mpai-status-inactive {
+                    color: #999;
+                }
+            </style>`;
+            
             return tableHtml;
         }
         

@@ -403,6 +403,46 @@ class MPAI_Chat {
             $plugin_keywords = ['recently installed', 'recently activated', 'plugin history', 'plugin log', 'plugin activity', 'when was plugin', 'installed recently', 'activated recently', 'what plugins', 'which plugins'];
             $inject_plugin_guidance = false;
             
+            // Special handling for wp plugin list command - ADDED April 2, 2025 for debugging
+            $is_wp_plugin_list_command = (strtolower(trim($message)) === 'wp plugin list');
+            if ($is_wp_plugin_list_command) {
+                error_log('MPAI Chat: CRITICAL! Detected direct wp plugin list command - ' . date('H:i:s'));
+                
+                // DIRECT EXECUTION - Skip AI entirely for this specific command
+                try {
+                    error_log('MPAI Chat: Attempting direct execution of wp plugin list...');
+                    
+                    // Initialize the context manager if needed
+                    if (!isset($this->context_manager)) {
+                        $this->context_manager = new MPAI_Context_Manager();
+                        error_log('MPAI Chat: Created new Context Manager for direct execution');
+                    }
+                    
+                    // Execute the command directly
+                    $plugin_list_output = $this->context_manager->run_command('wp plugin list');
+                    error_log('MPAI Chat: Direct execution successful, output length: ' . strlen($plugin_list_output));
+                    
+                    // Create a response with the direct output
+                    $ai_response = "Here is the current list of plugins:\n\n";
+                    $ai_response .= "```\n" . $plugin_list_output . "\n```\n\n";
+                    $ai_response .= "This information was generated directly from your WordPress database.";
+                    
+                    // Save this message and response
+                    $this->save_message($message, $ai_response);
+                    
+                    error_log('MPAI Chat: Direct handling complete for wp plugin list command');
+                    
+                    // Return the response immediately
+                    return array(
+                        'success' => true,
+                        'response' => $ai_response,
+                    );
+                } catch (Exception $e) {
+                    error_log('MPAI Chat: Error in direct execution of wp plugin list: ' . $e->getMessage());
+                    // Continue with normal processing if direct execution fails
+                }
+            }
+            
             // Check for best-selling membership queries
             $best_selling_keywords = ['best-selling membership', 'best selling membership', 'top selling membership', 'popular membership', 'best performing membership', 'top membership', 'most popular membership', 'most sold membership'];
             $inject_best_selling_guidance = false;
