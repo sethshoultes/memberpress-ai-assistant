@@ -1100,20 +1100,29 @@ class MemberPress_AI_Assistant {
             return;
         }
         
-        // Get the consent value
-        $consent = isset($_POST['consent']) ? (bool) $_POST['consent'] : false;
-        
         // Get current user ID
         $user_id = get_current_user_id();
         
-        // Update user meta
-        update_user_meta($user_id, 'mpai_has_consented', $consent);
+        // Check if user has already consented
+        $has_consented = get_user_meta($user_id, 'mpai_has_consented', true);
         
-        // Return success
-        wp_send_json_success(array(
-            'message' => 'Consent saved',
-            'consent' => $consent
-        ));
+        // Only allow setting consent to true, not revoking it
+        if (!$has_consented) {
+            // Update user meta - only allow setting to true
+            update_user_meta($user_id, 'mpai_has_consented', true);
+            
+            // Return success
+            wp_send_json_success(array(
+                'message' => 'Consent saved',
+                'consent' => true
+            ));
+        } else {
+            // User has already consented, cannot change
+            wp_send_json_success(array(
+                'message' => 'User has already consented',
+                'consent' => true
+            ));
+        }
     }
 
     /**
@@ -1352,6 +1361,17 @@ class MemberPress_AI_Assistant {
     public function deactivate() {
         // Clear rewrite rules
         flush_rewrite_rules();
+        
+        // Reset all user consents upon deactivation
+        global $wpdb;
+        
+        // Delete consent meta for all users
+        $wpdb->delete(
+            $wpdb->usermeta,
+            array('meta_key' => 'mpai_has_consented')
+        );
+        
+        error_log('MPAI: All user consents have been reset upon plugin deactivation');
     }
 
     /**

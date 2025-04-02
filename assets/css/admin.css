@@ -340,6 +340,14 @@
     margin-top: 10px;
 }
 
+.mpai-consent-info {
+    font-size: 13px;
+    color: #135e96;
+    font-style: italic;
+    margin-top: 8px;
+    margin-bottom: 0;
+}
+
 .mpai-welcome-buttons.consent-required {
     opacity: 0.5;
     pointer-events: none;

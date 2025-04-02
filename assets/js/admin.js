@@ -648,44 +648,71 @@
             return;
         }
         
-        // Handle checkbox change
+        // If already checked, make it read-only
+        if ($consentCheckbox.prop('checked')) {
+            $consentCheckbox.prop('disabled', true);
+            $welcomeButtons.removeClass('consent-required');
+            $openChatButton.prop('disabled', false);
+            
+            // Add info text about the permanent nature of the consent
+            const $consentInfo = $('<p>', {
+                class: 'mpai-consent-info',
+                html: 'You have agreed to the terms. This agreement can only be revoked by deactivating and reactivating the plugin.'
+            });
+            
+            $consentCheckbox.closest('label').after($consentInfo);
+        }
+        
+        // Handle checkbox change - only allow checking, not unchecking
         $consentCheckbox.on('change', function() {
             const isChecked = $(this).prop('checked');
             
-            // Update UI
+            // Only proceed if they are checking the box
             if (isChecked) {
+                // Update UI
                 $welcomeButtons.removeClass('consent-required');
                 $openChatButton.prop('disabled', false);
+                
+                // Make the checkbox read-only once checked
+                $consentCheckbox.prop('disabled', true);
+                
+                // Add info text
+                const $consentInfo = $('<p>', {
+                    class: 'mpai-consent-info',
+                    html: 'You have agreed to the terms. This agreement can only be revoked by deactivating and reactivating the plugin.'
+                });
+                
+                $consentCheckbox.closest('label').after($consentInfo);
+                
+                // Save consent to server
+                $.ajax({
+                    url: mpai_data.ajax_url,
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'mpai_save_consent',
+                        nonce: mpai_chat_data.nonce, // Use the chat nonce
+                        consent: true // Always save as true
+                    },
+                    success: function(response) {
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.info('Consent saved successfully', 'ui');
+                        } else {
+                            console.log('MPAI: Consent saved successfully');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.error('Error saving consent: ' + error, 'ui');
+                        } else {
+                            console.error('MPAI: Error saving consent:', error);
+                        }
+                    }
+                });
             } else {
-                $welcomeButtons.addClass('consent-required');
-                $openChatButton.prop('disabled', true);
+                // If they somehow try to uncheck, prevent it
+                $consentCheckbox.prop('checked', true);
             }
-            
-            // Save consent to server
-            $.ajax({
-                url: mpai_data.ajax_url,
-                type: 'POST',
-                dataType: 'json',
-                data: {
-                    action: 'mpai_save_consent',
-                    nonce: mpai_chat_data.nonce, // Use the chat nonce
-                    consent: isChecked
-                },
-                success: function(response) {
-                    if (window.mpaiLogger) {
-                        window.mpaiLogger.info('Consent saved: ' + isChecked, 'ui');
-                    } else {
-                        console.log('MPAI: Consent saved: ' + isChecked);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    if (window.mpaiLogger) {
-                        window.mpaiLogger.error('Error saving consent: ' + error, 'ui');
-                    } else {
-                        console.error('MPAI: Error saving consent:', error);
-                    }
-                }
-            });
         });
         
         // Handle terms link click (show terms modal)
