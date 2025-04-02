@@ -684,7 +684,7 @@
                 
                 $consentCheckbox.closest('label').after($consentInfo);
                 
-                // Save consent to server
+                // Save consent to server and initialize chat interface
                 $.ajax({
                     url: mpai_data.ajax_url,
                     type: 'POST',
@@ -699,6 +699,16 @@
                             window.mpaiLogger.info('Consent saved successfully', 'ui');
                         } else {
                             console.log('MPAI: Consent saved successfully');
+                        }
+                        
+                        // Dynamically load the chat interface if it's not already there
+                        if (!$('#mpai-chat-container').length) {
+                            // Reload the page to ensure the chat interface is properly loaded
+                            window.location.reload();
+                        } else {
+                            // If chat interface exists but is not visible, make it visible
+                            $('#mpai-chat-container').show();
+                            $('#mpai-chat-toggle').show();
                         }
                     },
                     error: function(xhr, status, error) {

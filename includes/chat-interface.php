@@ -20,6 +20,14 @@ if (get_option('mpai_enable_chat', 1) != 1) {
 $user_id = get_current_user_id();
 $has_consented = get_user_meta($user_id, 'mpai_has_consented', true);
 if (!$has_consented) {
+    // Don't render the chat interface, but output a message about consent if debug is enabled
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        ?>
+        <script>
+        console.log('MPAI: Chat interface not rendered - user has not consented to terms and conditions');
+        </script>
+        <?php
+    }
     return;
 }
 

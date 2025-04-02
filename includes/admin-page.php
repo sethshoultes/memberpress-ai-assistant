@@ -146,6 +146,22 @@ $stats = $api->get_data_summary();
 jQuery(document).ready(function($) {
     // Handle opening the chat
     $('#mpai-open-chat').on('click', function() {
+        // Check if consent has been given
+        var hasConsented = $('#mpai-consent-checkbox').prop('checked');
+        
+        if (!hasConsented) {
+            // If not consented, show an alert
+            alert('Please agree to the terms and conditions before using the AI Assistant.');
+            return;
+        }
+        
+        // If the chat elements don't exist yet (because page hasn't been refreshed after consent)
+        if (!$('#mpai-chat-toggle').length) {
+            // Reload the page to ensure the chat interface is properly loaded
+            window.location.reload();
+            return;
+        }
+        
         // Trigger the chat to open by simulating a click on the chat toggle
         $('#mpai-chat-toggle').click();
     });
@@ -153,6 +169,22 @@ jQuery(document).ready(function($) {
     // Handle example question clicks
     $('.mpai-example-question').on('click', function(e) {
         e.preventDefault();
+        
+        // Check if consent has been given
+        var hasConsented = $('#mpai-consent-checkbox').prop('checked');
+        
+        if (!hasConsented) {
+            // If not consented, show an alert
+            alert('Please agree to the terms and conditions before using the AI Assistant.');
+            return;
+        }
+        
+        // If the chat elements don't exist yet (because page hasn't been refreshed after consent)
+        if (!$('#mpai-chat-toggle').length || !$('#mpai-chat-container').length) {
+            // Reload the page to ensure the chat interface is properly loaded
+            window.location.reload();
+            return;
+        }
         
         // Get the question
         var question = $(this).text();
