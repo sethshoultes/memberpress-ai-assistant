@@ -5,7 +5,24 @@
 
 // Load WordPress
 define('WP_USE_THEMES', false);
-require_once('../../../../../../wp-load.php');
+
+// Calculate the path to wp-load.php
+$wp_load_path = dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/wp-load.php';
+
+// Verify path exists
+if (!file_exists($wp_load_path)) {
+    echo "Error: wp-load.php not found at {$wp_load_path}<br>";
+    // Try alternative relative path
+    $wp_load_path = '../../../../wp-load.php';
+    echo "Trying alternative path: {$wp_load_path}<br>";
+}
+
+require_once($wp_load_path);
+
+// Check if user is logged in and is admin
+if (!current_user_can('manage_options')) {
+    wp_die('You do not have sufficient permissions to access this page.');
+}
 
 // Add error reporting
 error_reporting(E_ALL);
@@ -97,7 +114,7 @@ if (function_exists('mpai_init_plugin_logger')) {
 echo "<h2>Plugin Logs Tool Test</h2>";
 
 // Try to load the tool
-$tool_file = __DIR__ . '/includes/tools/implementations/class-mpai-plugin-logs-tool.php';
+$tool_file = dirname(__DIR__) . '/includes/tools/implementations/class-mpai-plugin-logs-tool.php';
 if (file_exists($tool_file)) {
     echo "<p>Plugin Logs Tool file exists at: {$tool_file}</p>";
     require_once($tool_file);
@@ -127,7 +144,7 @@ if (file_exists($tool_file)) {
 
 // Check Tool Registry
 echo "<h2>Tool Registry Test</h2>";
-$registry_file = __DIR__ . '/includes/tools/class-mpai-tool-registry.php';
+$registry_file = dirname(__DIR__) . '/includes/tools/class-mpai-tool-registry.php';
 if (file_exists($registry_file)) {
     echo "<p>Tool Registry file exists at: {$registry_file}</p>";
     
@@ -160,7 +177,7 @@ if (file_exists($registry_file)) {
 
 // Check Context Manager
 echo "<h2>Context Manager Test</h2>";
-$context_manager_file = __DIR__ . '/includes/class-mpai-context-manager.php';
+$context_manager_file = dirname(__DIR__) . '/includes/class-mpai-context-manager.php';
 if (file_exists($context_manager_file)) {
     echo "<p>Context Manager file exists at: {$context_manager_file}</p>";
     

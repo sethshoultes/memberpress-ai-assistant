@@ -7,14 +7,18 @@
 
 // Do not allow direct access to this file
 if (!defined('ABSPATH')) {
-    // Define ABSPATH if not already defined to allow standalone operation
-    if (!defined('WP_CONTENT_DIR')) {
-        define('WP_CONTENT_DIR', realpath(dirname(__FILE__) . '/../../../'));
+    // Calculate the path to wp-load.php
+    $wp_load_path = dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/wp-load.php';
+    
+    // Verify path exists
+    if (!file_exists($wp_load_path)) {
+        echo "Error: wp-load.php not found at {$wp_load_path}<br>";
+        // Try alternative relative path
+        $wp_load_path = '../../../../wp-load.php';
+        echo "Trying alternative path: {$wp_load_path}<br>";
     }
     
-    // WordPress constants for require_once compatibility
-    define('ABSPATH', realpath(WP_CONTENT_DIR . '/../') . '/');
-    require_once ABSPATH . 'wp-load.php';
+    require_once($wp_load_path);
 }
 
 // Security check

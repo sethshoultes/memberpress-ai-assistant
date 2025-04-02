@@ -4,12 +4,28 @@
  */
 
 // Load WordPress
-require_once dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
+// Calculate the path to wp-load.php
+$wp_load_path = dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/wp-load.php';
+
+// Verify path exists
+if (!file_exists($wp_load_path)) {
+    echo "Error: wp-load.php not found at {$wp_load_path}<br>";
+    // Try alternative relative path
+    $wp_load_path = '../../../../wp-load.php';
+    echo "Trying alternative path: {$wp_load_path}<br>";
+}
+
+require_once($wp_load_path);
+
+// Check if user is logged in and is admin
+if (!current_user_can('manage_options')) {
+    wp_die('You do not have sufficient permissions to access this page.');
+}
 
 // Load the agent classes
-require_once __DIR__ . '/includes/agents/interfaces/interface-mpai-agent.php';
-require_once __DIR__ . '/includes/agents/class-mpai-base-agent.php';
-require_once __DIR__ . '/includes/agents/specialized/class-mpai-command-validation-agent.php';
+require_once dirname(__DIR__) . '/includes/agents/interfaces/interface-mpai-agent.php';
+require_once dirname(__DIR__) . '/includes/agents/class-mpai-base-agent.php';
+require_once dirname(__DIR__) . '/includes/agents/specialized/class-mpai-command-validation-agent.php';
 
 // Create the validation agent
 $validation_agent = new MPAI_Command_Validation_Agent();

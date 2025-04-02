@@ -304,11 +304,33 @@ switch ($test_type) {
         <p>These standalone test pages provide additional diagnostic capabilities for debugging specific issues:</p>
         
         <div class="action-buttons">
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/debug-info.php'); ?>" class="button" target="_blank">Debug Info</a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/ajax-test.php'); ?>" class="button" target="_blank">AJAX Test</a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/openai-test.php'); ?>" class="button" target="_blank">OpenAI API Test</a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/memberpress-test.php'); ?>" class="button" target="_blank">MemberPress API Test</a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/anthropic-test.php'); ?>" class="button" target="_blank">Anthropic API Test</a>
+            <?php
+            // Define test files to check and display
+            $test_files = array(
+                'debug-info.php' => 'Debug Info',
+                'ajax-test.php' => 'AJAX Test',
+                'openai-test.php' => 'OpenAI API Test',
+                'memberpress-test.php' => 'MemberPress API Test',
+                'anthropic-test.php' => 'Anthropic API Test',
+                'test-validate-command.php' => 'Validate Command',
+                'test-best-selling.php' => 'Best Selling Test'
+            );
+            
+            // Check both includes and test directories
+            $include_dir = plugin_dir_path(dirname(__FILE__)) . 'includes/';
+            $test_dir = plugin_dir_path(dirname(__FILE__)) . 'test/';
+            
+            foreach ($test_files as $file => $label) {
+                // First check in includes directory
+                if (file_exists($include_dir . $file)) {
+                    echo '<a href="' . esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/' . $file) . '" class="button" target="_blank">' . $label . '</a> ';
+                }
+                // Then check in test directory
+                elseif (file_exists($test_dir . $file)) {
+                    echo '<a href="' . esc_url(plugin_dir_url(dirname(__FILE__)) . 'test/' . $file) . '" class="button" target="_blank">' . $label . '</a> ';
+                }
+            }
+            ?>
         </div>
         
         <?php else: ?>

@@ -5,8 +5,19 @@
  * Simple test script to directly test AJAX functionality
  */
 
-// Load WordPress core
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/wp-load.php');
+// Load WordPress
+// Calculate the path to wp-load.php
+$wp_load_path = dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/wp-load.php';
+
+// Verify path exists
+if (!file_exists($wp_load_path)) {
+    echo "Error: wp-load.php not found at {$wp_load_path}<br>";
+    // Try alternative relative path
+    $wp_load_path = '../../../../wp-load.php';
+    echo "Trying alternative path: {$wp_load_path}<br>";
+}
+
+require_once($wp_load_path);
 
 // Check if user is logged in and is admin
 if (!current_user_can('manage_options')) {

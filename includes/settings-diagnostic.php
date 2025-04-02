@@ -330,17 +330,45 @@ if (!defined('WPINC')) {
         </div>
     </div>
     
+    <?php
+    // Check if any test files exist in the new location
+    $test_files_exist = false;
+    $test_files = array(
+        'debug-info.php' => __('Debug Info', 'memberpress-ai-assistant'),
+        'ajax-test.php' => __('AJAX Test', 'memberpress-ai-assistant'),
+        'openai-test.php' => __('OpenAI API Test', 'memberpress-ai-assistant'),
+        'memberpress-test.php' => __('MemberPress API Test', 'memberpress-ai-assistant'),
+        'anthropic-test.php' => __('Anthropic API Test', 'memberpress-ai-assistant'),
+        'test-validate-command.php' => __('Validate Command', 'memberpress-ai-assistant'),
+        'test-best-selling.php' => __('Best Selling Test', 'memberpress-ai-assistant'),
+        'test-plugin-logs.php' => __('Plugin Logs Test', 'memberpress-ai-assistant')
+    );
+    
+    $test_dir = plugin_dir_path(dirname(__FILE__)) . 'test/';
+    
+    // Check if any test files exist
+    foreach ($test_files as $file => $label) {
+        if (file_exists($test_dir . $file)) {
+            $test_files_exist = true;
+            break;
+        }
+    }
+    
+    // Only show the section if test files exist
+    if ($test_files_exist) :
+    ?>
     <div class="mpai-diagnostic-section">
         <h4><?php _e('Legacy Test Scripts', 'memberpress-ai-assistant'); ?></h4>
         <p><?php _e('These test scripts provide additional diagnostic capabilities.', 'memberpress-ai-assistant'); ?></p>
         <p>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/debug-info.php'); ?>" class="button" target="_blank"><?php _e('Debug Info', 'memberpress-ai-assistant'); ?></a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/ajax-test.php'); ?>" class="button" target="_blank"><?php _e('AJAX Test', 'memberpress-ai-assistant'); ?></a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/openai-test.php'); ?>" class="button" target="_blank"><?php _e('OpenAI API Test', 'memberpress-ai-assistant'); ?></a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/memberpress-test.php'); ?>" class="button" target="_blank"><?php _e('MemberPress API Test', 'memberpress-ai-assistant'); ?></a>
-            <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'includes/anthropic-test.php'); ?>" class="button" target="_blank"><?php _e('Anthropic API Test', 'memberpress-ai-assistant'); ?></a>
+            <?php foreach ($test_files as $file => $label) : ?>
+                <?php if (file_exists($test_dir . $file)) : ?>
+                    <a href="<?php echo esc_url(plugin_dir_url(dirname(__FILE__)) . 'test/' . $file); ?>" class="button" target="_blank"><?php echo $label; ?></a>
+                <?php endif; ?>
+            <?php endforeach; ?>
         </p>
     </div>
+    <?php endif; ?>
 </div>
 
 <style>
