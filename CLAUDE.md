@@ -33,9 +33,13 @@
 - Main plugin file: `memberpress-ai-assistant.php`
 - Class files in `includes/` directory
 - Assets (JS/CSS) in `assets/` directory
-- Documentation in `docs/` directory
+- Documentation in `docs/` directory:
+  - `docs/current/` - Current feature documentation
+  - `docs/roadmap/` - Planned feature documentation
+  - `docs/archive/` - Archived documentation
 - WP-CLI commands in `includes/cli/` directory
 - Follow MVC-like pattern where appropriate
+- **Important**: For complete system architecture, refer to `/docs/current/system-map.md`
 
 ## Error Handling
 - Use `wp_send_json_error()` for AJAX errors
@@ -59,13 +63,14 @@
   - Categorize changes as "Added", "Changed", "Fixed", or "Removed"
   - Use bullet points for each significant change
   - Group related changes with sub-bullet points
-- Create or update documentation in the `docs/` directory whenever:
-  - Implementing new features
-  - Making architectural changes
-  - Adding new configuration options
-  - Changing existing behavior
+- Create or update documentation in the proper directory:
+  - `/docs/current/` - For implemented features
+  - `/docs/roadmap/` - For planned features
+  - `/docs/archive/` - For outdated documentation
+- When working on existing features, first check the system map at `/docs/current/system-map.md`
 - Reference documentation in code comments for complex functionality
 - Update main `docs/README.md` when adding new documentation files
+- When adding new PHP files, update the system map to include them
 
 ## Console Logging System
 - Use the `mpaiLogger` object for all browser console logging
@@ -88,3 +93,20 @@
       window.mpaiLogger.info('Operation completed', 'category');
   }
   ```
+
+## System Architecture Exploration
+- When first approaching the codebase, begin by reviewing `/docs/current/system-map.md`
+- For AI-specific components, understand these key relationships:
+  - `memberpress-ai-assistant.php` initializes the plugin
+  - `class-mpai-chat.php` processes user messages and AI responses
+  - `class-mpai-api-router.php` routes requests between different AI providers
+  - `class-mpai-context-manager.php` manages tool execution and context
+  - Agent classes provide specialized functionality for different domains
+- Debug issues by examining error logs with the correct prefixes:
+  - PHP errors use the `MPAI:` prefix in error logs
+  - JavaScript issues log to console via `mpaiLogger`
+- When adding features, follow the established architecture:
+  - Add new agent classes to `/includes/agents/specialized/`
+  - Add new tools to `/includes/tools/implementations/`
+  - Register tools in the context manager
+  - Update system prompt to include new capabilities
