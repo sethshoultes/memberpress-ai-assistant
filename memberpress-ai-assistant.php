@@ -137,6 +137,13 @@ class MemberPress_AI_Assistant {
      * @var object
      */
     protected static $instance = null;
+    
+    /**
+     * Whether MemberPress is available
+     *
+     * @var bool
+     */
+    private $has_memberpress = false;
 
     /**
      * Initialize the plugin.
@@ -194,23 +201,51 @@ class MemberPress_AI_Assistant {
     }
 
     /**
-     * Check if MemberPress is active, if not, display notice
+     * Check if MemberPress is active, store status and display upsell notice if needed
      */
     public function check_memberpress() {
-        if (!class_exists('MeprAppCtrl')) {
-            add_action('admin_notices', array($this, 'memberpress_missing_notice'));
+        $this->has_memberpress = class_exists('MeprAppCtrl');
+        
+        if (!$this->has_memberpress) {
+            add_action('admin_notices', array($this, 'memberpress_upsell_notice'));
         }
     }
 
     /**
-     * Display MemberPress missing notice
+     * Display MemberPress upsell notice
      */
-    public function memberpress_missing_notice() {
-        ?>
-        <div class="error">
-            <p><?php _e('MemberPress AI Assistant requires MemberPress to be installed and activated.', 'memberpress-ai-assistant'); ?></p>
-        </div>
-        <?php
+    public function memberpress_upsell_notice() {
+        if (isset($_GET['page']) && (strpos($_GET['page'], 'memberpress-ai-assistant') === 0)) {
+            ?>
+            <div class="notice notice-info is-dismissible mpai-upsell-notice">
+                <h3><?php _e('Enhance Your AI Assistant with MemberPress', 'memberpress-ai-assistant'); ?></h3>
+                <p><?php _e('You\'re currently using the standalone version of MemberPress AI Assistant. Upgrade to the full MemberPress platform to unlock advanced membership management features including:', 'memberpress-ai-assistant'); ?></p>
+                <ul class="mpai-upsell-features">
+                    <li><?php _e('Create and sell membership levels', 'memberpress-ai-assistant'); ?></li>
+                    <li><?php _e('Protect content with flexible rules', 'memberpress-ai-assistant'); ?></li>
+                    <li><?php _e('Process payments and subscriptions', 'memberpress-ai-assistant'); ?></li>
+                    <li><?php _e('Access detailed reporting', 'memberpress-ai-assistant'); ?></li>
+                    <li><?php _e('Unlock all AI Assistant features', 'memberpress-ai-assistant'); ?></li>
+                </ul>
+                <p><a href="https://memberpress.com/plans/?utm_source=ai_assistant&utm_medium=plugin&utm_campaign=upsell" class="button button-primary" target="_blank"><?php _e('Learn More About MemberPress', 'memberpress-ai-assistant'); ?></a></p>
+            </div>
+            <style>
+                .mpai-upsell-notice {
+                    border-left-color: #2271b1;
+                    padding: 10px 15px;
+                }
+                .mpai-upsell-notice h3 {
+                    margin-top: 0.5em;
+                    margin-bottom: 0.5em;
+                }
+                .mpai-upsell-features {
+                    list-style-type: disc;
+                    padding-left: 20px;
+                    margin-bottom: 15px;
+                }
+            </style>
+            <?php
+        }
     }
 
     /**
@@ -294,16 +329,30 @@ class MemberPress_AI_Assistant {
      * Add admin menu items
      */
     public function add_admin_menu() {
-        add_submenu_page(
-            'memberpress',
-            __('AI Assistant', 'memberpress-ai-assistant'),
-            __('AI Assistant', 'memberpress-ai-assistant'),
-            'manage_options',
-            'memberpress-ai-assistant',
-            array($this, 'display_admin_page')
-        );
+        if ($this->has_memberpress) {
+            // If MemberPress is active, add as a submenu to MemberPress
+            add_submenu_page(
+                'memberpress',
+                __('AI Assistant', 'memberpress-ai-assistant'),
+                __('AI Assistant', 'memberpress-ai-assistant'),
+                'manage_options',
+                'memberpress-ai-assistant',
+                array($this, 'display_admin_page')
+            );
+        } else {
+            // If MemberPress is not active, add as a top-level menu
+            add_menu_page(
+                __('MemberPress AI', 'memberpress-ai-assistant'),
+                __('MemberPress AI', 'memberpress-ai-assistant'),
+                'manage_options',
+                'memberpress-ai-assistant',
+                array($this, 'display_admin_page'),
+                MPAI_PLUGIN_URL . 'assets/images/memberpress-logo.svg',
+                30
+            );
+        }
         
-        // Register the settings page and handle options registration
+        // Register the settings page (always as a submenu of our main page)
         $settings_page = add_submenu_page(
             'memberpress-ai-assistant',
             __('Settings', 'memberpress-ai-assistant'),
@@ -525,13 +574,14 @@ class MemberPress_AI_Assistant {
 
         // Get logger settings
         $logger_settings = array(
-            'enabled' => get_option('mpai_enable_console_logging', '0'),
-            'log_level' => get_option('mpai_console_log_level', 'info'),
+            'enabled' => get_option('mpai_enable_console_logging', '0'), // Use setting from options
+            'log_level' => get_option('mpai_console_log_level', 'info'), // Default to info level
             'categories' => array(
-                'api_calls' => get_option('mpai_log_api_calls', '1'),
-                'tool_usage' => get_option('mpai_log_tool_usage', '1'),
-                'agent_activity' => get_option('mpai_log_agent_activity', '1'),
-                'timing' => get_option('mpai_log_timing', '1')
+                'api_calls' => get_option('mpai_log_api_calls', '0'),
+                'tool_usage' => get_option('mpai_log_tool_usage', '0'),
+                'agent_activity' => get_option('mpai_log_agent_activity', '0'),
+                'timing' => get_option('mpai_log_timing', '0'),
+                'ui' => get_option('mpai_log_ui', '0')
             )
         );
         

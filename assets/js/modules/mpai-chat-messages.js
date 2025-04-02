@@ -197,6 +197,10 @@ var MPAI_Messages = (function($) {
         if (window.mpaiLogger) {
             window.mpaiLogger.info('Sending user message: ' + message.substring(0, 50) + (message.length > 50 ? '...' : ''), 'api_calls');
             window.mpaiLogger.startTimer('message_processing');
+            window.mpaiLogger.logApiCall('OpenAI/Anthropic', 'chat completions', {
+                message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
+                timestamp: new Date().toISOString()
+            });
         }
         
         // Add the user message to the chat

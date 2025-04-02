@@ -34,11 +34,9 @@
             exportChat: $('#mpai-export-chat')
         };
         
-        // Log element availability for debugging
+        // Minimal logging for element availability
         if (window.mpaiLogger) {
-            window.mpaiLogger.debug('Chat toggle element found: ' + (elements.chatToggle.length > 0), 'ui');
-            window.mpaiLogger.debug('Chat container element found: ' + (elements.chatContainer.length > 0), 'ui');
-            window.mpaiLogger.debug('Chat messages element found: ' + (elements.chatMessages.length > 0), 'ui');
+            window.mpaiLogger.debug('Chat interface elements initialized', 'ui');
         }
         
         // Check if modules are available

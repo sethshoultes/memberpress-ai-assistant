@@ -24,6 +24,13 @@ class MPAI_MemberPress_API {
      * @var string
      */
     private $base_url;
+    
+    /**
+     * Whether MemberPress is available
+     *
+     * @var bool
+     */
+    private $has_memberpress;
 
     /**
      * Constructor
@@ -31,6 +38,35 @@ class MPAI_MemberPress_API {
     public function __construct() {
         $this->api_key = get_option('mpai_memberpress_api_key', '');
         $this->base_url = site_url('/wp-json/mp/v1/');
+        $this->has_memberpress = class_exists('MeprAppCtrl');
+    }
+    
+    /**
+     * Check if MemberPress is available
+     *
+     * @return bool
+     */
+    public function is_memberpress_available() {
+        return $this->has_memberpress;
+    }
+    
+    /**
+     * Generate upsell response for when MemberPress is not available
+     *
+     * @param string $feature The MemberPress feature being requested
+     * @return array Response with upsell message
+     */
+    private function get_upsell_response($feature) {
+        return array(
+            'status' => 'memberpress_not_available',
+            'message' => sprintf(
+                __('This feature requires MemberPress to be installed and activated. %sLearn more about MemberPress%s', 'memberpress-ai-assistant'),
+                '<a href="https://memberpress.com/plans/?utm_source=ai_assistant&utm_medium=api&utm_campaign=upsell" target="_blank">',
+                '</a>'
+            ),
+            'feature' => $feature,
+            'memberpress_url' => 'https://memberpress.com/plans/?utm_source=ai_assistant&utm_medium=api&utm_campaign=upsell'
+        );
     }
     
     /**
@@ -51,6 +87,11 @@ class MPAI_MemberPress_API {
      * @return array|WP_Error The data response or error
      */
     public function request($endpoint, $method = 'GET', $data = array()) {
+        // Check if MemberPress is available
+        if (!$this->has_memberpress) {
+            return $this->get_upsell_response($endpoint);
+        }
+        
         // We don't use the REST API anymore - direct database access instead
         
         // Determine what data to fetch based on the endpoint
@@ -824,6 +865,14 @@ class MPAI_MemberPress_API {
      * @return array|string The best-selling membership data or formatted string
      */
     public function get_best_selling_membership($params = array(), $formatted = false) {
+        // Check if MemberPress is available
+        if (!$this->has_memberpress) {
+            if ($formatted) {
+                return __("MemberPress is not installed. Install MemberPress to access best-selling membership data and analytics.", 'memberpress-ai-assistant');
+            }
+            return $this->get_upsell_response('best_selling_membership');
+        }
+        
         global $wpdb;
         
         try {
