@@ -172,6 +172,7 @@ class MemberPress_AI_Assistant {
         add_action('wp_ajax_mpai_process_chat', array($this, 'process_chat_ajax'));
         add_action('wp_ajax_mpai_clear_chat_history', array($this, 'clear_chat_history_ajax'));
         add_action('wp_ajax_mpai_get_chat_history', array($this, 'get_chat_history_ajax'));
+        add_action('wp_ajax_mpai_save_consent', array($this, 'save_consent_ajax'));
         
         // Plugin Logger AJAX handlers
         add_action('wp_ajax_mpai_get_plugin_logs', array($this, 'get_plugin_logs_ajax'));
@@ -1080,6 +1081,38 @@ class MemberPress_AI_Assistant {
 
         wp_send_json_success(array(
             'history' => $history,
+        ));
+    }
+
+    /**
+     * Save user consent via AJAX
+     */
+    public function save_consent_ajax() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_chat_nonce')) {
+            wp_send_json_error('Invalid nonce');
+            return;
+        }
+        
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error('User not logged in');
+            return;
+        }
+        
+        // Get the consent value
+        $consent = isset($_POST['consent']) ? (bool) $_POST['consent'] : false;
+        
+        // Get current user ID
+        $user_id = get_current_user_id();
+        
+        // Update user meta
+        update_user_meta($user_id, 'mpai_has_consented', $consent);
+        
+        // Return success
+        wp_send_json_success(array(
+            'message' => 'Consent saved',
+            'consent' => $consent
         ));
     }
 

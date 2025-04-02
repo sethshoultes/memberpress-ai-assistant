@@ -267,6 +267,38 @@ class MPAI_Chat_Interface {
      * @param string $message The user message
      * @param string $response The AI response
      */
+    /**
+     * Save user consent via AJAX
+     */
+    public function save_consent_ajax() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_chat_nonce')) {
+            wp_send_json_error('Invalid nonce');
+            return;
+        }
+        
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error('User not logged in');
+            return;
+        }
+        
+        // Get the consent value
+        $consent = isset($_POST['consent']) ? (bool) $_POST['consent'] : false;
+        
+        // Get current user ID
+        $user_id = get_current_user_id();
+        
+        // Update user meta
+        update_user_meta($user_id, 'mpai_has_consented', $consent);
+        
+        // Return success
+        wp_send_json_success(array(
+            'message' => 'Consent saved',
+            'consent' => $consent
+        ));
+    }
+
     private function save_message_to_history($message, $response) {
         $user_id = get_current_user_id();
         $history = get_user_meta($user_id, 'mpai_conversation_history', true);

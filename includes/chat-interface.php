@@ -16,6 +16,13 @@ if (get_option('mpai_enable_chat', 1) != 1) {
     return;
 }
 
+// Check if user has consented to terms and conditions
+$user_id = get_current_user_id();
+$has_consented = get_user_meta($user_id, 'mpai_has_consented', true);
+if (!$has_consented) {
+    return;
+}
+
 // Check if should only show on MemberPress pages
 if (get_option('mpai_show_on_all_pages', 1) != 1) {
     $screen = get_current_screen();

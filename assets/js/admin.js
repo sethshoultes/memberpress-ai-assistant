@@ -633,8 +633,109 @@
         // MemberPress API test handler removed - not needed
     }
 
+    /**
+     * Initialize the consent mechanism
+     */
+    function initConsent() {
+        const $consentCheckbox = $('#mpai-consent-checkbox');
+        const $openChatButton = $('#mpai-open-chat');
+        const $welcomeButtons = $('#mpai-welcome-buttons');
+        const $termsLink = $('#mpai-terms-link');
+        
+        // Skip if no consent UI on page
+        if (!$consentCheckbox.length) {
+            console.log('MPAI: Consent UI not found on page');
+            return;
+        }
+        
+        // Handle checkbox change
+        $consentCheckbox.on('change', function() {
+            const isChecked = $(this).prop('checked');
+            
+            // Update UI
+            if (isChecked) {
+                $welcomeButtons.removeClass('consent-required');
+                $openChatButton.prop('disabled', false);
+            } else {
+                $welcomeButtons.addClass('consent-required');
+                $openChatButton.prop('disabled', true);
+            }
+            
+            // Save consent to server
+            $.ajax({
+                url: mpai_data.ajax_url,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'mpai_save_consent',
+                    nonce: mpai_chat_data.nonce, // Use the chat nonce
+                    consent: isChecked
+                },
+                success: function(response) {
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.info('Consent saved: ' + isChecked, 'ui');
+                    } else {
+                        console.log('MPAI: Consent saved: ' + isChecked);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.error('Error saving consent: ' + error, 'ui');
+                    } else {
+                        console.error('MPAI: Error saving consent:', error);
+                    }
+                }
+            });
+        });
+        
+        // Handle terms link click (show terms modal)
+        $termsLink.on('click', function(e) {
+            e.preventDefault();
+            
+            // Create and show modal if it doesn't exist
+            if (!$('#mpai-terms-modal').length) {
+                const $modal = $('<div>', {
+                    id: 'mpai-terms-modal',
+                    class: 'mpai-terms-modal'
+                }).appendTo('body');
+                
+                const $modalContent = $('<div>', {
+                    class: 'mpai-terms-modal-content'
+                }).appendTo($modal);
+                
+                $('<h2>').text('MemberPress AI Terms & Conditions').appendTo($modalContent);
+                
+                $('<div>', {
+                    class: 'mpai-terms-content'
+                }).html(`
+                    <p>By using the MemberPress AI Assistant, you agree to the following terms:</p>
+                    <ol>
+                        <li>The AI Assistant is provided "as is" without warranties of any kind.</li>
+                        <li>The AI may occasionally provide incorrect or incomplete information.</li>
+                        <li>You are responsible for verifying any information provided by the AI.</li>
+                        <li>MemberPress is not liable for any actions taken based on AI recommendations.</li>
+                        <li>Your interactions with the AI Assistant may be logged for training and improvement purposes.</li>
+                    </ol>
+                    <p>For complete terms, please refer to the MemberPress Terms of Service.</p>
+                `).appendTo($modalContent);
+                
+                $('<button>', {
+                    class: 'button button-primary',
+                    text: 'Close'
+                }).on('click', function() {
+                    $modal.hide();
+                }).appendTo($modalContent);
+            }
+            
+            $('#mpai-terms-modal').show();
+        });
+    }
+
     $(document).ready(function() {
         console.log('MPAI: Admin script ready');
+        
+        // Initialize consent mechanism
+        initConsent();
 
         // Check if mpai_data includes plugin_url, add it if missing
         if (typeof mpai_data !== 'undefined' && !mpai_data.plugin_url) {
