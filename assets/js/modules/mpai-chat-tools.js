@@ -164,8 +164,15 @@ var MPAI_Tools = (function($) {
         
         // Log the tool call if logger is available
         if (window.mpaiLogger) {
+            window.mpaiLogger.debug('Executing tool: ' + toolName, 'tool_usage');
             window.mpaiLogger.logToolUsage(toolName, parameters);
             window.mpaiLogger.startTimer('tool_' + toolId);
+            window.mpaiLogger.info('Tool execution detail for ' + toolName, 'tool_usage', {
+                toolId: toolId,
+                parameters: parameters,
+                timestamp: new Date().toISOString(),
+                execution_start: true
+            });
         }
         
         // Construct the tool request in the format expected by the backend
@@ -189,6 +196,17 @@ var MPAI_Tools = (function($) {
                         'Tool "' + toolName + '" executed in ' + (elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown time'), 
                         'tool_usage'
                     );
+                    window.mpaiLogger.info('Tool execution completed for ' + toolName, 'tool_usage', {
+                        toolId: toolId,
+                        success: true,
+                        elapsed: elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown',
+                        timestamp: new Date().toISOString(),
+                        execution_complete: true,
+                        result_summary: response.success ? 'success' : 'error',
+                        result_length: response.data && response.data.result ? 
+                            (typeof response.data.result === 'string' ? response.data.result.length : 'non-string result') : 
+                            'no result'
+                    });
                 }
                 
                 const $toolCall = $('#' + toolId);
@@ -235,8 +253,18 @@ var MPAI_Tools = (function($) {
             },
             error: function(xhr, status, error) {
                 if (window.mpaiLogger) {
+                    const elapsed = window.mpaiLogger.endTimer('tool_' + toolId);
                     window.mpaiLogger.error('AJAX error executing tool ' + toolName, 'tool_usage');
-                    window.mpaiLogger.endTimer('tool_' + toolId);
+                    window.mpaiLogger.info('Tool execution failed for ' + toolName, 'tool_usage', {
+                        toolId: toolId,
+                        success: false,
+                        error: error,
+                        elapsed: elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown',
+                        timestamp: new Date().toISOString(),
+                        execution_complete: true,
+                        xhr_status: xhr.status,
+                        xhr_statusText: xhr.statusText
+                    });
                 }
                 
                 const $toolCall = $('#' + toolId);

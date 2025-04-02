@@ -73,15 +73,21 @@ class MPAI_Anthropic {
         // Format messages from OpenAI format to Anthropic format if needed
         $formatted_messages = $this->format_messages_for_anthropic($messages);
 
-        $body = array_merge(
-            array(
-                'model' => $this->model,
-                'messages' => $formatted_messages,
-                'temperature' => $this->temperature,
-                'max_tokens' => $this->max_tokens,
-            ),
-            $additional_params
+        $body = array(
+            'model' => $this->model,
+            'messages' => $formatted_messages,
+            'temperature' => $this->temperature,
+            'max_tokens' => $this->max_tokens,
         );
+        
+        // Add system parameter if we have a system prompt
+        if (isset($GLOBALS['anthropic_system_prompt'])) {
+            $body['system'] = $GLOBALS['anthropic_system_prompt'];
+            unset($GLOBALS['anthropic_system_prompt']);
+        }
+        
+        // Add any additional parameters
+        $body = array_merge($body, $additional_params);
 
         // Add tools if provided
         if (!empty($tools)) {
@@ -127,21 +133,9 @@ class MPAI_Anthropic {
      */
     private function format_messages_for_anthropic($messages) {
         $formatted_messages = array();
+        $system_message = null;
         
-        foreach ($messages as $message) {
-            // Skip 'system' messages initially
-            if ($message['role'] === 'system') {
-                continue;
-            }
-            
-            $formatted_messages[] = array(
-                'role' => $message['role'],
-                'content' => $message['content']
-            );
-        }
-        
-        // If there's a system message, add it to the first user message
-        $system_message = '';
+        // First extract the system message if available
         foreach ($messages as $message) {
             if ($message['role'] === 'system') {
                 $system_message = $message['content'];
@@ -149,14 +143,23 @@ class MPAI_Anthropic {
             }
         }
         
-        // If we have a system message and at least one user message
-        if (!empty($system_message) && !empty($formatted_messages)) {
-            foreach ($formatted_messages as &$message) {
-                if ($message['role'] === 'user') {
-                    $message['system'] = $system_message;
-                    break;
-                }
+        // Now process all non-system messages
+        foreach ($messages as $message) {
+            if ($message['role'] !== 'system') {
+                $formatted_message = array(
+                    'role' => $message['role'],
+                    'content' => $message['content']
+                );
+                
+                $formatted_messages[] = $formatted_message;
             }
+        }
+        
+        // If we have a system message and formatted messages
+        if ($system_message && !empty($formatted_messages)) {
+            // Instead of adding system to each user message, we'll add it to the API request
+            // as a separate parameter rather than inside a message
+            $GLOBALS['anthropic_system_prompt'] = $system_message;
         }
         
         return $formatted_messages;

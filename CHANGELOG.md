@@ -5,7 +5,16 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.5.7] - 2025-04-02
+## [1.5.8] - 2025-04-02
+
+### Added
+- Independent operation mode allowing the plugin to work without MemberPress:
+  - Smart menu placement: top-level when MemberPress is absent, submenu when present
+  - Graceful degradation of MemberPress-specific API features with informative messages
+  - MemberPress upsell integration with strategically placed promotional elements
+  - Enhanced API class with comprehensive availability checks 
+  - Added fallback responses for all MemberPress-specific features
+  - Detailed implementation documentation in MEMBERPRESS_INDEPENDENT_OPERATION.md
 
 ### Fixed
 - Copy icon functionality in chat interface now correctly copies message content to clipboard

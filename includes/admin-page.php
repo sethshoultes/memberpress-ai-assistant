@@ -10,8 +10,9 @@ if (!defined('WPINC')) {
     die;
 }
 
-// Get stats
+// Get stats and check if MemberPress is available
 $api = new MPAI_MemberPress_API();
+$has_memberpress = $api->is_memberpress_available();
 $stats = $api->get_data_summary();
 ?>
 
@@ -29,7 +30,7 @@ $stats = $api->get_data_summary();
         <div class="mpai-welcome-card">
             <h2><?php _e('Welcome to MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h2>
             <p><?php _e('The AI assistant is available via the chat bubble in the bottom-right corner of your screen (or wherever you positioned it in settings).', 'memberpress-ai-assistant'); ?></p>
-            <p><?php _e('You can use it to ask questions about your MemberPress site, get insights, and run commands.', 'memberpress-ai-assistant'); ?></p>
+            <p><?php _e('You can use it to ask questions about your site, get insights, and run commands.', 'memberpress-ai-assistant'); ?></p>
             
             <div class="mpai-welcome-buttons">
                 <button id="mpai-open-chat" class="button button-primary"><?php _e('Open Chat', 'memberpress-ai-assistant'); ?></button>
@@ -37,6 +38,51 @@ $stats = $api->get_data_summary();
             </div>
         </div>
         
+        <?php if (!$has_memberpress): ?>
+        <div class="mpai-upsell-section">
+            <h2><?php _e('Supercharge Your Membership Business with MemberPress', 'memberpress-ai-assistant'); ?></h2>
+            <div class="mpai-upsell-columns">
+                <div class="mpai-upsell-column">
+                    <h3><?php _e('Why Choose MemberPress?', 'memberpress-ai-assistant'); ?></h3>
+                    <ul>
+                        <li><?php _e('Create unlimited membership levels', 'memberpress-ai-assistant'); ?></li>
+                        <li><?php _e('Protect your valuable content', 'memberpress-ai-assistant'); ?></li>
+                        <li><?php _e('Accept payments with multiple gateways', 'memberpress-ai-assistant'); ?></li>
+                        <li><?php _e('Generate detailed reports', 'memberpress-ai-assistant'); ?></li>
+                        <li><?php _e('Automate emails and drip content', 'memberpress-ai-assistant'); ?></li>
+                        <li><?php _e('Unlock advanced AI features', 'memberpress-ai-assistant'); ?></li>
+                    </ul>
+                    <p><a href="https://memberpress.com/plans/?utm_source=ai_assistant&utm_medium=admin&utm_campaign=upsell" class="button button-primary button-hero" target="_blank"><?php _e('Get MemberPress Now', 'memberpress-ai-assistant'); ?></a></p>
+                </div>
+                <div class="mpai-upsell-column">
+                    <div class="mpai-upsell-logo">
+                        <img src="<?php echo MPAI_PLUGIN_URL; ?>assets/images/memberpress-logo.svg" alt="MemberPress Logo" class="mpai-upsell-logo-img">
+                    </div>
+                    <div class="mpai-limited-features">
+                        <h4><?php _e('With MemberPress, you\'ll be able to:', 'memberpress-ai-assistant'); ?></h4>
+                        <div class="mpai-limited-feature-grid">
+                            <div class="mpai-limited-feature-item">
+                                <span class="dashicons dashicons-yes-alt"></span>
+                                <span><?php _e('View Member Analytics', 'memberpress-ai-assistant'); ?></span>
+                            </div>
+                            <div class="mpai-limited-feature-item">
+                                <span class="dashicons dashicons-yes-alt"></span>
+                                <span><?php _e('Track Membership Sales', 'memberpress-ai-assistant'); ?></span>
+                            </div>
+                            <div class="mpai-limited-feature-item">
+                                <span class="dashicons dashicons-yes-alt"></span>
+                                <span><?php _e('Manage Subscriptions', 'memberpress-ai-assistant'); ?></span>
+                            </div>
+                            <div class="mpai-limited-feature-item">
+                                <span class="dashicons dashicons-yes-alt"></span>
+                                <span><?php _e('Get Revenue Reports', 'memberpress-ai-assistant'); ?></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php else: ?>
         <div class="mpai-stats-card">
             <h2><?php _e('MemberPress Stats', 'memberpress-ai-assistant'); ?></h2>
             <div class="mpai-stats-grid">
@@ -58,15 +104,23 @@ $stats = $api->get_data_summary();
                 </div>
             </div>
         </div>
+        <?php endif; ?>
         
         <div class="mpai-help-card">
             <h2><?php _e('Example Questions', 'memberpress-ai-assistant'); ?></h2>
             <p><?php _e('Here are some questions you can ask the AI assistant:', 'memberpress-ai-assistant'); ?></p>
             <ul class="mpai-example-questions">
+                <?php if ($has_memberpress): ?>
                 <li><a href="#" class="mpai-example-question"><?php _e('How many new members joined this month?', 'memberpress-ai-assistant'); ?></a></li>
                 <li><a href="#" class="mpai-example-question"><?php _e('What is the best selling membership?', 'memberpress-ai-assistant'); ?></a></li>
                 <li><a href="#" class="mpai-example-question"><?php _e('Show me active subscriptions', 'memberpress-ai-assistant'); ?></a></li>
                 <li><a href="#" class="mpai-example-question"><?php _e('What WP-CLI commands can I use for MemberPress?', 'memberpress-ai-assistant'); ?></a></li>
+                <?php else: ?>
+                <li><a href="#" class="mpai-example-question"><?php _e('What can I do with MemberPress?', 'memberpress-ai-assistant'); ?></a></li>
+                <li><a href="#" class="mpai-example-question"><?php _e('Show me WordPress users', 'memberpress-ai-assistant'); ?></a></li>
+                <li><a href="#" class="mpai-example-question"><?php _e('How can I create a membership site?', 'memberpress-ai-assistant'); ?></a></li>
+                <li><a href="#" class="mpai-example-question"><?php _e('List installed plugins', 'memberpress-ai-assistant'); ?></a></li>
+                <?php endif; ?>
             </ul>
         </div>
     </div>
@@ -167,13 +221,78 @@ jQuery(document).ready(function($) {
     text-decoration: none;
 }
 
+/* Upsell Styles */
+.mpai-upsell-section {
+    background-color: #f8f9fa;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 30px;
+    grid-column: 1 / 3;
+}
+
+.mpai-upsell-columns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+}
+
+.mpai-upsell-column {
+    flex: 1;
+    min-width: 300px;
+}
+
+.mpai-upsell-column h3 {
+    margin-top: 0;
+}
+
+.mpai-upsell-column ul {
+    list-style-type: disc;
+    padding-left: 20px;
+}
+
+.mpai-upsell-logo {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.mpai-upsell-logo-img {
+    max-width: 200px;
+    height: auto;
+}
+
+.mpai-limited-features h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.mpai-limited-feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.mpai-limited-feature-item {
+    display: flex;
+    align-items: center;
+}
+
+.mpai-limited-feature-item .dashicons {
+    color: #2271b1;
+    margin-right: 8px;
+}
+
 @media (max-width: 782px) {
     .mpai-welcome-container {
         grid-template-columns: 1fr;
     }
     
-    .mpai-welcome-card {
+    .mpai-welcome-card, .mpai-upsell-section {
         grid-column: 1;
+    }
+    
+    .mpai-limited-feature-grid {
+        grid-template-columns: 1fr;
     }
 }
 </style>
