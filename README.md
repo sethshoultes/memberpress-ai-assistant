@@ -133,13 +133,17 @@ The plugin is organized into the following structure:
 
 - `/assets/` - CSS and JavaScript files
 - `/docs/` - Documentation files
+  - `/docs/current/` - Current feature documentation
+  - `/docs/roadmap/` - Planned feature documentation
   - `/docs/archive/` - Archived and deprecated files
 - `/includes/` - PHP class files
   - `/includes/agents/` - Agent system files
   - `/includes/cli/` - WP-CLI command files
   - `/includes/tools/` - Tool implementation files
-- `/sdk/` - Python SDK files (optional)
-- `/tests/` - Testing procedures and test files
+- `/_scooby/` - Scooby Snack protocol files
+- `/test/` - Testing procedures and test files
+
+For a detailed description of all files and their purpose, see the [System Map](docs/current/system-map.md).
 
 ## Development Resources
 
