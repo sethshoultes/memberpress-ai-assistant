@@ -401,10 +401,22 @@ class MPAI_Chat {
             $plugin_keywords = ['recently installed', 'recently activated', 'plugin history', 'plugin log', 'plugin activity', 'when was plugin', 'installed recently', 'activated recently', 'what plugins', 'which plugins'];
             $inject_plugin_guidance = false;
             
+            // Check for best-selling membership queries
+            $best_selling_keywords = ['best-selling membership', 'best selling membership', 'top selling membership', 'popular membership', 'best performing membership', 'top membership', 'most popular membership', 'most sold membership'];
+            $inject_best_selling_guidance = false;
+            
             foreach ($plugin_keywords as $keyword) {
                 if (stripos($message, $keyword) !== false) {
                     $inject_plugin_guidance = true;
                     error_log('MPAI Chat: Detected plugin-related query, will inject guidance');
+                    break;
+                }
+            }
+            
+            foreach ($best_selling_keywords as $keyword) {
+                if (stripos($message, $keyword) !== false) {
+                    $inject_best_selling_guidance = true;
+                    error_log('MPAI Chat: Detected best-selling membership query, will inject guidance');
                     break;
                 }
             }
@@ -455,6 +467,17 @@ class MPAI_Chat {
                     
                     $this->conversation[] = array('role' => 'system', 'content' => $plugin_guidance);
                     error_log('MPAI Chat: Enhanced plugin logs guidance message added');
+                }
+                
+                // If this is a best-selling membership query, add a system message reminder
+                if ($inject_best_selling_guidance) {
+                    error_log('MPAI Chat: Adding best-selling membership guidance message to conversation');
+                    $best_selling_guidance = "CRITICAL INSTRUCTION: This query is about best-selling or popular memberships. You MUST respond by calling the memberpress_info tool with type=best_selling to get accurate information from the database. DO NOT provide any general advice or theoretical explanations. Format your response using the JSON format shown below.\n\n";
+                    $best_selling_guidance .= "For best-selling memberships, use exactly:\n```json\n{\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"best_selling\"}}\n```\n\n";
+                    $best_selling_guidance .= "After executing the tool call, explain the results to the user.";
+                    
+                    $this->conversation[] = array('role' => 'system', 'content' => $best_selling_guidance);
+                    error_log('MPAI Chat: Enhanced best-selling membership guidance message added');
                 }
             } catch (Throwable $e) {
                 error_log('MPAI Chat: Error initializing conversation: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
