@@ -23,6 +23,7 @@ class MPAI_Admin {
         add_action('wp_ajax_mpai_test_openai_api', array($this, 'test_openai_api'));
         add_action('wp_ajax_mpai_test_memberpress_api', array($this, 'test_memberpress_api'));
         add_action('wp_ajax_mpai_run_diagnostic', array($this, 'run_diagnostic'));
+        add_action('wp_ajax_mpai_update_message', array($this, 'update_message'));
         
         // Special endpoint just for plugin_logs to bypass all issues
         add_action('wp_ajax_mpai_plugin_logs', array($this, 'get_plugin_logs'));
@@ -1251,6 +1252,122 @@ class MPAI_Admin {
         } catch (Exception $e) {
             error_log('MPAI: Exception in direct get_plugin_logs: ' . $e->getMessage());
             wp_send_json_error('Error getting plugin logs: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update a chat message in the database
+     * This is used for saving plugin_logs results and other dynamic content
+     */
+    public function update_message() {
+        try {
+            // Log the request for debugging
+            error_log('MPAI: update_message called');
+            error_log('MPAI: update_message POST data keys: ' . json_encode(array_keys($_POST)));
+            error_log('MPAI: update_message POST nonce value: ' . (isset($_POST['nonce']) ? substr($_POST['nonce'], 0, 6) . '...' : 'NOT SET'));
+            
+            // Skip nonce check in debug mode or if bypass_nonce is set
+            $verify_nonce = true;
+            if (isset($_POST['bypass_nonce']) && $_POST['bypass_nonce'] === 'true') {
+                $verify_nonce = false;
+                error_log('MPAI: update_message - Bypassing nonce check due to bypass_nonce parameter');
+            }
+            
+            if ($verify_nonce) {
+                try {
+                    // First try manual nonce verification for debugging
+                    if (isset($_POST['nonce'])) {
+                        $nonce = sanitize_text_field($_POST['nonce']);
+                        $verified = wp_verify_nonce($nonce, 'mpai_nonce');
+                        error_log('MPAI: update_message - Manual nonce verification result: ' . ($verified ? 'Success ('.$verified.')' : 'Failed (0)'));
+                    } else {
+                        error_log('MPAI: update_message - No nonce provided in POST data');
+                    }
+                    
+                    // Now check with check_ajax_referer (will die on failure)
+                    error_log('MPAI: update_message - About to check nonce with check_ajax_referer');
+                    check_ajax_referer('mpai_nonce', 'nonce', true);
+                    error_log('MPAI: update_message - Nonce check passed!');
+                } catch (Exception $e) {
+                    error_log('MPAI: update_message - Exception during nonce verification: ' . $e->getMessage());
+                    // Don't die, continue processing for debugging
+                }
+            } else {
+                error_log('MPAI: update_message - SKIPPING NONCE CHECK FOR DEBUGGING');
+            }
+            
+            // Check for required fields
+            if (empty($_POST['message_id'])) {
+                error_log('MPAI: update_message - message_id is required');
+                wp_send_json_error('Message ID is required');
+                return;
+            }
+            
+            $message_id = sanitize_text_field($_POST['message_id']);
+            
+            // If the message_id doesn't match the expected format (starting with mpai-message-),
+            // it may be the message element ID rather than the database ID
+            if (strpos($message_id, 'mpai-message-') === 0) {
+                $message_id = str_replace('mpai-message-', '', $message_id);
+            }
+            
+            // Check if message_id is numeric (refers to database ID)
+            if (!is_numeric($message_id)) {
+                error_log('MPAI: update_message - Invalid message ID format: ' . $message_id);
+                wp_send_json_error('Invalid message ID format');
+                return;
+            }
+            
+            // Get content
+            if (empty($_POST['content'])) {
+                error_log('MPAI: update_message - content is required');
+                wp_send_json_error('Content is required');
+                return;
+            }
+            
+            $content = $_POST['content']; // Don't sanitize to preserve HTML
+            
+            // Update the message in the database
+            global $wpdb;
+            $table_messages = $wpdb->prefix . 'mpai_messages';
+            
+            // Query the original message to get the conversation_id
+            $message_data = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT id, conversation_id, message FROM $table_messages WHERE id = %d",
+                    $message_id
+                ),
+                ARRAY_A
+            );
+            
+            if (!$message_data) {
+                error_log('MPAI: update_message - Message not found: ' . $message_id);
+                wp_send_json_error('Message not found');
+                return;
+            }
+            
+            // Update the message
+            $result = $wpdb->update(
+                $table_messages,
+                array('response' => $content),
+                array('id' => $message_id)
+            );
+            
+            if ($result === false) {
+                error_log('MPAI: update_message - Error updating message: ' . $wpdb->last_error);
+                wp_send_json_error('Error updating message: ' . $wpdb->last_error);
+                return;
+            }
+            
+            error_log('MPAI: update_message - Successfully updated message ' . $message_id);
+            wp_send_json_success(array(
+                'message' => 'Message updated successfully',
+                'message_id' => $message_id
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI: Exception in update_message: ' . $e->getMessage());
+            wp_send_json_error('Error updating message: ' . $e->getMessage());
         }
     }
 

@@ -368,6 +368,38 @@ class MemberPress_AI_Assistant {
      * Render chat interface in admin footer
      */
     public function render_chat_interface() {
+        // Check if we're on MemberPress admin pages that might have conflicts
+        $skip_rendering = false;
+        
+        // MemberPress product (membership level) editing/creation pages
+        if (isset($_GET['page']) && $_GET['page'] === 'memberpress-products' && 
+            (isset($_GET['action']) && ($_GET['action'] === 'edit' || $_GET['action'] === 'new'))) {
+            $skip_rendering = true;
+        }
+        
+        // MemberPress rules editing/creation pages
+        if (isset($_GET['page']) && $_GET['page'] === 'memberpress-rules' && 
+            (isset($_GET['action']) && ($_GET['action'] === 'edit' || $_GET['action'] === 'new'))) {
+            $skip_rendering = true;
+        }
+        
+        // MemberPress coupons editing/creation pages
+        if (isset($_GET['page']) && $_GET['page'] === 'memberpress-coupons' && 
+            (isset($_GET['action']) && ($_GET['action'] === 'edit' || $_GET['action'] === 'new'))) {
+            $skip_rendering = true;
+        }
+        
+        // MemberPress transactions and subscriptions editing pages
+        if (isset($_GET['page']) && ($_GET['page'] === 'memberpress-trans' || $_GET['page'] === 'memberpress-subscriptions') && 
+            (isset($_GET['action']) && $_GET['action'] === 'edit')) {
+            $skip_rendering = true;
+        }
+        
+        // For compatibility, don't render the chat interface on these MemberPress pages
+        if ($skip_rendering) {
+            return;
+        }
+        
         require_once MPAI_PLUGIN_DIR . 'includes/chat-interface.php';
     }
 
@@ -375,7 +407,39 @@ class MemberPress_AI_Assistant {
      * Enqueue admin assets
      */
     public function enqueue_admin_assets($hook) {
-        // Load chat interface assets on all admin pages
+        // Check if we're on MemberPress admin pages that might have conflicts
+        $skip_loading = false;
+        
+        // MemberPress product (membership level) editing/creation pages
+        if (isset($_GET['page']) && $_GET['page'] === 'memberpress-products' && 
+            (isset($_GET['action']) && ($_GET['action'] === 'edit' || $_GET['action'] === 'new'))) {
+            $skip_loading = true;
+        }
+        
+        // MemberPress rules editing/creation pages
+        if (isset($_GET['page']) && $_GET['page'] === 'memberpress-rules' && 
+            (isset($_GET['action']) && ($_GET['action'] === 'edit' || $_GET['action'] === 'new'))) {
+            $skip_loading = true;
+        }
+        
+        // MemberPress coupons editing/creation pages
+        if (isset($_GET['page']) && $_GET['page'] === 'memberpress-coupons' && 
+            (isset($_GET['action']) && ($_GET['action'] === 'edit' || $_GET['action'] === 'new'))) {
+            $skip_loading = true;
+        }
+        
+        // MemberPress transactions and subscriptions editing pages
+        if (isset($_GET['page']) && ($_GET['page'] === 'memberpress-trans' || $_GET['page'] === 'memberpress-subscriptions') && 
+            (isset($_GET['action']) && $_GET['action'] === 'edit')) {
+            $skip_loading = true;
+        }
+        
+        // For compatibility, don't load our scripts on these MemberPress pages
+        if ($skip_loading) {
+            return;
+        }
+        
+        // Load chat interface assets on all other admin pages
         wp_enqueue_style('dashicons');
         
         wp_enqueue_style(

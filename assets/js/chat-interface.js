@@ -4,6 +4,9 @@
 
 (function($) {
     'use strict';
+    
+    // Store processed tool calls to prevent duplicates
+    const processedToolCalls = new Set();
 
     // Initialize the chat interface once the document is ready
     $(document).ready(function() {
@@ -334,6 +337,200 @@
         }
         
         /**
+         * Save plugin logs to chat history
+         * 
+         * @param {string} resultContent - The formatted HTML content for the plugin logs
+         * @param {string} toolId - The ID of the tool call element
+         */
+        function savePluginLogsToHistory(resultContent, toolId) {
+            console.log('MPAI: Saving plugin logs to history for tool ID:', toolId);
+            
+            try {
+                // Get the full message element that contains this tool call
+                const $message = $('#' + toolId).closest('.mpai-chat-message');
+                if (!$message.length) {
+                    console.error('MPAI: Could not find parent message for tool call:', toolId);
+                    return;
+                }
+                
+                const messageId = $message.attr('id');
+                if (!messageId) {
+                    console.error('MPAI: Message element has no ID:', $message);
+                    return;
+                }
+                
+                // Get the original message content
+                const $contentElement = $message.find('.mpai-chat-message-content');
+                if (!$contentElement.length) {
+                    console.error('MPAI: Could not find content element in message:', messageId);
+                    return;
+                }
+                
+                // Create a copy of the content element to work with
+                const $contentCopy = $contentElement.clone();
+                
+                // Find the tool call element in the copy and replace it with the formatted result
+                const $toolCall = $contentCopy.find('#' + toolId);
+                if ($toolCall.length) {
+                    // Replace the tool call with just the formatted result content
+                    // This ensures we don't save the JSON or other technical details
+                    $toolCall.html(resultContent);
+                    $toolCall.find('.mpai-tool-toggle').remove(); // Remove the toggle links
+                }
+                
+                // Get the updated HTML content
+                const updatedContent = $contentCopy.html();
+                
+                // IMPORTANT: Create a global variable to store the plugin logs content
+                // This will be used during chat export
+                if (!window.mpai_saved_tool_results) {
+                    window.mpai_saved_tool_results = {};
+                }
+                window.mpai_saved_tool_results[messageId] = updatedContent;
+                
+                // Update the actual DOM element for immediate display
+                // This is crucial for export functionality since it exports what's in the DOM
+                const $actualToolCall = $('#' + toolId);
+                if ($actualToolCall.length) {
+                    // Save original content in data attribute for possible restore
+                    const originalHtml = $actualToolCall.html();
+                    $actualToolCall.attr('data-original-html', originalHtml);
+                    
+                    // Replace just the content, preserving the main tool call container
+                    $actualToolCall.find('.mpai-tool-call-result').html(resultContent);
+                    
+                    // Update the parent content element as well
+                    // This is important for exports which use the content's innerHTML
+                    $contentElement.html(updatedContent);
+                    
+                    console.log('MPAI: Updated DOM with plugin logs result');
+                }
+                
+                // Log the nonce for debugging
+                console.log('MPAI: Using nonce for save:', mpai_chat_data.mpai_nonce);
+                
+                // Save to database via AJAX
+                $.ajax({
+                    type: 'POST',
+                    url: mpai_chat_data.ajax_url,
+                    data: {
+                        action: 'mpai_update_message',
+                        message_id: messageId,
+                        content: updatedContent,
+                        // The server expects the parameter named 'nonce' but with the mpai_nonce value
+                        nonce: mpai_chat_data.mpai_nonce
+                    },
+                    success: function(response) {
+                        console.log('MPAI: Successfully saved plugin logs to history:', response);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('MPAI: Error saving plugin logs to history:', error);
+                    }
+                });
+                
+            } catch (e) {
+                console.error('MPAI: Error in savePluginLogsToHistory:', e);
+            }
+        }
+        
+        /**
+         * Save plugin logs to history using direct endpoint
+         * This bypasses admin-ajax.php and nonce verification
+         * 
+         * @param {string} resultContent - The formatted HTML content for the plugin logs
+         * @param {string} toolId - The ID of the tool call element
+         */
+        function savePluginLogsToHistoryDirect(resultContent, toolId) {
+            console.log('MPAI: Saving plugin logs to history directly (bypassing admin-ajax) for tool ID:', toolId);
+            
+            try {
+                // Get the full message element that contains this tool call
+                const $message = $('#' + toolId).closest('.mpai-chat-message');
+                if (!$message.length) {
+                    console.error('MPAI: Could not find parent message for tool call:', toolId);
+                    return;
+                }
+                
+                const messageId = $message.attr('id');
+                if (!messageId) {
+                    console.error('MPAI: Message element has no ID:', $message);
+                    return;
+                }
+                
+                // Get the original message content
+                const $contentElement = $message.find('.mpai-chat-message-content');
+                if (!$contentElement.length) {
+                    console.error('MPAI: Could not find content element in message:', messageId);
+                    return;
+                }
+                
+                // Create a copy of the content element to work with
+                const $contentCopy = $contentElement.clone();
+                
+                // Find the tool call element in the copy and replace it with the formatted result
+                const $toolCall = $contentCopy.find('#' + toolId);
+                if ($toolCall.length) {
+                    // Replace the tool call with just the formatted result content
+                    // This ensures we don't save the JSON or other technical details
+                    $toolCall.html(resultContent);
+                    $toolCall.find('.mpai-tool-toggle').remove(); // Remove the toggle links
+                }
+                
+                // Get the updated HTML content
+                const updatedContent = $contentCopy.html();
+                
+                // IMPORTANT: Create a global variable to store the plugin logs content
+                // This will be used during chat export
+                if (!window.mpai_saved_tool_results) {
+                    window.mpai_saved_tool_results = {};
+                }
+                window.mpai_saved_tool_results[messageId] = updatedContent;
+                
+                // Update the actual DOM element for immediate display
+                // This is crucial for export functionality since it exports what's in the DOM
+                const $actualToolCall = $('#' + toolId);
+                if ($actualToolCall.length) {
+                    // Save original content in data attribute for possible restore
+                    const originalHtml = $actualToolCall.html();
+                    $actualToolCall.attr('data-original-html', originalHtml);
+                    
+                    // Replace just the content, preserving the main tool call container
+                    $actualToolCall.find('.mpai-tool-call-result').html(resultContent);
+                    
+                    // Update the parent content element as well
+                    // This is important for exports which use the content's innerHTML
+                    $contentElement.html(updatedContent);
+                    
+                    console.log('MPAI: Updated DOM with plugin logs result (direct method)');
+                }
+                
+                // Get the plugin URL from data passed from PHP
+                const pluginUrl = mpai_chat_data.plugin_url || '';
+                
+                // Save to database via direct AJAX handler
+                $.ajax({
+                    type: 'POST',
+                    url: pluginUrl + 'includes/direct-ajax-handler.php',
+                    data: {
+                        action: 'test_simple', // Use a simple test action that doesn't require nonce
+                        message_id: messageId.replace('mpai-message-', ''),
+                        content: updatedContent,
+                        is_update_message: 'true' // Flag to indicate this is a message update
+                    },
+                    success: function(response) {
+                        console.log('MPAI: Successfully saved plugin logs to history (direct):', response);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('MPAI: Error saving plugin logs to history (direct):', error);
+                    }
+                });
+                
+            } catch (e) {
+                console.error('MPAI: Error in savePluginLogsToHistoryDirect:', e);
+            }
+        }
+        
+        /**
          * Process tool calls in the response
          * 
          * @param {string} response - The assistant's response
@@ -354,6 +551,13 @@
                 'toolProperty': response.includes('"tool"'),
                 'parametersProperty': response.includes('"parameters"')
             });
+            
+            // IMPORTANT: Check if this response has already been processed
+            // This prevents duplicate tool execution from the same response
+            if (response.includes('data-processed="true"')) {
+                console.log('MPAI: Response has already been processed, skipping tool calls');
+                return response;
+            }
             
             // Match JSON blocks that look like tool calls
             // Support multiple formats:
@@ -392,7 +596,21 @@
             while ((match = jsonBlockRegex.exec(response)) !== null) {
                 try {
                     console.log('MPAI: Found JSON block', match[1]);
-                    const jsonData = JSON.parse(match[1]);
+                    
+                    // Check for potential malformed JSON (missing closing braces)
+                    let jsonString = match[1];
+                    if ((jsonString.match(/{/g) || []).length > (jsonString.match(/}/g) || []).length) {
+                        console.log('MPAI: Found imbalanced braces, attempting to fix JSON');
+                        // Count open and closed braces to determine how many to add
+                        const openBraces = (jsonString.match(/{/g) || []).length;
+                        const closeBraces = (jsonString.match(/}/g) || []).length;
+                        const missing = openBraces - closeBraces;
+                        // Add the missing closing braces
+                        jsonString = jsonString + '}'.repeat(missing);
+                        console.log('MPAI: Fixed JSON:', jsonString);
+                    }
+                    
+                    const jsonData = JSON.parse(jsonString);
                     
                     // Check if this is a formatted tabular result that we can display directly
                     if (jsonData.success && jsonData.tool && jsonData.result && 
@@ -413,7 +631,7 @@
                         console.log('MPAI: Valid tool call in JSON block', jsonData);
                         matches.push({
                             fullMatch: match[0],
-                            jsonStr: match[1],
+                            jsonStr: jsonString,
                             jsonData: jsonData
                         });
                     }
@@ -426,7 +644,21 @@
             while ((match = jsonObjectBlockRegex.exec(response)) !== null) {
                 try {
                     console.log('MPAI: Found JSON-object block (pre-parsed)', match[1]);
-                    const jsonData = JSON.parse(match[1]);
+                    
+                    // Check for potential malformed JSON (missing closing braces)
+                    let jsonString = match[1];
+                    if ((jsonString.match(/{/g) || []).length > (jsonString.match(/}/g) || []).length) {
+                        console.log('MPAI: Found imbalanced braces in JSON-object, attempting to fix');
+                        // Count open and closed braces to determine how many to add
+                        const openBraces = (jsonString.match(/{/g) || []).length;
+                        const closeBraces = (jsonString.match(/}/g) || []).length;
+                        const missing = openBraces - closeBraces;
+                        // Add the missing closing braces
+                        jsonString = jsonString + '}'.repeat(missing);
+                        console.log('MPAI: Fixed JSON-object:', jsonString);
+                    }
+                    
+                    const jsonData = JSON.parse(jsonString);
                     
                     // Check if this is a formatted tabular result that we can display directly
                     if (jsonData.success && jsonData.tool && jsonData.result && 
@@ -447,7 +679,7 @@
                         console.log('MPAI: Valid tool call in JSON-object block', jsonData);
                         matches.push({
                             fullMatch: match[0],
-                            jsonStr: match[1],
+                            jsonStr: jsonString,
                             jsonData: jsonData
                         });
                     }
@@ -467,11 +699,19 @@
                     
                     console.log('MPAI: Found direct JSON', jsonStr);
                     
-                    // Check for potential malformed plugin_logs JSON (missing closing brace)
+                    // Check for potential malformed JSON (missing closing braces)
                     let fixedJsonStr = jsonStr;
-                    if (jsonStr.includes('"tool": "plugin_logs"') && !jsonStr.endsWith('}')) {
-                        console.log('MPAI: Attempting to fix malformed plugin_logs JSON');
-                        fixedJsonStr = jsonStr + '}';
+                    
+                    // Generic fix for any tool with imbalanced braces
+                    if ((fixedJsonStr.match(/{/g) || []).length > (fixedJsonStr.match(/}/g) || []).length) {
+                        console.log('MPAI: Found imbalanced braces in direct JSON, attempting to fix');
+                        // Count open and closed braces to determine how many to add
+                        const openBraces = (fixedJsonStr.match(/{/g) || []).length;
+                        const closeBraces = (fixedJsonStr.match(/}/g) || []).length;
+                        const missing = openBraces - closeBraces;
+                        // Add the missing closing braces
+                        fixedJsonStr = fixedJsonStr + '}'.repeat(missing);
+                        console.log('MPAI: Fixed direct JSON:', fixedJsonStr);
                     }
                     
                     const jsonData = JSON.parse(fixedJsonStr);
@@ -495,7 +735,7 @@
                         console.log('MPAI: Valid tool call in direct JSON', jsonData);
                         matches.push({
                             fullMatch: jsonStr,
-                            jsonStr: jsonStr,
+                            jsonStr: fixedJsonStr,
                             jsonData: jsonData
                         });
                     }
@@ -520,10 +760,10 @@
                                 Processing
                             </span>
                         </div>
+                        <div class="mpai-tool-call-result"></div>
                         <div class="mpai-tool-call-content">
                             <pre><code>${JSON.stringify(match.jsonData, null, 2)}</code></pre>
                         </div>
-                        <div class="mpai-tool-call-result"></div>
                     </div>
                 `;
                 
@@ -532,6 +772,12 @@
                 // Execute the tool call
                 executeToolCall(match.jsonStr, match.jsonData, toolId);
             });
+            
+            // Add a marker to indicate this response has been processed
+            // This prevents duplicate tool execution if processToolCalls runs again on the same content
+            if (matches.length > 0) {
+                processedResponse += '<span style="display:none;" data-processed="true"></span>';
+            }
             
             return processedResponse;
         }
@@ -544,6 +790,34 @@
          * @param {string} toolId - The tool call element ID
          */
         function executeToolCall(jsonStr, jsonData, toolId) {
+            // Create a unique fingerprint for this tool call to prevent duplicates
+            const toolFingerprint = JSON.stringify({
+                tool: jsonData.tool,
+                parameters: jsonData.parameters
+            });
+            
+            // Check if we've already processed this exact tool call
+            if (processedToolCalls.has(toolFingerprint)) {
+                console.log('MPAI: Skipping duplicate tool execution:', toolFingerprint);
+                
+                // Update UI to show that this was skipped
+                const $toolCall = $('#' + toolId);
+                if ($toolCall.length) {
+                    $toolCall.find('.mpai-tool-call-status')
+                        .removeClass('mpai-tool-call-processing')
+                        .addClass('mpai-tool-call-info')
+                        .html('Skipped (duplicate)');
+                    
+                    $toolCall.find('.mpai-tool-call-result')
+                        .html('<div class="mpai-tool-call-info-message">This tool call was skipped to prevent duplicate execution.</div>');
+                }
+                
+                return;
+            }
+            
+            // Add this tool call to the set of processed calls
+            processedToolCalls.add(toolFingerprint);
+            
             // Log the tool call if logger is available
             if (window.mpaiLogger) {
                 window.mpaiLogger.logToolUsage(jsonData.tool, jsonData.parameters);
@@ -567,6 +841,207 @@
             } else {
                 console.log('MPAI: Tool request being sent:', toolRequest);
                 console.log('MPAI: Raw tool_request parameter:', JSON.stringify(toolRequest));
+            }
+
+            // Special handling for wp_api tool with create_membership action
+            if (jsonData.tool === 'wp_api' && jsonData.parameters && jsonData.parameters.action === 'create_membership') {
+                console.log('MPAI: Using direct handler for wp_api create_membership');
+                
+                // Get the plugin URL from data passed from PHP
+                const pluginUrl = mpai_chat_data.plugin_url || '';
+                console.log('MPAI: Plugin URL for direct handler:', pluginUrl);
+                
+                // Check if we've already processed this membership creation to prevent duplicates
+                const membershipTitle = jsonData.parameters.title || 'New Membership';
+                const membershipPrice = jsonData.parameters.price || '0.00';
+                const membershipKey = 'membership_' + membershipTitle + '_' + membershipPrice;
+                
+                if (sessionStorage.getItem(membershipKey)) {
+                    console.log('MPAI: Preventing duplicate membership creation for: ' + membershipTitle);
+                    
+                    // Get the saved response from session storage
+                    try {
+                        const savedResponse = JSON.parse(sessionStorage.getItem(membershipKey));
+                        if (savedResponse) {
+                            console.log('MPAI: Using cached response for membership creation');
+                            
+                            const $toolCall = $('#' + toolId);
+                            if (!$toolCall.length) return;
+                            
+                            const $status = $toolCall.find('.mpai-tool-call-status');
+                            const $result = $toolCall.find('.mpai-tool-call-result');
+                            
+                            // Update status to success
+                            $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-success');
+                            $status.html('Success');
+                            
+                            // Create formatted HTML result using cached data
+                            let html = '<div class="mpai-tool-call-formatted-result">';
+                            html += '<h4>Membership Created Successfully</h4>';
+                            html += '<ul>';
+                            html += '<li><strong>Title:</strong> ' + savedResponse.title + '</li>';
+                            html += '<li><strong>Price:</strong> $' + savedResponse.price + '</li>';
+                            html += '<li><strong>Billing:</strong> ' + savedResponse.period + ' ' + savedResponse.period_type + '</li>';
+                            
+                            if (savedResponse.edit_url) {
+                                html += '<li><strong>Edit Link:</strong> <a href="' + savedResponse.edit_url + '" target="_blank">Edit Membership</a></li>';
+                            }
+                            
+                            html += '</ul>';
+                            html += '<p><em>Note: This membership was already created.</em></p>';
+                            html += '</div>';
+                            
+                            // Update the result in the DOM
+                            $result.html(html);
+                            
+                            // Make JSON code block collapsible instead of hiding it completely
+                            $toolCall.find('.mpai-tool-call-content').hide();
+                            
+                            if (!$toolCall.find('.mpai-tool-toggle').length) {
+                                $toolCall.find('.mpai-tool-call-result').append(
+                                    '<div class="mpai-tool-toggle">' +
+                                    '<a href="#" class="mpai-show-tools">Show Tool JSON</a>' +
+                                    '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tool JSON</a>' +
+                                    '</div>'
+                                );
+                            }
+                            
+                            // Scroll to bottom to show results
+                            setTimeout(scrollToBottom, 100);
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('MPAI: Error parsing cached membership data:', e);
+                    }
+                }
+                
+                // Combine all parameters into one data object
+                const wpApiData = {
+                    action: 'test_simple',
+                    wp_api_action: 'create_membership',
+                    title: membershipTitle,
+                    price: membershipPrice,
+                    period: jsonData.parameters.period || '1',
+                    period_type: jsonData.parameters.period_type || 'month',
+                    bypass_nonce: 'true'
+                };
+                
+                // Use direct AJAX handler that bypasses admin-ajax.php
+                $.ajax({
+                    url: pluginUrl + 'includes/direct-ajax-handler.php',
+                    type: 'POST',
+                    data: wpApiData,
+                    dataType: 'json',
+                    success: function(response) {
+                        console.log('MPAI: Direct wp_api endpoint response', response);
+                        
+                        // Store the successful response in session storage to prevent duplicate creation
+                        if (response.success) {
+                            try {
+                                sessionStorage.setItem(membershipKey, JSON.stringify(response));
+                                console.log('MPAI: Stored membership creation data in session storage');
+                            } catch (e) {
+                                console.error('MPAI: Error storing membership data in session storage:', e);
+                            }
+                        }
+                        
+                        const $toolCall = $('#' + toolId);
+                        if (!$toolCall.length) return;
+                        
+                        const $status = $toolCall.find('.mpai-tool-call-status');
+                        const $result = $toolCall.find('.mpai-tool-call-result');
+                        
+                        if (response.success) {
+                            // Update status to success
+                            $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-success');
+                            $status.html('Success');
+                            
+                            // Create formatted HTML result
+                            let html = '<div class="mpai-tool-call-formatted-result">';
+                            html += '<h4>Membership Created Successfully</h4>';
+                            html += '<ul>';
+                            html += '<li><strong>Title:</strong> ' + response.title + '</li>';
+                            html += '<li><strong>Price:</strong> $' + response.price + '</li>';
+                            html += '<li><strong>Billing:</strong> ' + response.period + ' ' + response.period_type + '</li>';
+                            
+                            if (response.edit_url) {
+                                html += '<li><strong>Edit Link:</strong> <a href="' + response.edit_url + '" target="_blank">Edit Membership</a></li>';
+                            }
+                            
+                            html += '</ul>';
+                            html += '</div>';
+                            
+                            // Update the result in the DOM
+                            $result.html(html);
+                            
+                            // Make JSON code block collapsible instead of hiding it completely
+                            $toolCall.find('.mpai-tool-call-content').hide();
+                            
+                            if (!$toolCall.find('.mpai-tool-toggle').length) {
+                                $toolCall.find('.mpai-tool-call-result').append(
+                                    '<div class="mpai-tool-toggle">' +
+                                    '<a href="#" class="mpai-show-tools">Show Tool JSON</a>' +
+                                    '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tool JSON</a>' +
+                                    '</div>'
+                                );
+                            }
+                        } else {
+                            // Update status to error
+                            $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-error');
+                            $status.html('Error');
+                            
+                            // Display the error
+                            const errorMessage = response.message || 'Error creating membership';
+                            $result.html('<div class="mpai-tool-call-error-message">' + errorMessage + '</div>');
+                            
+                            // Make JSON code block collapsible in error case too
+                            $toolCall.find('.mpai-tool-call-content').hide();
+                            
+                            if (!$toolCall.find('.mpai-tool-toggle').length) {
+                                $toolCall.find('.mpai-tool-call-result').append(
+                                    '<div class="mpai-tool-toggle">' +
+                                    '<a href="#" class="mpai-show-tools">Show Tool JSON</a>' +
+                                    '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tool JSON</a>' +
+                                    '</div>'
+                                );
+                            }
+                        }
+                        
+                        // Scroll to bottom to show results
+                        setTimeout(scrollToBottom, 100);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('MPAI: AJAX error executing wp_api create_membership via direct handler:', error);
+                        
+                        // Log errors if logger is available
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.error('AJAX error executing tool wp_api', 'tool_usage', {
+                                xhr: xhr,
+                                status: status,
+                                error: error,
+                                tool: jsonData.tool,
+                                parameters: jsonData.parameters
+                            });
+                        }
+                        
+                        // Update the UI to show the error
+                        const $toolCall = $('#' + toolId);
+                        if ($toolCall.length) {
+                            $toolCall.find('.mpai-tool-call-status')
+                                .removeClass('mpai-tool-call-processing')
+                                .addClass('mpai-tool-call-error')
+                                .html('Error');
+                            
+                            $toolCall.find('.mpai-tool-call-result')
+                                .html('<div class="mpai-tool-call-error-message">Error: ' + error + '</div>');
+                        }
+                        
+                        // Scroll to bottom to show error
+                        setTimeout(scrollToBottom, 100);
+                    }
+                });
+                
+                return;
             }
             
             // Special handling for plugin_logs tool - use direct AJAX handler
@@ -612,14 +1087,18 @@
                             let resultContent = formatPluginLogsResult(response);
                             $result.html(resultContent);
                             
+                            // Save the tool result to chat history to ensure it persists and can be exported
+                            // Use direct API endpoint instead of AJAX to avoid nonce issues
+                            savePluginLogsToHistoryDirect(resultContent, toolId);
+                            
                             // Make JSON code block collapsible instead of hiding it completely
                             $toolCall.find('.mpai-tool-call-content').hide();
                             if (!$toolCall.find('.mpai-tool-toggle').length) {
-                                $toolCall.find('.mpai-tool-call-status').after(
-                                    '<span class="mpai-tool-toggle">' +
-                                    '<a href="#" class="mpai-show-tools">Show Tools</a>' +
-                                    '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tools</a>' +
-                                    '</span>'
+                                $toolCall.find('.mpai-tool-call-result').append(
+                                    '<div class="mpai-tool-toggle">' +
+                                    '<a href="#" class="mpai-show-tools">Show Tool JSON</a>' +
+                                    '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tool JSON</a>' +
+                                    '</div>'
                                 );
                             }
                         } else {
@@ -634,11 +1113,11 @@
                             // Make JSON code block collapsible in error case too
                             $toolCall.find('.mpai-tool-call-content').hide();
                             if (!$toolCall.find('.mpai-tool-toggle').length) {
-                                $toolCall.find('.mpai-tool-call-status').after(
-                                    '<span class="mpai-tool-toggle">' +
-                                    '<a href="#" class="mpai-show-tools">Show Tools</a>' +
-                                    '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tools</a>' +
-                                    '</span>'
+                                $toolCall.find('.mpai-tool-call-result').append(
+                                    '<div class="mpai-tool-toggle">' +
+                                    '<a href="#" class="mpai-show-tools">Show Tool JSON</a>' +
+                                    '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tool JSON</a>' +
+                                    '</div>'
                                 );
                             }
                         }
@@ -667,11 +1146,11 @@
                         // Make JSON code block collapsible in AJAX error case too
                         $toolCall.find('.mpai-tool-call-content').hide();
                         if (!$toolCall.find('.mpai-tool-toggle').length) {
-                            $toolCall.find('.mpai-tool-call-status').after(
-                                '<span class="mpai-tool-toggle">' +
-                                '<a href="#" class="mpai-show-tools">Show Tools</a>' +
-                                '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tools</a>' +
-                                '</span>'
+                            $toolCall.find('.mpai-tool-call-result').append(
+                                '<div class="mpai-tool-toggle">' +
+                                '<a href="#" class="mpai-show-tools">Show Tool JSON</a>' +
+                                '<a href="#" class="mpai-hide-tools" style="display:none;">Hide Tool JSON</a>' +
+                                '</div>'
                             );
                         }
                         
@@ -1628,8 +2107,16 @@
             const isUserMessage = $message.hasClass('mpai-chat-message-user');
             const role = isUserMessage ? 'User' : 'Assistant';
             
-            // Get message content
-            const content = $message.find('.mpai-chat-message-content').clone();
+            // Get message content - check if we have saved formatted tool results
+            let content;
+            if (window.mpai_saved_tool_results && window.mpai_saved_tool_results[messageId]) {
+                // Use the saved formatted content that includes properly rendered plugin logs
+                console.log('MPAI: Using saved tool results for single message export', messageId);
+                content = $('<div>').html(window.mpai_saved_tool_results[messageId]);
+            } else {
+                // Use the original content
+                content = $message.find('.mpai-chat-message-content').clone();
+            }
             
             // Remove any interactive elements from the clone
             content.find('.mpai-command-toolbar, .mpai-tool-call, .mpai-loading-dots').remove();
@@ -1811,8 +2298,19 @@
                 const isUserMessage = $(this).hasClass('mpai-chat-message-user');
                 const role = isUserMessage ? 'User' : 'Assistant';
                 
-                // Get message content
-                const content = $(this).find('.mpai-chat-message-content').clone();
+                // Get the message ID to check if we have saved tool results
+                const messageId = $(this).attr('id');
+                
+                // Get message content - check if we have saved formatted tool results
+                let content;
+                if (window.mpai_saved_tool_results && window.mpai_saved_tool_results[messageId]) {
+                    // Use the saved formatted content that includes properly rendered plugin logs
+                    console.log('MPAI: Using saved tool results for export', messageId);
+                    content = $('<div>').html(window.mpai_saved_tool_results[messageId]);
+                } else {
+                    // Use the original content
+                    content = $(this).find('.mpai-chat-message-content').clone();
+                }
                 
                 // Remove any interactive elements from the clone
                 content.find('.mpai-command-toolbar, .mpai-tool-call, .mpai-loading-dots').remove();

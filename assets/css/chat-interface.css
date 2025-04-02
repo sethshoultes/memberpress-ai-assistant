@@ -616,18 +616,25 @@
 }
 
 .mpai-tool-toggle {
-    margin-left: 10px;
+    margin-top: 8px;
+    text-align: right;
+    border-top: 1px dotted #eee;
+    padding-top: 5px;
 }
 
 .mpai-tool-toggle a {
     font-size: 12px;
     color: #666;
     text-decoration: none;
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: #f5f5f5;
+    border-radius: 3px;
 }
 
 .mpai-tool-toggle a:hover {
     color: #135e96;
-    text-decoration: underline;
+    background-color: #f0f8ff;
 }
 
 .mpai-tool-call-name {
@@ -684,18 +691,19 @@
     color: #c62828;
 }
 
+.mpai-tool-call-result {
+    padding: 8px 12px;
+}
+
 .mpai-tool-call-content {
     padding: 8px 12px;
+    border-top: 1px solid #eee;
+    margin-top: 5px;
 }
 
 .mpai-tool-call-content pre {
     margin: 0;
     font-size: 12px;
-}
-
-.mpai-tool-call-result {
-    padding: 8px 12px;
-    border-top: 1px solid #eee;
 }
 
 .mpai-tool-call-error-message {

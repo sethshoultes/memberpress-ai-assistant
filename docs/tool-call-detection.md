@@ -44,9 +44,13 @@ The tool call detection system uses several regex patterns to identify tool call
 
 The system intelligently prevents duplicate tool execution by:
 
-- Comparing tool names and parameters to identify duplicates
-- Tracking which tool calls have already been processed
-- Skipping redundant executions while maintaining output formatting
+- Creating fingerprints of tool calls based on tool name and parameters
+- Maintaining a Set of processed tool calls in memory
+- Comparing new tool calls against previously executed ones
+- Skipping redundant executions while providing visual feedback in the UI
+- Handling cases where the same tool call appears multiple times in a response
+
+This functionality was enhanced in version 1.5.4 to prevent issues with duplicate membership creation when the same tool call was detected multiple times in a single response.
 
 ### Enhanced Debugging
 
@@ -78,6 +82,48 @@ The tool call detection system is primarily implemented in `assets/js/chat-inter
 - **Match Consolidator** - Prevents duplicate tool executions
 - **Diagnostic Logger** - Provides detailed debug information
 - **Execution Tracker** - Monitors tool execution performance
+- **Duplicate Prevention System** - Uses a Set to track and prevent duplicate tool executions
+
+### Tool Call Deduplication Implementation
+
+The system implements tool call deduplication with the following approach:
+
+```javascript
+// Store processed tool calls to prevent duplicates
+const processedToolCalls = new Set();
+
+function executeToolCall(jsonStr, jsonData, toolId) {
+    // Create a unique fingerprint for this tool call to prevent duplicates
+    const toolFingerprint = JSON.stringify({
+        tool: jsonData.tool,
+        parameters: jsonData.parameters
+    });
+    
+    // Check if we've already processed this exact tool call
+    if (processedToolCalls.has(toolFingerprint)) {
+        console.log('MPAI: Skipping duplicate tool execution:', toolFingerprint);
+        
+        // Update UI to show that this was skipped
+        const $toolCall = $('#' + toolId);
+        if ($toolCall.length) {
+            $toolCall.find('.mpai-tool-call-status')
+                .removeClass('mpai-tool-call-processing')
+                .addClass('mpai-tool-call-info')
+                .html('Skipped (duplicate)');
+            
+            $toolCall.find('.mpai-tool-call-result')
+                .html('<div class="mpai-tool-call-info-message">This tool call was skipped to prevent duplicate execution.</div>');
+        }
+        
+        return;
+    }
+    
+    // Add this tool call to the set of processed calls
+    processedToolCalls.add(toolFingerprint);
+    
+    // Execute the tool call...
+}
+```
 
 ### Pattern Definitions
 

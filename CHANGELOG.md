@@ -27,6 +27,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added system_info type to memberpress_info tool parameter options
 - Improved system prompt with guidance on accessing system information
 
+## [1.5.6] - 2025-04-01
+
+### Fixed
+- Fixed duplicate membership creation issue:
+  - Implemented tool call fingerprinting to identify and track previously executed tools
+  - Added a global Set to store processed tool calls and prevent redundant execution
+  - Enhanced executeToolCall function with duplicate detection and visual feedback
+  - Improved UI to show "Skipped (duplicate)" status for duplicate tool executions
+  - Added detailed logging of duplicate tool call prevention
+  - Fixed issue where the same tool call was being detected and executed multiple times
+  - Created comprehensive documentation of the deduplication system
+
 ## [1.5.4] - 2025-03-31
 
 ### Fixed

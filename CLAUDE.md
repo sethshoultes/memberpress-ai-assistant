@@ -9,6 +9,15 @@
 - Manual testing required following the procedures in `/tests/test-procedures.md`
 - Run tests for specific features according to test checklist
 
+## Scooby Snack Protocol
+- When given a "Scooby Snack" for a successful solution or implementation:
+  1. Create a detailed document of the findings/solution in an appropriate location (usually in `/docs/`)
+  2. Update any existing documentation that relates to the solution
+  3. Add an entry to the CHANGELOG.md file if it's a significant fix or feature
+  4. Create a git commit with the documentation and implementation changes
+  5. Include "🦴 Scooby Snack" in the commit message to track successful solutions
+  6. The commit should summarize what worked, why it worked, and any lessons learned
+
 ## Code Style
 - Follow WordPress PHP Coding Standards
 - Class naming: 
