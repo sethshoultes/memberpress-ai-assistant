@@ -52,7 +52,7 @@ function mpai_test_agent_specialization_scoring() {
             ],
             
             // Command validation agent test cases
-            'command_validation_agent' => [
+            'command_validation' => [
                 'Validate this WP-CLI command: wp plugin activate memberpress',
                 'Is this command secure to run: wp theme activate twentytwenty',
                 'Check if this command will work: wp block unregister core/paragraph',

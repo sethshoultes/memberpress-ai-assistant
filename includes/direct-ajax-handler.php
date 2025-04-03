@@ -1192,7 +1192,7 @@ switch ($action) {
     case 'test_agent_scoring':
         // Test agent specialization scoring system
         try {
-            error_log('MPAI Phase Two Test: Agent Specialization Scoring test started');
+            error_log('MPAI: Phase Two Test - Agent Specialization Scoring test started');
             
             // Include the test file
             $test_file = plugin_dir_path(dirname(__FILE__)) . 'test/test-agent-scoring.php';
@@ -1219,7 +1219,13 @@ switch ($action) {
             // Include formatted results in the response
             $test_results['formatted_html'] = $formatted_results;
             
-            error_log('MPAI Phase Two Test: Agent Specialization Scoring - Success: ' . ($test_results['success'] ? 'YES' : 'NO'));
+            error_log('MPAI: Phase Two Test - Agent Specialization Scoring - Success: ' . ($test_results['success'] ? 'YES' : 'NO'));
+            
+            // Append test result to _scooby/_error_log.md
+            $error_log_file = plugin_dir_path(dirname(__FILE__)) . '_scooby/_error_log.md';
+            if (file_exists($error_log_file) && is_writable($error_log_file)) {
+                file_put_contents($error_log_file, $formatted_results, FILE_APPEND);
+            }
             
             echo json_encode(array(
                 'success' => true,
@@ -1227,7 +1233,7 @@ switch ($action) {
             ));
             
         } catch (Exception $e) {
-            error_log('MPAI Phase Two Test: Agent Specialization Scoring Error - ' . $e->getMessage());
+            error_log('MPAI: Phase Two Test - Agent Specialization Scoring Error - ' . $e->getMessage());
             echo json_encode(array(
                 'success' => false,
                 'message' => 'Agent Specialization Scoring Test failed: ' . $e->getMessage()

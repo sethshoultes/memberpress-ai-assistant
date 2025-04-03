@@ -1406,9 +1406,9 @@ jQuery(document).ready(function($) {
         $('#memberpress-status-indicator .mpai-status-text').text('Running...');
     });
     
-    // Phase One Test Buttons
-    function runPhaseOneTest(testType, resultContainer, statusIndicator) {
-        console.log('MPAI: Running Phase One test:', testType);
+    // General phase test function
+    function runPhaseTest(testType, resultContainer, statusIndicator, phaseLabel = 'Phase One') {
+        console.log(`MPAI: Running ${phaseLabel} test:`, testType);
         
         // Show loading state
         $(resultContainer).html('<p>Running test...</p>');
@@ -1428,7 +1428,7 @@ jQuery(document).ready(function($) {
         // Use direct AJAX handler
         var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . 'includes/direct-ajax-handler.php'; ?>';
         
-        console.log('MPAI: Running Phase One test via direct handler:', testType);
+        console.log(`MPAI: Running ${phaseLabel} test via direct handler:`, testType);
         fetch(directHandlerUrl, {
             method: 'POST',
             body: formData,
@@ -1815,23 +1815,23 @@ jQuery(document).ready(function($) {
     
     // Bind Phase One test buttons
     $('#run-agent-discovery-test').on('click', function() {
-        runPhaseOneTest('test_agent_discovery', '#agent-discovery-result', '#agent-discovery-status-indicator');
+        runPhaseTest('test_agent_discovery', '#agent-discovery-result', '#agent-discovery-status-indicator');
     });
     
     $('#run-lazy-loading-test').on('click', function() {
-        runPhaseOneTest('test_lazy_loading', '#lazy-loading-result', '#lazy-loading-status-indicator');
+        runPhaseTest('test_lazy_loading', '#lazy-loading-result', '#lazy-loading-status-indicator');
     });
     
     $('#run-response-cache-test').on('click', function() {
-        runPhaseOneTest('test_response_cache', '#response-cache-result', '#response-cache-status-indicator');
+        runPhaseTest('test_response_cache', '#response-cache-result', '#response-cache-status-indicator');
     });
     
     $('#run-agent-messaging-test').on('click', function() {
-        runPhaseOneTest('test_agent_messaging', '#agent-messaging-result', '#agent-messaging-status-indicator');
+        runPhaseTest('test_agent_messaging', '#agent-messaging-result', '#agent-messaging-status-indicator');
     });
     
     $('#run-all-phase-one-tests').on('click', function() {
-        runPhaseOneTest('test_all_phase_one', '#all-phase-one-result', null);
+        runPhaseTest('test_all_phase_one', '#all-phase-one-result', null);
         
         // Also update individual status indicators
         $('#agent-discovery-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success mpai-status-error')
@@ -1858,7 +1858,7 @@ jQuery(document).ready(function($) {
     
     // Bind Phase Two test buttons
     $('#run-agent-scoring-test').on('click', function() {
-        runPhaseOneTest('test_agent_scoring', '#agent-scoring-result', '#agent-scoring-status-indicator');
+        runPhaseTest('test_agent_scoring', '#agent-scoring-result', '#agent-scoring-status-indicator', 'Phase Two');
     });
     
     // Plugin Logs Functionality
