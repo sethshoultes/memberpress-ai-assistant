@@ -194,6 +194,80 @@ switch ($action) {
             break;
         }
         
+        // Check if this is a wp_api create_post request
+        if (isset($_POST['wp_api_action']) && $_POST['wp_api_action'] === 'create_post') {
+            // Handle post creation request
+            try {
+                // Load the XML parser class if needed
+                if (!class_exists('MPAI_XML_Content_Parser')) {
+                    require_once dirname(dirname(__FILE__)) . '/class-mpai-xml-content-parser.php';
+                }
+                
+                $content = isset($_POST['content']) ? $_POST['content'] : '';
+                $content_type = isset($_POST['content_type']) ? sanitize_text_field($_POST['content_type']) : 'post';
+                
+                error_log('MPAI Direct AJAX: Creating ' . $content_type . ' from XML content, length: ' . strlen($content));
+                
+                // Parse the XML content
+                $xml_parser = new MPAI_XML_Content_Parser();
+                $parsed_data = $xml_parser->parse_xml_blog_post($content);
+                
+                if (!$parsed_data) {
+                    error_log('MPAI Direct AJAX: Failed to parse XML content');
+                    echo json_encode(array(
+                        'success' => false,
+                        'message' => 'Failed to parse XML content. The XML structure might be invalid.'
+                    ));
+                    break;
+                }
+                
+                // Prepare post data
+                $post_data = array(
+                    'post_title' => isset($parsed_data['title']) ? $parsed_data['title'] : 'New ' . ucfirst($content_type),
+                    'post_content' => isset($parsed_data['content']) ? $parsed_data['content'] : '',
+                    'post_status' => isset($parsed_data['status']) ? $parsed_data['status'] : 'draft',
+                    'post_type' => $content_type === 'page' ? 'page' : 'post',
+                    'post_excerpt' => isset($parsed_data['excerpt']) ? $parsed_data['excerpt'] : '',
+                );
+                
+                error_log('MPAI Direct AJAX: Inserting post with title: ' . $post_data['post_title']);
+                
+                // Insert the post
+                $post_id = wp_insert_post($post_data);
+                
+                if (is_wp_error($post_id)) {
+                    error_log('MPAI Direct AJAX: Error inserting post: ' . $post_id->get_error_message());
+                    echo json_encode(array(
+                        'success' => false,
+                        'message' => 'Failed to create post: ' . $post_id->get_error_message()
+                    ));
+                    break;
+                }
+                
+                // Get the post URL and edit URL
+                $post_url = get_permalink($post_id);
+                $edit_url = get_edit_post_link($post_id, 'raw');
+                
+                error_log('MPAI Direct AJAX: Post created successfully with ID: ' . $post_id);
+                
+                echo json_encode(array(
+                    'success' => true,
+                    'post_id' => $post_id,
+                    'post_url' => $post_url,
+                    'edit_url' => $edit_url,
+                    'message' => "Successfully created " . ucfirst($content_type) . " with ID " . $post_id
+                ));
+                
+            } catch (Exception $e) {
+                error_log('MPAI Direct AJAX: Exception creating post: ' . $e->getMessage());
+                echo json_encode(array(
+                    'success' => false,
+                    'message' => 'Error creating post: ' . $e->getMessage()
+                ));
+            }
+            break;
+        }
+        
         // Check if this is a message update request
         if (isset($_POST['is_update_message']) && $_POST['is_update_message'] === 'true') {
             // This is a message update request

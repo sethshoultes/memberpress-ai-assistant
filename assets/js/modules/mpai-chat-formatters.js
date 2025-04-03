@@ -91,6 +91,102 @@ var MPAI_Formatters = (function($) {
                 return '<div class="code-container"><pre><code>' + p1.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre></div>';
             });
             
+            // Process XML blog post content
+            // Look for wp-post XML content outside of code blocks - using a completely revised approach
+            // This completely rewrites the XML handling to be more robust in all cases
+            let xmlFound = false;
+            
+            // First check if content contains wp-post tags
+            if (content.includes('<wp-post') && content.includes('</wp-post>')) {
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info('XML blog post content detected', 'ui');
+                }
+                
+                // Pre-process the content to protect XML from other formatters
+                // This uses a simple but effective search method
+                const processXmlBlock = function(fullContent) {
+                    // Find all occurrences of wp-post tags
+                    let startIndex = 0;
+                    const blocks = [];
+                    const placeholders = [];
+                    let blockCount = 0;
+                    
+                    while ((startIndex = fullContent.indexOf('<wp-post', startIndex)) !== -1) {
+                        const openTagEnd = fullContent.indexOf('>', startIndex);
+                        if (openTagEnd === -1) break;
+                        
+                        const closeTagStart = fullContent.indexOf('</wp-post>', openTagEnd);
+                        if (closeTagStart === -1) break;
+                        
+                        const closeTagEnd = closeTagStart + 10; // Length of '</wp-post>'
+                        
+                        // Extract the XML block
+                        const xmlBlock = fullContent.substring(startIndex, closeTagEnd);
+                        blocks.push(xmlBlock);
+                        
+                        // Create a unique placeholder
+                        const placeholder = `__XML_BLOCK_${blockCount++}__`;
+                        placeholders.push(placeholder);
+                        
+                        // Replace the XML block with the placeholder in the original content
+                        fullContent = fullContent.substring(0, startIndex) + 
+                                   placeholder + 
+                                   fullContent.substring(closeTagEnd);
+                        
+                        // Update startIndex to continue search after the placeholder
+                        startIndex = startIndex + placeholder.length;
+                    }
+                    
+                    return { content: fullContent, blocks, placeholders };
+                };
+                
+                // Process and protect all XML blocks
+                const result = processXmlBlock(content);
+                content = result.content;
+                
+                // Process each XML block and reinsert it later
+                const processedBlocks = result.blocks.map(function(xmlContent, index) {
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.info(`Processing XML blog post content block ${index}`, 'ui', { 
+                            length: xmlContent.length 
+                        });
+                    }
+                    
+                    // Escape the XML content for safe display
+                    const escapedXml = xmlContent
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                    
+                    // Add syntax highlighting for different parts of XML
+                    const highlightedXml = escapedXml
+                        // Highlight XML tags for all tag types (word chars and hyphens)
+                        .replace(/&lt;(\/?)([\w-]+)(&gt;|(\s+[^&]*?)&gt;)/g, function(match, slash, tag, rest) {
+                            return '&lt;<span class="xml-tag">' + slash + tag + '</span>' + rest;
+                        })
+                        // Highlight XML attributes
+                        .replace(/(\s+)([\w-]+)(="[^"]*")/g, function(match, space, attr, value) {
+                            return space + '<span class="xml-attr">' + attr + '</span>' + value;
+                        })
+                        // Highlight XML comments
+                        .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="xml-comment">$1</span>');
+                    
+                    // Return with the XML wrapped in a display container
+                    return '<div class="xml-content-container"><pre class="xml-content">' + highlightedXml + '</pre></div>';
+                });
+                
+                // Reinsert the processed XML blocks
+                for (let i = 0; i < result.placeholders.length; i++) {
+                    content = content.replace(result.placeholders[i], processedBlocks[i]);
+                    xmlFound = true;
+                }
+                
+                if (xmlFound && window.mpaiLogger) {
+                    window.mpaiLogger.info(`Successfully processed ${result.blocks.length} XML blocks`, 'ui');
+                } else if (window.mpaiLogger) {
+                    window.mpaiLogger.warn('XML tags found but processing failed', 'ui');
+                }
+            }
+            
             // Convert markdown lists to HTML lists - this is the key improvement
             
             // Unordered lists with dashes or asterisks
