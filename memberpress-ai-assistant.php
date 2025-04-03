@@ -321,6 +321,7 @@ class MemberPress_AI_Assistant {
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-chat.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-context-manager.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-xml-content-parser.php';
         
         // Admin and Settings
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-admin.php';
@@ -628,6 +629,14 @@ class MemberPress_AI_Assistant {
             MPAI_VERSION,
             true
         );
+        
+        wp_enqueue_script(
+            'mpai-blog-formatter',
+            MPAI_PLUGIN_URL . 'assets/js/modules/mpai-blog-formatter.js',
+            array('jquery', 'mpai-logger-js', 'mpai-chat-messages', 'mpai-chat-tools'),
+            MPAI_VERSION,
+            true
+        );
 
         // Load the main chat interface loader script
         wp_enqueue_script(
@@ -640,7 +649,8 @@ class MemberPress_AI_Assistant {
                 'mpai-chat-ui-utils', 
                 'mpai-chat-messages', 
                 'mpai-chat-tools', 
-                'mpai-chat-history'
+                'mpai-chat-history',
+                'mpai-blog-formatter'
             ),
             MPAI_VERSION,
             true

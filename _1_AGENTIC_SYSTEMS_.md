@@ -7,6 +7,8 @@
 
 The MemberPress AI Assistant leverages an advanced agentic framework that enables specialized AI agents to perform domain-specific tasks within the WordPress and MemberPress ecosystem. This document provides a comprehensive guide to understanding and integrating with the agent system.
 
+This guide is part of the developer documentation suite for the MemberPress AI Assistant plugin. For an overview of the entire system and guidance on where to start for different development tasks, please see [_0_START_HERE_.md](./_0_START_HERE_.md).
+
 ## Table of Contents
 
 1. [Architecture](#architecture)
@@ -267,9 +269,40 @@ private function register_tools() {
         $this->tool_registry->register_tool('content', $content_tool);
     }
     
+    // Register WordPress API Tool with XML Support
+    if (class_exists('MPAI_WP_API_Tool')) {
+        $wp_api_tool = new MPAI_WP_API_Tool();
+        $this->tool_registry->register_tool('wp_api', $wp_api_tool);
+    }
+    
     // Register other tools...
 }
 ```
+
+### Special System: XML Content Formatting
+
+The XML Content System is a specialized implementation that showcases best practices for tool development. It provides structured content generation and formatting through a standardized XML format:
+
+```xml
+<wp-post>
+  <post-title>Post Title</post-title>
+  <post-content>
+    <block type="paragraph">Content paragraph</block>
+    <block type="heading" level="2">Heading</block>
+  </post-content>
+  <post-excerpt>Excerpt text</post-excerpt>
+  <post-status>draft</post-status>
+</wp-post>
+```
+
+This system includes several integrated components:
+
+1. **Backend XML Parser**: `MPAI_XML_Content_Parser` processes XML content for WordPress integration
+2. **WordPress API Tool**: Enhanced with XML detection and parsing capabilities
+3. **Frontend Formatter**: JavaScript modules that enhance chat interface for XML content
+4. **Client-Side Processing**: Tools to extract and submit XML content for post creation
+
+See the comprehensive documentation in [/docs/xml-content-system/README.md](/docs/xml-content-system/README.md) for implementation details.
 
 ### Tool Execution
 
@@ -1162,9 +1195,11 @@ The MemberPress AI Assistant Agentic System provides a powerful and extensible f
 
 For further details, refer to:
 
-- [Agent System Implementation Guide](/docs/current/agent-system-implementation.md)
-- [Agent System Quickstart](/docs/current/agent-system-quickstart.md)
-- [Agent System User Guide](/docs/current/agent-system-user-guide.md)
-- [Command Validation Agent](/docs/current/command-validation-agent.md)
-- [Tool Implementation Map](/docs/current/tool-implementation-map.md)
-- [System Map](/docs/current/system-map.md)
+- [Tool Implementation Map](/docs/current/tool-implementation-map.md) - Detailed guide for implementing new tools
+- [System Map](/docs/current/system-map.md) - Overview of all files and their relationships
+- [Command Validation Agent](/docs/current/command-validation-agent.md) - Details on the command validation system
+- [Agent System Implementation Guide](/docs/current/agent-system-implementation.md) - Additional implementation details
+- [Agent System Quickstart](/docs/current/agent-system-quickstart.md) - Quick reference guide
+- [Agent System User Guide](/docs/current/agent-system-user-guide.md) - End-user documentation
+
+For an overview of the entire system and development pathways, see [_0_START_HERE_.md](./_0_START_HERE_.md).

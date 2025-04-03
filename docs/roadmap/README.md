@@ -11,9 +11,16 @@ This directory contains documentation for features that are planned or in develo
 | WordPress Security Integration | 1.6.0 | Design phase | [wp-security-integration-plan.md](wp-security-integration-plan.md) |
 | Integrated Security Implementation | 1.6.0 | Design phase | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) |
 | Enhanced Content Tools | 1.6.1 | Planning phase | [content-tools-specification.md](content-tools-specification.md) |
-| Blog Post XML Formatting | 1.6.1 | Development phase | [blog-post-formatting-plan.md](blog-post-formatting-plan.md) |
-| Blog Post XML & Membership Implementation | 1.6.1 | Development phase | [blog-xml-membership-implementation-plan.md](../blog-xml-membership-implementation-plan.md) |
 | New Tools Enhancement Plan | 1.7.0 | Research phase | [new-tools-enhancement-plan.md](new-tools-enhancement-plan.md) |
+
+## Recently Implemented Features
+
+These features have been implemented and documentation has been moved to the [current](../current/) directory:
+
+| Feature | Version Added | Documentation |
+|---------|--------------|--------------|
+| Blog Post XML Formatting | 1.6.0 | [blog-xml-formatting-implementation.md](../current/blog-xml-formatting-implementation.md) |
+| Blog Post XML & Membership Implementation | 1.6.0 | [blog-xml-membership-implementation-plan.md](../current/blog-xml-membership-implementation-plan.md) |
 
 ## Development Status Definitions
 
@@ -23,6 +30,7 @@ This directory contains documentation for features that are planned or in develo
 - **Development phase**: Active coding and integration in progress
 - **Testing phase**: Feature implemented and undergoing testing
 - **Ready for release**: Fully tested and awaiting inclusion in next release
+- **Implemented**: Feature has been completed and is now in the current features documentation
 
 ## Roadmap Tracking
 
@@ -32,6 +40,7 @@ When working on roadmap features:
 2. Add implementation details as they are finalized
 3. Move completed features to the Current Features directory once implemented
 4. Update CHANGELOG.md with implementation details when completed
+5. Add an entry to the "Recently Implemented Features" section with a link to the current documentation
 
 ## Feature Request Process
 

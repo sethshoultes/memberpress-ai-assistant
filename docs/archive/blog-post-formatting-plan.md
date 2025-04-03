@@ -1,4 +1,6 @@
-# Blog Post Formatting Implementation Documentation
+# [ARCHIVED] Blog Post Formatting Implementation Documentation
+
+> **Note:** This document has been archived as the plan has been implemented. Please refer to `docs/current/blog-xml-formatting-implementation.md` for the current implementation details.
 
 ## Issue Summary
 

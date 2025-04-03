@@ -194,6 +194,141 @@ switch ($action) {
             break;
         }
         
+        // Check if this is a wp_api create_post request
+        if (isset($_POST['wp_api_action']) && $_POST['wp_api_action'] === 'create_post') {
+            // Handle post creation request
+            try {
+                error_log('MPAI Direct AJAX: Handling wp_api_action = create_post request');
+                error_log('MPAI Direct AJAX: Request data: ' . print_r($_POST, true));
+                
+                // Get the post data - check different parameter keys to be flexible
+                $title = '';
+                if (isset($_POST['title'])) {
+                    $title = sanitize_text_field($_POST['title']);
+                }
+                
+                $content = '';
+                if (isset($_POST['content'])) {
+                    $content = $_POST['content']; // Don't sanitize content to preserve HTML
+                }
+                
+                $excerpt = '';
+                if (isset($_POST['excerpt'])) {
+                    $excerpt = sanitize_textarea_field($_POST['excerpt']);
+                }
+                
+                $content_type = isset($_POST['content_type']) ? sanitize_text_field($_POST['content_type']) : 'post';
+                $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'draft';
+                
+                error_log('MPAI Direct AJAX: Creating ' . $content_type . ' with direct parameters');
+                error_log('MPAI Direct AJAX: Title: ' . $title);
+                error_log('MPAI Direct AJAX: Content length: ' . strlen($content));
+                
+                // Check if this is XML content that needs parsing
+                if (empty($title) && (strpos($content, '<wp-post>') !== false && strpos($content, '</wp-post>') !== false)) {
+                    error_log('MPAI Direct AJAX: Content appears to be XML, attempting to parse');
+                    
+                    // Load the XML parser class if needed
+                    if (!class_exists('MPAI_XML_Content_Parser')) {
+                        require_once dirname(dirname(__FILE__)) . '/class-mpai-xml-content-parser.php';
+                    }
+                    
+                    // Parse the XML content
+                    $xml_parser = new MPAI_XML_Content_Parser();
+                    $parsed_data = $xml_parser->parse_xml_blog_post($content);
+                    
+                    if ($parsed_data) {
+                        error_log('MPAI Direct AJAX: Successfully parsed XML content');
+                        error_log('MPAI Direct AJAX: Parsed data: ' . print_r($parsed_data, true));
+                        
+                        // Use the parsed data for post creation
+                        $title = isset($parsed_data['title']) ? $parsed_data['title'] : 'New ' . ucfirst($content_type);
+                        $content = isset($parsed_data['content']) ? $parsed_data['content'] : '';
+                        $excerpt = isset($parsed_data['excerpt']) ? $parsed_data['excerpt'] : '';
+                        $status = isset($parsed_data['status']) ? $parsed_data['status'] : 'draft';
+                    } else {
+                        error_log('MPAI Direct AJAX: Failed to parse XML content, using raw content');
+                    }
+                }
+                
+                // Ensure we have at least a title
+                if (empty($title)) {
+                    $title = 'New ' . ucfirst($content_type) . ' ' . date('Y-m-d H:i:s');
+                }
+                
+                // Ensure content has Gutenberg blocks if needed
+                if (!empty($content) && strpos($content, '<!-- wp:') === false) {
+                    error_log('MPAI Direct AJAX: Content does not have Gutenberg blocks, adding paragraph formatting');
+                    
+                    // Simple conversion to paragraphs
+                    $paragraphs = explode("\n\n", $content);
+                    $blocks_content = '';
+                    
+                    foreach ($paragraphs as $paragraph) {
+                        if (trim($paragraph)) {
+                            $blocks_content .= '<!-- wp:paragraph --><p>' . trim($paragraph) . '</p><!-- /wp:paragraph -->' . "\n\n";
+                        }
+                    }
+                    
+                    if (!empty($blocks_content)) {
+                        $content = $blocks_content;
+                    } else {
+                        // Fallback if splitting fails
+                        $content = '<!-- wp:paragraph --><p>' . $content . '</p><!-- /wp:paragraph -->';
+                    }
+                }
+                
+                // Prepare post data
+                $post_data = array(
+                    'post_title' => $title,
+                    'post_content' => $content,
+                    'post_status' => $status,
+                    'post_type' => $content_type === 'page' ? 'page' : 'post',
+                    'post_excerpt' => $excerpt,
+                );
+                
+                error_log('MPAI Direct AJAX: Inserting post with data: ' . print_r($post_data, true));
+                
+                // Insert the post
+                $post_id = wp_insert_post($post_data);
+                
+                if (is_wp_error($post_id)) {
+                    error_log('MPAI Direct AJAX: Error inserting post: ' . $post_id->get_error_message());
+                    echo json_encode(array(
+                        'success' => false,
+                        'message' => 'Failed to create post: ' . $post_id->get_error_message(),
+                        'error_details' => $post_id->get_error_data()
+                    ));
+                    break;
+                }
+                
+                // Get the post URL and edit URL
+                $post_url = get_permalink($post_id);
+                $edit_url = get_edit_post_link($post_id, 'raw');
+                
+                error_log('MPAI Direct AJAX: Post created successfully with ID: ' . $post_id);
+                error_log('MPAI Direct AJAX: Post URL: ' . $post_url);
+                error_log('MPAI Direct AJAX: Edit URL: ' . $edit_url);
+                
+                echo json_encode(array(
+                    'success' => true,
+                    'post_id' => $post_id,
+                    'post_url' => $post_url,
+                    'edit_url' => $edit_url,
+                    'message' => "Successfully created " . ucfirst($content_type) . " with ID " . $post_id
+                ));
+                
+            } catch (Exception $e) {
+                error_log('MPAI Direct AJAX: Exception creating post: ' . $e->getMessage());
+                error_log('MPAI Direct AJAX: Exception trace: ' . $e->getTraceAsString());
+                echo json_encode(array(
+                    'success' => false,
+                    'message' => 'Error creating post: ' . $e->getMessage()
+                ));
+            }
+            break;
+        }
+        
         // Check if this is a message update request
         if (isset($_POST['is_update_message']) && $_POST['is_update_message'] === 'true') {
             // This is a message update request
@@ -631,6 +766,96 @@ switch ($action) {
                 )
             )
         ));
+        break;
+        
+    case 'mpai_create_post':
+        // Direct post/page creation handler without XML parsing
+        try {
+            error_log('MPAI Direct AJAX: Handler called for mpai_create_post action');
+            
+            // Log all POST data for debugging
+            error_log('MPAI Direct AJAX: POST data: ' . print_r($_POST, true));
+            
+            // Get parameters with defaults
+            $post_type = isset($_POST['post_type']) ? sanitize_text_field($_POST['post_type']) : 'post';
+            $title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : 'New ' . ucfirst($post_type);
+            $content = isset($_POST['content']) ? $_POST['content'] : ''; // Don't sanitize to preserve HTML/Gutenberg blocks
+            $excerpt = isset($_POST['excerpt']) ? sanitize_textarea_field($_POST['excerpt']) : '';
+            $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'draft';
+            
+            error_log('MPAI Direct AJAX: Creating ' . $post_type . ' with title: ' . $title);
+            error_log('MPAI Direct AJAX: Content length: ' . strlen($content));
+            
+            // Ensure content has Gutenberg blocks if it's just plain text
+            if (!empty($content) && strpos($content, '<!-- wp:') === false) {
+                error_log('MPAI Direct AJAX: Content does not contain Gutenberg blocks, adding paragraph blocks');
+                
+                // Convert plain text to Gutenberg paragraph blocks
+                $paragraphs = explode("\n\n", $content);
+                $blocks_content = '';
+                
+                foreach ($paragraphs as $paragraph) {
+                    if (trim($paragraph)) {
+                        $blocks_content .= '<!-- wp:paragraph --><p>' . trim($paragraph) . '</p><!-- /wp:paragraph -->' . "\n\n";
+                    }
+                }
+                
+                if (!empty($blocks_content)) {
+                    $content = $blocks_content;
+                } else {
+                    // Fallback if splitting fails
+                    $content = '<!-- wp:paragraph --><p>' . $content . '</p><!-- /wp:paragraph -->';
+                }
+            }
+            
+            // Prepare post data
+            $post_data = array(
+                'post_title' => $title,
+                'post_content' => $content,
+                'post_status' => $status,
+                'post_type' => $post_type === 'page' ? 'page' : 'post',
+                'post_excerpt' => $excerpt,
+            );
+            
+            error_log('MPAI Direct AJAX: Inserting post with data: ' . print_r($post_data, true));
+            
+            // Insert the post
+            $post_id = wp_insert_post($post_data);
+            
+            if (is_wp_error($post_id)) {
+                error_log('MPAI Direct AJAX: Error inserting post: ' . $post_id->get_error_message());
+                echo json_encode(array(
+                    'success' => false,
+                    'message' => 'Failed to create post: ' . $post_id->get_error_message(),
+                    'error_details' => $post_id->get_error_data()
+                ));
+                break;
+            }
+            
+            // Get the post URL and edit URL
+            $post_url = get_permalink($post_id);
+            $edit_url = get_edit_post_link($post_id, 'raw');
+            
+            error_log('MPAI Direct AJAX: Post created successfully with ID: ' . $post_id);
+            error_log('MPAI Direct AJAX: Post URL: ' . $post_url);
+            error_log('MPAI Direct AJAX: Edit URL: ' . $edit_url);
+            
+            echo json_encode(array(
+                'success' => true,
+                'post_id' => $post_id,
+                'post_url' => $post_url,
+                'edit_url' => $edit_url,
+                'message' => "Successfully created " . ucfirst($post_type) . " with ID " . $post_id
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI Direct AJAX: Exception creating post: ' . $e->getMessage());
+            error_log('MPAI Direct AJAX: Exception trace: ' . $e->getTraceAsString());
+            echo json_encode(array(
+                'success' => false,
+                'message' => 'Error creating post: ' . $e->getMessage()
+            ));
+        }
         break;
         
     default:

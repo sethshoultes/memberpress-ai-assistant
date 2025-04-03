@@ -98,7 +98,8 @@
             'MPAI_UIUtils',
             'MPAI_Tools',
             'MPAI_Formatters',
-            'MPAI_History'
+            'MPAI_History',
+            'MPAI_BlogFormatter'
         ];
         
         let allAvailable = true;
@@ -161,6 +162,15 @@
         // Initialize history (depends on messages)
         if (modules.MPAI_History) {
             modules.MPAI_History.init(elements, modules.MPAI_Messages);
+        }
+        
+        // Initialize blog formatter (depends on messages and tools)
+        if (modules.MPAI_BlogFormatter) {
+            modules.MPAI_BlogFormatter.init();
+            
+            if (window.mpaiLogger) {
+                window.mpaiLogger.debug('MPAI_BlogFormatter module initialized', 'ui');
+            }
         }
     }
     
