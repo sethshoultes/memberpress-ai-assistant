@@ -21,6 +21,8 @@ Our current implemented features documentation can be found in the [current](cur
 - Content management tools
 - Technical infrastructure
 - Data analysis features
+- [Tool implementation map](current/tool-implementation-map.md) for developers
+- [Developer onboarding system](current/developer-onboarding-system.md)
 
 ### Feature Roadmap
 
@@ -31,6 +33,7 @@ Future planned features are documented in the [roadmap](roadmap/) directory, inc
 - WordPress security integration
 - Enhanced content creation tools
 - Blog post XML formatting and membership features ([implementation plan](blog-xml-membership-implementation-plan.md))
+- Blog post XML formatting implementation ([documentation](blog-xml-formatting-implementation.md))
 
 ### Archive
 
