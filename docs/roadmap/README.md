@@ -19,6 +19,7 @@ These features have been implemented and documentation has been moved to the [cu
 
 | Feature | Version Added | Documentation |
 |---------|--------------|--------------|
+| Error Catalog System | 1.6.0 | [MPAI_Error_Catalog_System.md](../current/MPAI_Error_Catalog_System.md) |
 | Blog Post XML Formatting | 1.6.0 | [blog-xml-formatting-implementation.md](../current/blog-xml-formatting-implementation.md) |
 | Blog Post XML & Membership Implementation | 1.6.0 | [blog-xml-membership-implementation-plan.md](../current/blog-xml-membership-implementation-plan.md) |
 
