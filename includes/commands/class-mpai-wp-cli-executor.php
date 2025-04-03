@@ -16,12 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * WP-CLI Executor Class
  */
 class MPAI_WP_CLI_Executor {
-    /**
-     * Logger instance
-     *
-     * @var object
-     */
-    private $logger;
 
     /**
      * Execution timeout in seconds
@@ -34,22 +28,9 @@ class MPAI_WP_CLI_Executor {
      * Constructor
      */
     public function __construct() {
-        // Initialize logger
-        $this->logger = $this->get_default_logger();
+        // No initialization needed
     }
 
-    /**
-     * Get default logger
-     *
-     * @return object Default logger
-     */
-    private function get_default_logger() {
-        return (object) [
-            'info'    => function( $message ) { error_log( 'MPAI WP-CLI INFO: ' . $message ); },
-            'warning' => function( $message ) { error_log( 'MPAI WP-CLI WARNING: ' . $message ); },
-            'error'   => function( $message ) { error_log( 'MPAI WP-CLI ERROR: ' . $message ); },
-        ];
-    }
 
     /**
      * Execute a WP-CLI command
@@ -60,7 +41,7 @@ class MPAI_WP_CLI_Executor {
      */
     public function execute($command, $parameters = []) {
         try {
-            $this->logger->info('Executing WP-CLI command: ' . $command);
+            error_log('MPAI WP-CLI: Executing command: ' . $command);
             
             // Set custom timeout if provided
             if (isset($parameters['timeout'])) {
@@ -87,7 +68,7 @@ class MPAI_WP_CLI_Executor {
             
             // Handle the result
             if ($return_var !== 0) {
-                $this->logger->error('Command failed with code ' . $return_var . ': ' . implode("\n", $output));
+                error_log('MPAI WP-CLI ERROR: Command failed with code ' . $return_var . ': ' . implode("\n", $output));
                 return [
                     'success' => false,
                     'output' => implode("\n", $output),
@@ -230,7 +211,7 @@ class MPAI_WP_CLI_Executor {
      * @return array Execution result
      */
     private function handle_plugin_command($command, $parameters = []) {
-        $this->logger->info('Handling plugin command: ' . $command);
+        error_log('MPAI WP-CLI: Handling plugin command: ' . $command);
         
         // Ensure WP-CLI functions are available
         if (preg_match('/wp\s+plugin\s+list/i', $command) || preg_match('/plugin\s+list/i', $command)) {

@@ -16,12 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Command Handler Class
  */
 class MPAI_Command_Handler {
-    /**
-     * Logger instance
-     *
-     * @var object
-     */
-    private $logger;
 
     /**
      * WP-CLI executor
@@ -62,10 +56,7 @@ class MPAI_Command_Handler {
      * Constructor
      */
     public function __construct() {
-        // Initialize logger
-        $this->logger = $this->get_default_logger();
-
-        $this->logger->info('Initializing Command Handler');
+        error_log('MPAI COMMAND: Initializing Command Handler');
 
         // Load dependencies
         $this->load_dependencies();
@@ -74,18 +65,6 @@ class MPAI_Command_Handler {
         $this->initialize_components();
     }
 
-    /**
-     * Get default logger
-     *
-     * @return object Default logger
-     */
-    private function get_default_logger() {
-        return (object) [
-            'info'    => function( $message ) { error_log( 'MPAI COMMAND INFO: ' . $message ); },
-            'warning' => function( $message ) { error_log( 'MPAI COMMAND WARNING: ' . $message ); },
-            'error'   => function( $message ) { error_log( 'MPAI COMMAND ERROR: ' . $message ); },
-        ];
-    }
 
     /**
      * Load dependencies
@@ -142,13 +121,13 @@ class MPAI_Command_Handler {
      */
     public function execute_command($command, $parameters = []) {
         try {
-            $this->logger->info('Executing command: ' . (is_string($command) ? $command : json_encode($command)));
+            error_log('MPAI COMMAND: Executing command: ' . (is_string($command) ? $command : json_encode($command)));
             
             // If command is a string and seems to be a natural language query, parse it
             if (is_string($command) && !$this->is_direct_command($command)) {
                 $detected = $this->detector->detect_command($command);
                 if ($detected) {
-                    $this->logger->info('Detected command: ' . $detected['command'] . ' (type: ' . $detected['type'] . ')');
+                    error_log('MPAI COMMAND: Detected command: ' . $detected['command'] . ' (type: ' . $detected['type'] . ')');
                     $command = $detected['command'];
                     // Merge any detected parameters
                     if (isset($detected['parameters'])) {
@@ -173,11 +152,11 @@ class MPAI_Command_Handler {
             
             // Sanitize the command
             $sanitized_command = $this->sanitizer->sanitize($command);
-            $this->logger->info('Sanitized command: ' . $sanitized_command);
+            error_log('MPAI COMMAND: Sanitized command: ' . $sanitized_command);
             
             // Check if command is dangerous
             if ($this->security->is_dangerous($sanitized_command)) {
-                $this->logger->error('Dangerous command blocked: ' . $sanitized_command);
+                error_log('MPAI COMMAND ERROR: Dangerous command blocked: ' . $sanitized_command);
                 return [
                     'success' => false,
                     'output' => 'Command blocked for security reasons',
@@ -193,7 +172,7 @@ class MPAI_Command_Handler {
                 return $this->wp_cli_executor->execute($sanitized_command, $parameters);
             }
         } catch (Exception $e) {
-            $this->logger->error('Command execution error: ' . $e->getMessage());
+            error_log('MPAI COMMAND ERROR: Command execution error: ' . $e->getMessage());
             return [
                 'success' => false,
                 'output' => 'Error executing command: ' . $e->getMessage(),
@@ -232,13 +211,13 @@ class MPAI_Command_Handler {
      */
     public function process_request($message, $context = []) {
         try {
-            $this->logger->info('Processing request: ' . $message);
+            error_log('MPAI COMMAND: Processing request: ' . $message);
             
             // Detect command from message
             $detected = $this->detector->detect_command($message);
             
             if (!$detected) {
-                $this->logger->warning('No command detected in message');
+                error_log('MPAI COMMAND WARNING: No command detected in message');
                 return [
                     'success' => false,
                     'output' => 'I couldn\'t determine what command to run for that request.',
@@ -246,7 +225,7 @@ class MPAI_Command_Handler {
                 ];
             }
             
-            $this->logger->info('Detected command: ' . $detected['command'] . ' (type: ' . $detected['type'] . ')');
+            error_log('MPAI COMMAND: Detected command: ' . $detected['command'] . ' (type: ' . $detected['type'] . ')');
             
             // Execute the detected command
             $result = $this->execute_command($detected['command'], $detected['parameters'] ?? []);
@@ -257,7 +236,7 @@ class MPAI_Command_Handler {
             
             return $result;
         } catch (Exception $e) {
-            $this->logger->error('Request processing error: ' . $e->getMessage());
+            error_log('MPAI COMMAND ERROR: Request processing error: ' . $e->getMessage());
             return [
                 'success' => false,
                 'output' => 'Error processing request: ' . $e->getMessage(),

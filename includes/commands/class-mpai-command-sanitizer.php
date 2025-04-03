@@ -16,33 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Command Sanitizer Class
  */
 class MPAI_Command_Sanitizer {
-    /**
-     * Logger instance
-     *
-     * @var object
-     */
-    private $logger;
 
     /**
      * Constructor
      */
     public function __construct() {
-        // Initialize logger
-        $this->logger = $this->get_default_logger();
+        // No initialization needed
     }
 
-    /**
-     * Get default logger
-     *
-     * @return object Default logger
-     */
-    private function get_default_logger() {
-        return (object) [
-            'info'    => function( $message ) { error_log( 'MPAI SANITIZER INFO: ' . $message ); },
-            'warning' => function( $message ) { error_log( 'MPAI SANITIZER WARNING: ' . $message ); },
-            'error'   => function( $message ) { error_log( 'MPAI SANITIZER ERROR: ' . $message ); },
-        ];
-    }
 
     /**
      * Sanitize a command

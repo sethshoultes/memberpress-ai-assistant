@@ -16,33 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Command Detector Class
  */
 class MPAI_Command_Detector {
-    /**
-     * Logger instance
-     *
-     * @var object
-     */
-    private $logger;
 
     /**
      * Constructor
      */
     public function __construct() {
-        // Initialize logger
-        $this->logger = $this->get_default_logger();
+        // No initialization needed
     }
 
-    /**
-     * Get default logger
-     *
-     * @return object Default logger
-     */
-    private function get_default_logger() {
-        return (object) [
-            'info'    => function( $message ) { error_log( 'MPAI DETECTOR INFO: ' . $message ); },
-            'warning' => function( $message ) { error_log( 'MPAI DETECTOR WARNING: ' . $message ); },
-            'error'   => function( $message ) { error_log( 'MPAI DETECTOR ERROR: ' . $message ); },
-        ];
-    }
 
     /**
      * Detect command from natural language message
@@ -93,7 +74,7 @@ class MPAI_Command_Detector {
         }
         
         // No command detected
-        $this->logger->warning('No command detected from message');
+        error_log('MPAI DETECTOR WARNING: No command detected from message');
         return false;
     }
 

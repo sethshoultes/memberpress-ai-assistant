@@ -16,12 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Command Security Class
  */
 class MPAI_Command_Security {
-    /**
-     * Logger instance
-     *
-     * @var object
-     */
-    private $logger;
 
     /**
      * List of dangerous command patterns
@@ -72,25 +66,10 @@ class MPAI_Command_Security {
      * Constructor
      */
     public function __construct() {
-        // Initialize logger
-        $this->logger = $this->get_default_logger();
-        
         // Add WordPress-specific dangerous patterns
         $this->add_wordpress_patterns();
     }
 
-    /**
-     * Get default logger
-     *
-     * @return object Default logger
-     */
-    private function get_default_logger() {
-        return (object) [
-            'info'    => function( $message ) { error_log( 'MPAI SECURITY INFO: ' . $message ); },
-            'warning' => function( $message ) { error_log( 'MPAI SECURITY WARNING: ' . $message ); },
-            'error'   => function( $message ) { error_log( 'MPAI SECURITY ERROR: ' . $message ); },
-        ];
-    }
 
     /**
      * Add WordPress-specific dangerous patterns

@@ -16,12 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * PHP Executor Class
  */
 class MPAI_PHP_Executor {
-    /**
-     * Logger instance
-     *
-     * @var object
-     */
-    private $logger;
 
     /**
      * Execution timeout in seconds
@@ -34,22 +28,9 @@ class MPAI_PHP_Executor {
      * Constructor
      */
     public function __construct() {
-        // Initialize logger
-        $this->logger = $this->get_default_logger();
+        // No initialization needed
     }
 
-    /**
-     * Get default logger
-     *
-     * @return object Default logger
-     */
-    private function get_default_logger() {
-        return (object) [
-            'info'    => function( $message ) { error_log( 'MPAI PHP INFO: ' . $message ); },
-            'warning' => function( $message ) { error_log( 'MPAI PHP WARNING: ' . $message ); },
-            'error'   => function( $message ) { error_log( 'MPAI PHP ERROR: ' . $message ); },
-        ];
-    }
 
     /**
      * Execute a PHP command
@@ -60,7 +41,7 @@ class MPAI_PHP_Executor {
      */
     public function execute($command, $parameters = []) {
         try {
-            $this->logger->info('Executing PHP command: ' . $command);
+            error_log('MPAI PHP: Executing command: ' . $command);
             
             // Set custom timeout if provided
             if (isset($parameters['timeout'])) {
@@ -98,7 +79,7 @@ class MPAI_PHP_Executor {
                 'command' => $command
             ];
         } catch (Exception $e) {
-            $this->logger->error('Command execution error: ' . $e->getMessage());
+            error_log('MPAI PHP ERROR: Command execution error: ' . $e->getMessage());
             return [
                 'success' => false,
                 'output' => 'Error executing command: ' . $e->getMessage(),
