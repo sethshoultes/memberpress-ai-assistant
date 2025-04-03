@@ -2,7 +2,7 @@
 
 **Status:** ✅ Maintained  
 **Version:** 1.0.0  
-**Last Updated:** April 2024
+**Last Updated:** April 3, 2024
 
 This document provides a categorized index of all Scooby Snacks - detailed documentation of investigations that led to fixes and improvements in the MemberPress AI Assistant plugin.
 
@@ -59,6 +59,7 @@ This document provides a categorized index of all Scooby Snacks - detailed docum
 | Snack Title | Date | Version | Description |
 |-------------|------|---------|-------------|
 | [Blog Post XML Formatting Fix](content-system/blog-post-xml-formatting-snack.md) | 2024-03-28 | 1.6.0 | Implemented robust XML parsing for blog post formatting |
+| [XML Blog Post Formatting and Post Creation Fix](content-system/xml-blog-post-formatting-fix.md) | 2024-04-03 | 1.5.4 | Fixed XML content display and post creation issues |
 
 ## JavaScript
 

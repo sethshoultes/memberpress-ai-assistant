@@ -2,7 +2,7 @@
 
 **Status:** ✅ Maintained  
 **Version:** 1.0.0  
-**Last Updated:** April 2024
+**Last Updated:** April 3, 2024
 
 ## What are "Scooby Snacks"?
 

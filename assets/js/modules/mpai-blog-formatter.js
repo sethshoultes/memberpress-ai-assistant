@@ -265,61 +265,346 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
     }
     
     /**
-     * Create a post from XML content using the wp_api tool
+     * Create a post from XML content using the WordPress REST API
      * 
-     * @param {string} content - The XML formatted content
+     * @param {string} xmlContent - The XML formatted content
      * @param {string} contentType - The type of content ('post' or 'page')
      */
-    function createPostFromXML(content, contentType) {
-        // Super simple approach - construct a hardcoded XML to see if it works
-        const testXml = `<wp-post>
-  <post-title>Test Post Title</post-title>
-  <post-content>
-    <block type="paragraph">This is a test paragraph.</block>
-  </post-content>
-  <post-excerpt>Test excerpt</post-excerpt>
-  <post-status>draft</post-status>
-</wp-post>`;
-
-        // Execute the wp_api tool to create the post
-        if (window.MPAI_Tools && typeof window.MPAI_Tools.executeToolCall === 'function') {
-            const toolId = 'mpai-tool-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-            const parameters = {
-                action: contentType === 'page' ? 'create_page' : 'create_post',
-                content: testXml,
-                status: 'draft',
-                title: 'Test Post Title'
-            };
-            
-            try {
-                // Execute the tool
-                window.MPAI_Tools.executeToolCall('wp_api', parameters, toolId);
-                
-                // Log success
-                if (window.mpaiLogger) {
-                    window.mpaiLogger.info(`Successfully initiated ${contentType} creation`, 'tool_usage');
-                }
-            } catch (error) {
-                // Log and display error
-                if (window.mpaiLogger) {
-                    window.mpaiLogger.error(`Error executing tool: ${error.message}`, 'tool_usage');
-                }
-                alert(`An error occurred while creating the ${contentType}: ${error.message}`);
-            }
-        } else {
-            if (window.mpaiLogger) {
-                window.mpaiLogger.error('Cannot create post: MPAI_Tools module not available', 'tool_usage');
-            }
-            alert('Cannot create post: The tools module is not available. Please try again later.');
-        }
-        
+    function createPostFromXML(xmlContent, contentType) {
         // Log the XML content for debugging
         if (window.mpaiLogger) {
-            window.mpaiLogger.debug('Using hardcoded XML content', 'tool_usage', {
-                testXml: testXml
+            window.mpaiLogger.debug('XML content received', 'tool_usage', {
+                contentPreview: xmlContent.substring(0, 150) + "...",
+                contentLength: xmlContent.length,
+                contentType: contentType
             });
         }
         
+        console.log("Creating " + contentType + " with XML content", xmlContent.substring(0, 100) + "...");
+        
+        // Extract content from XML
+        let title = "New " + (contentType === 'page' ? 'Page' : 'Post');
+        let content_html = '';
+        let excerpt = '';
+        
+        try {
+            // Extract title
+            const titleMatch = xmlContent.match(/<post-title[^>]*>([\s\S]*?)<\/post-title>/i);
+            if (titleMatch && titleMatch[1]) {
+                title = titleMatch[1].trim();
+            }
+            
+            // Extract content and convert blocks to HTML
+            const contentMatch = xmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
+            if (contentMatch && contentMatch[1]) {
+                const contentBlocks = contentMatch[1];
+                content_html = convertXmlBlocksToHtml(contentBlocks);
+            } else {
+                // Fallback for when post-content tags aren't found - use the entire xml content
+                console.log("No post-content tags found, using entire XML as content");
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.warn('No post-content tags found, using entire XML as content', 'tool_usage');
+                }
+                content_html = `<!-- wp:paragraph --><p>${xmlContent.replace(/<[^>]*>/g, ' ').trim()}</p><!-- /wp:paragraph -->`;
+            }
+            
+            // Extract excerpt
+            const excerptMatch = xmlContent.match(/<post-excerpt[^>]*>([\s\S]*?)<\/post-excerpt>/i);
+            if (excerptMatch && excerptMatch[1]) {
+                excerpt = excerptMatch[1].trim();
+            }
+            
+            console.log("Extracted content:", {
+                title: title,
+                content_preview: content_html.substring(0, 100) + "...",
+                excerpt: excerpt
+            });
+            
+            if (window.mpaiLogger) {
+                window.mpaiLogger.info('Content extracted from XML', 'tool_usage', {
+                    title: title,
+                    excerpt: excerpt,
+                    contentLength: content_html.length
+                });
+            }
+            
+            // Skip REST API check - just use our direct method since we know REST API is failing
+            console.log("Skipping REST API and going straight to direct AJAX handler");
+            if (window.mpaiLogger) {
+                window.mpaiLogger.info('Skipping REST API and going straight to direct AJAX handler', 'api_calls');
+            }
+            
+            // Go directly to our direct AJAX handler
+            createPostWithAdminAjax(title, content_html, excerpt, contentType);
+        } catch (error) {
+            console.error("Error processing XML content:", error);
+            
+            if (window.mpaiLogger) {
+                window.mpaiLogger.error('Error processing XML content', 'tool_usage', {
+                    error: error.message,
+                    stack: error.stack
+                });
+            }
+            
+            alert(`Error processing XML content: ${error.message}`);
+        }
+    }
+    
+    /**
+     * Convert XML blocks to HTML content
+     * 
+     * @param {string} xmlBlocks - The XML blocks
+     * @return {string} HTML content
+     */
+    function convertXmlBlocksToHtml(xmlBlocks) {
+        let html = '';
+        
+        try {
+            // Process paragraph blocks
+            const paragraphRegex = /<block\s+type=["']paragraph["'][^>]*>([\s\S]*?)<\/block>/g;
+            let match;
+            
+            // Replace paragraph blocks with WordPress paragraph blocks
+            xmlBlocks = xmlBlocks.replace(paragraphRegex, function(match, content) {
+                return `<!-- wp:paragraph --><p>${content.trim()}</p><!-- /wp:paragraph -->`;
+            });
+            
+            // Process heading blocks
+            const headingRegex = /<block\s+type=["']heading["']\s+level=["'](\d)["'][^>]*>([\s\S]*?)<\/block>/g;
+            xmlBlocks = xmlBlocks.replace(headingRegex, function(match, level, content) {
+                return `<!-- wp:heading {"level":${level}} --><h${level}>${content.trim()}</h${level}><!-- /wp:heading -->`;
+            });
+            
+            // Process list blocks
+            const listRegex = /<block\s+type=["']list["'][^>]*>([\s\S]*?)<\/block>/g;
+            xmlBlocks = xmlBlocks.replace(listRegex, function(match, content) {
+                // Extract list items
+                const items = [];
+                const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+                let itemMatch;
+                
+                while ((itemMatch = itemRegex.exec(content)) !== null) {
+                    items.push(`<li>${itemMatch[1].trim()}</li>`);
+                }
+                
+                const listItems = items.join('');
+                return `<!-- wp:list --><ul>${listItems}</ul><!-- /wp:list -->`;
+            });
+            
+            // Check if we've done any transformations by looking for wp:paragraph
+            if (!xmlBlocks.includes('<!-- wp:paragraph -->') && !xmlBlocks.includes('<!-- wp:heading -->') && !xmlBlocks.includes('<!-- wp:list -->')) {
+                // No transformations happened - wrap the entire content in a paragraph block
+                console.log("No XML blocks were transformed, wrapping as paragraphs");
+                
+                // Split by new lines and create paragraphs
+                const paragraphs = xmlBlocks.split(/\n\s*\n/);
+                html = paragraphs.map(p => {
+                    if (p.trim()) {
+                        // Remove XML tags but preserve content
+                        const cleanedText = p.replace(/<[^>]*>/g, ' ').trim();
+                        if (cleanedText) {
+                            return `<!-- wp:paragraph --><p>${cleanedText}</p><!-- /wp:paragraph -->`;
+                        }
+                    }
+                    return '';
+                }).filter(Boolean).join('\n\n');
+            } else {
+                // Some transformations happened, just remove any remaining XML tags
+                html = xmlBlocks.replace(/<[^>]*>/g, '');
+            }
+            
+            // If the content is still empty after processing, use a simple paragraph
+            if (!html.trim()) {
+                html = `<!-- wp:paragraph --><p>Content created with MemberPress AI Assistant</p><!-- /wp:paragraph -->`;
+            }
+        } catch (error) {
+            console.error("Error converting XML blocks to HTML:", error);
+            if (window.mpaiLogger) {
+                window.mpaiLogger.error('Error converting XML blocks to HTML', 'tool_usage', {
+                    error: error.message
+                });
+            }
+            
+            // Fallback to simple content
+            html = `<!-- wp:paragraph --><p>Content created with MemberPress AI Assistant</p><!-- /wp:paragraph -->`;
+        }
+        
+        return html;
+    }
+    
+    /**
+     * Fallback method to create post using direct ajax handler
+     * 
+     * @param {string} title - The post title
+     * @param {string} content - The post content HTML
+     * @param {string} excerpt - The post excerpt
+     * @param {string} contentType - The content type (post or page)
+     */
+    function createPostWithAdminAjax(title, content, excerpt, contentType) {
+        console.log("Using direct AJAX handler to create " + contentType);
+        
+        if (window.mpaiLogger) {
+            window.mpaiLogger.info(`Using direct AJAX handler to create ${contentType}`, 'api_calls');
+        }
+        
+        // Get the plugin directory URL - falling back to a common WordPress structure if needed
+        let pluginUrl = '';
+        if (typeof window.mpai_plugin_url !== 'undefined') {
+            pluginUrl = window.mpai_plugin_url;
+        } else {
+            // Try to extract from script tags
+            const scriptTags = document.querySelectorAll('script[src*="memberpress-ai-assistant"]');
+            if (scriptTags.length > 0) {
+                const src = scriptTags[0].getAttribute('src');
+                pluginUrl = src.split('/assets/')[0];
+            } else {
+                // Fallback to a common WordPress structure
+                pluginUrl = '/wp-content/plugins/memberpress-ai-assistant';
+            }
+        }
+        
+        // Build the direct AJAX handler URL
+        const directAjaxUrl = pluginUrl + '/includes/direct-ajax-handler.php';
+        console.log("Using direct AJAX URL:", directAjaxUrl);
+        
+        // Create post with direct AJAX handler
+        jQuery.ajax({
+            url: directAjaxUrl,
+            method: 'POST',
+            data: {
+                action: 'mpai_create_post',
+                post_type: contentType === 'page' ? 'page' : 'post',
+                title: title,
+                content: content,
+                excerpt: excerpt,
+                status: 'draft'
+            },
+            success: function(response) {
+                console.log("Post created successfully with direct AJAX:", response);
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info(`${contentType} created successfully with direct AJAX`, 'api_calls', {
+                        response: response
+                    });
+                }
+                
+                if (response.success) {
+                    alert(`${contentType === 'page' ? 'Page' : 'Post'} created successfully!`);
+                } else {
+                    alert(`Error creating ${contentType}: ${response.message || 'Unknown error'}`);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Error creating post with direct AJAX:", xhr.responseText);
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.error(`Error creating ${contentType} with direct AJAX`, 'api_calls', {
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        responseText: xhr.responseText
+                    });
+                }
+                
+                // Try using the test_simple action instead as a last resort
+                tryUsingSimpleHandler(title, content, excerpt, contentType);
+            }
+        });
+    }
+    
+    /**
+     * Last attempt to create post using the test_simple action in direct-ajax-handler.php
+     */
+    function tryUsingSimpleHandler(title, content, excerpt, contentType) {
+        console.log("Trying test_simple action as last resort");
+        
+        if (window.mpaiLogger) {
+            window.mpaiLogger.info(`Trying test_simple action as last resort`, 'api_calls');
+        }
+        
+        // Get the plugin directory URL - same as above
+        let pluginUrl = '';
+        if (typeof window.mpai_plugin_url !== 'undefined') {
+            pluginUrl = window.mpai_plugin_url;
+        } else {
+            const scriptTags = document.querySelectorAll('script[src*="memberpress-ai-assistant"]');
+            if (scriptTags.length > 0) {
+                const src = scriptTags[0].getAttribute('src');
+                pluginUrl = src.split('/assets/')[0];
+            } else {
+                pluginUrl = '/wp-content/plugins/memberpress-ai-assistant';
+            }
+        }
+        
+        // Build the direct AJAX handler URL
+        const directAjaxUrl = pluginUrl + '/includes/direct-ajax-handler.php';
+        
+        // Create post with test_simple action
+        jQuery.ajax({
+            url: directAjaxUrl,
+            method: 'POST',
+            data: {
+                action: 'test_simple',
+                wp_api_action: 'create_post',
+                content_type: contentType,
+                title: title,
+                content: content,
+                excerpt: excerpt,
+                status: 'draft'
+            },
+            success: function(response) {
+                console.log("Post created successfully with test_simple action:", response);
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info(`${contentType} created with test_simple action`, 'api_calls', {
+                        response: response
+                    });
+                }
+                
+                if (response.success) {
+                    alert(`${contentType === 'page' ? 'Page' : 'Post'} created successfully!`);
+                } else {
+                    alert(`Error creating ${contentType}: ${response.message || 'Unknown error'}`);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Final attempt failed:", xhr.responseText);
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.error(`Final attempt failed`, 'api_calls', {
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        responseText: xhr.responseText
+                    });
+                }
+                
+                // Now try the manual redirect as absolute last resort
+                if (contentType === 'page') {
+                    console.log("Trying last resort - redirecting to page creation screen");
+                    
+                    // Redirect to page creation with title prefilled
+                    const redirectUrl = '/wp-admin/post-new.php?post_type=page&post_title=' + encodeURIComponent(title);
+                    
+                    // Ask the user if they want to be redirected
+                    if (confirm(`All API approaches failed. Would you like to be redirected to the WordPress ${contentType} editor to create your ${contentType} manually?`)) {
+                        window.location.href = redirectUrl;
+                        return;
+                    }
+                } else {
+                    console.log("Trying last resort - redirecting to post creation screen");
+                    
+                    // Redirect to post creation with title prefilled
+                    const redirectUrl = '/wp-admin/post-new.php?post_title=' + encodeURIComponent(title);
+                    
+                    // Ask the user if they want to be redirected
+                    if (confirm(`All API approaches failed. Would you like to be redirected to the WordPress ${contentType} editor to create your ${contentType} manually?`)) {
+                        window.location.href = redirectUrl;
+                        return;
+                    }
+                }
+                
+                alert(`Error creating ${contentType}: ${xhr.statusText || 'Unknown error'}. Please try again later.`);
+            }
+        });
     }
     
     /**

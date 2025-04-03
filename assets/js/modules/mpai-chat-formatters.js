@@ -112,39 +112,12 @@ var MPAI_Formatters = (function($) {
                     }
                 });
                 
-                // Add event handler for create post button that uses our existing function
-                $(document).on('click', '.mpai-create-post-button', function(e) {
-                    e.preventDefault();
-                    
-                    const contentType = $(this).data('content-type');
-                    const xmlContent = decodeURIComponent($(this).data('xml'));
-                    
-                    // DIRECT DEBUG TO CONSOLE
-                    console.log("CREATE POST BUTTON CLICKED");
-                    console.log("Content Type:", contentType);
-                    console.log("XML Content:", xmlContent.substring(0, 200) + '...');
-                    console.log("XML Content Length:", xmlContent.length);
-                    
-                    // Debug log the XML content
-                    if (window.mpaiLogger) {
-                        window.mpaiLogger.debug('XML content from button click', 'ui', {
-                            contentType: contentType,
-                            xmlPreview: xmlContent.substring(0, 100) + '...',
-                            xmlLength: xmlContent.length
-                        });
-                    }
-                    
-                    // Use our existing function to create the post
-                    if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.createPostFromXML === 'function') {
-                        window.MPAI_BlogFormatter.createPostFromXML(xmlContent, contentType);
-                    } else {
-                        console.error("Blog formatter module not available!");
-                        alert('Blog formatter module not available. Please try again later.');
-                        if (window.mpaiLogger) {
-                            window.mpaiLogger.error('Blog formatter module not available', 'ui');
-                        }
-                    }
-                });
+                // IMPORTANT: We've removed the click handler for .mpai-create-post-button to prevent conflicts
+                // The handler in mpai-blog-formatter.js will handle the button clicks
+                console.log("XML post creation button handler DISABLED in chat-formatters.js");
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info('XML post creation button handler DISABLED in chat-formatters.js', 'ui');
+                }
                 
                 window.mpaiXmlToggleHandlerAdded = true;
                 
