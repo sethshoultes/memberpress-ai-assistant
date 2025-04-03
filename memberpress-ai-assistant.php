@@ -220,7 +220,6 @@ class MemberPress_AI_Assistant {
         
         foreach ($classes_to_check as $class) {
             if (class_exists($class)) {
-                error_log('MPAI: MemberPress class found: ' . $class);
                 $has_memberpress = true;
                 break;
             }
@@ -236,7 +235,6 @@ class MemberPress_AI_Assistant {
         
         foreach ($constants_to_check as $constant) {
             if (defined($constant)) {
-                error_log('MPAI: MemberPress constant found: ' . $constant);
                 $has_memberpress = true;
                 break;
             }
@@ -244,13 +242,11 @@ class MemberPress_AI_Assistant {
         
         // Check if the MemberPress plugin is active (the most reliable method)
         if (function_exists('is_plugin_active') && is_plugin_active('memberpress/memberpress.php')) {
-            error_log('MPAI: MemberPress plugin is active');
             $has_memberpress = true;
         }
         
         // Check if MemberPress API exists
         if (class_exists('MeprApi') || class_exists('MeprRestApi')) {
-            error_log('MPAI: MemberPress API class found');
             $has_memberpress = true;
         }
         
@@ -259,7 +255,6 @@ class MemberPress_AI_Assistant {
         if (is_array($menu)) {
             foreach ($menu as $item) {
                 if (isset($item[2]) && $item[2] === 'memberpress') {
-                    error_log('MPAI: MemberPress admin menu found');
                     $has_memberpress = true;
                     break;
                 }
@@ -268,8 +263,6 @@ class MemberPress_AI_Assistant {
         
         // Store the result
         $this->has_memberpress = $has_memberpress;
-        
-        error_log('MPAI: has_memberpress set to: ' . ($this->has_memberpress ? 'true' : 'false'));
         
         // Display upsell notice if MemberPress is not active
         if (!$this->has_memberpress) {
@@ -339,10 +332,9 @@ class MemberPress_AI_Assistant {
         // Agent System
         $this->load_agent_system();
         
-        // CLI Commands
-        if (defined('WP_CLI') && WP_CLI) {
-            require_once MPAI_PLUGIN_DIR . 'includes/cli/class-mpai-cli-commands.php';
-        }
+        // CLI Commands - always load to ensure early initialization
+        // The CLI commands file itself handles WP-CLI availability checks
+        require_once MPAI_PLUGIN_DIR . 'includes/cli/class-mpai-cli-commands.php';
     }
     
     /**
@@ -399,14 +391,14 @@ class MemberPress_AI_Assistant {
         $this->check_memberpress();
         
         // Log the status for debugging
-        error_log('MPAI: Adding admin menu. MemberPress detected: ' . ($this->has_memberpress ? 'yes' : 'no'));
+        // Adding admin menu
         
         // Main menu page slug
         $main_page_slug = 'memberpress-ai-assistant';
         
         if ($this->has_memberpress) {
             // If MemberPress is active, add as a submenu to MemberPress
-            error_log('MPAI: Adding menu as submenu of MemberPress');
+            // Add menu as submenu of MemberPress
             
             $main_page = add_submenu_page(
                 'memberpress', // Parent menu slug
@@ -418,7 +410,7 @@ class MemberPress_AI_Assistant {
             );
         } else {
             // If MemberPress is not active, add as a top-level menu
-            error_log('MPAI: Adding menu as top-level menu');
+            // Add menu as top-level menu
             
             $main_page = add_menu_page(
                 __('MemberPress AI', 'memberpress-ai-assistant'), // Page title
@@ -659,18 +651,21 @@ class MemberPress_AI_Assistant {
         $chat_nonce = wp_create_nonce('mpai_chat_nonce');
         
         // Log the nonces we're passing to JS (first few chars only for security)
-        error_log('MPAI: Generated nonces for JS - mpai_nonce: ' . substr($mpai_nonce, 0, 6) . '..., chat_nonce: ' . substr($chat_nonce, 0, 6) . '...');
+        // Generated nonces for JS
 
-        // Get logger settings
+        // Get logger settings - ensure we're passing consistent types
+        $log_enabled = get_option('mpai_enable_console_logging', '0');
+        // Console logging setting
+        
         $logger_settings = array(
-            'enabled' => get_option('mpai_enable_console_logging', '0'), // Use setting from options
+            'enabled' => ($log_enabled === '1') ? true : false, // Convert to boolean
             'log_level' => get_option('mpai_console_log_level', 'info'), // Default to info level
             'categories' => array(
-                'api_calls' => get_option('mpai_log_api_calls', '0'),
-                'tool_usage' => get_option('mpai_log_tool_usage', '0'),
-                'agent_activity' => get_option('mpai_log_agent_activity', '0'),
-                'timing' => get_option('mpai_log_timing', '0'),
-                'ui' => get_option('mpai_log_ui', '0')
+                'api_calls' => get_option('mpai_log_api_calls', '0') === '1',
+                'tool_usage' => get_option('mpai_log_tool_usage', '0') === '1',
+                'agent_activity' => get_option('mpai_log_agent_activity', '0') === '1',
+                'timing' => get_option('mpai_log_timing', '0') === '1',
+                'ui' => true // Always enable UI logging
             )
         );
         
@@ -1371,7 +1366,7 @@ class MemberPress_AI_Assistant {
             $orchestrator = new MPAI_Agent_Orchestrator();
             
             // Log success
-            error_log('MPAI: Agent system initialized successfully');
+            // Agent system initialized
             return true;
         } catch (Exception $e) {
             error_log('MPAI: Error initializing agent system: ' . $e->getMessage());

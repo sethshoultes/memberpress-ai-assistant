@@ -172,7 +172,7 @@ class MPAI_Agent_Orchestrator {
 					$this->sdk_initialized = $this->sdk_integration->is_initialized();
 					
 					if ( $this->sdk_initialized ) {
-						error_log( 'MPAI: SDK integration initialized successfully' );
+						// SDK integration initialized
 						
 						// Register existing agents with SDK
 						foreach ( $this->agents as $agent_id => $agent_instance ) {
@@ -213,7 +213,7 @@ class MPAI_Agent_Orchestrator {
 		if ( $this->sdk_initialized && $this->sdk_integration ) {
 			try {
 				$this->sdk_integration->register_agent( $agent_id, $agent_instance );
-				error_log( "MPAI: Agent {$agent_id} registered with SDK" );
+				// Agent registered with SDK
 			} catch ( Exception $e ) {
 				error_log( "MPAI: Warning - Failed to register agent {$agent_id} with SDK: " . $e->getMessage() );
 			}
@@ -489,7 +489,7 @@ class MPAI_Agent_Orchestrator {
 		if (class_exists('MPAI_Command_Validation_Agent')) {
 			$validation_agent = new MPAI_Command_Validation_Agent($this->tool_registry, $this->logger);
 			$this->register_agent('command_validation', $validation_agent);
-			error_log('MPAI: Command Validation Agent registered successfully');
+			// Command Validation Agent registered
 		} else {
 			error_log('MPAI: Warning - Command Validation Agent class not found');
 		}

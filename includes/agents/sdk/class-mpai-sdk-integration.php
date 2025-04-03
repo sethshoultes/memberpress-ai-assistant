@@ -98,7 +98,7 @@ class MPAI_SDK_Integration {
 	 */
 	private function get_default_logger() {
 		return (object) [
-			'info'    => function( $message, $context = [] ) { error_log( 'MPAI SDK INFO: ' . $message ); },
+			'info'    => function( $message, $context = [] ) { /* Silent info logging */ },
 			'warning' => function( $message, $context = [] ) { error_log( 'MPAI SDK WARNING: ' . $message ); },
 			'error'   => function( $message, $context = [] ) { error_log( 'MPAI SDK ERROR: ' . $message ); },
 		];
@@ -132,7 +132,6 @@ class MPAI_SDK_Integration {
 			}
 			
 			// Everything is set up
-			error_log("MPAI SDK INFO: SDK integration initialized successfully");
 			return true;
 		} catch ( Exception $e ) {
 			$this->error = 'SDK initialization failed: ' . $e->getMessage();
@@ -174,7 +173,7 @@ class MPAI_SDK_Integration {
 			}
 		}
 		
-		error_log("MPAI SDK INFO: " . 'Prepared ' . count( $this->available_tools ) . ' tools for OpenAI Assistants');
+		// SDK info log (removed)
 	}
 	
 	/**
@@ -257,7 +256,7 @@ class MPAI_SDK_Integration {
 				}
 			}
 			
-			error_log("MPAI SDK INFO: " . "Agent {$agent_id} registered successfully" );
+			// SDK info log (removed)
 			return true;
 		} catch ( Exception $e ) {
 			error_log("MPAI SDK ERROR: " . "Failed to register agent {$agent_id}: " . $e->getMessage() );
@@ -347,7 +346,7 @@ class MPAI_SDK_Integration {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			
 			if ( isset( $body['id'] ) ) {
-				error_log("MPAI SDK INFO: " . "Created assistant for {$agent_id} with ID: " . $body['id'] );
+				// SDK info log (removed)
 				return $body['id'];
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
@@ -536,7 +535,7 @@ class MPAI_SDK_Integration {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			
 			if ( isset( $body['id'] ) ) {
-				error_log("MPAI SDK INFO: " . "Created new thread with ID: " . $body['id'] );
+				// SDK info log (removed)
 				return $body['id'];
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
@@ -583,7 +582,7 @@ class MPAI_SDK_Integration {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			
 			if ( isset( $body['id'] ) ) {
-				error_log("MPAI SDK INFO: " . "Added message to thread {$thread_id}" );
+				// SDK info log (removed)
 				return $body['id'];
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
@@ -628,7 +627,7 @@ class MPAI_SDK_Integration {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			
 			if ( isset( $body['id'] ) ) {
-				error_log("MPAI SDK INFO: " . "Started run {$body['id']} on thread {$thread_id}" );
+				// SDK info log (removed)
 				return $body['id'];
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
@@ -656,7 +655,7 @@ class MPAI_SDK_Integration {
 				// Get run status
 				$run_status = $this->get_run_status( $thread_id, $run_id );
 				
-				error_log("MPAI SDK INFO: " . "Run status: " . $run_status['status'] );
+				// SDK info log (removed)
 				
 				// Check if run is complete
 				if ( $run_status['status'] === 'completed' ) {
@@ -751,7 +750,7 @@ class MPAI_SDK_Integration {
 				$function_name = $tool_call['function']['name'];
 				$function_args = json_decode( $tool_call['function']['arguments'], true );
 				
-				error_log("MPAI SDK INFO: " . "Processing tool call: {$function_name}" );
+				// SDK info log (removed)
 				
 				// Execute the tool
 				$output = $this->execute_tool( $function_name, $function_args );
@@ -1231,7 +1230,7 @@ class MPAI_SDK_Integration {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			
 			if ( isset( $body['id'] ) ) {
-				error_log("MPAI SDK INFO: " . "Submitted tool outputs for run {$run_id}" );
+				// SDK info log (removed)
 				return true;
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
@@ -1415,7 +1414,7 @@ class MPAI_SDK_Integration {
 			
 			update_option( "mpai_task_{$task_id}", $task_info );
 			
-			error_log("MPAI SDK INFO: " . "Scheduled background task {$task_id} for agent {$agent_id}" );
+			// SDK info log (removed)
 			
 			return [
 				'success' => true,
@@ -1445,7 +1444,7 @@ class MPAI_SDK_Integration {
 	 */
 	public function execute_background_task( $thread_id, $assistant_id, $task_id, $user_id = 0 ) {
 		try {
-			error_log("MPAI SDK INFO: " . "Executing background task {$task_id}" );
+			// SDK info log (removed)
 			
 			// Update task status
 			$task_info = get_option( "mpai_task_{$task_id}", [] );
@@ -1475,7 +1474,7 @@ class MPAI_SDK_Integration {
 				update_user_meta( $user_id, "mpai_task_result_{$task_id}", $response );
 			}
 			
-			error_log("MPAI SDK INFO: " . "Completed background task {$task_id}" );
+			// SDK info log (removed)
 		} catch ( Exception $e ) {
 			error_log("MPAI SDK ERROR: " . "Error executing background task: " . $e->getMessage() );
 			

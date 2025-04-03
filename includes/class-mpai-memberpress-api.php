@@ -1063,11 +1063,11 @@ class MPAI_MemberPress_API {
      */
     public function get_data_summary($force_refresh = false) {
         try {
-            error_log('MPAI: Getting MemberPress data summary' . ($force_refresh ? ' (forced refresh)' : ''));
+            // Getting MemberPress data summary
             
             // Clear any cached data if forcing refresh
             if ($force_refresh) {
-                error_log('MPAI: Clearing any cached MemberPress data');
+                // Clearing any cached MemberPress data
                 global $wpdb;
                 wp_cache_flush();
                 
@@ -1094,14 +1094,14 @@ class MPAI_MemberPress_API {
             
             // Check if MemberPress is active
             if (!class_exists('MeprAppCtrl')) {
-                error_log('MPAI: MemberPress is not active');
+                // MemberPress is not active
                 $summary['status'] = 'MemberPress is not active';
                 return $summary;
             }
             
             // Check if API key is configured
             if (empty($this->api_key)) {
-                error_log('MPAI: MemberPress API key is not configured, using fallback methods');
+                // MemberPress API key is not configured, using fallback methods
                 $summary['status'] = 'MemberPress API key is not configured';
                 
                 // Try to use direct database queries as fallback
@@ -1128,15 +1128,15 @@ class MPAI_MemberPress_API {
                         );
                     }
                     
-                    error_log('MPAI: Found ' . $summary['total_members'] . ' members and ' . $summary['total_memberships'] . ' memberships using fallback method');
+                    // Found members and memberships using fallback method
                 } else {
-                    error_log('MPAI: Cannot access MemberPress classes for fallback method');
+                    // Cannot access MemberPress classes for fallback method
                 }
                 
                 return $summary;
             }
             
-            error_log('MPAI: Using MemberPress API to fetch data');
+            // Using MemberPress API to fetch data
             
             // Get summary of members
             $members = $this->get_members(array('per_page' => 5));
@@ -1150,7 +1150,7 @@ class MPAI_MemberPress_API {
                                  (isset($member['last_name']) ? $member['last_name'] : ''),
                     );
                 }
-                error_log('MPAI: Successfully retrieved members data');
+                // Successfully retrieved members data
             } else {
                 error_log('MPAI: Failed to retrieve members data');
                 if (is_wp_error($members)) {
@@ -1170,7 +1170,7 @@ class MPAI_MemberPress_API {
                         'period_type' => isset($membership['period_type']) ? $membership['period_type'] : '',
                     );
                 }
-                error_log('MPAI: Successfully retrieved memberships data');
+                // Successfully retrieved memberships data
             } else {
                 error_log('MPAI: Failed to retrieve memberships data');
                 if (is_wp_error($memberships)) {
@@ -1183,7 +1183,7 @@ class MPAI_MemberPress_API {
             if (!is_wp_error($transactions) && is_array($transactions)) {
                 $summary['total_transactions'] = count($transactions);
                 $summary['transaction_count'] = $summary['total_transactions'];
-                error_log('MPAI: Successfully retrieved transactions data');
+                // Successfully retrieved transactions data
             } else {
                 error_log('MPAI: Failed to retrieve transactions data');
                 if (is_wp_error($transactions)) {
@@ -1196,7 +1196,7 @@ class MPAI_MemberPress_API {
             if (!is_wp_error($subscriptions) && is_array($subscriptions)) {
                 $summary['total_subscriptions'] = count($subscriptions);
                 $summary['subscription_count'] = $summary['total_subscriptions'];
-                error_log('MPAI: Successfully retrieved subscriptions data');
+                // Successfully retrieved subscriptions data
             } else {
                 error_log('MPAI: Failed to retrieve subscriptions data');
                 if (is_wp_error($subscriptions)) {
