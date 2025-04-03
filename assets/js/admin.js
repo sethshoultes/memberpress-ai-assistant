@@ -5,18 +5,13 @@
 (function($) {
     'use strict';
     
-    // Check if mpai_data is available
+    // Check if mpai_data is available - with minimal logging
     if (typeof mpai_data === 'undefined') {
         console.error('MPAI: mpai_data is not available in admin.js');
     } else {
-        // Use the logger if available, otherwise fall back to console
-        if (window.mpaiLogger) {
+        // Use the logger if available, but only if explicitly enabled
+        if (window.mpaiLogger && window.mpaiLogger.enabled === true) {
             window.mpaiLogger.info('Admin script loaded', 'ui');
-            window.mpaiLogger.debug('Admin script loaded with mpai_data nonce: ' + 
-                (mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined'), 'ui');
-        } else {
-            console.log('MPAI: Admin script loaded with mpai_data nonce:', 
-                mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
         }
     }
 
@@ -653,18 +648,95 @@
             $enableLoggingCheckbox.on('change', function() {
                 const isChecked = $(this).is(':checked');
                 
-                // Update mpaiLogger immediately when checkbox changes
+                // Extra logging to debug the issue
+                console.log('MPAI DEBUG: Checkbox changed - isChecked =', isChecked);
+                console.log('MPAI DEBUG: Checkbox value =', $(this).val());
+                console.log('MPAI DEBUG: Current logger enabled state =', 
+                    window.mpaiLogger ? window.mpaiLogger.enabled : 'mpaiLogger not available');
+                
+                // Update visual indicator
+                const $statusIndicator = $('#mpai-console-logging-status');
+                if ($statusIndicator.length) {
+                    if (isChecked) {
+                        $statusIndicator.removeClass('inactive').addClass('active').text('ENABLED');
+                    } else {
+                        $statusIndicator.removeClass('active').addClass('inactive').text('DISABLED');
+                    }
+                }
+                
+                // Update mpaiLogger immediately when checkbox changes with a strict value
                 if (window.mpaiLogger) {
-                    window.mpaiLogger.enabled = isChecked;
+                    // Set to exactly true or false for strict type checking
+                    window.mpaiLogger.enabled = isChecked === true;
                     console.log('MPAI: Console logging ' + (isChecked ? 'ENABLED' : 'DISABLED') + ' via checkbox');
+                    console.log('MPAI: New logger.enabled value (type: ' + typeof window.mpaiLogger.enabled + '): ' + window.mpaiLogger.enabled);
                     
                     // Run a test log to verify
                     if (isChecked) {
+                        console.log('MPAI: Testing enabled logger...');
                         window.mpaiLogger.info('Console logging enabled via checkbox', 'ui');
                     } else {
+                        console.log('MPAI: Testing disabled logger...');
                         console.log('MPAI: This direct console.log should appear, but no mpaiLogger messages should appear');
                         window.mpaiLogger.info('This message should NOT appear in console', 'ui');
                     }
+                    
+                    // Save to localStorage to persist setting
+                    try {
+                        localStorage.setItem('mpai_logger_settings', JSON.stringify({
+                            enabled: isChecked === true, // Ensure boolean
+                            logLevel: window.mpaiLogger.logLevel,
+                            categories: window.mpaiLogger.categories
+                        }));
+                        console.log('MPAI: Saved enabled state to localStorage:', isChecked === true);
+                        
+                        // Also send to server for persistence across sessions
+                        saveSyncConsoleSettings();
+                    } catch(e) {
+                        console.error('MPAI: Error saving to localStorage:', e);
+                    }
+                }
+                
+                // Function to synchronize settings with server
+                function saveSyncConsoleSettings() {
+                    // Only run if we have mpai_data with the direct handler URL
+                    if (typeof mpai_data === 'undefined' || !mpai_data.plugin_url) {
+                        console.log('MPAI: Cannot sync console settings - missing mpai_data');
+                        return;
+                    }
+                    
+                    // Prepare form data for server sync
+                    var formData = new FormData();
+                    formData.append('action', 'test_console_logging');
+                    formData.append('enable_logging', isChecked ? '1' : '0');
+                    formData.append('save_settings', '1');
+                    
+                    // Use the direct AJAX handler to avoid admin-ajax issues
+                    var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
+                    
+                    // Send the sync request silently
+                    fetch(directHandlerUrl, {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            console.error('MPAI: Error syncing console settings: Network error', response.status);
+                            return;
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (data && data.success) {
+                            console.log('MPAI: Console settings synced successfully with server');
+                        } else {
+                            console.error('MPAI: Error syncing console settings:', data);
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('MPAI: Error syncing console settings:', error);
+                    });
                 }
             });
         }

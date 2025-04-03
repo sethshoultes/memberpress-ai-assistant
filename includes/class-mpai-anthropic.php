@@ -179,8 +179,8 @@ class MPAI_Anthropic {
             return "I'm sorry, but the Anthropic API key is not configured. Please add your API key in the settings page to use the Claude AI assistant.";
         }
         
-        // Let's log the messages for debugging
-        error_log('MPAI: Sending messages to Anthropic: ' . json_encode($messages));
+        // Only log a summary of the request, not the entire content
+        error_log('MPAI: Sending request to Anthropic API - ' . count($messages) . ' messages');
         
         try {
             $response = $this->send_request($messages, $tools);

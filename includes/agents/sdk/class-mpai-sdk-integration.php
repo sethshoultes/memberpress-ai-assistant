@@ -98,7 +98,7 @@ class MPAI_SDK_Integration {
 	 */
 	private function get_default_logger() {
 		return (object) [
-			'info'    => function( $message, $context = [] ) { error_log( 'MPAI SDK INFO: ' . $message ); },
+			'info'    => function( $message, $context = [] ) { /* Silent info logging */ },
 			'warning' => function( $message, $context = [] ) { error_log( 'MPAI SDK WARNING: ' . $message ); },
 			'error'   => function( $message, $context = [] ) { error_log( 'MPAI SDK ERROR: ' . $message ); },
 		];
@@ -132,7 +132,6 @@ class MPAI_SDK_Integration {
 			}
 			
 			// Everything is set up
-			error_log("MPAI SDK INFO: SDK integration initialized successfully");
 			return true;
 		} catch ( Exception $e ) {
 			$this->error = 'SDK initialization failed: ' . $e->getMessage();
@@ -174,7 +173,7 @@ class MPAI_SDK_Integration {
 			}
 		}
 		
-		error_log("MPAI SDK INFO: " . 'Prepared ' . count( $this->available_tools ) . ' tools for OpenAI Assistants');
+		// SDK info log (removed)
 	}
 	
 	/**
@@ -257,7 +256,7 @@ class MPAI_SDK_Integration {
 				}
 			}
 			
-			error_log("MPAI SDK INFO: " . "Agent {$agent_id} registered successfully" );
+			// SDK info log (removed)
 			return true;
 		} catch ( Exception $e ) {
 			error_log("MPAI SDK ERROR: " . "Failed to register agent {$agent_id}: " . $e->getMessage() );
@@ -347,7 +346,7 @@ class MPAI_SDK_Integration {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			
 			if ( isset( $body['id'] ) ) {
-				error_log("MPAI SDK INFO: " . "Created assistant for {$agent_id} with ID: " . $body['id'] );
+				// SDK info log (removed)
 				return $body['id'];
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
@@ -400,15 +399,24 @@ class MPAI_SDK_Integration {
 	/**
 	 * Process a user request using OpenAI Assistants API
 	 *
-	 * @param string $user_message User message
+	 * @param array $intent_data Intent data containing message and context
 	 * @param int $user_id User ID
-	 * @param array $user_context User context
 	 * @return array Response data
 	 */
-	public function process_request( $user_message, $user_id = null, $user_context = [] ) {
+	public function process_request( $intent_data, $user_id = null ) {
 		if ( ! $this->initialized ) {
 			throw new Exception( 'SDK not initialized' );
 		}
+		
+		// Extract user message from intent data
+		$user_message = isset($intent_data['message']) ? $intent_data['message'] : '';
+		$user_context = isset($intent_data['user_context']) ? $intent_data['user_context'] : [];
+		
+		// Check if we have system information in the intent data
+		$system_info = isset($intent_data['system_info']) ? $intent_data['system_info'] : [];
+		
+		// Log the received intent data for debugging
+		error_log("MPAI SDK: Processing request with intent data. Message: " . substr($user_message, 0, 50) . "...");
 		
 		// Determine which agent to use
 		$agent_id = $this->determine_agent_for_message( $user_message, $user_context );
@@ -427,6 +435,18 @@ class MPAI_SDK_Integration {
 		try {
 			// Create or retrieve a thread for this user
 			$thread_id = $this->get_user_thread( $user_id );
+			
+			// If we have system info, add it as a hidden message first
+			if (!empty($system_info)) {
+				$system_info_message = "SYSTEM INFO:\n";
+				foreach ($system_info as $key => $value) {
+					$system_info_message .= "- $key: $value\n";
+				}
+				
+				// Add system info as a system message
+				$this->add_message_to_thread( $thread_id, $system_info_message, 'system' );
+				error_log("MPAI SDK: Added system info to thread");
+			}
 			
 			// Add the user message to the thread
 			$this->add_message_to_thread( $thread_id, $user_message, 'user' );
@@ -460,6 +480,172 @@ class MPAI_SDK_Integration {
 			];
 		}
 	}
+	
+	/**
+	 * Update the tool registry
+	 *
+	 * @param MPAI_Tool_Registry $tool_registry Tool registry instance
+	 * @return bool Success status
+	 */
+	public function update_tool_registry($tool_registry) {
+		if (!$tool_registry) {
+			error_log("MPAI SDK: Received empty tool registry in update_tool_registry");
+			return false;
+		}
+		
+		// Save reference to tool registry globally for emergency recovery
+		global $mpai_tool_registry;
+		$mpai_tool_registry = $tool_registry;
+		
+		// Store in instance
+		$this->tool_registry = $tool_registry;
+		
+		// Log available tools for debugging
+		$available_tools = $tool_registry->get_available_tools();
+		$tool_ids = array_keys($available_tools);
+		error_log("MPAI SDK: Updated tool registry with " . count($tool_ids) . " tools: " . implode(', ', $tool_ids));
+		
+		// Update available tools
+		$this->prepare_available_tools();
+		
+		// Validate essential tools
+		$this->validate_essential_tools();
+		
+		// Re-register any agents to ensure they have updated tools
+		foreach ($this->registered_agents as $agent_id => $agent_data) {
+			if (isset($agent_data['instance'])) {
+				$this->register_agent($agent_id, $agent_data['instance']);
+			}
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * Validate essential tools and try to recover missing ones
+	 * 
+	 * @return array Missing tools after recovery attempts
+	 */
+	private function validate_essential_tools() {
+		if (!$this->tool_registry) {
+			error_log("MPAI SDK: No tool registry available for validation");
+			return ['wpcli', 'wp_api', 'plugin_logs'];
+		}
+		
+		$available_tools = $this->tool_registry->get_available_tools();
+		$essential_tools = ['wpcli', 'wp_api', 'plugin_logs'];
+		$missing_tools = [];
+		
+		foreach ($essential_tools as $tool_id) {
+			if (!isset($available_tools[$tool_id])) {
+				$missing_tools[] = $tool_id;
+				error_log("MPAI SDK: Essential tool {$tool_id} missing, attempting recovery");
+				
+				// Try to load directly
+				$this->load_tool_directly($tool_id);
+			}
+		}
+		
+		// Recheck after recovery attempts
+		if (!empty($missing_tools)) {
+			$available_tools = $this->tool_registry->get_available_tools();
+			$still_missing = [];
+			
+			foreach ($missing_tools as $tool_id) {
+				if (!isset($available_tools[$tool_id])) {
+					$still_missing[] = $tool_id;
+				}
+			}
+			
+			if (!empty($still_missing)) {
+				error_log("MPAI SDK: Essential tools still missing after recovery: " . implode(', ', $still_missing));
+				return $still_missing;
+			}
+		}
+		
+		error_log("MPAI SDK: All essential tools available");
+		return [];
+	}
+	
+	/**
+	 * Load a tool implementation directly
+	 *
+	 * @param string $tool_id Tool ID to load
+	 * @return bool Success status
+	 */
+	private function load_tool_directly($tool_id) {
+		$tool_map = [
+			'wpcli' => 'MPAI_WP_CLI_Tool',
+			'wp_api' => 'MPAI_WP_API_Tool',
+			'diagnostic' => 'MPAI_Diagnostic_Tool',
+			'plugin_logs' => 'MPAI_Plugin_Logs_Tool'
+		];
+		
+		if (!isset($tool_map[$tool_id])) {
+			return false;
+		}
+		
+		$class_name = $tool_map[$tool_id];
+		
+		// Check if class already exists
+		if (class_exists($class_name)) {
+			try {
+				$tool = new $class_name();
+				$this->tool_registry->register_tool($tool_id, $tool);
+				error_log("MPAI SDK: Directly registered tool {$tool_id} from existing class");
+				return true;
+			} catch (Exception $e) {
+				error_log("MPAI SDK: Error creating tool instance for {$tool_id}: " . $e->getMessage());
+				return false;
+			}
+		}
+		
+		// Try to find and include the file
+		$base_paths = [
+			MPAI_PLUGIN_DIR . 'includes/tools/implementations/',
+			dirname(dirname(__FILE__)) . '/../tools/implementations/',
+			dirname(dirname(dirname(__FILE__))) . '/tools/implementations/'
+		];
+		
+		foreach ($base_paths as $base_path) {
+			$file_path = $base_path . 'class-' . strtolower(str_replace('_', '-', $tool_id)) . '-tool.php';
+			$alt_file_path = $base_path . 'class-mpai-' . strtolower(str_replace('_', '-', $tool_id)) . '-tool.php';
+			
+			if (file_exists($file_path)) {
+				try {
+					require_once $file_path;
+					error_log("MPAI SDK: Loaded tool file from: {$file_path}");
+					break;
+				} catch (Exception $e) {
+					error_log("MPAI SDK: Error loading tool file {$file_path}: " . $e->getMessage());
+				}
+			} elseif (file_exists($alt_file_path)) {
+				try {
+					require_once $alt_file_path;
+					error_log("MPAI SDK: Loaded tool file from: {$alt_file_path}");
+					break;
+				} catch (Exception $e) {
+					error_log("MPAI SDK: Error loading tool file {$alt_file_path}: " . $e->getMessage());
+				}
+			}
+		}
+		
+		// Check if class now exists and create instance
+		if (class_exists($class_name)) {
+			try {
+				$tool = new $class_name();
+				$this->tool_registry->register_tool($tool_id, $tool);
+				error_log("MPAI SDK: Directly registered tool {$tool_id} after loading class file");
+				return true;
+			} catch (Exception $e) {
+				error_log("MPAI SDK: Error creating tool instance for {$tool_id} after loading: " . $e->getMessage());
+				return false;
+			}
+		}
+		
+		return false;
+	}
+	
 	
 	/**
 	 * Determine the appropriate agent for a message
@@ -536,7 +722,7 @@ class MPAI_SDK_Integration {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			
 			if ( isset( $body['id'] ) ) {
-				error_log("MPAI SDK INFO: " . "Created new thread with ID: " . $body['id'] );
+				// SDK info log (removed)
 				return $body['id'];
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
@@ -583,7 +769,7 @@ class MPAI_SDK_Integration {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			
 			if ( isset( $body['id'] ) ) {
-				error_log("MPAI SDK INFO: " . "Added message to thread {$thread_id}" );
+				// SDK info log (removed)
 				return $body['id'];
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
@@ -628,7 +814,7 @@ class MPAI_SDK_Integration {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			
 			if ( isset( $body['id'] ) ) {
-				error_log("MPAI SDK INFO: " . "Started run {$body['id']} on thread {$thread_id}" );
+				// SDK info log (removed)
 				return $body['id'];
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
@@ -656,7 +842,7 @@ class MPAI_SDK_Integration {
 				// Get run status
 				$run_status = $this->get_run_status( $thread_id, $run_id );
 				
-				error_log("MPAI SDK INFO: " . "Run status: " . $run_status['status'] );
+				// SDK info log (removed)
 				
 				// Check if run is complete
 				if ( $run_status['status'] === 'completed' ) {
@@ -751,7 +937,7 @@ class MPAI_SDK_Integration {
 				$function_name = $tool_call['function']['name'];
 				$function_args = json_decode( $tool_call['function']['arguments'], true );
 				
-				error_log("MPAI SDK INFO: " . "Processing tool call: {$function_name}" );
+				// SDK info log (removed)
 				
 				// Execute the tool
 				$output = $this->execute_tool( $function_name, $function_args );
@@ -1231,7 +1417,7 @@ class MPAI_SDK_Integration {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			
 			if ( isset( $body['id'] ) ) {
-				error_log("MPAI SDK INFO: " . "Submitted tool outputs for run {$run_id}" );
+				// SDK info log (removed)
 				return true;
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
@@ -1415,7 +1601,7 @@ class MPAI_SDK_Integration {
 			
 			update_option( "mpai_task_{$task_id}", $task_info );
 			
-			error_log("MPAI SDK INFO: " . "Scheduled background task {$task_id} for agent {$agent_id}" );
+			// SDK info log (removed)
 			
 			return [
 				'success' => true,
@@ -1445,7 +1631,7 @@ class MPAI_SDK_Integration {
 	 */
 	public function execute_background_task( $thread_id, $assistant_id, $task_id, $user_id = 0 ) {
 		try {
-			error_log("MPAI SDK INFO: " . "Executing background task {$task_id}" );
+			// SDK info log (removed)
 			
 			// Update task status
 			$task_info = get_option( "mpai_task_{$task_id}", [] );
@@ -1475,7 +1661,7 @@ class MPAI_SDK_Integration {
 				update_user_meta( $user_id, "mpai_task_result_{$task_id}", $response );
 			}
 			
-			error_log("MPAI SDK INFO: " . "Completed background task {$task_id}" );
+			// SDK info log (removed)
 		} catch ( Exception $e ) {
 			error_log("MPAI SDK ERROR: " . "Error executing background task: " . $e->getMessage() );
 			
