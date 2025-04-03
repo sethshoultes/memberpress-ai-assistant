@@ -378,6 +378,28 @@ class MPAI_Chat {
         $system_prompt .= "  You MUST use: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Hello World\", \"content\": \"This is my first post\", \"status\": \"draft\"}}\n";
         $system_prompt .= "- DO NOT use default values unless the user doesn't specify them\n\n";
         
+        // Add blog post XML formatting instructions
+        $system_prompt .= "IMPORTANT: When asked to create a blog post, always write the post content in the following XML format:\n";
+        $system_prompt .= "<wp-post>\n";
+        $system_prompt .= "  <post-title>Your Post Title Here</post-title>\n";
+        $system_prompt .= "  <post-content>\n";
+        $system_prompt .= "    <block type=\"paragraph\">This is a paragraph block of content.</block>\n";
+        $system_prompt .= "    <block type=\"heading\" level=\"2\">This is a heading block</block>\n";
+        $system_prompt .= "    <block type=\"paragraph\">Another paragraph block with content.</block>\n";
+        $system_prompt .= "    <!-- Add more blocks as needed -->\n";
+        $system_prompt .= "  </post-content>\n";
+        $system_prompt .= "  <post-excerpt>A brief summary of the post.</post-excerpt>\n";
+        $system_prompt .= "  <post-status>draft</post-status> <!-- draft or publish -->\n";
+        $system_prompt .= "</wp-post>\n\n";
+        $system_prompt .= "This XML format ensures the post will be correctly processed by WordPress Gutenberg. Available block types include:\n";
+        $system_prompt .= "- paragraph: For regular text content\n";
+        $system_prompt .= "- heading: For headings (use level attribute: 2 for H2, 3 for H3, etc.)\n";
+        $system_prompt .= "- list: For unordered lists (wrap list items in <item> tags)\n";
+        $system_prompt .= "- ordered-list: For ordered/numbered lists (wrap list items in <item> tags)\n";
+        $system_prompt .= "- quote: For block quotes\n";
+        $system_prompt .= "- code: For code blocks\n";
+        $system_prompt .= "- image: For image URLs (place URL as the block content)\n\n";
+        
         $system_prompt .= "Your task is to provide helpful information about MemberPress and assist with managing membership data. ";
         $system_prompt .= "You should use the wp_api tool for direct WordPress operations and the memberpress_info tool for MemberPress data. ";
         $system_prompt .= "CRITICAL INSTRUCTION: When the user asks about plugin history, recently installed plugins, or recently activated plugins, ALWAYS use the plugin_logs tool to get accurate information from the database. ";
@@ -660,15 +682,26 @@ class MPAI_Chat {
                     
                     try {
                         error_log('MPAI Chat: Checking for content patterns');
-                        // Check for blog post content patterns
-                        if (preg_match('/(?:#+\s*Title:?|Title:)\s*([^\n]+)/i', $message_content) ||
+                        
+                        // Check for XML formatted blog post first
+                        if (preg_match('/<wp-post>.*?<\/wp-post>/s', $message_content)) {
+                            // This is an XML formatted blog post
+                            if (method_exists($this, 'add_content_marker')) {
+                                $modified_content = $this->add_content_marker($message_content, 'blog-post');
+                                error_log('MPAI Chat: Added blog-post marker to XML-formatted response');
+                            } else {
+                                error_log('MPAI Chat: add_content_marker method not available');
+                            }
+                        }
+                        // Check for traditional blog post content patterns as fallback
+                        else if (preg_match('/(?:#+\s*Title:?|Title:)\s*([^\n]+)/i', $message_content) ||
                             (preg_match('/^#+\s*([^\n]+)/i', $message_content) && 
                              preg_match('/introduction|summary|overview|content|body|conclusion/i', $message_content))) {
                             
-                            // This looks like a blog post or article
+                            // This looks like a traditional blog post or article
                             if (method_exists($this, 'add_content_marker')) {
                                 $modified_content = $this->add_content_marker($message_content, 'blog-post');
-                                error_log('MPAI Chat: Added blog-post marker to response');
+                                error_log('MPAI Chat: Added blog-post marker to traditional response');
                             } else {
                                 error_log('MPAI Chat: add_content_marker method not available');
                             }

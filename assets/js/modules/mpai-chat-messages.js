@@ -196,6 +196,37 @@ var MPAI_Messages = (function($) {
             return;
         }
         
+        // Check if the message is requesting to write a blog post or page
+        // and enhance it with XML formatting if MPAI_BlogFormatter is available
+        let enhancedMessage = message;
+        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.enhanceUserPrompt === 'function') {
+            // Check for blog post creation requests
+            if (/write(\s+a)?\s+blog(\s+post)?|create(\s+a)?\s+blog(\s+post)?/i.test(message) && 
+                !message.includes('<wp-post>')) {
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info('Detected blog post creation request, enhancing with XML format', 'ui');
+                }
+                
+                // Use the blog formatter to enhance the prompt, but don't send it directly
+                window.MPAI_BlogFormatter.enhanceUserPrompt(message, 'blog-post');
+                return; // The enhanceUserPrompt function will send the message
+            }
+            
+            // Check for page creation requests
+            if (/write(\s+a)?\s+page|create(\s+a)?\s+page/i.test(message) && 
+                !message.includes('<wp-post>')) {
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info('Detected page creation request, enhancing with XML format', 'ui');
+                }
+                
+                // Use the blog formatter to enhance the prompt, but don't send it directly
+                window.MPAI_BlogFormatter.enhanceUserPrompt(message, 'page');
+                return; // The enhanceUserPrompt function will send the message
+            }
+        }
+        
         // Log the message being sent with comprehensive details
         if (window.mpaiLogger) {
             window.mpaiLogger.info('Sending user message: ' + message.substring(0, 50) + (message.length > 50 ? '...' : ''), 'api_calls');
@@ -327,7 +358,12 @@ var MPAI_Messages = (function($) {
             });
         }
         
-        addMessage('assistant', response);
+        const $message = addMessage('assistant', response);
+        
+        // Process the message with blog formatter if available
+        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function') {
+            window.MPAI_BlogFormatter.processAssistantMessage($message, response);
+        }
     }
     
     /**
@@ -418,7 +454,12 @@ var MPAI_Messages = (function($) {
     function completeToolCalls(finalResponse) {
         if (pendingToolCalls) {
             pendingToolCalls = false;
-            addMessage('assistant', finalResponse);
+            const $message = addMessage('assistant', finalResponse);
+            
+            // Process the message with blog formatter if available
+            if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function') {
+                window.MPAI_BlogFormatter.processAssistantMessage($message, finalResponse);
+            }
         }
     }
     

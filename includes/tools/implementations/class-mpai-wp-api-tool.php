@@ -156,6 +156,45 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	    // Log the incoming parameters for debugging
 	    error_log('MPAI: Create post parameters: ' . json_encode($parameters));
 	    
+	    // Check if content is in XML format
+	    if (isset($parameters['content']) && strpos($parameters['content'], '<wp-post>') !== false) {
+	        error_log('MPAI: Detected XML formatted blog post');
+	        
+	        // Include the XML parser class
+	        if (!class_exists('MPAI_XML_Content_Parser')) {
+	            require_once dirname(dirname(dirname(__FILE__))) . '/class-mpai-xml-content-parser.php';
+	        }
+	        
+	        $xml_parser = new MPAI_XML_Content_Parser();
+	        $parsed_data = $xml_parser->parse_xml_blog_post($parameters['content']);
+	        
+	        if ($parsed_data) {
+	            error_log('MPAI: Successfully parsed XML blog post format');
+	            // Override parameters with parsed data
+	            foreach ($parsed_data as $key => $value) {
+	                $parameters[$key] = $value;
+	            }
+	            
+	            // Make sure we have required parameters
+	            if (empty($parameters['title'])) {
+	                error_log('MPAI: XML parsed but title is missing, using default');
+	                $parameters['title'] = 'New ' . (isset($parameters['post_type']) && $parameters['post_type'] === 'page' ? 'Page' : 'Post');
+	            }
+	            
+	            // Log the parsed parameters for debugging
+	            error_log('MPAI: Parsed parameters: ' . json_encode(array_keys($parameters)));
+	        } else {
+	            error_log('MPAI: Failed to parse XML blog post format');
+	            // Instead of failing silently, set a default title and content for better UX
+	            if (empty($parameters['title'])) {
+	                $parameters['title'] = 'New ' . (isset($parameters['post_type']) && $parameters['post_type'] === 'page' ? 'Page' : 'Post');
+	            }
+	            
+	            // Keep the original content but wrap it in paragraph blocks
+	            $parameters['content'] = '<!-- wp:paragraph --><p>' . esc_html($parameters['content']) . '</p><!-- /wp:paragraph -->';
+	        }
+	    }
+	    
 		$post_data = array(
 			'post_title'   => isset( $parameters['title'] ) ? $parameters['title'] : 'New Post',
 			'post_content' => isset( $parameters['content'] ) ? $parameters['content'] : '',

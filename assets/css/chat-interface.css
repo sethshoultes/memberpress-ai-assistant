@@ -505,6 +505,84 @@
     color: #135e96;
 }
 
+/* XML Content Actions */
+.mpai-content-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.mpai-create-post-button {
+    background-color: #135e96;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.mpai-create-post-button:hover {
+    background-color: #1978c2;
+}
+
+.mpai-create-post-button:active {
+    background-color: #0a4b78;
+}
+
+/* XML Content Styling */
+.mpai-chat-message pre code.xml-content,
+.mpai-chat-message .xml-content,
+.mpai-chat-message .xml-content-container pre.xml-content {
+    background-color: #f8f9fa;
+    border-left: 3px solid #135e96;
+    padding: 12px;
+    margin: 10px 0;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #333;
+    display: block;
+    border-radius: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.mpai-chat-message .xml-content .xml-tag,
+.mpai-chat-message .xml-content-container .xml-tag {
+    color: #881280;
+    font-weight: bold;
+}
+
+.mpai-chat-message .xml-content .xml-attr,
+.mpai-chat-message .xml-content-container .xml-attr {
+    color: #994500;
+}
+
+.mpai-chat-message .xml-content .xml-content,
+.mpai-chat-message .xml-content-container .xml-content {
+    color: #333;
+}
+
+.mpai-chat-message .xml-content .xml-comment,
+.mpai-chat-message .xml-content-container .xml-comment {
+    color: #888;
+    font-style: italic;
+}
+
+/* Ensure the XML content container stands out */
+.mpai-chat-message .xml-content-container {
+    margin: 12px 0;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
 /* Export Format Menu */
 .mpai-export-format-menu {
     position: fixed; /* Changed from absolute to fixed */

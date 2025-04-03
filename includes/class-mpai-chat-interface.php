@@ -133,7 +133,16 @@ class MPAI_Chat_Interface {
             true
         );
         
-        // 6. Finally, enqueue the main chat interface loader
+        // 6. Blog formatter module (depends on messages and tools)
+        wp_enqueue_script(
+            'mpai-blog-formatter',
+            plugin_dir_url(dirname(__FILE__)) . 'assets/js/modules/mpai-blog-formatter.js',
+            array('jquery', 'mpai-logger-js', 'mpai-chat-messages', 'mpai-chat-tools'),
+            $this->version . '.' . time(), // Add timestamp for cache busting
+            true
+        );
+        
+        // 7. Finally, enqueue the main chat interface loader
         wp_enqueue_script(
             $this->plugin_name . '-chat',
             plugin_dir_url(dirname(__FILE__)) . 'assets/js/modules/chat-interface-loader.js',
@@ -144,7 +153,8 @@ class MPAI_Chat_Interface {
                 'mpai-chat-ui-utils', 
                 'mpai-chat-messages', 
                 'mpai-chat-tools', 
-                'mpai-chat-history'
+                'mpai-chat-history',
+                'mpai-blog-formatter'
             ),
             $this->version . '.' . time(), // Add timestamp for cache busting
             true
