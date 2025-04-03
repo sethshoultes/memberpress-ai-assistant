@@ -90,12 +90,15 @@ The XML Content System integrates with several other components:
 
 - XML content is detected and marked with a 'blog-post' content marker
 - UI elements are added to relevant messages for content creation
+- The chat interface JavaScript detects XML content in the AI response
+- A "Create Post" button is dynamically added for easy content creation
 
 ### Integration with WordPress API Tool
 
-- The WP API Tool detects XML formatted content
+- The WP API Tool detects XML formatted content (`create_post` and `create_page` actions)
 - It invokes the XML parser to extract structured data
-- It uses the extracted data to create properly formatted posts
+- It uses the extracted data to create properly formatted posts with Gutenberg blocks
+- Supports both blog posts and pages with appropriate content structure
 
 ### Integration with Agent System
 
@@ -128,16 +131,18 @@ When extending the XML Content System:
 1. **Adding new block types**:
    - Add parser support in `convert_xml_blocks_to_gutenberg()`
    - Update system prompts to inform AI about new block types
+   - Update client-side XML detection in `mpai-blog-formatter.js`
 
 2. **Modifying XML structure**:
    - Update parser to handle new XML elements
    - Update JavaScript prompt enhancement
-   - Update system prompts
+   - Update system prompts and detection patterns
 
 3. **Security considerations**:
    - Always sanitize content with `esc_html()`, `esc_attr()`, etc.
    - Validate XML content before processing
    - Apply appropriate capability checks
+   - Implement error handling for malformed XML
 
 ## Related Documentation
 
@@ -146,3 +151,4 @@ When extending the XML Content System:
 - [Content Marker System](../current/CONTENT_MARKER_SYSTEM.md)
 - [Tool Implementation Map](../current/tool-implementation-map.md)
 - [System Map](../current/system-map.md)
+- [Unified XML Content System](../current/unified-xml-content-system.md)

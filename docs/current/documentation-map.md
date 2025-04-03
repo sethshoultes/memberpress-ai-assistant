@@ -25,6 +25,14 @@ memberpress-ai-assistant/
 │   │   ├── phase-2-documentation-consolidation-results.md # Phase 2 results
 │   │   ├── documentation-map.md # This file
 │   │   └── implementation-status.md # Feature status overview
+│   ├── _snacks/                 # Scooby Snacks (investigation results)
+│   │   ├── README.md            # Explains Scooby Snacks system
+│   │   ├── index.md             # Categorized index of Scooby Snacks
+│   │   ├── examples/            # Example Scooby Snack documents
+│   │   ├── ui/                  # UI/UX related Scooby Snacks
+│   │   ├── performance/         # Performance related Scooby Snacks
+│   │   ├── javascript/          # JavaScript related Scooby Snacks
+│   │   └── ...                  # Other categorized Scooby Snacks
 │   ├── xml-content-system/      # XML Content System docs
 │   │   ├── README.md            # Comprehensive system documentation
 │   │   └── examples/            # XML format examples
@@ -60,6 +68,7 @@ memberpress-ai-assistant/
 1. Follow [tool-implementation-map.md](tool-implementation-map.md) - Step-by-step guide
 2. Reference [tool-call-detection.md](tool-call-detection.md) - Tool call handling
 3. Understand [SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md](SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md) - Safety features
+4. Check related [Scooby Snacks](../_snacks/tool-system/) for tool system insights
 
 ### For Content Systems
 
@@ -69,11 +78,19 @@ memberpress-ai-assistant/
 4. Review [blog-xml-membership-implementation-plan.md](blog-xml-membership-implementation-plan.md) - MemberPress integration
 5. Reference [CONTENT_MARKER_SYSTEM.md](CONTENT_MARKER_SYSTEM.md) - Content type detection
 6. Examine [XML Examples](../xml-content-system/examples/) - Working examples of the format
+7. Check related [Scooby Snacks](../_snacks/content-system/) for content system insights
 
 ### For UI Development
 
 1. Review [chat-interface-copy-icon.md](chat-interface-copy-icon.md) - UI enhancement example
 2. Implement [console-logging-system.md](console-logging-system.md) - Debugging utilities
+3. Check related [Scooby Snacks](../_snacks/ui/) for UI development insights
+
+### For Debugging and Issue Resolution
+
+1. Browse the [Scooby Snacks Index](../_snacks/index.md) for similar issues
+2. Check category-specific folders in [_snacks](../_snacks/) directory
+3. Study the investigation processes in Scooby Snack documents
 
 ## Visual Documentation Map
 
@@ -93,12 +110,12 @@ memberpress-ai-assistant/
     └───────────┼───────────┘   └───────────┼───────────┘   └───────────┬───────────┘
                 │                           │                           │
     ┌───────────▼───────────┐   ┌───────────▼───────────┐   ┌───────────▼───────────┐
-    │   Tool System         │   │   Content System      │   │   UI Components       │
+    │   Tool System         │   │   Content System      │   │   Scooby Snacks       │
     │                       │   │                       │   │                       │
     │  ┌─────────────────┐  │   │  ┌─────────────────┐  │   │  ┌─────────────────┐  │
-    │  │tool-implement...│  │   │  │blog-xml-format..│  │   │  │chat-interface-  │  │
-    │  └────────┬────────┘  │   │  └────────┬────────┘  │   │  │  copy-icon.md  │  │
-    └───────────┼───────────┘   └───────────┼───────────┘   └───────────┬───────────┘
+    │  │tool-implement...│  │   │  │blog-xml-format..│  │   │  │ _snacks/index.md│  │
+    │  └────────┬────────┘  │   │  └────────┬────────┘  │   │  └────────┬────────┘  │
+    └───────────┼───────────┘   └───────────┼───────────┘   └───────────┼───────────┘
                 │                           │                           │
                 └───────────────────────────┼───────────────────────────┘
                                             │
@@ -113,6 +130,8 @@ The documentation has gone through a consolidation process to improve organizati
 
 - [Phase 1 Results](documentation-consolidation-results.md) - File organization and reference creation
 - [Phase 2 Results](phase-2-documentation-consolidation-results.md) - Content consolidation and cross-references
+- [Phase 3 Results](phase-3-documentation-consolidation-results.md) - Navigation improvements
+- [Phase 4 Results](phase-4-documentation-consolidation-results.md) - Standardization and formats
 
 ## Documentation Status Indicators
 
@@ -129,6 +148,7 @@ All documentation files include status indicators to help identify their current
 2. **Find the relevant section**: Use the task-based navigation to find relevant docs
 3. **Follow the paths**: Use the visual map to understand relationships
 4. **Check status**: Verify document status before implementation
+5. **Check Scooby Snacks**: Look for previous investigations and solutions
 
 ## Contributing to Documentation
 
@@ -139,3 +159,4 @@ When creating or updating documentation:
 3. Update this map if adding new significant documentation
 4. Follow the documentation format in the template directory
 5. Cross-reference related documentation where applicable
+6. For fixes and investigations, create a Scooby Snack document

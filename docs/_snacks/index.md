@@ -1,0 +1,88 @@
+# Scooby Snacks Index
+
+**Status:** ✅ Maintained  
+**Version:** 1.0.0  
+**Last Updated:** April 2024
+
+This document provides a categorized index of all Scooby Snacks - detailed documentation of investigations that led to fixes and improvements in the MemberPress AI Assistant plugin.
+
+## UI/UX
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| [Chat Interface Copy Icon Fix](ui/chat-interface-copy-icon-snack.md) | 2024-03-15 | 1.5.8 | Fixed issues with the copy button in chat interface |
+
+## Performance
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| *No entries yet* |  |  |  |
+
+## API Integration
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| *No entries yet* |  |  |  |
+
+## WordPress Integration
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| *No entries yet* |  |  |  |
+
+## MemberPress Integration
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| *No entries yet* |  |  |  |
+
+## Security
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| *No entries yet* |  |  |  |
+
+## Tool System
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| [Duplicate Tool Execution Prevention](tool-system/duplicate-tool-execution-snack.md) | 2024-02-20 | 1.5.6 | Fixed issue with tools being executed multiple times |
+
+## Agent System
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| *No entries yet* |  |  |  |
+
+## Content System
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| [Blog Post XML Formatting Fix](content-system/blog-post-xml-formatting-snack.md) | 2024-03-28 | 1.6.0 | Implemented robust XML parsing for blog post formatting |
+
+## JavaScript
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| [Console Logging System Fix](javascript/console-logging-system-snack.md) | 2024-01-15 | 1.5.0 | Implemented improved console logging system |
+
+## PHP
+
+| Snack Title | Date | Version | Description |
+|-------------|------|---------|-------------|
+| *No entries yet* |  |  |  |
+
+## Using This Index
+
+1. Browse categories to find relevant Scooby Snacks
+2. Click on the linked Snack title to view the full documentation
+3. Use the search function in your browser (Ctrl+F/Cmd+F) to find specific issues
+
+## Adding New Entries
+
+When adding a new Scooby Snack:
+
+1. Create the detailed documentation file in the appropriate category folder
+2. Add an entry to the relevant section in this index
+3. Include the title (linked to the document), date, version, and brief description
+4. Update the "Last Updated" date at the top of this document
