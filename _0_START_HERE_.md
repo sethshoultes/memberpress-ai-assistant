@@ -77,7 +77,7 @@ Understanding how the core systems interact is essential for development:
 - **Context Manager**: `/includes/class-mpai-context-manager.php` - Manages tool execution
 - **Admin Screens**: `/includes/admin-page.php`, `/includes/settings-page.php` - WordPress admin UI
 
-Comprehensive documentation of all files is available in [/docs/current/system-map.md](/docs/current/system-map.md).
+Comprehensive documentation of all files is available in [/docs/current/core/system-map.md](/docs/current/core/system-map.md).
 
 ## Feature Development Pathways
 
@@ -87,7 +87,7 @@ Depending on the type of feature you're developing, you'll need to focus on diff
 
 If you're working on AI chat capabilities (new tools, improved responses, etc.):
 
-1. **Start here**: [/docs/current/tool-implementation-map.md](/docs/current/tool-implementation-map.md) and [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md#tool-system-integration)
+1. **Start here**: [/docs/current/tool-system/tool-implementation-map.md](/docs/current/tool-system/tool-implementation-map.md) and [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md#tool-system-integration)
 2. **Key files**:
    - `/includes/tools/class-mpai-base-tool.php`
    - `/includes/tools/class-mpai-tool-registry.php`
@@ -226,7 +226,7 @@ If you're working on security improvements:
 
 ### Adding a New Tool
 
-Follow the detailed documentation in [/docs/current/tool-implementation-map.md](/docs/current/tool-implementation-map.md) and [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md#tool-system-integration).
+Follow the detailed documentation in [/docs/current/tool-system/tool-implementation-map.md](/docs/current/tool-system/tool-implementation-map.md) and [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md#tool-system-integration).
 
 ### Adding a New Agent
 
@@ -325,8 +325,9 @@ Follow the detailed documentation in [/docs/current/tool-implementation-map.md](
      - [_0_START_HERE_.md](./_0_START_HERE_.md) - This guide
      - [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md) - Agent system guide
    - Main documentation index: `/docs/README.md`
-   - System architecture: `/docs/current/system-map.md`
-   - Tool implementation: `/docs/current/tool-implementation-map.md`
+   - System architecture: `/docs/current/core/system-map.md`
+   - Tool implementation: `/docs/current/tool-system/tool-implementation-map.md`
+   - Documentation Map: `/docs/current/core/documentation-map.md`
 
 2. **External resources**:
    - WordPress Plugin Handbook: https://developer.wordpress.org/plugins/

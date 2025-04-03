@@ -1,5 +1,7 @@
 # MemberPress AI Assistant Independent Operation Implementation Plan
 
+**STATUS: ARCHIVED - Migrated to Scooby Snack system at `_snacks/architecture/independent-operation-implementation.md`**
+
 ## Overview
 
 This document outlines the implementation plan for making the MemberPress AI Assistant plugin work without requiring MemberPress to be installed. This will allow users to install and use the AI Assistant independently, with graceful degradation of MemberPress-specific features and strategic upsell opportunities.

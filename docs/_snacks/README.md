@@ -2,7 +2,7 @@
 
 **Status:** ✅ Maintained  
 **Version:** 1.0.0  
-**Last Updated:** April 3, 2024
+**Last Updated:** April 3, 2025
 
 ## What are "Scooby Snacks"?
 
@@ -77,20 +77,22 @@ The Scooby Snacks documentation is organized as follows:
 _snacks/
 ├── README.md                   # This file
 ├── index.md                    # Categorized index of all Scooby Snacks
-├── examples/                   # Example Scooby Snack documents
-│   ├── duplicate-tool-execution.md
-│   └── console-logging-fix.md
-├── ui/                         # UI/UX related Scooby Snacks
-├── performance/                # Performance related Scooby Snacks
-├── api-integration/            # API integration related Scooby Snacks
-├── wordpress-integration/      # WordPress integration related Scooby Snacks
-├── memberpress-integration/    # MemberPress integration related Scooby Snacks
-├── security/                   # Security related Scooby Snacks
-├── tool-system/                # Tool system related Scooby Snacks
-├── agent-system/               # Agent system related Scooby Snacks
+├── architecture/               # Architecture related Scooby Snacks
+│   └── independent-operation-implementation.md
 ├── content-system/             # Content system related Scooby Snacks
-├── javascript/                 # JavaScript related Scooby Snacks
-└── php/                        # PHP related Scooby Snacks
+│   ├── blog-post-publishing-fix.md
+│   ├── blog-post-xml-formatting-snack.md
+│   └── xml-blog-post-formatting-fix.md
+├── examples/                   # Example Scooby Snack documents
+│   ├── console-logging-fix.md
+│   └── duplicate-tool-execution.md
+├── interface/                  # Interface related Scooby Snacks
+│   └── chat-interface-copy-icon-fix.md
+├── membership/                 # Membership related Scooby Snacks
+│   └── best-selling-membership-implementation.md
+├── tool-system/                # Tool system related Scooby Snacks
+│   └── duplicate-tool-execution-snack.md
+└── various other directories for future Scooby Snacks
 ```
 
 ## Creating a New Scooby Snack

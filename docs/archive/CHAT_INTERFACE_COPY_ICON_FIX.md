@@ -1,5 +1,7 @@
 # Chat Interface Copy Icon Fix
 
+**STATUS: ARCHIVED - Migrated to Scooby Snack system at `_snacks/interface/chat-interface-copy-icon-fix.md`**
+
 ## Issue
 The copy icon in the MemberPress AI Assistant chat interface was not working correctly. When clicked, it failed to copy message content to the clipboard.
 
