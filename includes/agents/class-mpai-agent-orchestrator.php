@@ -1080,8 +1080,8 @@ class MPAI_Agent_Orchestrator {
 		}
 		
 		// Log scores for debugging
-		$this->logger->debug("Agent scores: " . json_encode($agent_scores));
-		$this->logger->info("Selected primary agent: {$primary_agent} with score: {$highest_score}");
+		error_log("MPAI: Agent scores: " . json_encode($agent_scores));
+		error_log("MPAI: Selected primary agent: {$primary_agent} with score: {$highest_score}");
 		
 		return $primary_agent;
 	}
@@ -1132,9 +1132,9 @@ class MPAI_Agent_Orchestrator {
 				// Apply security validation
 				if ($this->validate_agent($agent_id, $agent)) {
 					$this->register_agent($agent_id, $agent);
-					$this->logger->info("Discovered and registered agent: " . $agent_id);
+					error_log("MPAI: Discovered and registered agent: " . $agent_id);
 				} else {
-					$this->logger->warning("Agent failed security validation: " . $agent_id);
+					error_log("MPAI: Agent failed security validation: " . $agent_id);
 				}
 			}
 		}
@@ -1293,7 +1293,7 @@ class MPAI_Agent_Orchestrator {
 		
 		// Security validation of the message
 		if (!$this->validate_agent_message($message)) {
-			$this->logger->error("Agent message failed security validation during handoff");
+			error_log("MPAI: Agent message failed security validation during handoff");
 			throw new Exception("Security validation failed for agent message");
 		}
 		
@@ -1309,17 +1309,17 @@ class MPAI_Agent_Orchestrator {
 				// Execute the handoff using the SDK
 				$handoff_result = $this->sdk_integration->handle_handoff( $from_agent_id, $to_agent_id, $handoff_data, $user_id );
 				
-				$this->logger->info( "Successfully handled handoff with SDK from {$from_agent_id} to {$to_agent_id}" );
+				error_log( "MPAI: Successfully handled handoff with SDK from {$from_agent_id} to {$to_agent_id}" );
 				
 				return $handoff_result;
 			} catch ( Exception $e ) {
-				$this->logger->error( "Error handling handoff with SDK: " . $e->getMessage() );
+				error_log( "MPAI: Error handling handoff with SDK: " . $e->getMessage() );
 				// Fall back to traditional handoff if SDK fails
 			}
 		}
 		
 		// Traditional handoff using the agent message format
-		$this->logger->info( "Performing traditional handoff from {$from_agent_id} to {$to_agent_id}" );
+		error_log( "MPAI: Performing traditional handoff from {$from_agent_id} to {$to_agent_id}" );
 		
 		// Get user context
 		$user_context = $this->get_user_context( $user_id );

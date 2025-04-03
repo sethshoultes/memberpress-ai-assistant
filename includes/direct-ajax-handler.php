@@ -858,6 +858,676 @@ switch ($action) {
         }
         break;
         
+    case 'test_agent_discovery':
+        // Test agent discovery functionality
+        try {
+            error_log('MPAI Phase One Test: Agent Discovery test started');
+            
+            // Check if the agent interface is loaded
+            if (!interface_exists('MPAI_Agent')) {
+                $interface_path = dirname(__FILE__) . '/agents/interfaces/interface-mpai-agent.php';
+                error_log('MPAI Phase One Test: Loading agent interface from: ' . $interface_path);
+                if (file_exists($interface_path)) {
+                    require_once($interface_path);
+                } else {
+                    error_log('MPAI Phase One Test: Agent interface file not found at: ' . $interface_path);
+                }
+            }
+            
+            // Check if the base agent class is loaded
+            if (!class_exists('MPAI_Base_Agent')) {
+                $base_agent_path = dirname(__FILE__) . '/agents/class-mpai-base-agent.php';
+                error_log('MPAI Phase One Test: Loading base agent from: ' . $base_agent_path);
+                if (file_exists($base_agent_path)) {
+                    require_once($base_agent_path);
+                } else {
+                    error_log('MPAI Phase One Test: Base agent file not found at: ' . $base_agent_path);
+                }
+            }
+            
+            // Check if the tool registry class is loaded
+            if (!class_exists('MPAI_Tool_Registry')) {
+                $tool_registry_path = dirname(__FILE__) . '/tools/class-mpai-tool-registry.php';
+                error_log('MPAI Phase One Test: Loading tool registry from: ' . $tool_registry_path);
+                if (file_exists($tool_registry_path)) {
+                    require_once($tool_registry_path);
+                } else {
+                    error_log('MPAI Phase One Test: Tool registry file not found at: ' . $tool_registry_path);
+                }
+            }
+            
+            // Check if the agent orchestrator class exists
+            if (!class_exists('MPAI_Agent_Orchestrator')) {
+                $orchestrator_path = dirname(__FILE__) . '/agents/class-mpai-agent-orchestrator.php';
+                error_log('MPAI Phase One Test: Loading orchestrator from: ' . $orchestrator_path);
+                if (file_exists($orchestrator_path)) {
+                    require_once($orchestrator_path);
+                } else {
+                    error_log('MPAI Phase One Test: Orchestrator file not found at: ' . $orchestrator_path);
+                    throw new Exception('Agent orchestrator class file not found');
+                }
+            } else {
+                error_log('MPAI Phase One Test: Orchestrator class already loaded');
+            }
+            
+            // Create an orchestrator instance
+            $orchestrator = new MPAI_Agent_Orchestrator();
+            
+            // Get discovered agents
+            $agents = $orchestrator->get_available_agents();
+            
+            // Log detailed information
+            error_log('MPAI Phase One Test: Agent Discovery - Found ' . count($agents) . ' agents');
+            
+            // Prepare result data
+            $result = array(
+                'success' => true,
+                'agents_count' => count($agents),
+                'agents' => array()
+            );
+            
+            // Add information about each agent
+            foreach ($agents as $agent_id => $agent_info) {
+                $result['agents'][] = array(
+                    'id' => $agent_id,
+                    'name' => isset($agent_info['name']) ? $agent_info['name'] : 'Unknown',
+                    'description' => isset($agent_info['description']) ? $agent_info['description'] : 'Not available',
+                    'capabilities' => isset($agent_info['capabilities']) ? $agent_info['capabilities'] : array()
+                );
+                
+                error_log('MPAI Phase One Test: Agent Discovery - Found agent: ' . $agent_id . ' (' . (isset($agent_info['name']) ? $agent_info['name'] : 'Unknown') . ')');
+            }
+            
+            echo json_encode(array(
+                'success' => true,
+                'data' => $result
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI Phase One Test: Agent Discovery Error - ' . $e->getMessage());
+            echo json_encode(array(
+                'success' => false,
+                'message' => 'Agent Discovery Test failed: ' . $e->getMessage()
+            ));
+        }
+        break;
+        
+    case 'test_lazy_loading':
+        // Test tool lazy loading functionality
+        try {
+            // Check if the tool registry class exists
+            if (!class_exists('MPAI_Tool_Registry')) {
+                require_once(dirname(__FILE__) . '/tools/class-mpai-tool-registry.php');
+            }
+            
+            // Create a registry instance
+            $registry = new MPAI_Tool_Registry();
+            
+            // Register a test tool definition without loading it
+            $test_tool_id = 'test_lazy_loading_tool';
+            $test_tool_class = 'MPAI_Diagnostic_Tool';
+            $test_tool_file = dirname(__FILE__) . '/tools/implementations/class-mpai-diagnostic-tool.php';
+            
+            $registry->register_tool_definition($test_tool_id, $test_tool_class, $test_tool_file);
+            
+            // Get all available tools (should include unloaded tools)
+            $all_tools = $registry->get_available_tools();
+            
+            // Check if our test tool is in the available tools
+            $tool_found = isset($all_tools[$test_tool_id]);
+            
+            // Try to get the tool (should load it on demand)
+            $loaded_tool = $registry->get_tool($test_tool_id);
+            $tool_loaded = ($loaded_tool !== null);
+            
+            // Prepare result data
+            $result = array(
+                'success' => ($tool_found && $tool_loaded),
+                'tool_definition_registered' => $tool_found,
+                'tool_loaded_on_demand' => $tool_loaded,
+                'available_tools_count' => count($all_tools),
+                'available_tools' => array_keys($all_tools)
+            );
+            
+            error_log('MPAI Phase One Test: Tool Lazy Loading - Definition registered: ' . ($tool_found ? 'YES' : 'NO'));
+            error_log('MPAI Phase One Test: Tool Lazy Loading - Tool loaded on demand: ' . ($tool_loaded ? 'YES' : 'NO'));
+            
+            echo json_encode(array(
+                'success' => true,
+                'data' => $result
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI Phase One Test: Tool Lazy Loading Error - ' . $e->getMessage());
+            echo json_encode(array(
+                'success' => false,
+                'message' => 'Tool Lazy Loading Test failed: ' . $e->getMessage()
+            ));
+        }
+        break;
+        
+    case 'test_response_cache':
+        // Test response cache functionality
+        try {
+            error_log('MPAI Phase One Test: Response Cache test started');
+            
+            // Check if the response cache class exists
+            if (!class_exists('MPAI_Response_Cache')) {
+                // Try alternate file paths
+                $possible_paths = [
+                    dirname(dirname(__FILE__)) . '/includes/class-mpai-response-cache.php',
+                    dirname(__FILE__) . '/class-mpai-response-cache.php',
+                    dirname(dirname(__FILE__)) . '/class-mpai-response-cache.php'
+                ];
+                
+                $loaded = false;
+                foreach ($possible_paths as $path) {
+                    error_log('MPAI Phase One Test: Checking for Response Cache at: ' . $path);
+                    if (file_exists($path)) {
+                        error_log('MPAI Phase One Test: Loading Response Cache from: ' . $path);
+                        require_once($path);
+                        $loaded = true;
+                        break;
+                    }
+                }
+                
+                if (!$loaded) {
+                    throw new Exception('Response cache class file not found. Searched paths: ' . implode(', ', $possible_paths));
+                }
+            } else {
+                error_log('MPAI Phase One Test: Response Cache class already loaded');
+            }
+            
+            // Create a cache instance
+            $cache = new MPAI_Response_Cache();
+            
+            // Test key and data
+            $test_key = 'mpai_phase_one_test_' . time();
+            $test_data = array(
+                'message' => 'This is a test message for the response cache system',
+                'timestamp' => current_time('mysql'),
+                'random' => rand(1000, 9999)
+            );
+            
+            // Set the data in cache
+            $set_result = $cache->set($test_key, $test_data);
+            
+            // Get the data back from cache
+            $retrieved_data = $cache->get($test_key);
+            
+            // Delete the test entry
+            $cache->delete($test_key);
+            
+            // Check if delete worked
+            $after_delete = $cache->get($test_key);
+            
+            // Prepare result data
+            $result = array(
+                'success' => ($set_result && $retrieved_data !== null && $after_delete === null),
+                'set_success' => $set_result,
+                'get_success' => ($retrieved_data !== null),
+                'delete_success' => ($after_delete === null),
+                'data_match' => ($retrieved_data == $test_data),
+                'test_key' => $test_key,
+                'original_data' => $test_data,
+                'retrieved_data' => $retrieved_data
+            );
+            
+            error_log('MPAI Phase One Test: Response Cache - Set: ' . ($set_result ? 'SUCCESS' : 'FAILED'));
+            error_log('MPAI Phase One Test: Response Cache - Get: ' . ($retrieved_data !== null ? 'SUCCESS' : 'FAILED'));
+            error_log('MPAI Phase One Test: Response Cache - Delete: ' . ($after_delete === null ? 'SUCCESS' : 'FAILED'));
+            
+            echo json_encode(array(
+                'success' => true,
+                'data' => $result
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI Phase One Test: Response Cache Error - ' . $e->getMessage());
+            echo json_encode(array(
+                'success' => false,
+                'message' => 'Response Cache Test failed: ' . $e->getMessage()
+            ));
+        }
+        break;
+        
+    case 'test_agent_messaging':
+        // Test agent messaging functionality
+        try {
+            error_log('MPAI Phase One Test: Agent Messaging test started');
+            
+            // Check if the agent message class exists
+            if (!class_exists('MPAI_Agent_Message')) {
+                // Try alternate file paths
+                $possible_paths = [
+                    dirname(dirname(__FILE__)) . '/includes/class-mpai-agent-message.php',
+                    dirname(__FILE__) . '/class-mpai-agent-message.php',
+                    dirname(dirname(__FILE__)) . '/class-mpai-agent-message.php'
+                ];
+                
+                $loaded = false;
+                foreach ($possible_paths as $path) {
+                    error_log('MPAI Phase One Test: Checking for Agent Message at: ' . $path);
+                    if (file_exists($path)) {
+                        error_log('MPAI Phase One Test: Loading Agent Message from: ' . $path);
+                        require_once($path);
+                        $loaded = true;
+                        break;
+                    }
+                }
+                
+                if (!$loaded) {
+                    throw new Exception('Agent message class file not found. Searched paths: ' . implode(', ', $possible_paths));
+                }
+            } else {
+                error_log('MPAI Phase One Test: Agent Message class already loaded');
+            }
+            
+            // Create a test message
+            $sender = 'test_agent_1';
+            $receiver = 'test_agent_2';
+            $message_type = 'request';
+            $content = 'This is a test message for the agent messaging system';
+            $metadata = array(
+                'priority' => 'high',
+                'timestamp' => current_time('mysql')
+            );
+            
+            $message = new MPAI_Agent_Message($sender, $receiver, $message_type, $content, $metadata);
+            
+            // Test message properties
+            $get_sender = $message->get_sender();
+            $get_receiver = $message->get_receiver();
+            $get_type = $message->get_message_type(); // Correct method name 
+            $get_content = $message->get_content();
+            $get_metadata = $message->get_metadata();
+            
+            // Convert to array and back
+            $message_array = $message->to_array();
+            $message2 = MPAI_Agent_Message::from_array($message_array);
+            
+            // Validate the reconstructed message
+            $validate = ($message2->get_sender() === $sender &&
+                        $message2->get_receiver() === $receiver &&
+                        $message2->get_message_type() === $message_type && // Correct method name
+                        $message2->get_content() === $content);
+            
+            // Prepare result data
+            $result = array(
+                'success' => $validate,
+                'message_created' => ($message instanceof MPAI_Agent_Message),
+                'properties_match' => ($get_sender === $sender && 
+                                      $get_receiver === $receiver && 
+                                      $get_type === $message_type && // Using $get_type which now contains the result of get_message_type()
+                                      $get_content === $content),
+                'serialization_works' => $validate,
+                'original_message' => array(
+                    'sender' => $sender,
+                    'receiver' => $receiver,
+                    'message_type' => $message_type, // Consistent field name with class implementation
+                    'content' => $content,
+                    'metadata' => $metadata
+                ),
+                'message_array' => $message_array
+            );
+            
+            error_log('MPAI Phase One Test: Agent Messaging - Message created: ' . ($message instanceof MPAI_Agent_Message ? 'YES' : 'NO'));
+            error_log('MPAI Phase One Test: Agent Messaging - Properties match: ' . ($result['properties_match'] ? 'YES' : 'NO'));
+            error_log('MPAI Phase One Test: Agent Messaging - Serialization works: ' . ($validate ? 'YES' : 'NO'));
+            
+            echo json_encode(array(
+                'success' => true,
+                'data' => $result
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI Phase One Test: Agent Messaging Error - ' . $e->getMessage());
+            echo json_encode(array(
+                'success' => false,
+                'message' => 'Agent Messaging Test failed: ' . $e->getMessage()
+            ));
+        }
+        break;
+        
+    case 'test_all_phase_one':
+        // Run all phase one tests
+        try {
+            error_log('MPAI Phase One Test: Running all Phase One tests');
+            $results = array();
+            
+            // ---- Agent Discovery Test ----
+            ob_start(); // Capture output
+            
+            try {
+                error_log('MPAI Phase One Test: Running Agent Discovery test internally');
+                
+                // Check if the agent interface is loaded
+                if (!interface_exists('MPAI_Agent')) {
+                    $interface_path = dirname(__FILE__) . '/agents/interfaces/interface-mpai-agent.php';
+                    if (file_exists($interface_path)) {
+                        require_once($interface_path);
+                    }
+                }
+                
+                // Check if the base agent class is loaded
+                if (!class_exists('MPAI_Base_Agent')) {
+                    $base_agent_path = dirname(__FILE__) . '/agents/class-mpai-base-agent.php';
+                    if (file_exists($base_agent_path)) {
+                        require_once($base_agent_path);
+                    }
+                }
+                
+                // Check if the tool registry class is loaded
+                if (!class_exists('MPAI_Tool_Registry')) {
+                    $tool_registry_path = dirname(__FILE__) . '/tools/class-mpai-tool-registry.php';
+                    if (file_exists($tool_registry_path)) {
+                        require_once($tool_registry_path);
+                    }
+                }
+                
+                // Check if the agent orchestrator class exists
+                if (!class_exists('MPAI_Agent_Orchestrator')) {
+                    $orchestrator_path = dirname(__FILE__) . '/agents/class-mpai-agent-orchestrator.php';
+                    if (file_exists($orchestrator_path)) {
+                        require_once($orchestrator_path);
+                    }
+                }
+                
+                // Create an orchestrator instance
+                $orchestrator = new MPAI_Agent_Orchestrator();
+                
+                // Get discovered agents
+                $agents = $orchestrator->get_available_agents();
+                
+                // Prepare result data
+                $agent_discovery_result = array(
+                    'success' => true,
+                    'agents_count' => count($agents),
+                    'agents' => array()
+                );
+                
+                // Add information about each agent
+                foreach ($agents as $agent_id => $agent_info) {
+                    $agent_discovery_result['agents'][] = array(
+                        'id' => $agent_id,
+                        'name' => isset($agent_info['name']) ? $agent_info['name'] : 'Unknown',
+                        'description' => isset($agent_info['description']) ? $agent_info['description'] : 'Not available',
+                        'capabilities' => isset($agent_info['capabilities']) ? $agent_info['capabilities'] : array()
+                    );
+                }
+                
+                $results['agent_discovery'] = array(
+                    'success' => true,
+                    'data' => $agent_discovery_result
+                );
+                
+            } catch (Exception $e) {
+                error_log('MPAI Phase One Test: Agent Discovery Error - ' . $e->getMessage());
+                $results['agent_discovery'] = array(
+                    'success' => false,
+                    'message' => 'Agent Discovery Test failed: ' . $e->getMessage()
+                );
+            }
+            
+            ob_end_clean(); // Discard output
+            
+            // ---- Lazy Loading Test ----
+            ob_start(); // Capture output
+            
+            try {
+                error_log('MPAI Phase One Test: Running Lazy Loading test internally');
+                
+                // Check if the tool registry class exists
+                if (!class_exists('MPAI_Tool_Registry')) {
+                    $tool_registry_path = dirname(__FILE__) . '/tools/class-mpai-tool-registry.php';
+                    if (file_exists($tool_registry_path)) {
+                        require_once($tool_registry_path);
+                    }
+                }
+                
+                // Create a registry instance
+                $registry = new MPAI_Tool_Registry();
+                
+                // Register a test tool definition without loading it
+                $test_tool_id = 'test_lazy_loading_tool';
+                $test_tool_class = 'MPAI_Diagnostic_Tool';
+                $test_tool_file = dirname(__FILE__) . '/tools/implementations/class-mpai-diagnostic-tool.php';
+                
+                $registry->register_tool_definition($test_tool_id, $test_tool_class, $test_tool_file);
+                
+                // Get all available tools (should include unloaded tools)
+                $all_tools = $registry->get_available_tools();
+                
+                // Check if our test tool is in the available tools
+                $tool_found = isset($all_tools[$test_tool_id]);
+                
+                // Try to get the tool (should load it on demand)
+                $loaded_tool = $registry->get_tool($test_tool_id);
+                $tool_loaded = ($loaded_tool !== null);
+                
+                // Prepare result data
+                $lazy_loading_result = array(
+                    'success' => ($tool_found && $tool_loaded),
+                    'tool_definition_registered' => $tool_found,
+                    'tool_loaded_on_demand' => $tool_loaded,
+                    'available_tools_count' => count($all_tools),
+                    'available_tools' => array_keys($all_tools)
+                );
+                
+                $results['lazy_loading'] = array(
+                    'success' => true,
+                    'data' => $lazy_loading_result
+                );
+                
+            } catch (Exception $e) {
+                error_log('MPAI Phase One Test: Lazy Loading Error - ' . $e->getMessage());
+                $results['lazy_loading'] = array(
+                    'success' => false,
+                    'message' => 'Lazy Loading Test failed: ' . $e->getMessage()
+                );
+            }
+            
+            ob_end_clean(); // Discard output
+            
+            // ---- Response Cache Test ----
+            ob_start(); // Capture output
+            
+            try {
+                error_log('MPAI Phase One Test: Running Response Cache test internally');
+                
+                // Check if the response cache class exists
+                if (!class_exists('MPAI_Response_Cache')) {
+                    // Try alternate file paths
+                    $possible_paths = [
+                        dirname(dirname(__FILE__)) . '/includes/class-mpai-response-cache.php',
+                        dirname(__FILE__) . '/class-mpai-response-cache.php',
+                        dirname(dirname(__FILE__)) . '/class-mpai-response-cache.php'
+                    ];
+                    
+                    $loaded = false;
+                    foreach ($possible_paths as $path) {
+                        if (file_exists($path)) {
+                            require_once($path);
+                            $loaded = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!$loaded) {
+                        throw new Exception('Response cache class file not found. Searched paths: ' . implode(', ', $possible_paths));
+                    }
+                }
+                
+                // Create a cache instance
+                $cache = new MPAI_Response_Cache();
+                
+                // Test key and data
+                $test_key = 'mpai_phase_one_test_' . time();
+                $test_data = array(
+                    'message' => 'This is a test message for the response cache system',
+                    'timestamp' => current_time('mysql'),
+                    'random' => rand(1000, 9999)
+                );
+                
+                // Set the data in cache
+                $set_result = $cache->set($test_key, $test_data);
+                
+                // Get the data back from cache
+                $retrieved_data = $cache->get($test_key);
+                
+                // Delete the test entry
+                $cache->delete($test_key);
+                
+                // Check if delete worked
+                $after_delete = $cache->get($test_key);
+                
+                // Prepare result data
+                $response_cache_result = array(
+                    'success' => ($set_result && $retrieved_data !== null && $after_delete === null),
+                    'set_success' => $set_result,
+                    'get_success' => ($retrieved_data !== null),
+                    'delete_success' => ($after_delete === null),
+                    'data_match' => ($retrieved_data == $test_data),
+                    'test_key' => $test_key,
+                    'original_data' => $test_data,
+                    'retrieved_data' => $retrieved_data
+                );
+                
+                $results['response_cache'] = array(
+                    'success' => true,
+                    'data' => $response_cache_result
+                );
+                
+            } catch (Exception $e) {
+                error_log('MPAI Phase One Test: Response Cache Error - ' . $e->getMessage());
+                $results['response_cache'] = array(
+                    'success' => false,
+                    'message' => 'Response Cache Test failed: ' . $e->getMessage()
+                );
+            }
+            
+            ob_end_clean(); // Discard output
+            
+            // ---- Agent Messaging Test ----
+            ob_start(); // Capture output
+            
+            try {
+                error_log('MPAI Phase One Test: Running Agent Messaging test internally');
+                
+                // Check if the agent message class exists
+                if (!class_exists('MPAI_Agent_Message')) {
+                    // Try alternate file paths
+                    $possible_paths = [
+                        dirname(dirname(__FILE__)) . '/includes/class-mpai-agent-message.php',
+                        dirname(__FILE__) . '/class-mpai-agent-message.php',
+                        dirname(dirname(__FILE__)) . '/class-mpai-agent-message.php'
+                    ];
+                    
+                    $loaded = false;
+                    foreach ($possible_paths as $path) {
+                        if (file_exists($path)) {
+                            require_once($path);
+                            $loaded = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!$loaded) {
+                        throw new Exception('Agent message class file not found. Searched paths: ' . implode(', ', $possible_paths));
+                    }
+                }
+                
+                // Create a test message
+                $sender = 'test_agent_1';
+                $receiver = 'test_agent_2';
+                $message_type = 'request';
+                $content = 'This is a test message for the agent messaging system';
+                $metadata = array(
+                    'priority' => 'high',
+                    'timestamp' => current_time('mysql')
+                );
+                
+                $message = new MPAI_Agent_Message($sender, $receiver, $message_type, $content, $metadata);
+                
+                // Test message properties
+                $get_sender = $message->get_sender();
+                $get_receiver = $message->get_receiver();
+                $get_type = $message->get_message_type();
+                $get_content = $message->get_content();
+                $get_metadata = $message->get_metadata();
+                
+                // Convert to array and back
+                $message_array = $message->to_array();
+                $message2 = MPAI_Agent_Message::from_array($message_array);
+                
+                // Validate the reconstructed message
+                $validate = ($message2->get_sender() === $sender &&
+                            $message2->get_receiver() === $receiver &&
+                            $message2->get_message_type() === $message_type &&
+                            $message2->get_content() === $content);
+                
+                // Prepare result data
+                $agent_messaging_result = array(
+                    'success' => $validate,
+                    'message_created' => ($message instanceof MPAI_Agent_Message),
+                    'properties_match' => ($get_sender === $sender && 
+                                          $get_receiver === $receiver && 
+                                          $get_type === $message_type &&
+                                          $get_content === $content),
+                    'serialization_works' => $validate,
+                    'original_message' => array(
+                        'sender' => $sender,
+                        'receiver' => $receiver,
+                        'message_type' => $message_type,
+                        'content' => $content,
+                        'metadata' => $metadata
+                    ),
+                    'message_array' => $message_array
+                );
+                
+                $results['agent_messaging'] = array(
+                    'success' => true,
+                    'data' => $agent_messaging_result
+                );
+                
+            } catch (Exception $e) {
+                error_log('MPAI Phase One Test: Agent Messaging Error - ' . $e->getMessage());
+                $results['agent_messaging'] = array(
+                    'success' => false,
+                    'message' => 'Agent Messaging Test failed: ' . $e->getMessage()
+                );
+            }
+            
+            ob_end_clean(); // Discard output
+            
+            // Determine overall success
+            $overall_success = true;
+            foreach ($results as $test => $result) {
+                if (!isset($result['success']) || $result['success'] !== true) {
+                    $overall_success = false;
+                    break;
+                }
+            }
+            
+            error_log('MPAI Phase One Test: All tests completed. Overall success: ' . ($overall_success ? 'YES' : 'NO'));
+            
+            echo json_encode(array(
+                'success' => true,
+                'data' => array(
+                    'overall_success' => $overall_success,
+                    'results' => $results
+                )
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI Phase One Test: All Tests Error - ' . $e->getMessage());
+            echo json_encode(array(
+                'success' => false,
+                'message' => 'All Phase One Tests failed: ' . $e->getMessage()
+            ));
+        }
+        break;
+        
     default:
         // Unknown action
         header('HTTP/1.1 400 Bad Request');
