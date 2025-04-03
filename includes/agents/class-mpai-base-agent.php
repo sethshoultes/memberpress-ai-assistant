@@ -102,6 +102,55 @@ abstract class MPAI_Base_Agent implements MPAI_Agent {
 	}
 	
 	/**
+	 * Keywords for request evaluation
+	 * @var array
+	 */
+	protected $keywords = [];
+	
+	/**
+	 * Evaluate ability to handle this request
+	 *
+	 * @param string $message User message
+	 * @param array $context Additional context
+	 * @return int Score from 0-100
+	 */
+	public function evaluate_request($message, $context = []) {
+		// Base implementation using keywords
+		$score = 0;
+		$message_lower = strtolower($message);
+		
+		// Check for agent-specific keywords
+		foreach ($this->keywords as $keyword => $weight) {
+			if (strpos($message_lower, $keyword) !== false) {
+				$score += $weight;
+			}
+		}
+		
+		// Cap at 100
+		return min($score, 100);
+	}
+	
+	/**
+	 * Process an agent message
+	 *
+	 * @param MPAI_Agent_Message $message
+	 * @param array $context User context
+	 * @return array Response data
+	 */
+	public function process_message($message, $context = []) {
+		// Implementation in base agent - convert to legacy format
+		$intent_data = [
+			'intent' => $message->get_message_type(),
+			'primary_agent' => $this->id,
+			'original_message' => $message->get_content(),
+			'metadata' => $message->get_metadata(),
+			'from_agent' => $message->get_sender()
+		];
+		
+		return $this->process_request($intent_data, $context);
+	}
+	
+	/**
 	 * Execute a tool with parameters
 	 *
 	 * @param string $tool_id Tool identifier

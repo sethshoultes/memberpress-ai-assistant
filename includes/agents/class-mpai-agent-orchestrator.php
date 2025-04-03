@@ -103,52 +103,134 @@ class MPAI_Agent_Orchestrator {
 	 * Register tools
 	 */
 	private function register_tools() {
-		// Register CommandTool
+		// Content Generation Tools - anticipated from roadmap
+		$content_generator_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-content-generator-tool.php';
+		if (file_exists($content_generator_path)) {
+			$this->tool_registry->register_tool_definition(
+				'content_generator',
+				'MPAI_Content_Generator_Tool',
+				$content_generator_path
+			);
+		}
+		
+		// Analytics Tools - anticipated from roadmap
+		$analytics_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-analytics-tool.php';
+		if (file_exists($analytics_path)) {
+			$this->tool_registry->register_tool_definition(
+				'analytics',
+				'MPAI_Analytics_Tool',
+				$analytics_path
+			);
+		}
+		
+		// Standard tools using lazy loading approach
+		
+		// Register CommandTool definition
 		if (class_exists('MPAI_Command_Tool')) {
-			$command_tool = new MPAI_Command_Tool();
-			$this->tool_registry->register_tool('command', $command_tool);
+			$this->tool_registry->register_tool_definition(
+				'command',
+				'MPAI_Command_Tool'
+			);
 		}
 		
-		// Register WordPress Tool
-		if (class_exists('MPAI_WordPress_Tool')) {
-			$wp_tool = new MPAI_WordPress_Tool();
-			$this->tool_registry->register_tool('wordpress', $wp_tool);
+		// Register WordPress Tool definition
+		$wp_tool_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-wordpress-tool.php';
+		if (file_exists($wp_tool_path)) {
+			$this->tool_registry->register_tool_definition(
+				'wordpress',
+				'MPAI_WordPress_Tool',
+				$wp_tool_path
+			);
 		}
 		
-		// Register Content_Tool
-		if (class_exists('MPAI_Content_Tool')) {
-			$content_tool = new MPAI_Content_Tool();
-			$this->tool_registry->register_tool('content', $content_tool);
+		// Register Content_Tool definition
+		$content_tool_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-content-tool.php';
+		if (file_exists($content_tool_path)) {
+			$this->tool_registry->register_tool_definition(
+				'content',
+				'MPAI_Content_Tool',
+				$content_tool_path
+			);
 		}
 		
-		// Register MemberPress Tool
-		if (class_exists('MPAI_MemberPress_Tool')) {
-			$memberpress_tool = new MPAI_MemberPress_Tool();
-			$this->tool_registry->register_tool('memberpress', $memberpress_tool);
+		// Register MemberPress Tool definition
+		$memberpress_tool_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-memberpress-tool.php';
+		if (file_exists($memberpress_tool_path)) {
+			$this->tool_registry->register_tool_definition(
+				'memberpress',
+				'MPAI_MemberPress_Tool',
+				$memberpress_tool_path
+			);
 		}
 		
-		// Register Search Tool for content searching
-		if (class_exists('MPAI_Search_Tool')) {
-			$search_tool = new MPAI_Search_Tool();
-			$this->tool_registry->register_tool('search', $search_tool);
+		// Register Search Tool definition
+		$search_tool_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-search-tool.php';
+		if (file_exists($search_tool_path)) {
+			$this->tool_registry->register_tool_definition(
+				'search',
+				'MPAI_Search_Tool',
+				$search_tool_path
+			);
 		}
 		
-		// Register Embedding Tool for content embedding
-		if (class_exists('MPAI_Embedding_Tool')) {
-			$embedding_tool = new MPAI_Embedding_Tool();
-			$this->tool_registry->register_tool('embed', $embedding_tool);
+		// Register Embedding Tool definition
+		$embedding_tool_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-embedding-tool.php';
+		if (file_exists($embedding_tool_path)) {
+			$this->tool_registry->register_tool_definition(
+				'embed',
+				'MPAI_Embedding_Tool',
+				$embedding_tool_path
+			);
 		}
 		
-		// Register Security Tool
-		if (class_exists('MPAI_Security_Tool')) {
-			$security_tool = new MPAI_Security_Tool();
-			$this->tool_registry->register_tool('security', $security_tool);
+		// Register Security Tool definition
+		$security_tool_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-security-tool.php';
+		if (file_exists($security_tool_path)) {
+			$this->tool_registry->register_tool_definition(
+				'security',
+				'MPAI_Security_Tool',
+				$security_tool_path
+			);
 		}
 		
-		// Register Analytics Tool
-		if (class_exists('MPAI_Analytics_Tool')) {
-			$analytics_tool = new MPAI_Analytics_Tool();
-			$this->tool_registry->register_tool('analytics', $analytics_tool);
+		// Register WP-CLI Tool definition
+		$wpcli_tool_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-wpcli-tool.php';
+		if (file_exists($wpcli_tool_path)) {
+			$this->tool_registry->register_tool_definition(
+				'wpcli',
+				'MPAI_WP_CLI_Tool',
+				$wpcli_tool_path
+			);
+		}
+		
+		// Register WP API Tool definition
+		$wp_api_tool_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-wp-api-tool.php';
+		if (file_exists($wp_api_tool_path)) {
+			$this->tool_registry->register_tool_definition(
+				'wp_api',
+				'MPAI_WP_API_Tool',
+				$wp_api_tool_path
+			);
+		}
+		
+		// Register Diagnostic Tool definition
+		$diagnostic_tool_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-diagnostic-tool.php';
+		if (file_exists($diagnostic_tool_path)) {
+			$this->tool_registry->register_tool_definition(
+				'diagnostic',
+				'MPAI_Diagnostic_Tool',
+				$diagnostic_tool_path
+			);
+		}
+		
+		// Register Plugin Logs Tool definition
+		$plugin_logs_tool_path = plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-plugin-logs-tool.php';
+		if (file_exists($plugin_logs_tool_path)) {
+			$this->tool_registry->register_tool_definition(
+				'plugin_logs',
+				'MPAI_Plugin_Logs_Tool',
+				$plugin_logs_tool_path
+			);
 		}
 	}
 	
@@ -969,45 +1051,130 @@ class MPAI_Agent_Orchestrator {
 	 * Determine primary intent from user message
 	 * 
 	 * @param string $message User message
+	 * @param array $context Additional context
 	 * @return string Intent identifier
 	 */
-	private function determine_primary_intent( $message ) {
+	private function determine_primary_intent( $message, $context = [] ) {
 		// Default to memberpress management
 		if ( empty( $message ) ) {
 			return 'memberpress_management';
 		}
 		
-		// Simple keyword-based routing
-		$message = strtolower( $message );
+		// Use agent scoring system
+		$agent_scores = [];
 		
-		if ( strpos( $message, 'content' ) !== false || strpos( $message, 'blog' ) !== false || 
-			 strpos( $message, 'post' ) !== false || strpos( $message, 'page' ) !== false ) {
-			return 'content_management';
-		} else if ( strpos( $message, 'wordpress' ) !== false || strpos( $message, 'wp' ) !== false || 
-				   strpos( $message, 'plugin' ) !== false || strpos( $message, 'theme' ) !== false ) {
-			return 'wordpress_management';
-		} else if ( strpos( $message, 'secure' ) !== false || strpos( $message, 'security' ) !== false || 
-				   strpos( $message, 'hack' ) !== false || strpos( $message, 'protect' ) !== false ) {
-			return 'security_audit';
-		} else if ( strpos( $message, 'report' ) !== false || strpos( $message, 'stat' ) !== false || strpos( $message, 'analytic' ) !== false ) {
-			return 'analytics';
+		foreach ( $this->agents as $agent_id => $agent ) {
+			$score = $agent->evaluate_request($message, $context);
+			$agent_scores[$agent_id] = $score;
 		}
 		
-		// Default to memberpress management
-		return 'memberpress_management';
+		// Find highest scoring agent
+		$highest_score = 0;
+		$primary_agent = 'memberpress'; // Default if no high scores
+		
+		foreach ( $agent_scores as $agent_id => $score ) {
+			if ( $score > $highest_score ) {
+				$highest_score = $score;
+				$primary_agent = $agent_id;
+			}
+		}
+		
+		// Log scores for debugging
+		$this->logger->debug("Agent scores: " . json_encode($agent_scores));
+		$this->logger->info("Selected primary agent: {$primary_agent} with score: {$highest_score}");
+		
+		return $primary_agent;
 	}
 	
 	/**
 	 * Register all core agents
 	 */
 	private function register_core_agents() {
-		// Register the MemberPress agent
-		$this->register_memberpress_agent();
+		// Discover all agent files
+		$this->discover_agents();
 		
-		// Register the Command Validation agent
-		$this->register_command_validation_agent();
+		// Manually register any core agents that require special handling
+		// (only if they weren't discovered automatically)
+		if (!isset($this->agents['memberpress'])) {
+			$this->register_memberpress_agent();
+		}
 		
-		// Other agents would be registered here
+		if (!isset($this->agents['command_validation'])) {
+			$this->register_command_validation_agent();
+		}
+	}
+	
+	/**
+	 * Discover and register available agents
+	 */
+	private function discover_agents() {
+		$agents_dir = plugin_dir_path(__FILE__) . 'specialized/';
+		$agent_files = glob($agents_dir . 'class-mpai-*.php');
+		
+		foreach ($agent_files as $agent_file) {
+			// Load agent file if not already loaded
+			if (!class_exists(basename($agent_file, '.php'))) {
+				require_once $agent_file;
+			}
+			
+			// Extract class name from filename
+			$filename = basename($agent_file, '.php');
+			$class_name = str_replace('class-', '', $filename);
+			$class_name = str_replace('-', '_', $class_name);
+			$class_name = strtoupper($class_name);
+			
+			// Create agent instance if class exists
+			if (class_exists($class_name)) {
+				$agent = new $class_name($this->tool_registry, $this->logger);
+				$agent_id = strtolower(str_replace('MPAI_', '', $class_name));
+				$agent_id = str_replace('_agent', '', $agent_id);
+				
+				// Apply security validation
+				if ($this->validate_agent($agent_id, $agent)) {
+					$this->register_agent($agent_id, $agent);
+					$this->logger->info("Discovered and registered agent: " . $agent_id);
+				} else {
+					$this->logger->warning("Agent failed security validation: " . $agent_id);
+				}
+			}
+		}
+		
+		// Apply filter to allow modifications
+		$this->agents = apply_filters('mpai_available_agents', $this->agents);
+	}
+	
+	/**
+	 * Validate agent according to security framework
+	 * 
+	 * @param string $agent_id
+	 * @param object $agent
+	 * @return bool Whether agent passes validation
+	 */
+	private function validate_agent($agent_id, $agent) {
+		// Check agent has required methods
+		if (!method_exists($agent, 'get_capabilities') ||
+			!method_exists($agent, 'get_name') ||
+			!method_exists($agent, 'get_description')) {
+			return false;
+		}
+		
+		// Check agent has valid capabilities structure
+		$capabilities = $agent->get_capabilities();
+		if (!is_array($capabilities)) {
+			return false;
+		}
+		
+		// Check agent implements the MPAI_Agent interface
+		if (!($agent instanceof MPAI_Agent)) {
+			return false;
+		}
+		
+		// Check agent has process_request method
+		if (!method_exists($agent, 'process_request')) {
+			return false;
+		}
+		
+		return true;
 	}
 	
 	/**
@@ -1115,6 +1282,21 @@ class MPAI_Agent_Orchestrator {
 	 * @return array Handoff result
 	 */
 	public function handle_handoff( $from_agent_id, $to_agent_id, $handoff_data, $user_id = 0 ) {
+		// Create agent message
+		$message = new MPAI_Agent_Message(
+			$from_agent_id,
+			$to_agent_id,
+			'handoff',
+			isset($handoff_data['message']) ? $handoff_data['message'] : '',
+			$handoff_data
+		);
+		
+		// Security validation of the message
+		if (!$this->validate_agent_message($message)) {
+			$this->logger->error("Agent message failed security validation during handoff");
+			throw new Exception("Security validation failed for agent message");
+		}
+		
 		// Check if SDK integration can handle this
 		if ( $this->sdk_initialized && $this->sdk_integration ) {
 			try {
@@ -1122,30 +1304,22 @@ class MPAI_Agent_Orchestrator {
 				$handoff_data['user_id'] = $user_id;
 				$handoff_data['from_agent'] = $from_agent_id;
 				$handoff_data['to_agent'] = $to_agent_id;
+				$handoff_data['message_object'] = $message->to_array();
 				
 				// Execute the handoff using the SDK
 				$handoff_result = $this->sdk_integration->handle_handoff( $from_agent_id, $to_agent_id, $handoff_data, $user_id );
 				
-				error_log( "MPAI: Successfully handled handoff with SDK from {$from_agent_id} to {$to_agent_id}" );
+				$this->logger->info( "Successfully handled handoff with SDK from {$from_agent_id} to {$to_agent_id}" );
 				
 				return $handoff_result;
 			} catch ( Exception $e ) {
-				error_log( "MPAI: Error handling handoff with SDK: " . $e->getMessage() );
+				$this->logger->error( "Error handling handoff with SDK: " . $e->getMessage() );
 				// Fall back to traditional handoff if SDK fails
 			}
 		}
 		
-		// Traditional handoff (simple re-routing)
-		error_log( "MPAI: Performing traditional handoff from {$from_agent_id} to {$to_agent_id}" );
-		
-		// Create intent data for target agent
-		$intent_data = [
-			'intent' => 'handoff',
-			'primary_agent' => $to_agent_id,
-			'original_message' => isset( $handoff_data['message'] ) ? $handoff_data['message'] : '',
-			'handoff_data' => $handoff_data,
-			'from_agent' => $from_agent_id
-		];
+		// Traditional handoff using the agent message format
+		$this->logger->info( "Performing traditional handoff from {$from_agent_id} to {$to_agent_id}" );
 		
 		// Get user context
 		$user_context = $this->get_user_context( $user_id );
@@ -1158,13 +1332,55 @@ class MPAI_Agent_Orchestrator {
 		// Get the target agent
 		$target_agent = $this->agents[$to_agent_id];
 		
-		// Process the request with the target agent
-		$result = $target_agent->process_request( $intent_data, $user_context );
+		// Check if the target agent has a process_message method
+		if (method_exists($target_agent, 'process_message')) {
+			// Process using the message format
+			$result = $target_agent->process_message($message, $user_context);
+		} else {
+			// Fall back to intent-based format
+			$intent_data = [
+				'intent' => 'handoff',
+				'primary_agent' => $to_agent_id,
+				'original_message' => $message->get_content(),
+				'handoff_data' => $message->get_metadata(),
+				'from_agent' => $from_agent_id
+			];
+			
+			// Process using the traditional method
+			$result = $target_agent->process_request($intent_data, $user_context);
+		}
 		
 		// Update memory
-		$this->update_memory( $user_id, $intent_data, $result );
+		$this->update_memory($user_id, ['message' => $message->to_array()], $result);
 		
 		return $result;
+	}
+	
+	/**
+	 * Validate agent message for security
+	 *
+	 * @param MPAI_Agent_Message $message
+	 * @return bool
+	 */
+	private function validate_agent_message($message) {
+		// Check required fields
+		if (empty($message->get_sender()) || empty($message->get_receiver())) {
+			return false;
+		}
+		
+		// Check that agents exist
+		if (!isset($this->agents[$message->get_sender()]) || 
+			!isset($this->agents[$message->get_receiver()])) {
+			return false;
+		}
+		
+		// Check for dangerous content patterns
+		$content = $message->get_content();
+		if (preg_match('/(?:<script|javascript:|eval\(|base64)/i', $content)) {
+			return false;
+		}
+		
+		return true;
 	}
 	
 	/**
