@@ -161,7 +161,7 @@ class MPAI_Agent_Orchestrator {
 			$adapter_path = plugin_dir_path( dirname( __FILE__ ) ) . 'commands/class-mpai-command-adapter.php';
 			
 			if ( ! file_exists( $adapter_path ) ) {
-				$this->logger->info( 'New command system not available: ' . $adapter_path );
+				error_log( 'MPAI: New command system not available: ' . $adapter_path );
 				return false;
 			}
 			
@@ -170,28 +170,28 @@ class MPAI_Agent_Orchestrator {
 			
 			// Check if adapter class is available
 			if ( ! class_exists( 'MPAI_Command_Adapter' ) ) {
-				$this->logger->error( 'Command adapter class not found' );
+				error_log( 'MPAI: Command adapter class not found' );
 				return false;
 			}
 			
 			// Initialize the command adapter
 			$this->command_adapter = new MPAI_Command_Adapter( $this->tool_registry );
-			$this->logger->info( 'Initialized command adapter' );
+			error_log( 'MPAI: Initialized command adapter' );
 			
 			// Register the adapter as a tool for WP-CLI commands
 			if ( $this->command_adapter->register_as_tool( $this->tool_registry ) ) {
-				$this->logger->info( 'Registered command adapter as tool' );
+				error_log( 'MPAI: Registered command adapter as tool' );
 				
 				// Replace the standard WP-CLI tool with our new implementation
 				$this->tool_registry->register_tool( 'wpcli', $this->tool_registry->get_tool( 'wpcli_new' ) );
-				$this->logger->info( 'Replaced standard WP-CLI tool with new implementation' );
+				error_log( 'MPAI: Replaced standard WP-CLI tool with new implementation' );
 				
 				return true;
 			}
 			
 			return false;
 		} catch ( Exception $e ) {
-			$this->logger->error( 'Error initializing command system: ' . $e->getMessage() );
+			error_log( 'MPAI: Error initializing command system: ' . $e->getMessage() );
 			return false;
 		}
 	}

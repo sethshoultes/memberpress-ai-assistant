@@ -645,7 +645,7 @@ class MPAI_SDK_Integration {
 		
 		return false;
 	}
-	}
+	
 	
 	/**
 	 * Determine the appropriate agent for a message

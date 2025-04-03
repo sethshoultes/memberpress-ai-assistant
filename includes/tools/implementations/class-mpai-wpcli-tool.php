@@ -44,6 +44,7 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		'wp plugin recent', // Recently activated plugins
 		'php --version', // Direct PHP version command
 		'php -v', // Short PHP version command
+		'wp eval', // PHP evaluation commands (for retrieving PHP_VERSION, etc.)
 	];
 	
 	/**

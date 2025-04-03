@@ -165,7 +165,13 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
                         '/which.*(?:plugins?|php)/i', // Questions about plugins or PHP
                         '/show.*(?:plugins?|php)/i', // Commands to show plugins or PHP
                         '/list.*(?:plugins?|php)/i', // Commands to list plugins or PHP
-                        '/(?:get|display).*(?:plugins?|php)/i' // Commands to get or display plugins or PHP
+                        '/(?:get|display).*(?:plugins?|php)/i', // Commands to get or display plugins or PHP
+                        '/wp eval/i',              // WP eval commands (for retrieving PHP_VERSION, etc.)
+                        '/installed.*php/i',       // Queries about installed PHP version
+                        '/php.*installed/i',       // Queries about PHP installed
+                        '/check.*php/i',           // Commands to check PHP
+                        '/tell.*(?:about|me).*php/i', // Questions about PHP
+                        '/what.*version.*php/i'    // Alternative PHP version queries
                     ];
                     
                     foreach ($system_cmd_patterns as $pattern) {
