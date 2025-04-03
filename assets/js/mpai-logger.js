@@ -55,11 +55,30 @@
 
     // Initialize the logger with settings from WordPress options
     MpaiLogger.prototype.initialize = function() {
-        console.log('MPAI: Logger initialization started');
+        // Less verbose logging - only log critical operations
+        
+        // Record initialization time for caching purposes
+        this._lastInitTime = Date.now();
         
         // First try to get settings from localStorage
         var storedSettings = localStorage.getItem('mpai_logger_settings');
-        console.log('MPAI: Stored settings in localStorage:', storedSettings ? 'Found' : 'Not found');
+        
+        // Adding timestamp check to avoid re-initializing too frequently
+        var lastInitCheck = localStorage.getItem('mpai_logger_last_init');
+        var currentTime = Date.now();
+        var initNeeded = true;
+        
+        // If we initialized less than 5 seconds ago, don't do a full re-init
+        if (lastInitCheck && (currentTime - parseInt(lastInitCheck)) < 5000) {
+            initNeeded = false;
+        }
+        
+        // Save last init time regardless
+        try {
+            localStorage.setItem('mpai_logger_last_init', currentTime.toString());
+        } catch (e) {
+            // Silent fail
+        }
         
         if (storedSettings) {
             try {
@@ -67,70 +86,78 @@
                 this.enabled = settings.enabled;
                 this.logLevel = settings.logLevel;
                 this.categories = settings.categories;
-                console.log('MPAI: Logger initialized from localStorage with settings:', settings);
+                
+                // Only log if we're explicitly enabled - reduces console clutter
+                if (this.enabled === true) {
+                    console.log('MPAI: Logger initialized from localStorage - enabled: ' + this.enabled);
+                }
+                
+                // Update UI to match stored settings
+                this.updateUIFromSettings();
+                
+                // If we have cached settings and don't need to re-init from server, return early
+                if (!initNeeded) {
+                    return;
+                }
             } catch (e) {
-                console.error('MPAI: Error parsing logger settings from localStorage:', e);
+                // Silent error - just continue with defaults
             }
         }
+        
+        // Helper method to update UI elements
+        MpaiLogger.prototype.updateUIFromSettings = function() {
+            if (typeof jQuery !== 'undefined') {
+                var $ = jQuery;
+                // Update the checkbox to match the enabled state
+                $('#mpai_enable_console_logging').prop('checked', this.enabled === true);
+                
+                // Update the status indicator
+                var $statusIndicator = $('#mpai-console-logging-status');
+                if ($statusIndicator.length) {
+                    if (this.enabled === true) {
+                        $statusIndicator.removeClass('inactive').addClass('active').text('ENABLED');
+                    } else {
+                        $statusIndicator.removeClass('active').addClass('inactive').text('DISABLED');
+                    }
+                }
+            }
+        };
         
         // Check for logger settings in either mpai_data or mpai_chat_data
         var loggerSettings = null;
         
-        // Check for the global objects and log their existence
-        console.log('MPAI: mpai_data available:', typeof mpai_data !== 'undefined');
-        console.log('MPAI: mpai_chat_data available:', typeof mpai_chat_data !== 'undefined');
-        
-        // First check mpai_data
-        if (typeof mpai_data !== 'undefined') {
-            console.log('MPAI: mpai_data contents:', JSON.stringify(mpai_data).substring(0, 200) + '...');
-            
-            if (mpai_data.logger) {
-                console.log('MPAI: Found logger settings in mpai_data');
-                loggerSettings = mpai_data.logger;
-                console.log('MPAI: mpai_data.logger contents:', loggerSettings);
-            }
+        // First check mpai_data - minimal logging
+        if (typeof mpai_data !== 'undefined' && mpai_data.logger) {
+            loggerSettings = mpai_data.logger;
         }
         // Then try mpai_chat_data if mpai_data wasn't available
-        else if (typeof mpai_chat_data !== 'undefined') {
-            console.log('MPAI: mpai_chat_data contents:', JSON.stringify(mpai_chat_data).substring(0, 200) + '...');
-            
-            if (mpai_chat_data.logger) {
-                console.log('MPAI: Found logger settings in mpai_chat_data');
-                loggerSettings = mpai_chat_data.logger;
-                console.log('MPAI: mpai_chat_data.logger contents:', loggerSettings);
-            }
+        else if (typeof mpai_chat_data !== 'undefined' && mpai_chat_data.logger) {
+            loggerSettings = mpai_chat_data.logger;
         }
         
         if (!loggerSettings) {
-            console.log('MPAI: No logger settings available, using default/localStorage settings');
             // Enable the logger by default if no settings are available
             if (!storedSettings) {
                 this.enabled = true;
                 this.logLevel = 'debug'; // Force debug level
-                console.log('MPAI: Enabling logger with default settings (debug level)');
             }
         } else {
-            // Load settings from found config
-            console.log('MPAI: Setting from provided config - raw enabled value:', loggerSettings.enabled);
+            // Load settings from found config with minimal logging
             
             // Use the settings from the config - simple check: if it's '1' or true, enable logging
             var enabledSetting = loggerSettings.enabled;
             
-            // Simplified check - if it's exactly '1' or exactly true, enable logging
-            if (enabledSetting === '1' || enabledSetting === true) {
+            // Very explicit type checking to ensure any falsey value disables logging
+            if (enabledSetting === '1' || enabledSetting === true || enabledSetting === 1) {
                 this.enabled = true;
             } else {
                 this.enabled = false;
             }
             
-            console.log('MPAI: Setting enabled from config:', this.enabled);
-            
             // Get log level
             this.logLevel = loggerSettings.log_level || loggerSettings.logLevel || 'debug';
-            console.log('MPAI: Setting log level to:', this.logLevel);
             
             if (loggerSettings.categories) {
-                console.log('MPAI: Setting categories from config:', loggerSettings.categories);
                 // Convert string values ('1'/'0') to boolean if needed
                 this.categories = {
                     api_calls: loggerSettings.categories.api_calls === '1' || loggerSettings.categories.api_calls === true,
@@ -139,8 +166,6 @@
                     timing: loggerSettings.categories.timing === '1' || loggerSettings.categories.timing === true,
                     ui: true // Always enable UI logging
                 };
-            } else {
-                console.log('MPAI: No categories in config, using defaults');
             }
             
             // Save settings to localStorage for next time
@@ -151,29 +176,39 @@
                     categories: this.categories
                 }));
             } catch (e) {
-                console.error('MPAI: Error saving logger settings to localStorage:', e);
+                // Silent fail to avoid error logs when localStorage is not available
             }
         }
 
-        // Log initialization status if enabled
-        if (this.enabled) {
-            console.log('MPAI Logger: Initialized with level [' + this.logLevel + ']');
+        // Minimal log initialization status only if enabled
+        if (this.enabled === true) {
+            // Reset the disabled message flag when enabled
+            this._hasShownDisabledMessage = false;
             
-            // Log enabled categories
-            var enabledCategories = [];
-            for (var cat in this.categories) {
-                if (this.categories[cat]) {
-                    enabledCategories.push(cat);
-                }
-            }
-            console.log('MPAI Logger: Enabled categories: ' + enabledCategories.join(', '));
+            // Only show one concise log message - no need for category details
+            console.log('MPAI Logger: Initialized and enabled');
         }
     };
 
     // Check if logging is enabled for a specific level and category
     MpaiLogger.prototype.shouldLog = function(level, category) {
-        // First check if logging is enabled at all - strict enforcement
+        // First check if logging is enabled at all - VERY STRICT enforcement
+        // This is the most critical function that controls all logging
+        // We use strict equality (!==) to ensure only true enables logging, nothing else
+        // Note that 1, "1", "true", etc. are all NOT equal to true with !==
+        
         if (this.enabled !== true) {
+            // A clear comment in console to show the logger is stopping logs
+            if (!this._hasShownDisabledMessage) {
+                console.log('%cMPAI Logger: DISABLED - no logs will be shown', 'background: #f8d7da; color: #721c24; padding: 2px 6px; border-radius: 3px; font-weight: bold;');
+                this._hasShownDisabledMessage = true;
+                
+                // Also update any status indicators in the UI if they exist
+                if (typeof jQuery !== 'undefined') {
+                    jQuery('#mpai-console-logging-status').removeClass('active').addClass('inactive').text('DISABLED');
+                    jQuery('#mpai_enable_console_logging').prop('checked', false);
+                }
+            }
             return false;
         }
 

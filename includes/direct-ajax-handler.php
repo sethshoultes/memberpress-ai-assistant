@@ -565,32 +565,49 @@ switch ($action) {
         // Test console logging action
         $log_level = isset($_POST['log_level']) ? sanitize_text_field($_POST['log_level']) : 'info';
         
-        // Process enable_logging with detailed debugging
+        // Process enable_logging without excessive debug logging
         $enable_logging_raw = isset($_POST['enable_logging']) ? $_POST['enable_logging'] : '1';
-        error_log('MPAI: enable_logging raw value: ' . $enable_logging_raw . ' (type: ' . gettype($enable_logging_raw) . ')');
         
-        // Convert to proper boolean value
+        // Convert to proper boolean value for internal use, but save as string '0' or '1'
         if ($enable_logging_raw === '1' || $enable_logging_raw === 1 || $enable_logging_raw === 'true' || $enable_logging_raw === true) {
             $enable_logging = true;
-            error_log('MPAI: enable_logging converted to TRUE');
+            $enable_logging_stored = '1';
         } else {
             $enable_logging = false;
-            error_log('MPAI: enable_logging converted to FALSE');
+            $enable_logging_stored = '0';
         }
+        
+        // Check if setting has changed to avoid unnecessary database updates
+        $current_setting = get_option('mpai_enable_console_logging', '1');
+        $setting_changed = ($current_setting !== $enable_logging_stored);
         
         // Save settings to options if needed
         if (isset($_POST['save_settings']) && $_POST['save_settings']) {
-            error_log('MPAI: Saving console settings - enable_logging: ' . ($enable_logging ? '1' : '0'));
+            // Avoid unnecessary updates
+            if ($setting_changed) {
+                // Always save as string values '1' or '0' for consistency
+                update_option('mpai_enable_console_logging', $enable_logging_stored);
+            }
             
-            // Always save as string values '1' or '0' for consistency
-            update_option('mpai_enable_console_logging', $enable_logging ? '1' : '0');
-            update_option('mpai_console_log_level', $log_level);
+            // Process log level
+            $current_log_level = get_option('mpai_console_log_level', 'info');
+            if ($current_log_level !== $log_level) {
+                update_option('mpai_console_log_level', $log_level);
+            }
             
-            // Save category settings
-            update_option('mpai_log_api_calls', isset($_POST['log_api_calls']) ? '1' : '0');
-            update_option('mpai_log_tool_usage', isset($_POST['log_tool_usage']) ? '1' : '0'); 
-            update_option('mpai_log_agent_activity', isset($_POST['log_agent_activity']) ? '1' : '0');
-            update_option('mpai_log_timing', isset($_POST['log_timing']) ? '1' : '0');
+            // Save category settings - only if explicitly provided (no logging)
+            if (isset($_POST['log_api_calls'])) {
+                update_option('mpai_log_api_calls', $_POST['log_api_calls'] ? '1' : '0');
+            }
+            if (isset($_POST['log_tool_usage'])) {
+                update_option('mpai_log_tool_usage', $_POST['log_tool_usage'] ? '1' : '0');
+            }
+            if (isset($_POST['log_agent_activity'])) {
+                update_option('mpai_log_agent_activity', $_POST['log_agent_activity'] ? '1' : '0');
+            }
+            if (isset($_POST['log_timing'])) {
+                update_option('mpai_log_timing', $_POST['log_timing'] ? '1' : '0');
+            }
         }
         
         // Return test data and current settings

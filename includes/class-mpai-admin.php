@@ -301,9 +301,7 @@ class MPAI_Admin {
         );
 
         // Get logger settings
-        // Add debug info for debugging
-        error_log('MPAI: Getting logger settings from database');
-        error_log('MPAI: mpai_enable_console_logging = ' . get_option('mpai_enable_console_logging', '1'));
+        // Get logger settings from database
         
         // Ensure we're providing consistent string values for all boolean options
         $logger_settings = array(
@@ -318,8 +316,7 @@ class MPAI_Admin {
             )
         );
         
-        // Log the settings for debugging
-        error_log('MPAI: Logger settings: ' . json_encode($logger_settings));
+        // Prepare logger settings for script
 
         wp_localize_script(
             'mpai-admin-script',

@@ -158,10 +158,15 @@ if (!defined('WPINC')) {
                     <label for="mpai_enable_console_logging"><?php _e('Enable Console Logging', 'memberpress-ai-assistant'); ?></label>
                 </th>
                 <td>
-                    <label>
-                        <input type="checkbox" name="mpai_enable_console_logging" id="mpai_enable_console_logging" value="1" <?php checked(get_option('mpai_enable_console_logging', false)); ?> />
-                        <?php _e('Log detailed information to the browser console', 'memberpress-ai-assistant'); ?>
-                    </label>
+                    <div class="console-logging-control">
+                        <label>
+                            <input type="checkbox" name="mpai_enable_console_logging" id="mpai_enable_console_logging" value="1" <?php checked(get_option('mpai_enable_console_logging', '0'), '1'); ?> />
+                            <?php _e('Log detailed information to the browser console', 'memberpress-ai-assistant'); ?>
+                        </label>
+                        <span id="mpai-console-logging-status" class="logging-status-indicator <?php echo get_option('mpai_enable_console_logging', '0') === '1' ? 'active' : 'inactive'; ?>">
+                            <?php echo get_option('mpai_enable_console_logging', '0') === '1' ? 'ENABLED' : 'DISABLED'; ?>
+                        </span>
+                    </div>
                     <p class="description"><?php _e('Enable this option to log detailed information about AI Assistant operations to your browser console.', 'memberpress-ai-assistant'); ?></p>
                 </td>
             </tr>
@@ -217,6 +222,7 @@ if (!defined('WPINC')) {
                     
                     <!-- Ultra simple test button that tests the enabled state directly -->
                     <button type="button" onclick="testEnabledState()" class="button button-secondary" style="margin-top: 10px;">Check Enabled State Only</button>
+                    <button type="button" onclick="testCacheRefresh()" class="button button-secondary" style="margin-top: 10px; margin-left: 5px;">Test Cache Refresh</button>
                     
                     <script>
                     /* 
@@ -228,19 +234,64 @@ if (!defined('WPINC')) {
                     // Simple function to directly test if the logger is enabled
                     function testEnabledState() {
                         if (window.mpaiLogger) {
-                            console.log('========== ENABLED STATE TEST ==========');
-                            console.log('→ The mpaiLogger.enabled value is: ' + window.mpaiLogger.enabled);
+                            console.log('%c========== ENABLED STATE TEST ==========', 'background: #eee; color: #333; padding: 5px; font-weight: bold;');
+                            console.log('→ The mpaiLogger.enabled value is: ' + window.mpaiLogger.enabled + ' (type: ' + typeof window.mpaiLogger.enabled + ')');
                             console.log('→ The checkbox is: ' + ($('#mpai_enable_console_logging').is(':checked') ? 'CHECKED' : 'UNCHECKED'));
+                            console.log('→ Status indicator shows: ' + $('#mpai-console-logging-status').text());
+                            console.log('→ Status indicator classes: ' + $('#mpai-console-logging-status').attr('class'));
                             console.log('→ Logging is: ' + (window.mpaiLogger.enabled ? 'ENABLED' : 'DISABLED'));
                             console.log('→ Testing a log message (should only appear if enabled):');
                             
                             // Try to log a message - this should only appear if enabled is true
                             window.mpaiLogger.info('This is a test message from enabled state test', 'ui');
                             
+                            console.log('→ Settings in localStorage:', localStorage.getItem('mpai_logger_settings'));
+                            
                             alert('Check your console. The enabled state is: ' + (window.mpaiLogger.enabled ? 'ENABLED' : 'DISABLED'));
                         } else {
                             console.log('mpaiLogger not found!');
                             alert('mpaiLogger not found! Check the console for more details.');
+                        }
+                    }
+                    
+                    // Function to test the cache refresh mechanism
+                    function testCacheRefresh() {
+                        if (!window.mpaiLogger) {
+                            console.log('mpaiLogger not found!');
+                            alert('mpaiLogger not found! Check the console for more details.');
+                            return;
+                        }
+                        
+                        console.log('%c========== CACHE REFRESH TEST ==========', 'background: #eef; color: #336; padding: 5px; font-weight: bold;');
+                        
+                        // Save current state
+                        var currentState = window.mpaiLogger.enabled;
+                        console.log('→ Current logger enabled state: ' + currentState);
+                        
+                        // Toggle the state in localStorage
+                        try {
+                            var settings = JSON.parse(localStorage.getItem('mpai_logger_settings')) || {};
+                            settings.enabled = !currentState;
+                            localStorage.setItem('mpai_logger_settings', JSON.stringify(settings));
+                            console.log('→ Changed localStorage enabled setting to: ' + !currentState);
+                            
+                            // Force re-init
+                            localStorage.removeItem('mpai_logger_last_init');
+                            console.log('→ Removed init cache timestamp');
+                            
+                            // Reinitialize
+                            window.mpaiLogger.initialize();
+                            console.log('→ Reinitialized logger');
+                            
+                            // Check if state changed
+                            console.log('→ New logger enabled state: ' + window.mpaiLogger.enabled + ' (should be ' + !currentState + ')');
+                            console.log('→ Checkbox state is now: ' + ($('#mpai_enable_console_logging').is(':checked') ? 'CHECKED' : 'UNCHECKED'));
+                            console.log('→ Status indicator now shows: ' + $('#mpai-console-logging-status').text());
+                            
+                            alert('Cache refresh test complete. Check console for results. New enabled state: ' + window.mpaiLogger.enabled);
+                        } catch (e) {
+                            console.error('Error in cache refresh test:', e);
+                            alert('Error in cache refresh test: ' + e.message);
                         }
                     }
                     </script>
@@ -819,6 +870,34 @@ if (!defined('WPINC')) {
 .mpai-details-table th {
     background: #f0f0f0;
     font-weight: 600;
+}
+
+/* Console Logging Controls */
+.console-logging-control {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logging-status-indicator {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.logging-status-indicator.active {
+    background-color: #d6f0d6;
+    color: #0a6b0a;
+    border: 1px solid #a3d9a3;
+}
+
+.logging-status-indicator.inactive {
+    background-color: #f2dede;
+    color: #a94442;
+    border: 1px solid #ebccd1;
 }
 
 /* Toggle Switch Styles */

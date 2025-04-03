@@ -121,12 +121,11 @@ class MPAI_Plugin_Logger {
         }
         
         if ($table_exists && !$force) {
-            error_log('MPAI: Plugin logger table already exists');
             return true;
         }
         
         if ($table_exists && $force) {
-            error_log('MPAI: Force flag set, dropping existing plugin logger table');
+            // Force flag set, drop existing table
             try {
                 $wpdb->query("DROP TABLE IF EXISTS {$this->table_name}");
             } catch (Exception $e) {
