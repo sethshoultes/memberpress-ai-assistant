@@ -53,8 +53,9 @@ var MPAI_BlogFormatter = (function($) {
         if (contentType === 'blog-post') {
             const enhancedPrompt = `${userPrompt}
 
-I need you to write a blog post in XML format. This is VERY IMPORTANT - the output MUST be wrapped in the XML tags exactly as shown below:
+I need you to write a blog post in XML format. This is VERY IMPORTANT - the output MUST be wrapped in XML tags EXACTLY as shown in this example. The format must be exactly like this, with no deviations:
 
+\`\`\`xml
 <wp-post>
   <post-title>Title of the blog post</post-title>
   <post-content>
@@ -73,8 +74,9 @@ I need you to write a blog post in XML format. This is VERY IMPORTANT - the outp
   <post-excerpt>A brief summary of the post.</post-excerpt>
   <post-status>draft</post-status>
 </wp-post>
+\`\`\`
 
-The XML structure is required for proper WordPress integration. DO NOT deviate from this format. The entire response must be wrapped in <wp-post> tags.`;
+The XML structure is required for proper WordPress integration. IMPORTANT: The opening and closing tags must be exactly <wp-post> and </wp-post>. Please ensure the XML is not inside any additional code blocks or formatting - just keep the exact format shown above, with the same indentation patterns. The content must be complete and well-formed.`;
 
             // Send the enhanced prompt
             window.MPAI_Messages.sendMessage(enhancedPrompt);
@@ -83,8 +85,9 @@ The XML structure is required for proper WordPress integration. DO NOT deviate f
         else if (contentType === 'page') {
             const enhancedPrompt = `${userPrompt}
 
-I need you to write a page in XML format. This is VERY IMPORTANT - the output MUST be wrapped in the XML tags exactly as shown below:
+I need you to write a page in XML format. This is VERY IMPORTANT - the output MUST be wrapped in XML tags EXACTLY as shown in this example. The format must be exactly like this, with no deviations:
 
+\`\`\`xml
 <wp-post>
   <post-title>Title of the page</post-title>
   <post-content>
@@ -102,9 +105,11 @@ I need you to write a page in XML format. This is VERY IMPORTANT - the output MU
   </post-content>
   <post-excerpt>A brief summary of the page.</post-excerpt>
   <post-status>draft</post-status>
+  <post-type>page</post-type>
 </wp-post>
+\`\`\`
 
-The XML structure is required for proper WordPress integration. DO NOT deviate from this format. The entire response must be wrapped in <wp-post> tags.`;
+The XML structure is required for proper WordPress integration. IMPORTANT: The opening and closing tags must be exactly <wp-post> and </wp-post>. Please ensure the XML is not inside any additional code blocks or formatting - just keep the exact format shown above, with the same indentation patterns. The content must be complete and well-formed.`;
 
             // Send the enhanced prompt
             window.MPAI_Messages.sendMessage(enhancedPrompt);

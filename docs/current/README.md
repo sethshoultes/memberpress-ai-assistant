@@ -21,6 +21,7 @@ For new developers, we recommend starting with:
 | [System Map](system-map.md) | Complete file-level overview of the system architecture | ✅ Maintained |
 | [Tool Implementation Map](tool-implementation-map.md) | Guide for implementing new tools | ✅ Maintained |
 | [Agent System Reference](agent-system-reference.md) | Reference to comprehensive agent system documentation | ✅ Maintained |
+| [XML Content System](../xml-content-system/README.md) | Comprehensive guide to the XML blog formatting system | ✅ Maintained |
 | [User Guide](user-guide.md) | End-user guide for using MemberPress AI Assistant | ✅ Maintained |
 | [Developer Guide](developer-guide.md) | Technical guide for developers | ✅ Maintained |
 | [Documentation Map](documentation-map.md) | Visual map of all documentation resources | ✅ Maintained |

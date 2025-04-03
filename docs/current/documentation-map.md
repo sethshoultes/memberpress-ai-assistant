@@ -22,6 +22,11 @@ memberpress-ai-assistant/
 │   │   ├── ...                  # Other feature documentation
 │   │   ├── documentation-map.md # This file
 │   │   └── implementation-status.md # Feature status overview
+│   ├── xml-content-system/      # XML Content System docs
+│   │   ├── README.md            # Comprehensive system documentation
+│   │   └── examples/            # XML format examples
+│   │       ├── blog-post-example.xml
+│   │       └── membership-post-example.xml
 │   ├── roadmap/                 # Planned features
 │   │   ├── README.md            # Index of planned features
 │   │   └── ...                  # Feature planning documents
@@ -53,9 +58,11 @@ memberpress-ai-assistant/
 
 ### For Content Systems
 
-1. Study [blog-xml-formatting-implementation.md](blog-xml-formatting-implementation.md) - XML content system
-2. Review [blog-xml-membership-implementation-plan.md](blog-xml-membership-implementation-plan.md) - MemberPress integration
-3. Reference [CONTENT_MARKER_SYSTEM.md](CONTENT_MARKER_SYSTEM.md) - Content type detection
+1. Start with [XML Content System Guide](../xml-content-system/README.md) - Comprehensive XML system documentation
+2. Study [blog-xml-formatting-implementation.md](blog-xml-formatting-implementation.md) - XML formatting implementation
+3. Review [blog-xml-membership-implementation-plan.md](blog-xml-membership-implementation-plan.md) - MemberPress integration
+4. Reference [CONTENT_MARKER_SYSTEM.md](CONTENT_MARKER_SYSTEM.md) - Content type detection
+5. Explore [XML Examples](../xml-content-system/examples/) - Working examples of the format
 
 ### For UI Development
 

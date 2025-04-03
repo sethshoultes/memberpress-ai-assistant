@@ -269,9 +269,40 @@ private function register_tools() {
         $this->tool_registry->register_tool('content', $content_tool);
     }
     
+    // Register WordPress API Tool with XML Support
+    if (class_exists('MPAI_WP_API_Tool')) {
+        $wp_api_tool = new MPAI_WP_API_Tool();
+        $this->tool_registry->register_tool('wp_api', $wp_api_tool);
+    }
+    
     // Register other tools...
 }
 ```
+
+### Special System: XML Content Formatting
+
+The XML Content System is a specialized implementation that showcases best practices for tool development. It provides structured content generation and formatting through a standardized XML format:
+
+```xml
+<wp-post>
+  <post-title>Post Title</post-title>
+  <post-content>
+    <block type="paragraph">Content paragraph</block>
+    <block type="heading" level="2">Heading</block>
+  </post-content>
+  <post-excerpt>Excerpt text</post-excerpt>
+  <post-status>draft</post-status>
+</wp-post>
+```
+
+This system includes several integrated components:
+
+1. **Backend XML Parser**: `MPAI_XML_Content_Parser` processes XML content for WordPress integration
+2. **WordPress API Tool**: Enhanced with XML detection and parsing capabilities
+3. **Frontend Formatter**: JavaScript modules that enhance chat interface for XML content
+4. **Client-Side Processing**: Tools to extract and submit XML content for post creation
+
+See the comprehensive documentation in [/docs/xml-content-system/README.md](/docs/xml-content-system/README.md) for implementation details.
 
 ### Tool Execution
 
