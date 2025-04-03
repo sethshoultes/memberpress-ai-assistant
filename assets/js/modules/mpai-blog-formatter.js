@@ -271,204 +271,55 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
      * @param {string} contentType - The type of content ('post' or 'page')
      */
     function createPostFromXML(content, contentType) {
-        // CRITICAL ERROR DEBUG - Log the raw content
-        console.log("RAW CONTENT FOR POST CREATION:", content);
-        console.log("CONTENT TYPE:", contentType);
-        console.log("CONTENT LENGTH:", content.length);
-        
-        // Log the action
-        if (window.mpaiLogger) {
-            window.mpaiLogger.info(`Creating ${contentType} from XML content`, 'tool_usage', {
-                contentType: contentType,
-                xmlContentLength: content.length
-            });
-        }
-        
-        // Check for empty content
-        if (!content || content.trim() === '') {
-            alert('No content provided. Please try again.');
-            if (window.mpaiLogger) {
-                window.mpaiLogger.error('Empty content provided to createPostFromXML', 'tool_usage');
-            }
-            return;
-        }
-        
-        // Check for code block format and extract
-        const codeBlockRegex = /```(?:xml)?\s*([\s\S]*?)```/g;
-        let codeBlockMatch;
-        while ((codeBlockMatch = codeBlockRegex.exec(content)) !== null) {
-            if (codeBlockMatch[1] && codeBlockMatch[1].includes('<wp-post') && codeBlockMatch[1].includes('</wp-post>')) {
-                content = codeBlockMatch[1]; // Use the content from inside the code block
+        // Super simple approach - construct a hardcoded XML to see if it works
+        const testXml = `<wp-post>
+  <post-title>Test Post Title</post-title>
+  <post-content>
+    <block type="paragraph">This is a test paragraph.</block>
+  </post-content>
+  <post-excerpt>Test excerpt</post-excerpt>
+  <post-status>draft</post-status>
+</wp-post>`;
+
+        // Execute the wp_api tool to create the post
+        if (window.MPAI_Tools && typeof window.MPAI_Tools.executeToolCall === 'function') {
+            const toolId = 'mpai-tool-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+            const parameters = {
+                action: contentType === 'page' ? 'create_page' : 'create_post',
+                content: testXml,
+                status: 'draft',
+                title: 'Test Post Title'
+            };
+            
+            try {
+                // Execute the tool
+                window.MPAI_Tools.executeToolCall('wp_api', parameters, toolId);
+                
+                // Log success
                 if (window.mpaiLogger) {
-                    window.mpaiLogger.info('Extracted XML from code block', 'tool_usage', { length: content.length });
+                    window.mpaiLogger.info(`Successfully initiated ${contentType} creation`, 'tool_usage');
                 }
-                console.log("EXTRACTED FROM CODE BLOCK:", content);
-                break;
-            }
-        }
-        
-        // Handle HTML-escaped content
-        if (content.includes('&lt;wp-post') && content.includes('&lt;/wp-post&gt;')) {
-            if (window.mpaiLogger) {
-                window.mpaiLogger.info('Detected HTML-escaped XML content, unescaping', 'tool_usage');
-            }
-            
-            // Create a temporary div to unescape the HTML
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = content;
-            content = tempDiv.textContent || tempDiv.innerText || '';
-            
-            console.log("AFTER HTML UNESCAPING:", content);
-            
-            if (window.mpaiLogger) {
-                window.mpaiLogger.debug('Unescaped content length: ' + content.length, 'tool_usage');
-            }
-        }
-        
-        // Extreme fallback - if content doesn't have wp-post tags, wrap it
-        if (!content.includes('<wp-post') || !content.includes('</wp-post>')) {
-            console.log("NO WP-POST TAGS FOUND, WRAPPING CONTENT");
-            
-            // Check if it looks like an XML fragment with post-title and post-content
-            if (content.includes('<post-title>') && content.includes('<post-content>')) {
-                content = '<wp-post>\n' + content + '\n</wp-post>';
-                console.log("WRAPPED XML FRAGMENT:", content);
+            } catch (error) {
+                // Log and display error
                 if (window.mpaiLogger) {
-                    window.mpaiLogger.info('Found XML fragment, wrapped in wp-post tags', 'tool_usage');
+                    window.mpaiLogger.error(`Error executing tool: ${error.message}`, 'tool_usage');
                 }
-            }
-        }
-        
-        // Extract the XML section
-        let xmlContent = '';
-        
-        // SIMPLER APPROACH: Just find from first <wp-post to last </wp-post>
-        const startPos = content.indexOf('<wp-post');
-        const endPos = content.lastIndexOf('</wp-post>');
-        
-        if (startPos >= 0 && endPos > startPos) {
-            xmlContent = content.substring(startPos, endPos + 10); // 10 = length of </wp-post>
-            console.log("EXTRACTED WITH SIMPLE APPROACH:", xmlContent);
-            if (window.mpaiLogger) {
-                window.mpaiLogger.info('Extracted XML with simple position-based approach', 'tool_usage', {
-                    startPos: startPos,
-                    endPos: endPos,
-                    length: xmlContent.length
-                });
+                alert(`An error occurred while creating the ${contentType}: ${error.message}`);
             }
         } else {
-            // Last desperate attempt - just use the whole content and hope it works
-            console.log("LAST RESORT: USING ENTIRE CONTENT");
-            xmlContent = content;
             if (window.mpaiLogger) {
-                window.mpaiLogger.warn('Using entire content as XML', 'tool_usage');
+                window.mpaiLogger.error('Cannot create post: MPAI_Tools module not available', 'tool_usage');
             }
-        }
-        
-        // If we still don't have valid XML content, show error
-        if (!xmlContent.includes('<wp-post') || !xmlContent.includes('</wp-post>')) {
-            console.log("FINAL CONTENT DOESN'T HAVE WP-POST TAGS:", xmlContent);
-            if (window.mpaiLogger) {
-                window.mpaiLogger.error('Failed to extract valid XML with wp-post tags', 'tool_usage');
-            }
-            
-            // Show a more detailed error message
-            const errorMessage = 'Could not find properly formatted XML content. XML content must be wrapped in <wp-post> tags and follow the correct format. Please try again or ask the AI to format the response as XML.';
-            alert(errorMessage);
-            return;
+            alert('Cannot create post: The tools module is not available. Please try again later.');
         }
         
         // Log the XML content for debugging
         if (window.mpaiLogger) {
-            window.mpaiLogger.debug('Extracted XML content', 'tool_usage', {
-                xmlContentPreview: xmlContent.substring(0, 150) + (xmlContent.length > 150 ? '...' : '')
+            window.mpaiLogger.debug('Using hardcoded XML content', 'tool_usage', {
+                testXml: testXml
             });
         }
         
-        // Execute the wp_api tool to create the post using the ajax-direct handler for reliability
-        // This bypasses potential permission issues with admin-ajax.php
-        const ajaxUrl = '/wp-content/plugins/memberpress-ai-assistant/includes/direct-ajax-handler.php';
-        
-        $.ajax({
-            type: 'POST',
-            url: ajaxUrl,
-            data: {
-                action: 'test_simple',
-                is_update_message: 'false',
-                wp_api_action: 'create_post',
-                content: xmlContent,
-                content_type: contentType
-            },
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    // Show success message
-                    alert(`The ${contentType} was created successfully! You can edit it in the WordPress admin.`);
-                    
-                    // Log success
-                    if (window.mpaiLogger) {
-                        window.mpaiLogger.info(`Successfully created ${contentType}`, 'tool_usage', {
-                            postId: response.post_id || 'unknown'
-                        });
-                    }
-                    
-                    // If there's an edit URL, offer to open it
-                    if (response.edit_url) {
-                        if (confirm(`Would you like to edit the ${contentType} now?`)) {
-                            window.open(response.edit_url, '_blank');
-                        }
-                    }
-                } else {
-                    // Log and display error
-                    if (window.mpaiLogger) {
-                        window.mpaiLogger.error('Error creating post', 'tool_usage', {
-                            error: response.message || 'Unknown error'
-                        });
-                    }
-                    alert(`An error occurred while creating the ${contentType}: ${response.message || 'Unknown error'}`);
-                }
-            },
-            error: function(xhr, status, error) {
-                // Fallback to standard WP API tool if direct handler fails
-                if (window.mpaiLogger) {
-                    window.mpaiLogger.warn('Direct AJAX handler failed, falling back to WP API tool', 'tool_usage', {
-                        status: status,
-                        error: error
-                    });
-                }
-                
-                // Execute the wp_api tool to create the post
-                if (window.MPAI_Tools && typeof window.MPAI_Tools.executeToolCall === 'function') {
-                    const toolId = 'mpai-tool-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-                    const parameters = {
-                        action: contentType === 'page' ? 'create_page' : 'create_post',
-                        content: xmlContent,
-                        status: 'draft'
-                    };
-                    
-                    try {
-                        // Execute the tool
-                        window.MPAI_Tools.executeToolCall('wp_api', parameters, toolId);
-                        
-                        // Log success
-                        if (window.mpaiLogger) {
-                            window.mpaiLogger.info(`Fallback: initiated ${contentType} creation with WP API tool`, 'tool_usage');
-                        }
-                    } catch (error) {
-                        // Log and display error
-                        if (window.mpaiLogger) {
-                            window.mpaiLogger.error(`Error executing tool: ${error.message}`, 'tool_usage');
-                        }
-                        alert(`An error occurred while creating the ${contentType}: ${error.message}`);
-                    }
-                } else {
-                    if (window.mpaiLogger) {
-                        window.mpaiLogger.error('Cannot create post: MPAI_Tools module not available', 'tool_usage');
-                    }
-                    alert('Cannot create post: The tools module is not available. Please try again later.');
-                }
-            }
-        });
     }
     
     /**
