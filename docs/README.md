@@ -17,20 +17,21 @@ The documentation is organized into the following main categories:
 
 ### For New Developers
 - [_0_START_HERE_.md](../_0_START_HERE_.md) - Comprehensive entry point with development pathways
-- [System Map](current/system-map.md) - Complete system architecture overview
-- [Features Index](current/features-index.md) - Comprehensive list of all features
-- [Documentation Map](current/documentation-map.md) - Visual guide to documentation structure
+- [System Map](current/core/system-map.md) - Complete system architecture overview
+- [Features Index](current/core/features-index.md) - Comprehensive list of all features
+- [Documentation Map](current/core/documentation-map.md) - Visual guide to documentation structure
 
 ### For Specific Development Tasks
-- [Tool Implementation Map](current/tool-implementation-map.md) - Guide for developing tools
+- [Tool Implementation Map](current/tool-system/tool-implementation-map.md) - Guide for developing tools
 - [_1_AGENTIC_SYSTEMS_.md](../_1_AGENTIC_SYSTEMS_.md) - Complete agent system documentation
-- [Unified XML Content System](current/unified-xml-content-system.md) - XML content formatting system
-- [Developer Quick Reference](current/developer-quick-reference.md) - Common patterns and tasks
+- [Unified Agent System](current/agent-system/unified-agent-system.md) - Agent system documentation
+- [Unified XML Content System](current/content-system/unified-xml-content-system.md) - XML content formatting system
+- [Developer Quick Reference](current/core/developer-quick-reference.md) - Common patterns and tasks
 - [Scooby Snacks Index](_snacks/index.md) - Solutions to complex problems
 
 ### By Feature Category
-- [Documentation Categories](current/documentation-categories.md) - Documentation organized by type
-- [Implementation Status](current/implementation-status.md) - Status of all features
+- [Documentation Categories](current/core/documentation-categories.md) - Documentation organized by type
+- [Implementation Status](current/core/implementation-status.md) - Status of all features
 
 ## Documentation Standards
 
@@ -43,12 +44,13 @@ All documentation files include status indicators to help identify their current
 
 ## Recent Updates
 
-The documentation has been completely reorganized and consolidated following a four-phase Documentation Consolidation Plan:
+The documentation has been completely reorganized and consolidated following a five-phase Documentation Consolidation Plan:
 
-- **Phase 1**: Reorganized existing files into appropriate directories
-- **Phase 2**: Consolidated content to reduce duplication ([Phase 2 Results](current/phase-2-documentation-consolidation-results.md))
-- **Phase 3**: Added improved navigation aids ([Phase 3 Results](current/phase-3-documentation-consolidation-results.md))
-- **Phase 4**: Standardized documentation formats ([Phase 4 Results](current/phase-4-documentation-consolidation-results.md))
+- **Phase 1**: Reorganized existing files into appropriate directories ([Phase 1 Results](current/core/documentation-consolidation-results.md))
+- **Phase 2**: Consolidated content to reduce duplication ([Phase 2 Results](current/core/phase-2-documentation-consolidation-results.md))
+- **Phase 3**: Added improved navigation aids ([Phase 3 Results](current/core/phase-3-documentation-consolidation-results.md))
+- **Phase 4**: Standardized documentation formats ([Phase 4 Results](current/core/phase-4-documentation-consolidation-results.md))
+- **Phase 5**: System-based directory organization ([Phase 5 Results](current/core/documentation-map.md))
 
 A new "Scooby Snacks" documentation system has also been added to capture the results of technical investigations and fixes.
 
@@ -67,8 +69,8 @@ When given a "Scooby Snack" for a successful solution or implementation:
 
 When updating documentation:
 
-1. Place files in the appropriate directory based on implementation status
+1. Place files in the appropriate directory based on implementation status and system category
 2. Include metadata (status, version, date) at the top of each file
 3. Follow the established format from the [templates](templates/)
 4. Update the main README.md when adding significant new documentation
-5. Update the [documentation map](current/documentation-map.md) to reflect new additions
+5. Update the [documentation map](current/core/documentation-map.md) to reflect new additions

@@ -15,16 +15,33 @@ memberpress-ai-assistant/
 ├── docs/
 │   ├── current/                 # Implemented features
 │   │   ├── README.md            # Index of current documentation
-│   │   ├── system-map.md        # System architecture overview
-│   │   ├── tool-implementation-map.md # Tool implementation guide
-│   │   ├── unified-agent-system.md    # Consolidated agent system docs
-│   │   ├── unified-xml-content-system.md # Consolidated XML content docs
-│   │   ├── agent-system-reference.md  # Reference to agent system docs
-│   │   ├── blog-xml-formatting-implementation.md  # Blog XML formatting
-│   │   ├── documentation-consolidation-results.md # Phase 1 results
-│   │   ├── phase-2-documentation-consolidation-results.md # Phase 2 results
-│   │   ├── documentation-map.md # This file
-│   │   └── implementation-status.md # Feature status overview
+│   │   ├── core/                # Core system documentation
+│   │   │   ├── system-map.md    # System architecture overview
+│   │   │   ├── documentation-map.md # This file
+│   │   │   ├── implementation-status.md # Feature status overview
+│   │   │   ├── features-index.md # Feature index
+│   │   │   ├── documentation-categories.md # Documentation categories
+│   │   │   ├── documentation-consolidation-results.md # Phase 1 results
+│   │   │   └── phase-2/3/4-documentation-consolidation-results.md # Phase results
+│   │   ├── agent-system/        # Agent system documentation
+│   │   │   ├── unified-agent-system.md # Consolidated agent system docs
+│   │   │   ├── agent-system-reference.md # Reference to agent system docs
+│   │   │   └── command-validation-agent.md # Command validation agent
+│   │   ├── tool-system/         # Tool system documentation
+│   │   │   ├── tool-implementation-map.md # Tool implementation guide
+│   │   │   └── tool-call-detection.md # Tool call detection
+│   │   ├── content-system/      # Content system documentation
+│   │   │   ├── unified-xml-content-system.md # Consolidated XML content docs
+│   │   │   ├── blog-xml-formatting-implementation.md # Blog XML formatting
+│   │   │   ├── blog-xml-membership-implementation-plan.md # Blog membership
+│   │   │   └── CONTENT_MARKER_SYSTEM.md # Content marker system
+│   │   ├── js-system/           # JavaScript system documentation
+│   │   │   ├── console-logging-system.md # Console logging system
+│   │   │   └── js-modularization-plan.md # JS modularization plan
+│   │   └── feature-plans/       # Feature planning documentation
+│   │       ├── command-system-rewrite-plan.md # Command system rewrite
+│   │       ├── consent-mechanism-plan.md # Consent mechanism
+│   │       └── support-routing-system.md # Support routing system
 │   ├── _snacks/                 # Scooby Snacks (investigation results)
 │   │   ├── README.md            # Explains Scooby Snacks system
 │   │   ├── index.md             # Categorized index of Scooby Snacks
@@ -52,44 +69,44 @@ memberpress-ai-assistant/
 
 ### For New Developers
 
-1. Start with [_0_START_HERE_.md](../../_0_START_HERE_.md) - Primary entry point
+1. Start with [_0_START_HERE_.md](../../../_0_START_HERE_.md) - Primary entry point
 2. Review [system-map.md](system-map.md) - System architecture overview
 3. Explore [implementation-status.md](implementation-status.md) - Feature status
 
 ### For Agent System Development
 
-1. Start with [unified-agent-system.md](unified-agent-system.md) - Consolidated reference
-2. Read [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) - Comprehensive guide
-3. Use [agent-system-reference.md](agent-system-reference.md) - Quick reference
-4. Study [command-validation-agent.md](command-validation-agent.md) - Example agent implementation
+1. Start with [unified-agent-system.md](../agent-system/unified-agent-system.md) - Consolidated reference
+2. Read [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md) - Comprehensive guide
+3. Use [agent-system-reference.md](../agent-system/agent-system-reference.md) - Quick reference
+4. Study [command-validation-agent.md](../agent-system/command-validation-agent.md) - Example agent implementation
 
 ### For Tool Development
 
-1. Follow [tool-implementation-map.md](tool-implementation-map.md) - Step-by-step guide
-2. Reference [tool-call-detection.md](tool-call-detection.md) - Tool call handling
-3. Understand [SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md](SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md) - Safety features
-4. Check related [Scooby Snacks](../_snacks/tool-system/) for tool system insights
+1. Follow [tool-implementation-map.md](../tool-system/tool-implementation-map.md) - Step-by-step guide
+2. Reference [tool-call-detection.md](../tool-system/tool-call-detection.md) - Tool call handling
+3. Understand [duplicate-tool-execution-snack.md](../../_snacks/tool-system/duplicate-tool-execution-snack.md) - Safety features
+4. Check related [Scooby Snacks](../../_snacks/tool-system/) for tool system insights
 
 ### For Content Systems
 
-1. Start with [unified-xml-content-system.md](unified-xml-content-system.md) - Consolidated XML documentation
-2. Explore [XML Content System Guide](../xml-content-system/README.md) - Comprehensive system documentation
-3. Study [blog-xml-formatting-implementation.md](blog-xml-formatting-implementation.md) - Implementation details
-4. Review [blog-xml-membership-implementation-plan.md](blog-xml-membership-implementation-plan.md) - MemberPress integration
-5. Reference [CONTENT_MARKER_SYSTEM.md](CONTENT_MARKER_SYSTEM.md) - Content type detection
-6. Examine [XML Examples](../xml-content-system/examples/) - Working examples of the format
-7. Check related [Scooby Snacks](../_snacks/content-system/) for content system insights
+1. Start with [unified-xml-content-system.md](../content-system/unified-xml-content-system.md) - Consolidated XML documentation
+2. Explore [XML Content System Guide](../../xml-content-system/README.md) - Comprehensive system documentation
+3. Study [blog-xml-formatting-implementation.md](../content-system/blog-xml-formatting-implementation.md) - Implementation details
+4. Review [blog-xml-membership-implementation-plan.md](../content-system/blog-xml-membership-implementation-plan.md) - MemberPress integration
+5. Reference [CONTENT_MARKER_SYSTEM.md](../content-system/CONTENT_MARKER_SYSTEM.md) - Content type detection
+6. Examine [XML Examples](../../xml-content-system/examples/) - Working examples of the format
+7. Check related [Scooby Snacks](../../_snacks/content-system/) for content system insights
 
 ### For UI Development
 
-1. Review [chat-interface-copy-icon.md](chat-interface-copy-icon.md) - UI enhancement example
-2. Implement [console-logging-system.md](console-logging-system.md) - Debugging utilities
-3. Check related [Scooby Snacks](../_snacks/ui/) for UI development insights
+1. Review [chat-interface-copy-icon-fix.md](../../_snacks/interface/chat-interface-copy-icon-fix.md) - UI enhancement example
+2. Implement [console-logging-system.md](../js-system/console-logging-system.md) - Debugging utilities
+3. Check related [Scooby Snacks](../../_snacks/interface/) for UI development insights
 
 ### For Debugging and Issue Resolution
 
-1. Browse the [Scooby Snacks Index](../_snacks/index.md) for similar issues
-2. Check category-specific folders in [_snacks](../_snacks/) directory
+1. Browse the [Scooby Snacks Index](../../_snacks/index.md) for similar issues
+2. Check category-specific folders in [_snacks](../../_snacks/) directory
 3. Study the investigation processes in Scooby Snack documents
 
 ## Visual Documentation Map
@@ -132,6 +149,7 @@ The documentation has gone through a consolidation process to improve organizati
 - [Phase 2 Results](phase-2-documentation-consolidation-results.md) - Content consolidation and cross-references
 - [Phase 3 Results](phase-3-documentation-consolidation-results.md) - Navigation improvements
 - [Phase 4 Results](phase-4-documentation-consolidation-results.md) - Standardization and formats
+- [Phase 5 Results](documentation-map.md) - Directory-based organization (current)
 
 ## Documentation Status Indicators
 

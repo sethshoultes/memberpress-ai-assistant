@@ -1195,11 +1195,11 @@ The MemberPress AI Assistant Agentic System provides a powerful and extensible f
 
 For further details, refer to:
 
-- [Tool Implementation Map](/docs/current/tool-implementation-map.md) - Detailed guide for implementing new tools
-- [System Map](/docs/current/system-map.md) - Overview of all files and their relationships
-- [Command Validation Agent](/docs/current/command-validation-agent.md) - Details on the command validation system
-- [Agent System Implementation Guide](/docs/current/agent-system-implementation.md) - Additional implementation details
-- [Agent System Quickstart](/docs/current/agent-system-quickstart.md) - Quick reference guide
-- [Agent System User Guide](/docs/current/agent-system-user-guide.md) - End-user documentation
+- [Tool Implementation Map](/docs/current/tool-system/tool-implementation-map.md) - Detailed guide for implementing new tools
+- [System Map](/docs/current/core/system-map.md) - Overview of all files and their relationships
+- [Command Validation Agent](/docs/current/agent-system/command-validation-agent.md) - Details on the command validation system
+- [Agent System Reference](/docs/current/agent-system/agent-system-reference.md) - Additional implementation details
+- [Unified Agent System](/docs/current/agent-system/unified-agent-system.md) - Comprehensive agent system reference
+- [Agent System User Guide (archived)](/docs/archive/agent-system-user-guide.md) - End-user documentation
 
 For an overview of the entire system and development pathways, see [_0_START_HERE_.md](./_0_START_HERE_.md).

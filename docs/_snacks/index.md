@@ -2,7 +2,7 @@
 
 **Status:** ✅ Maintained  
 **Version:** 1.0.0  
-**Last Updated:** April 3, 2024
+**Last Updated:** April 3, 2025
 
 This document provides a categorized index of all Scooby Snacks - detailed documentation of investigations that led to fixes and improvements in the MemberPress AI Assistant plugin.
 
@@ -10,7 +10,7 @@ This document provides a categorized index of all Scooby Snacks - detailed docum
 
 | Snack Title | Date | Version | Description |
 |-------------|------|---------|-------------|
-| [Chat Interface Copy Icon Fix](ui/chat-interface-copy-icon-snack.md) | 2024-03-15 | 1.5.8 | Fixed issues with the copy button in chat interface |
+| [Chat Interface Copy Icon Fix](interface/chat-interface-copy-icon-fix.md) | 2024-04-02 | 1.5.8 | Fixed issues with the copy button in chat interface |
 
 ## Performance
 
@@ -34,7 +34,8 @@ This document provides a categorized index of all Scooby Snacks - detailed docum
 
 | Snack Title | Date | Version | Description |
 |-------------|------|---------|-------------|
-| *No entries yet* |  |  |  |
+| [Best-Selling Membership Implementation](membership/best-selling-membership-implementation.md) | 2024-04-02 | 1.5.8 | Implemented feature to identify top-performing membership products |
+| [Independent Operation Implementation](architecture/independent-operation-implementation.md) | 2024-03-31 | 1.5.5 | Made the AI Assistant function without requiring MemberPress |
 
 ## Security
 
@@ -60,6 +61,7 @@ This document provides a categorized index of all Scooby Snacks - detailed docum
 |-------------|------|---------|-------------|
 | [Blog Post XML Formatting Fix](content-system/blog-post-xml-formatting-snack.md) | 2024-03-28 | 1.6.0 | Implemented robust XML parsing for blog post formatting |
 | [XML Blog Post Formatting and Post Creation Fix](content-system/xml-blog-post-formatting-fix.md) | 2024-04-03 | 1.5.4 | Fixed XML content display and post creation issues |
+| [Blog Post Publishing Fix](content-system/blog-post-publishing-fix.md) | 2024-03-28 | 1.5.1 | Fixed PHP errors and content extraction issues in blog publishing |
 
 ## JavaScript
 
