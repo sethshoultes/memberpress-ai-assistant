@@ -7,6 +7,8 @@
 
 The MemberPress AI Assistant leverages an advanced agentic framework that enables specialized AI agents to perform domain-specific tasks within the WordPress and MemberPress ecosystem. This document provides a comprehensive guide to understanding and integrating with the agent system.
 
+This guide is part of the developer documentation suite for the MemberPress AI Assistant plugin. For an overview of the entire system and guidance on where to start for different development tasks, please see [_0_START_HERE_.md](./_0_START_HERE_.md).
+
 ## Table of Contents
 
 1. [Architecture](#architecture)
@@ -1162,9 +1164,11 @@ The MemberPress AI Assistant Agentic System provides a powerful and extensible f
 
 For further details, refer to:
 
-- [Agent System Implementation Guide](/docs/current/agent-system-implementation.md)
-- [Agent System Quickstart](/docs/current/agent-system-quickstart.md)
-- [Agent System User Guide](/docs/current/agent-system-user-guide.md)
-- [Command Validation Agent](/docs/current/command-validation-agent.md)
-- [Tool Implementation Map](/docs/current/tool-implementation-map.md)
-- [System Map](/docs/current/system-map.md)
+- [Tool Implementation Map](/docs/current/tool-implementation-map.md) - Detailed guide for implementing new tools
+- [System Map](/docs/current/system-map.md) - Overview of all files and their relationships
+- [Command Validation Agent](/docs/current/command-validation-agent.md) - Details on the command validation system
+- [Agent System Implementation Guide](/docs/current/agent-system-implementation.md) - Additional implementation details
+- [Agent System Quickstart](/docs/current/agent-system-quickstart.md) - Quick reference guide
+- [Agent System User Guide](/docs/current/agent-system-user-guide.md) - End-user documentation
+
+For an overview of the entire system and development pathways, see [_0_START_HERE_.md](./_0_START_HERE_.md).

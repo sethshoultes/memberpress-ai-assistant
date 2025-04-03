@@ -87,7 +87,7 @@ Depending on the type of feature you're developing, you'll need to focus on diff
 
 If you're working on AI chat capabilities (new tools, improved responses, etc.):
 
-1. **Start here**: [/docs/current/tool-implementation-map.md](/docs/current/tool-implementation-map.md)
+1. **Start here**: [/docs/current/tool-implementation-map.md](/docs/current/tool-implementation-map.md) and [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md#tool-system-integration)
 2. **Key files**:
    - `/includes/tools/class-mpai-base-tool.php`
    - `/includes/tools/class-mpai-tool-registry.php`
@@ -159,7 +159,7 @@ If you're working on MemberPress-specific integrations:
 
 If you're working on the agent system or adding specialized agents:
 
-1. **Start here**: [/docs/current/agent-system-implementation.md](/docs/current/agent-system-implementation.md)
+1. **Start here**: [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md)
 2. **Key files**:
    - `/includes/agents/interfaces/interface-mpai-agent.php`
    - `/includes/agents/class-mpai-base-agent.php`
@@ -225,7 +225,7 @@ If you're working on security improvements:
 
 ### Adding a New Tool
 
-Follow the detailed documentation in [/docs/current/tool-implementation-map.md](/docs/current/tool-implementation-map.md).
+Follow the detailed documentation in [/docs/current/tool-implementation-map.md](/docs/current/tool-implementation-map.md) and [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md#tool-system-integration).
 
 ### Adding a New Agent
 
@@ -320,10 +320,12 @@ Follow the detailed documentation in [/docs/current/tool-implementation-map.md](
 ## Getting Help
 
 1. **Internal documentation**:
+   - Primary entry points: 
+     - [_0_START_HERE_.md](./_0_START_HERE_.md) - This guide
+     - [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md) - Agent system guide
    - Main documentation index: `/docs/README.md`
    - System architecture: `/docs/current/system-map.md`
    - Tool implementation: `/docs/current/tool-implementation-map.md`
-   - Agent system: `/docs/current/agent-system-implementation.md`
 
 2. **External resources**:
    - WordPress Plugin Handbook: https://developer.wordpress.org/plugins/
