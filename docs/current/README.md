@@ -6,25 +6,34 @@
 
 This directory contains documentation for features that have been implemented and are currently active in the MemberPress AI Assistant plugin. Each document describes the feature's implementation, usage, and configuration options.
 
-## Documentation Navigation
+## Quick Navigation
+
+For efficient navigation of the documentation:
+
+1. [features-index.md](features-index.md) - Comprehensive list of all features
+2. [documentation-categories.md](documentation-categories.md) - Documentation organized by type
+3. [documentation-map.md](documentation-map.md) - Visual map of all documentation
+4. [implementation-status.md](implementation-status.md) - Status of all features
 
 For new developers, we recommend starting with:
 1. [_0_START_HERE_.md](../../_0_START_HERE_.md) - Primary entry point for developers
 2. [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) - Comprehensive agent system guide
-3. [documentation-map.md](documentation-map.md) - Visual map of all documentation
-4. [implementation-status.md](implementation-status.md) - Status of all features
+3. [unified-agent-system.md](unified-agent-system.md) - Consolidated agent system reference
+4. [unified-xml-content-system.md](unified-xml-content-system.md) - Consolidated XML content system
 
 ## Core Documentation
 
 | Document | Description | Status |
 |----------|------------|--------|
-| [System Map](system-map.md) | Complete file-level overview of the system architecture | ✅ Maintained |
+| [Unified Agent System](unified-agent-system.md) | Consolidated agent system reference | ✅ Maintained |
+| [Unified XML Content System](unified-xml-content-system.md) | Consolidated XML content system | ✅ Maintained |
+| [System Map](system-map.md) | Complete file-level overview of system architecture | ✅ Maintained |
 | [Tool Implementation Map](tool-implementation-map.md) | Guide for implementing new tools | ✅ Maintained |
-| [Agent System Reference](agent-system-reference.md) | Reference to comprehensive agent system documentation | ✅ Maintained |
-| [XML Content System](../xml-content-system/README.md) | Comprehensive guide to the XML blog formatting system | ✅ Maintained |
-| [User Guide](user-guide.md) | End-user guide for using MemberPress AI Assistant | ✅ Maintained |
-| [Developer Guide](developer-guide.md) | Technical guide for developers | ✅ Maintained |
-| [Documentation Map](documentation-map.md) | Visual map of all documentation resources | ✅ Maintained |
+| [Agent System Reference](agent-system-reference.md) | Reference to comprehensive agent system docs | ✅ Maintained |
+| [XML Content System](../xml-content-system/README.md) | Comprehensive guide to XML formatting | ✅ Maintained |
+| [Features Index](features-index.md) | Comprehensive list of all features | ✅ Maintained |
+| [Documentation Categories](documentation-categories.md) | Documentation organized by type | ✅ Maintained |
+| [Documentation Map](documentation-map.md) | Visual map of documentation resources | ✅ Maintained |
 | [Implementation Status](implementation-status.md) | Current status of all features | ✅ Maintained |
 
 ## Implemented Features
