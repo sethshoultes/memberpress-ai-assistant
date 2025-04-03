@@ -153,31 +153,25 @@ var MPAI_Formatters = (function($) {
                 }
             }
             
-            // Need to handle XML both inside and outside code blocks
+            // ========================
+            // XML DETECTION DISABLED IN CHAT FORMATTERS
+            // This is now handled entirely by mpai-blog-formatter.js
+            // which uses addCreatePostButton instead
+            // ========================
             
-            // First, try to extract XML from code blocks
+            // We're keeping code block detection for backwards compatibility
+            // but not doing anything with it
+            
             let xmlCodeBlockContent = null;
             content = content.replace(/```xml\s*([\s\S]*?)```/g, function(match, xmlCode) {
-                if (xmlCode.includes('<wp-post') && xmlCode.includes('</wp-post>')) {
-                    xmlCodeBlockContent = xmlCode;
-                    
-                    if (window.mpaiLogger) {
-                        window.mpaiLogger.info('Found XML in code block', 'ui', {
-                            preview: xmlCode.substring(0, 50) + '...',
-                            length: xmlCode.length
-                        });
-                    }
-                    
-                    // Extract the XML for processing but keep the code block in the content
-                    return match;
-                }
+                // Just return the match without processing
                 return match;
             });
             
-            // Then check if content contains wp-post tags outside of code blocks
-            if ((content.includes('<wp-post') && content.includes('</wp-post>')) || xmlCodeBlockContent) {
+            // DISABLED - XML handling moved to mpai-blog-formatter.js
+            if (false) { // This condition will never be true, effectively disabling this code
                 if (window.mpaiLogger) {
-                    window.mpaiLogger.info('XML blog post content detected', 'ui');
+                    window.mpaiLogger.info('XML detection disabled in chat formatters', 'ui');
                 }
                 
                 // Pre-process the content to protect XML from other formatters

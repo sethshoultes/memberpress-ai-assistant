@@ -132,39 +132,135 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             return;
         }
         
-        // Check if the content contains XML blog post format
-        if (content.includes('<wp-post>') && content.includes('</wp-post>')) {
+        // Check if the message already has a post preview card
+        if ($message.find('.mpai-post-preview-card').length > 0) {
+            return;
+        }
+        
+        // Check if content contains XML blog post format (directly or in code blocks)
+        let hasXml = false;
+        let xmlContent = '';
+        
+        // Check for XML in code blocks first
+        const codeBlockRegex = /```(?:xml)?\s*([\s\S]*?)```/g;
+        let match;
+        while ((match = codeBlockRegex.exec(content)) !== null) {
+            if (match[1] && match[1].includes('<wp-post') && match[1].includes('</wp-post>')) {
+                xmlContent = match[1];
+                hasXml = true;
+                console.log("AddCreatePostButton: Found XML in code block", xmlContent.substring(0, 100) + "...");
+                break;
+            }
+        }
+        
+        // If not found in code blocks, check for direct XML
+        if (!hasXml && content.includes('<wp-post>') && content.includes('</wp-post>')) {
+            // Extract the XML content
+            const startPos = content.indexOf('<wp-post>');
+            const endPos = content.lastIndexOf('</wp-post>') + 10; // 10 = length of "</wp-post>"
+            xmlContent = content.substring(startPos, endPos);
+            hasXml = true;
+            console.log("AddCreatePostButton: Found direct XML", xmlContent.substring(0, 100) + "...");
+        }
+        
+        // If we found XML content
+        if (hasXml) {
             // Don't add if buttons are already present
             if ($message.find('.mpai-create-post-button').length > 0) {
                 return;
             }
             
-            // Create a button container
-            const $buttonContainer = $('<div>', {
-                'class': 'mpai-content-actions'
+            // Extract title and excerpt for a nicer display
+            let title = "New Blog Post";
+            let excerpt = "Blog post content created with AI Assistant";
+            let postType = "post";
+            
+            // Try to extract title
+            const titleMatch = xmlContent.match(/<post-title[^>]*>([\s\S]*?)<\/post-title>/i);
+            if (titleMatch && titleMatch[1]) {
+                title = titleMatch[1].trim();
+            }
+            
+            // Try to extract excerpt
+            const excerptMatch = xmlContent.match(/<post-excerpt[^>]*>([\s\S]*?)<\/post-excerpt>/i);
+            if (excerptMatch && excerptMatch[1]) {
+                excerpt = excerptMatch[1].trim();
+            } else {
+                // If no excerpt, try to get first paragraph from content
+                const contentMatch = xmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
+                if (contentMatch && contentMatch[1]) {
+                    // Find first paragraph or block
+                    const firstBlockMatch = contentMatch[1].match(/<block[^>]*>([\s\S]*?)<\/block>/i);
+                    if (firstBlockMatch && firstBlockMatch[1]) {
+                        excerpt = firstBlockMatch[1].trim();
+                        // Limit length
+                        if (excerpt.length > 150) {
+                            excerpt = excerpt.substring(0, 147) + '...';
+                        }
+                    }
+                }
+            }
+            
+            // Check for post type
+            const typeMatch = xmlContent.match(/<post-type[^>]*>([\s\S]*?)<\/post-type>/i);
+            if (typeMatch && typeMatch[1] && typeMatch[1].trim().toLowerCase() === 'page') {
+                postType = "page";
+            }
+            
+            // Create the preview card
+            const $previewCard = $(`
+                <div class="mpai-post-preview-card">
+                    <div class="mpai-post-preview-header">
+                        <div class="mpai-post-preview-type">${postType === "page" ? "Page" : "Blog Post"}</div>
+                        <div class="mpai-post-preview-icon">${postType === "page" ? '<span class="dashicons dashicons-page"></span>' : '<span class="dashicons dashicons-admin-post"></span>'}</div>
+                    </div>
+                    <h3 class="mpai-post-preview-title">${title}</h3>
+                    <div class="mpai-post-preview-excerpt">${excerpt}</div>
+                    <div class="mpai-post-preview-actions">
+                        <button class="mpai-create-post-button" data-content-type="${postType}">
+                            Create ${postType === "page" ? "Page" : "Post"}
+                        </button>
+                        <button class="mpai-toggle-xml-button">View XML</button>
+                    </div>
+                    <div class="mpai-post-xml-content" style="display:none;">
+                        <pre>${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                    </div>
+                </div>
+            `);
+            
+            // Store the raw XML content for use by the button handler
+            $previewCard.data('xml-content', xmlContent);
+            
+            // Add toggle XML button handler
+            $previewCard.find('.mpai-toggle-xml-button').on('click', function(e) {
+                e.preventDefault();
+                const $xmlContent = $previewCard.find('.mpai-post-xml-content');
+                
+                if ($xmlContent.is(':visible')) {
+                    $xmlContent.slideUp(200);
+                    $(this).text('View XML');
+                } else {
+                    $xmlContent.slideDown(200);
+                    $(this).text('Hide XML');
+                }
             });
             
-            // Determine if this is a blog post or a page
-            const isPage = content.toLowerCase().includes('<post-type>page</post-type>') || 
-                          (content.toLowerCase().includes('page') && 
-                           !content.toLowerCase().includes('post'));
-            
-            // Create button
-            const $createButton = $('<button>', {
-                'class': 'mpai-create-post-button',
-                'data-content-type': isPage ? 'page' : 'post'
-            }).text(isPage ? 'Create Page' : 'Create Post');
-            
-            // Add click handler to execute wp_api tool
-            $createButton.on('click', function() {
-                createPostFromXML(content, $(this).data('content-type'));
+            // Add create post button handler
+            $previewCard.find('.mpai-create-post-button').on('click', function(e) {
+                e.preventDefault();
+                const clickedContentType = $(this).data('content-type');
+                const actualXmlContent = $previewCard.data('xml-content');
+                
+                console.log("Create post button clicked");
+                console.log("Content type:", clickedContentType);
+                console.log("XML content preview:", actualXmlContent.substring(0, 150) + "...");
+                
+                // Use the createPostFromXML function with the raw XML content
+                createPostFromXML(actualXmlContent, clickedContentType);
             });
             
-            // Add button to container
-            $buttonContainer.append($createButton);
-            
-            // Add container to message
-            $message.append($buttonContainer);
+            // Add the preview card to the message
+            $message.append($previewCard);
         }
     }
     
