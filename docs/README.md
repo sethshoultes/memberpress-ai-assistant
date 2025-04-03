@@ -1,6 +1,8 @@
 # MemberPress AI Assistant Documentation
 
-Welcome to the MemberPress AI Assistant documentation hub. This directory contains comprehensive documentation organized by implementation status and purpose.
+Welcome to the MemberPress AI Assistant documentation hub. This directory contains comprehensive documentation organized by implementation status and purpose. For new developers, please see the [_0_START_HERE_.md](../_0_START_HERE_.md) and [_1_AGENTIC_SYSTEMS_.md](../_1_AGENTIC_SYSTEMS_.md) files in the project root for the most up-to-date developer guidance.
+
+See our [Documentation Consolidation Plan](./DOCUMENTATION_PLAN.md) for information about ongoing documentation improvements.
 
 ## Documentation Structure
 
