@@ -30,6 +30,7 @@ Future planned features are documented in the [roadmap](roadmap/) directory, inc
 - Agentic security framework
 - WordPress security integration
 - Enhanced content creation tools
+- Blog post XML formatting and membership features ([implementation plan](blog-xml-membership-implementation-plan.md))
 
 ### Archive
 
