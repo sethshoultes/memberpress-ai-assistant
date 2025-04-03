@@ -175,6 +175,11 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
      * @param {string} contentType - The type of content ('post' or 'page')
      */
     function createPostFromXML(content, contentType) {
+        // CRITICAL ERROR DEBUG - Log the raw content
+        console.log("RAW CONTENT FOR POST CREATION:", content);
+        console.log("CONTENT TYPE:", contentType);
+        console.log("CONTENT LENGTH:", content.length);
+        
         // Log the action
         if (window.mpaiLogger) {
             window.mpaiLogger.info(`Creating ${contentType} from XML content`, 'tool_usage', {
@@ -183,11 +188,30 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             });
         }
         
-        // Completely redesigned XML extraction strategy that's more robust
-        let xmlContent = '';
+        // Check for empty content
+        if (!content || content.trim() === '') {
+            alert('No content provided. Please try again.');
+            if (window.mpaiLogger) {
+                window.mpaiLogger.error('Empty content provided to createPostFromXML', 'tool_usage');
+            }
+            return;
+        }
         
-        // Handle HTML-escaped content first (for copy-pasted or manipulated content)
-        // This converts &lt;wp-post&gt; back to <wp-post> for processing
+        // Check for code block format and extract
+        const codeBlockRegex = /```(?:xml)?\s*([\s\S]*?)```/g;
+        let codeBlockMatch;
+        while ((codeBlockMatch = codeBlockRegex.exec(content)) !== null) {
+            if (codeBlockMatch[1] && codeBlockMatch[1].includes('<wp-post') && codeBlockMatch[1].includes('</wp-post>')) {
+                content = codeBlockMatch[1]; // Use the content from inside the code block
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info('Extracted XML from code block', 'tool_usage', { length: content.length });
+                }
+                console.log("EXTRACTED FROM CODE BLOCK:", content);
+                break;
+            }
+        }
+        
+        // Handle HTML-escaped content
         if (content.includes('&lt;wp-post') && content.includes('&lt;/wp-post&gt;')) {
             if (window.mpaiLogger) {
                 window.mpaiLogger.info('Detected HTML-escaped XML content, unescaping', 'tool_usage');
@@ -198,90 +222,58 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             tempDiv.innerHTML = content;
             content = tempDiv.textContent || tempDiv.innerText || '';
             
+            console.log("AFTER HTML UNESCAPING:", content);
+            
             if (window.mpaiLogger) {
                 window.mpaiLogger.debug('Unescaped content length: ' + content.length, 'tool_usage');
             }
         }
         
-        // Improved extraction with better handling of attributes and edge cases
-        // First, try a more precise regex that handles attributes
-        const fullXmlRegex = /<wp-post(?:\s+[^>]*?)?>[\s\S]*?<\/wp-post>/;
-        const xmlMatch = content.match(fullXmlRegex);
+        // Extreme fallback - if content doesn't have wp-post tags, wrap it
+        if (!content.includes('<wp-post') || !content.includes('</wp-post>')) {
+            console.log("NO WP-POST TAGS FOUND, WRAPPING CONTENT");
+            
+            // Check if it looks like an XML fragment with post-title and post-content
+            if (content.includes('<post-title>') && content.includes('<post-content>')) {
+                content = '<wp-post>\n' + content + '\n</wp-post>';
+                console.log("WRAPPED XML FRAGMENT:", content);
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info('Found XML fragment, wrapped in wp-post tags', 'tool_usage');
+                }
+            }
+        }
         
-        if (xmlMatch) {
-            xmlContent = xmlMatch[0];
+        // Extract the XML section
+        let xmlContent = '';
+        
+        // SIMPLER APPROACH: Just find from first <wp-post to last </wp-post>
+        const startPos = content.indexOf('<wp-post');
+        const endPos = content.lastIndexOf('</wp-post>');
+        
+        if (startPos >= 0 && endPos > startPos) {
+            xmlContent = content.substring(startPos, endPos + 10); // 10 = length of </wp-post>
+            console.log("EXTRACTED WITH SIMPLE APPROACH:", xmlContent);
             if (window.mpaiLogger) {
-                window.mpaiLogger.info('Extracted XML content with advanced regex', 'tool_usage');
+                window.mpaiLogger.info('Extracted XML with simple position-based approach', 'tool_usage', {
+                    startPos: startPos,
+                    endPos: endPos,
+                    length: xmlContent.length
+                });
             }
         } else {
-            // Fallback: Try a manual extraction method
+            // Last desperate attempt - just use the whole content and hope it works
+            console.log("LAST RESORT: USING ENTIRE CONTENT");
+            xmlContent = content;
             if (window.mpaiLogger) {
-                window.mpaiLogger.info('Advanced regex failed, trying manual extraction', 'tool_usage');
-            }
-            
-            // Account for potential whitespace and attributes in opening tag
-            const openTagPattern = /<wp-post[^>]*>/;
-            const openMatch = content.match(openTagPattern);
-            
-            if (openMatch) {
-                const openTag = openMatch[0];
-                const openTagPos = content.indexOf(openTag);
-                const closeTagPos = content.indexOf('</wp-post>', openTagPos + openTag.length);
-                
-                if (closeTagPos > openTagPos) {
-                    xmlContent = content.substring(openTagPos, closeTagPos + 10); // 10 = length of '</wp-post>'
-                    
-                    if (window.mpaiLogger) {
-                        window.mpaiLogger.info('Extracted XML content with manual extraction', 'tool_usage');
-                    }
-                }
-            } else {
-                // Last resort: Basic position-based extraction
-                const startPos = content.indexOf('<wp-post');
-                if (startPos >= 0) {
-                    const tagEndPos = content.indexOf('>', startPos);
-                    if (tagEndPos > startPos) {
-                        const closePos = content.indexOf('</wp-post>', tagEndPos);
-                        if (closePos > tagEndPos) {
-                            xmlContent = content.substring(startPos, closePos + 10);
-                            
-                            if (window.mpaiLogger) {
-                                window.mpaiLogger.info('Extracted XML content with basic position method', 'tool_usage');
-                            }
-                        }
-                    }
-                }
+                window.mpaiLogger.warn('Using entire content as XML', 'tool_usage');
             }
         }
         
-        // If we still couldn't extract the XML, make one final attempt with loose matching
-        if (!xmlContent) {
+        // If we still don't have valid XML content, show error
+        if (!xmlContent.includes('<wp-post') || !xmlContent.includes('</wp-post>')) {
+            console.log("FINAL CONTENT DOESN'T HAVE WP-POST TAGS:", xmlContent);
             if (window.mpaiLogger) {
-                window.mpaiLogger.warn('Standard extraction methods failed, trying loose pattern matching', 'tool_usage');
-            }
-            
-            // Look for any content between wp-post tags with relaxed pattern
-            const startTag = content.match(/<wp-post.*?>/i);
-            const endTag = content.match(/<\/wp-post.*?>/i);
-            
-            if (startTag && endTag) {
-                const startPos = content.indexOf(startTag[0]);
-                const endPos = content.indexOf(endTag[0], startPos) + endTag[0].length;
-                
-                if (startPos >= 0 && endPos > startPos) {
-                    xmlContent = content.substring(startPos, endPos);
-                    
-                    if (window.mpaiLogger) {
-                        window.mpaiLogger.info('Extracted XML content with loose pattern matching', 'tool_usage');
-                    }
-                }
-            }
-        }
-        
-        // If we still couldn't extract the XML, show an error
-        if (!xmlContent) {
-            if (window.mpaiLogger) {
-                window.mpaiLogger.error('Failed to extract XML content with all approaches', 'tool_usage');
+                window.mpaiLogger.error('Failed to extract valid XML with wp-post tags', 'tool_usage');
             }
             
             // Show a more detailed error message

@@ -119,6 +119,12 @@ var MPAI_Formatters = (function($) {
                     const contentType = $(this).data('content-type');
                     const xmlContent = decodeURIComponent($(this).data('xml'));
                     
+                    // DIRECT DEBUG TO CONSOLE
+                    console.log("CREATE POST BUTTON CLICKED");
+                    console.log("Content Type:", contentType);
+                    console.log("XML Content:", xmlContent.substring(0, 200) + '...');
+                    console.log("XML Content Length:", xmlContent.length);
+                    
                     // Debug log the XML content
                     if (window.mpaiLogger) {
                         window.mpaiLogger.debug('XML content from button click', 'ui', {
@@ -132,6 +138,7 @@ var MPAI_Formatters = (function($) {
                     if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.createPostFromXML === 'function') {
                         window.MPAI_BlogFormatter.createPostFromXML(xmlContent, contentType);
                     } else {
+                        console.error("Blog formatter module not available!");
                         alert('Blog formatter module not available. Please try again later.');
                         if (window.mpaiLogger) {
                             window.mpaiLogger.error('Blog formatter module not available', 'ui');
