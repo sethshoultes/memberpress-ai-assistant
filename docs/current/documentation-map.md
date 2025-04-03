@@ -17,16 +17,20 @@ memberpress-ai-assistant/
 │   │   ├── README.md            # Index of current documentation
 │   │   ├── system-map.md        # System architecture overview
 │   │   ├── tool-implementation-map.md # Tool implementation guide
+│   │   ├── unified-agent-system.md    # Consolidated agent system docs
+│   │   ├── unified-xml-content-system.md # Consolidated XML content docs
 │   │   ├── agent-system-reference.md  # Reference to agent system docs
 │   │   ├── blog-xml-formatting-implementation.md  # Blog XML formatting
-│   │   ├── ...                  # Other feature documentation
+│   │   ├── documentation-consolidation-results.md # Phase 1 results
+│   │   ├── phase-2-documentation-consolidation-results.md # Phase 2 results
 │   │   ├── documentation-map.md # This file
 │   │   └── implementation-status.md # Feature status overview
 │   ├── xml-content-system/      # XML Content System docs
 │   │   ├── README.md            # Comprehensive system documentation
 │   │   └── examples/            # XML format examples
 │   │       ├── blog-post-example.xml
-│   │       └── membership-post-example.xml
+│   │       ├── page-example.xml
+│   │       └── complex-post-example.xml
 │   ├── roadmap/                 # Planned features
 │   │   ├── README.md            # Index of planned features
 │   │   └── ...                  # Feature planning documents
@@ -46,9 +50,10 @@ memberpress-ai-assistant/
 
 ### For Agent System Development
 
-1. Read [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) - Comprehensive guide
-2. Use [agent-system-reference.md](agent-system-reference.md) - Quick reference
-3. Study [command-validation-agent.md](command-validation-agent.md) - Example agent implementation
+1. Start with [unified-agent-system.md](unified-agent-system.md) - Consolidated reference
+2. Read [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) - Comprehensive guide
+3. Use [agent-system-reference.md](agent-system-reference.md) - Quick reference
+4. Study [command-validation-agent.md](command-validation-agent.md) - Example agent implementation
 
 ### For Tool Development
 
@@ -58,11 +63,12 @@ memberpress-ai-assistant/
 
 ### For Content Systems
 
-1. Start with [XML Content System Guide](../xml-content-system/README.md) - Comprehensive XML system documentation
-2. Study [blog-xml-formatting-implementation.md](blog-xml-formatting-implementation.md) - XML formatting implementation
-3. Review [blog-xml-membership-implementation-plan.md](blog-xml-membership-implementation-plan.md) - MemberPress integration
-4. Reference [CONTENT_MARKER_SYSTEM.md](CONTENT_MARKER_SYSTEM.md) - Content type detection
-5. Explore [XML Examples](../xml-content-system/examples/) - Working examples of the format
+1. Start with [unified-xml-content-system.md](unified-xml-content-system.md) - Consolidated XML documentation
+2. Explore [XML Content System Guide](../xml-content-system/README.md) - Comprehensive system documentation
+3. Study [blog-xml-formatting-implementation.md](blog-xml-formatting-implementation.md) - Implementation details
+4. Review [blog-xml-membership-implementation-plan.md](blog-xml-membership-implementation-plan.md) - MemberPress integration
+5. Reference [CONTENT_MARKER_SYSTEM.md](CONTENT_MARKER_SYSTEM.md) - Content type detection
+6. Examine [XML Examples](../xml-content-system/examples/) - Working examples of the format
 
 ### For UI Development
 
@@ -100,6 +106,13 @@ memberpress-ai-assistant/
                                  │    CHANGELOG.md    │
                                  └────────────────────┘
 ```
+
+## Documentation Consolidation Results
+
+The documentation has gone through a consolidation process to improve organization and reduce duplication:
+
+- [Phase 1 Results](documentation-consolidation-results.md) - File organization and reference creation
+- [Phase 2 Results](phase-2-documentation-consolidation-results.md) - Content consolidation and cross-references
 
 ## Documentation Status Indicators
 
