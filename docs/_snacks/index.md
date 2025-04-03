@@ -53,7 +53,7 @@ This document provides a categorized index of all Scooby Snacks - detailed docum
 
 | Snack Title | Date | Version | Description |
 |-------------|------|---------|-------------|
-| *No entries yet* |  |  |  |
+| [Agent Specialization Scoring System](agents/agent-specialization-scoring.md) | 2025-04-03 | 1.6.0 | Implemented weighted confidence scoring system for agent specialization |
 
 ## Content System
 
