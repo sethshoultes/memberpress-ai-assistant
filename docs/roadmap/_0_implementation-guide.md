@@ -8,12 +8,30 @@ This document provides a step-by-step guide for implementing the enhancements ou
 2. **Core Performance Optimizations** (Secondary focus)
 3. **Essential Testing Framework** (Supporting focus)
 
+## Related Roadmap Documents
+
+When implementing these enhancements, consider the following related roadmap documents:
+
+1. **[agent-system-spec.md](./agent-system-spec.md)** - Original detailed specification for the agent system architecture
+2. **[agentic-security-framework.md](./agentic-security-framework.md)** - Security considerations that must be incorporated
+3. **[new-tools-enhancement-plan.md](./new-tools-enhancement-plan.md)** - New tools that will leverage the enhanced agent system
+4. **[content-tools-specification.md](./content-tools-specification.md)** - Content-specific tools requiring agent system support
+5. **[integrated-security-implementation-plan.md](./integrated-security-implementation-plan.md)** - Combined security approach
+6. **[wp-security-integration-plan.md](./wp-security-integration-plan.md)** - WordPress security features to incorporate
+
+Key considerations from these documents:
+
+- **Security validation** must be integrated into agent discovery mechanism (from agentic-security-framework.md)
+- **Tool registry enhancements** should anticipate new tools specified in new-tools-enhancement-plan.md
+- **Performance optimizations** must account for the specialized content tools in content-tools-specification.md
+- **Testing framework** should include security tests outlined in integrated-security-implementation-plan.md
+
 ## Implementation Steps
 
 ### Phase 1: Agent System Foundation (Weeks 1-2)
 
 #### 1.1 Agent Discovery Mechanism
-*Reference: [_1_agent-system-enhancement-plan.md](./docs/roadmap/_1_agent-system-enhancement-plan.md) - Section 1.1*
+*Reference: [_1_agent-system-enhancement-plan.md](./_1_agent-system-enhancement-plan.md) - Section 1.1*
 
 1. Create a dynamic discovery method in `class-mpai-agent-orchestrator.php`:
    ```php
@@ -37,12 +55,44 @@ This document provides a step-by-step guide for implementing the enhancements ou
          $agent_id = strtolower(str_replace('MPAI_', '', $class_name));
          $agent_id = str_replace('_agent', '', $agent_id);
          
-         $this->register_agent($agent_id, $agent);
+         // Apply security validation (from agentic-security-framework.md)
+         if ($this->validate_agent($agent_id, $agent)) {
+           $this->register_agent($agent_id, $agent);
+         } else {
+           $this->logger->warning("Agent failed security validation: " . $agent_id);
+         }
        }
      }
      
      // Apply filter to allow modifications
      $this->agents = apply_filters('mpai_available_agents', $this->agents);
+   }
+   
+   /**
+    * Validate agent according to security framework
+    * 
+    * @param string $agent_id
+    * @param object $agent
+    * @return bool Whether agent passes validation
+    */
+   private function validate_agent($agent_id, $agent) {
+     // Check agent has required methods
+     if (!method_exists($agent, 'get_capabilities') ||
+         !method_exists($agent, 'get_name') ||
+         !method_exists($agent, 'get_description')) {
+       return false;
+     }
+     
+     // Check agent has valid capabilities structure
+     $capabilities = $agent->get_capabilities();
+     if (!is_array($capabilities)) {
+       return false;
+     }
+     
+     // More validation checks as per agentic-security-framework.md
+     // ...
+     
+     return true;
    }
    ```
 
@@ -65,7 +115,7 @@ This document provides a step-by-step guide for implementing the enhancements ou
    ```
 
 #### 1.2 Create Unit Test Setup
-*Reference: [_3_testing-stability-plan.md](./docs/roadmap/_3_testing-stability-plan.md) - Section 3.1*
+*Reference: [_3_testing-stability-plan.md](./_3_testing-stability-plan.md) - Section 3.1*
 
 1. Create the basic PHPUnit setup files:
    - `phpunit.xml` - Configuration for PHPUnit
@@ -87,11 +137,23 @@ This document provides a step-by-step guide for implementing the enhancements ou
        $this->assertArrayHasKey('memberpress', $agents);
        $this->assertArrayHasKey('command_validation', $agents);
      }
+     
+     // Add security-specific tests from integrated-security-implementation-plan.md
+     public function testAgentSecurityValidation() {
+       // Test with an agent missing required methods
+       $mock_agent = $this->createMock(MPAI_Agent::class);
+       // Configure mock to fail validation
+       
+       $orchestrator = new MPAI_Agent_Orchestrator();
+       $result = $this->invokeMethod($orchestrator, 'validate_agent', ['test_agent', $mock_agent]);
+       
+       $this->assertFalse($result);
+     }
    }
    ```
 
 #### 1.3 Implement Tool Lazy-Loading
-*Reference: [_2_performance-optimization-plan.md](./docs/roadmap/_2_performance-optimization-plan.md) - Section 2.1*
+*Reference: [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md) - Section 2.1*
 
 1. Modify `class-mpai-tool-registry.php` to support lazy loading:
    ```php
@@ -159,9 +221,26 @@ This document provides a step-by-step guide for implementing the enhancements ou
    }
    ```
 
-2. Update the `register_tools()` method in `class-mpai-agent-orchestrator.php` to use definitions:
+2. Update the `register_tools()` method in `class-mpai-agent-orchestrator.php` to use definitions and anticipate new tools:
    ```php
    private function register_tools() {
+     // Register tools from new-tools-enhancement-plan.md
+     
+     // 1. Content Generation Tools
+     $this->register_tool_definition(
+       'content_generator',
+       'MPAI_Content_Generator_Tool',
+       plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-content-generator-tool.php'
+     );
+     
+     // 2. Analytics Tools
+     $this->register_tool_definition(
+       'analytics',
+       'MPAI_Analytics_Tool',
+       plugin_dir_path(dirname(__FILE__)) . 'tools/implementations/class-mpai-analytics-tool.php'
+     );
+     
+     // Standard tools
      // Register CommandTool definition
      if (class_exists('MPAI_Command_Tool')) {
        $this->tool_registry->register_tool_definition(
@@ -185,7 +264,7 @@ This document provides a step-by-step guide for implementing the enhancements ou
 ### Phase 2: Agent Communication and Scoring (Weeks 3-4)
 
 #### 2.1 Agent Specialization Scoring
-*Reference: [_1_agent-system-enhancement-plan.md](./docs/roadmap/_1_agent-system-enhancement-plan.md) - Section 1.2*
+*Reference: [_1_agent-system-enhancement-plan.md](./_1_agent-system-enhancement-plan.md) - Section 1.2*
 
 1. Add scoring method to `interface-mpai-agent.php`:
    ```php
@@ -260,7 +339,7 @@ This document provides a step-by-step guide for implementing the enhancements ou
    ```
 
 #### 2.2 Inter-Agent Communication Protocol
-*Reference: [_1_agent-system-enhancement-plan.md](./docs/roadmap/_1_agent-system-enhancement-plan.md) - Section 1.3*
+*Reference: [_1_agent-system-enhancement-plan.md](./_1_agent-system-enhancement-plan.md) - Section 1.3*
 
 1. Define message format in new file `includes/class-mpai-agent-message.php`:
    ```php
@@ -324,8 +403,41 @@ This document provides a step-by-step guide for implementing the enhancements ou
        $handoff_data
      );
      
+     // Security validation from agentic-security-framework.md
+     if (!$this->validate_agent_message($message)) {
+       $this->logger->error("Agent message failed security validation during handoff");
+       throw new Exception("Security validation failed for agent message");
+     }
+     
      // Rest of handoff logic using message format
      // ...
+   }
+   
+   /**
+    * Validate agent message for security
+    *
+    * @param MPAI_Agent_Message $message
+    * @return bool
+    */
+   private function validate_agent_message($message) {
+     // Check required fields
+     if (empty($message->get_sender()) || empty($message->get_receiver())) {
+       return false;
+     }
+     
+     // Check that agents exist
+     if (!isset($this->agents[$message->get_sender()]) || 
+         !isset($this->agents[$message->get_receiver()])) {
+       return false;
+     }
+     
+     // Check for dangerous content patterns
+     $content = $message->get_content();
+     if (preg_match('/(?:<script|javascript:|eval\(|base64)/i', $content)) {
+       return false;
+     }
+     
+     return true;
    }
    ```
 
@@ -353,7 +465,7 @@ This document provides a step-by-step guide for implementing the enhancements ou
    ```
 
 #### 2.3 Response Caching Implementation
-*Reference: [_2_performance-optimization-plan.md](./docs/roadmap/_2_performance-optimization-plan.md) - Section 1.1*
+*Reference: [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md) - Section 1.1*
 
 1. Create new response cache class `includes/class-mpai-response-cache.php`:
    ```php
@@ -464,7 +576,7 @@ This document provides a step-by-step guide for implementing the enhancements ou
    }
    ```
 
-2. Integrate with Anthropic class:
+2. Integrate with Anthropic class and add content-specific caching rules:
    ```php
    // Add to class-mpai-anthropic.php
    
@@ -484,20 +596,28 @@ This document provides a step-by-step guide for implementing the enhancements ou
    }
    
    public function generate_completion($prompt, $options = []) {
-     // Generate cache key
-     $cache_key = 'anthropic_' . md5($prompt . json_encode($options));
+     // Disable caching for content creation requests (from content-tools-specification.md)
+     $skip_cache = false;
+     if (isset($options['type']) && $options['type'] === 'content_creation') {
+       $skip_cache = true;
+     }
      
-     // Check cache
-     $cached_response = $this->cache->get($cache_key);
-     if ($cached_response !== null) {
-       return $cached_response;
+     if (!$skip_cache) {
+       // Generate cache key
+       $cache_key = 'anthropic_' . md5($prompt . json_encode($options));
+       
+       // Check cache
+       $cached_response = $this->cache->get($cache_key);
+       if ($cached_response !== null) {
+         return $cached_response;
+       }
      }
      
      // Existing API call code
      // ...
      
-     // Cache the successful response
-     if (is_array($response) && isset($response['success']) && $response['success']) {
+     // Cache the successful response if not skipped
+     if (!$skip_cache && is_array($response) && isset($response['success']) && $response['success']) {
        $this->cache->set($cache_key, $response);
      }
      
@@ -508,21 +628,21 @@ This document provides a step-by-step guide for implementing the enhancements ou
 ### Phase 3: Memory Management and Testing (Weeks 5-6)
 
 #### 3.1 Agent Memory Management System
-*Reference: [_1_agent-system-enhancement-plan.md](./docs/roadmap/_1_agent-system-enhancement-plan.md) - Section 1.4*
+*Reference: [_1_agent-system-enhancement-plan.md](./_1_agent-system-enhancement-plan.md) - Section 1.4*
 
 1. Create new memory manager class `includes/class-mpai-memory-manager.php`
 2. Implement memory storage with importance-based retention
 3. Add conversation context windows and retrieval capabilities
 
 #### 3.2 Unit Tests for Tool Execution
-*Reference: [_3_testing-stability-plan.md](./docs/roadmap/_3_testing-stability-plan.md) - Section 1.2*
+*Reference: [_3_testing-stability-plan.md](./_3_testing-stability-plan.md) - Section 1.2*
 
 1. Create test files for tool registry
 2. Add tests for tool validation
 3. Implement tests for tool discovery
 
 #### 3.3 PHP Info & Plugin Status Caching
-*Reference: [_2_performance-optimization-plan.md](./docs/roadmap/_2_performance-optimization-plan.md) - Section 5.1*
+*Reference: [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md) - Section 5.1*
 
 1. Create a dedicated system information cache
 2. Add timed refresh mechanism
@@ -531,21 +651,21 @@ This document provides a step-by-step guide for implementing the enhancements ou
 ### Phase 4: UI Improvements and Error Handling (Weeks 7-8)
 
 #### 4.1 Standardized Error System
-*Reference: [_3_testing-stability-plan.md](./docs/roadmap/_3_testing-stability-plan.md) - Section 1.1*
+*Reference: [_3_testing-stability-plan.md](./_3_testing-stability-plan.md) - Section 1.1*
 
 1. Create unified error handling approach
 2. Implement standardized error objects
 3. Add context preservation in errors
 
 #### 4.2 UI Rendering Optimization
-*Reference: [_2_performance-optimization-plan.md](./docs/roadmap/_2_performance-optimization-plan.md) - Section 3.2*
+*Reference: [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md) - Section 3.2*
 
 1. Implement virtual scrolling for chat history
 2. Optimize DOM updates for message rendering
 3. Add throttling/debouncing for event handlers
 
 #### 4.3 Tool Result Caching
-*Reference: [_2_performance-optimization-plan.md](./docs/roadmap/_2_performance-optimization-plan.md) - Section 5.3*
+*Reference: [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md) - Section 5.3*
 
 1. Add caching for WP-CLI commands with static output
 2. Implement TTL-based invalidation for dynamic data
@@ -569,6 +689,16 @@ After each implementation step:
 2. Run relevant unit tests (once implemented)
 3. Check for any performance regressions
 4. Ensure all error cases are properly handled
+
+## Security Considerations
+
+Throughout implementation, incorporate security controls from `agentic-security-framework.md`:
+
+1. **Agent validation** - Validate all discovered agents for required methods and capabilities
+2. **Message validation** - Check inter-agent messages for unsafe content
+3. **Command sanitization** - Carefully validate and sanitize all commands before execution
+4. **Access restrictions** - Implement capability-based access controls for agent actions
+5. **Logging and monitoring** - Add comprehensive logging of agent activities
 
 ## Documentation Updates
 
