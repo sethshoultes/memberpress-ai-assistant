@@ -9,6 +9,10 @@
 - Configurable log retention settings with automated cleanup
 - Detailed error catalog with resolution steps for troubleshooting
 
+### Fixed
+- Fixed inconsistent test result display in System Diagnostics when using "Run All Phase One Tests" button
+- All test results (Agent Discovery, Lazy Loading, Response Cache, and Agent Messaging) now display consistently without requiring additional clicks
+
 ## [6.0.0] - 2024-04-01
 
 ### Added
