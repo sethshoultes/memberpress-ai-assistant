@@ -96,6 +96,47 @@ var MPAI_Formatters = (function($) {
             // This completely rewrites the XML handling to be more robust in all cases
             let xmlFound = false;
             
+            // Add event handler for toggle XML button if not already added
+            if (!window.mpaiXmlToggleHandlerAdded) {
+                $(document).on('click', '.mpai-toggle-xml-button', function(e) {
+                    e.preventDefault();
+                    const $card = $(this).closest('.mpai-post-preview-card');
+                    const $xmlContent = $card.find('.mpai-post-xml-content');
+                    
+                    if ($xmlContent.is(':visible')) {
+                        $xmlContent.slideUp(200);
+                        $(this).text('View XML');
+                    } else {
+                        $xmlContent.slideDown(200);
+                        $(this).text('Hide XML');
+                    }
+                });
+                
+                // Add event handler for create post button that uses our existing function
+                $(document).on('click', '.mpai-create-post-button', function(e) {
+                    e.preventDefault();
+                    
+                    const contentType = $(this).data('content-type');
+                    const xmlContent = decodeURIComponent($(this).data('xml'));
+                    
+                    // Use our existing function to create the post
+                    if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.createPostFromXML === 'function') {
+                        window.MPAI_BlogFormatter.createPostFromXML(xmlContent, contentType);
+                    } else {
+                        alert('Blog formatter module not available. Please try again later.');
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.error('Blog formatter module not available', 'ui');
+                        }
+                    }
+                });
+                
+                window.mpaiXmlToggleHandlerAdded = true;
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info('XML toggle handler added', 'ui');
+                }
+            }
+            
             // First check if content contains wp-post tags
             if (content.includes('<wp-post') && content.includes('</wp-post>')) {
                 if (window.mpaiLogger) {
@@ -152,26 +193,64 @@ var MPAI_Formatters = (function($) {
                         });
                     }
                     
-                    // Escape the XML content for safe display
-                    const escapedXml = xmlContent
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;');
+                    // Extract title and content for preview card
+                    let title = "New Blog Post";
+                    let excerpt = "Blog post content created with AI Assistant";
+                    let postType = "post";
                     
-                    // Add syntax highlighting for different parts of XML
-                    const highlightedXml = escapedXml
-                        // Highlight XML tags for all tag types (word chars and hyphens)
-                        .replace(/&lt;(\/?)([\w-]+)(&gt;|(\s+[^&]*?)&gt;)/g, function(match, slash, tag, rest) {
-                            return '&lt;<span class="xml-tag">' + slash + tag + '</span>' + rest;
-                        })
-                        // Highlight XML attributes
-                        .replace(/(\s+)([\w-]+)(="[^"]*")/g, function(match, space, attr, value) {
-                            return space + '<span class="xml-attr">' + attr + '</span>' + value;
-                        })
-                        // Highlight XML comments
-                        .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="xml-comment">$1</span>');
+                    // Try to extract title
+                    const titleMatch = xmlContent.match(/<post-title[^>]*>([\s\S]*?)<\/post-title>/i);
+                    if (titleMatch && titleMatch[1]) {
+                        title = titleMatch[1].trim();
+                    }
                     
-                    // Return with the XML wrapped in a display container
-                    return '<div class="xml-content-container"><pre class="xml-content">' + highlightedXml + '</pre></div>';
+                    // Try to extract excerpt
+                    const excerptMatch = xmlContent.match(/<post-excerpt[^>]*>([\s\S]*?)<\/post-excerpt>/i);
+                    if (excerptMatch && excerptMatch[1]) {
+                        excerpt = excerptMatch[1].trim();
+                    } else {
+                        // If no excerpt, try to get first paragraph from content
+                        const contentMatch = xmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
+                        if (contentMatch && contentMatch[1]) {
+                            // Find first paragraph or block
+                            const firstBlockMatch = contentMatch[1].match(/<block[^>]*>([\s\S]*?)<\/block>/i);
+                            if (firstBlockMatch && firstBlockMatch[1]) {
+                                excerpt = firstBlockMatch[1].trim();
+                                // Limit length
+                                if (excerpt.length > 150) {
+                                    excerpt = excerpt.substring(0, 147) + '...';
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Check for post type
+                    const typeMatch = xmlContent.match(/<post-type[^>]*>([\s\S]*?)<\/post-type>/i);
+                    if (typeMatch && typeMatch[1] && typeMatch[1].trim().toLowerCase() === 'page') {
+                        postType = "page";
+                    }
+                    
+                    // Escape the XML content for data attribute
+                    const escapedXml = encodeURIComponent(xmlContent);
+                    
+                    // Create a user-friendly preview card
+                    return `<div class="mpai-post-preview-card">
+                        <div class="mpai-post-preview-header">
+                            <div class="mpai-post-preview-type">${postType === "page" ? "Page" : "Blog Post"}</div>
+                            <div class="mpai-post-preview-icon">${postType === "page" ? '<span class="dashicons dashicons-page"></span>' : '<span class="dashicons dashicons-admin-post"></span>'}</div>
+                        </div>
+                        <h3 class="mpai-post-preview-title">${title}</h3>
+                        <div class="mpai-post-preview-excerpt">${excerpt}</div>
+                        <div class="mpai-post-preview-actions">
+                            <button class="mpai-create-post-button" data-content-type="${postType}" data-xml="${escapedXml}">
+                                Create ${postType === "page" ? "Page" : "Post"}
+                            </button>
+                            <button class="mpai-toggle-xml-button">View XML</button>
+                        </div>
+                        <div class="mpai-post-xml-content" style="display:none;">
+                            <pre>${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                        </div>
+                    </div>`;
                 });
                 
                 // Reinsert the processed XML blocks
