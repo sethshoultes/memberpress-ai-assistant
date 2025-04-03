@@ -1060,14 +1060,99 @@ class MPAI_Agent_Orchestrator {
 			return 'memberpress_management';
 		}
 		
-		// Use agent scoring system
+		// Use enhanced agent scoring system
+		$agent_scores = $this->get_agent_confidence_scores($message, $context);
+		
+		// Apply weighted selection algorithm with confidence threshold
+		$primary_agent = $this->select_agent_with_confidence($agent_scores, $message);
+		
+		// Log detailed scoring results for debugging
+		error_log("MPAI: Agent scores: " . json_encode($agent_scores));
+		error_log("MPAI: Selected primary agent: {$primary_agent} with score: {$agent_scores[$primary_agent]}");
+		
+		return $primary_agent;
+	}
+	
+	/**
+	 * Get confidence scores for all available agents
+	 * 
+	 * @param string $message User message
+	 * @param array $context Additional context
+	 * @return array Associative array of agent_id => confidence_score
+	 */
+	private function get_agent_confidence_scores($message, $context = []) {
 		$agent_scores = [];
 		
+		// Calculate scores for each agent
 		foreach ( $this->agents as $agent_id => $agent ) {
-			$score = $agent->evaluate_request($message, $context);
-			$agent_scores[$agent_id] = $score;
+			// Get base confidence score from agent's evaluate_request method
+			$base_score = $agent->evaluate_request($message, $context);
+			
+			// Apply contextual modifiers
+			$modified_score = $this->apply_contextual_modifiers($agent_id, $base_score, $message, $context);
+			
+			// Store the final score
+			$agent_scores[$agent_id] = $modified_score;
 		}
 		
+		return $agent_scores;
+	}
+	
+	/**
+	 * Apply contextual modifiers to the base confidence score
+	 * 
+	 * @param string $agent_id Agent identifier
+	 * @param int $base_score Base confidence score (0-100)
+	 * @param string $message User message
+	 * @param array $context Additional context
+	 * @return int Modified confidence score (0-100)
+	 */
+	private function apply_contextual_modifiers($agent_id, $base_score, $message, $context = []) {
+		$modified_score = $base_score;
+		
+		// 1. Conversation continuity - boost score if this is a follow-up to previous interaction
+		if (isset($context['memory']) && is_array($context['memory'])) {
+			// Check if the last interaction was with this agent
+			$last_memory = end($context['memory']);
+			if ($last_memory && 
+				isset($last_memory['result']['agent']) && 
+				$last_memory['result']['agent'] === $agent_id) {
+				// Apply a significant boost for conversation continuity
+				$modified_score += 15;
+			}
+		}
+		
+		// 2. Agent specialization - boost score for specialized agents over general ones
+		if ($agent_id !== 'memberpress') {
+			// Give a slight boost to specialized agents over the default agent
+			$modified_score += 5;
+		}
+		
+		// 3. Performance history - adjust based on past performance
+		if (isset($context['agent_performance']) && 
+			isset($context['agent_performance'][$agent_id])) {
+			$performance = $context['agent_performance'][$agent_id];
+			if (isset($performance['success_rate']) && $performance['success_rate'] > 0.8) {
+				// Boost for agents with high success rate
+				$modified_score += 10;
+			} elseif (isset($performance['success_rate']) && $performance['success_rate'] < 0.4) {
+				// Penalty for agents with low success rate
+				$modified_score -= 10;
+			}
+		}
+		
+		// Cap at 0-100 range
+		return max(0, min($modified_score, 100));
+	}
+	
+	/**
+	 * Select the most appropriate agent based on confidence scores
+	 * 
+	 * @param array $agent_scores Associative array of agent_id => confidence_score
+	 * @param string $message Original user message
+	 * @return string Selected agent ID
+	 */
+	private function select_agent_with_confidence($agent_scores, $message) {
 		// Find highest scoring agent
 		$highest_score = 0;
 		$primary_agent = 'memberpress'; // Default if no high scores
@@ -1079,9 +1164,51 @@ class MPAI_Agent_Orchestrator {
 			}
 		}
 		
-		// Log scores for debugging
-		error_log("MPAI: Agent scores: " . json_encode($agent_scores));
-		error_log("MPAI: Selected primary agent: {$primary_agent} with score: {$highest_score}");
+		// Apply confidence threshold - if no agent scores high enough, fall back to default
+		$confidence_threshold = 30; // Minimum score to be confident in selection
+		
+		if ($highest_score < $confidence_threshold) {
+			// No agent is confident enough, use default memberpress agent
+			error_log("MPAI: No agent met confidence threshold of {$confidence_threshold}, falling back to default");
+			return 'memberpress';
+		}
+		
+		// Check for agents with similar scores and apply tiebreaker logic
+		$close_scores = [];
+		$similarity_threshold = 10; // Consider scores within this range as similar
+		
+		foreach ($agent_scores as $agent_id => $score) {
+			if ($score >= ($highest_score - $similarity_threshold)) {
+				$close_scores[$agent_id] = $score;
+			}
+		}
+		
+		// If multiple agents have similar high scores, apply tiebreakers
+		if (count($close_scores) > 1) {
+			// Log tied agents
+			error_log("MPAI: Multiple agents with similar scores: " . json_encode($close_scores));
+			
+			// Tiebreaker 1: Prefer specialized agents over general ones
+			if (isset($close_scores['memberpress']) && count($close_scores) > 1) {
+				// If default agent is tied with specialized agents, prefer specialized
+				unset($close_scores['memberpress']);
+				$primary_agent = array_keys($close_scores)[0];
+			}
+			
+			// Tiebreaker 2: If still tied, use content analysis (length of message, complexity)
+			if (count($close_scores) > 1) {
+				// More complex, longer messages might benefit from more specialized agents
+				if (strlen($message) > 100) {
+					// For longer messages, prefer specialized over general agents
+					foreach (array_keys($close_scores) as $agent_id) {
+						if ($agent_id !== 'memberpress') {
+							$primary_agent = $agent_id;
+							break;
+						}
+					}
+				}
+			}
+		}
 		
 		return $primary_agent;
 	}

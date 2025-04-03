@@ -446,6 +446,26 @@ if (!defined('WPINC')) {
     </div>
     
     <div class="mpai-diagnostic-section">
+        <h4><?php _e('Agent System - Phase Two Test', 'memberpress-ai-assistant'); ?></h4>
+        <p><?php _e('Test the Phase Two enhancements to the Agent System including Agent Specialization Scoring.', 'memberpress-ai-assistant'); ?></p>
+        <div class="mpai-diagnostic-cards">
+            <div class="mpai-diagnostic-card">
+                <div class="mpai-diagnostic-header">
+                    <h4><?php _e('Agent Specialization Scoring', 'memberpress-ai-assistant'); ?></h4>
+                    <div class="mpai-status-indicator" id="agent-scoring-status-indicator">
+                        <span class="mpai-status-dot mpai-status-unknown"></span>
+                        <span class="mpai-status-text"><?php _e('Not Tested', 'memberpress-ai-assistant'); ?></span>
+                    </div>
+                </div>
+                <div class="mpai-diagnostic-actions">
+                    <button type="button" id="run-agent-scoring-test" class="button" data-test-type="agent_scoring"><?php _e('Run Test', 'memberpress-ai-assistant'); ?></button>
+                </div>
+                <div class="mpai-diagnostic-result" id="agent-scoring-result" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mpai-diagnostic-section">
         <h4><?php _e('Plugin Logs', 'memberpress-ai-assistant'); ?></h4>
         <p><?php _e('Track and review plugin installation, activation, deactivation, and deletion events.', 'memberpress-ai-assistant'); ?></p>
         
@@ -1662,6 +1682,53 @@ jQuery(document).ready(function($) {
                 }
                 break;
                 
+            case 'test_agent_scoring':
+                // Handle the agent specialization scoring test
+                if (result.formatted_html) {
+                    // If the test provides its own formatted HTML, use it
+                    html = result.formatted_html;
+                } else if (result.success) {
+                    html += '<div class="success"><strong>✓ Agent Specialization Scoring successful!</strong></div>';
+                    
+                    if (result.tests && result.tests.length > 0) {
+                        html += '<p><strong>Test Results:</strong></p>';
+                        html += '<table>';
+                        html += '<tr><th>Message</th><th>Expected Agent</th><th>Selected Agent</th><th>Pass</th></tr>';
+                        
+                        result.tests.forEach(function(test) {
+                            html += '<tr>';
+                            html += '<td>' + test.message + '</td>';
+                            html += '<td>' + test.expected_agent_type + '</td>';
+                            html += '<td>' + test.actual_agent + '</td>';
+                            html += '<td>' + (test.pass ? '✓' : '✗') + '</td>';
+                            html += '</tr>';
+                        });
+                        
+                        html += '</table>';
+                    }
+                    
+                    if (result.scores) {
+                        html += '<p><strong>Agent Scoring Performance:</strong></p>';
+                        html += '<table>';
+                        html += '<tr><th>Agent</th><th>Average Score</th><th>Max Score</th></tr>';
+                        
+                        for (var agent_id in result.scores) {
+                            var scores = result.scores[agent_id];
+                            html += '<tr>';
+                            html += '<td>' + agent_id + '</td>';
+                            html += '<td>' + (scores.avg ? scores.avg.toFixed(1) : '0.0') + '</td>';
+                            html += '<td>' + (scores.max ? scores.max.toFixed(1) : '0.0') + '</td>';
+                            html += '</tr>';
+                        }
+                        
+                        html += '</table>';
+                    }
+                } else {
+                    html += '<div class="error"><strong>✗ Agent Specialization Scoring failed!</strong></div>';
+                    html += '<p>' + (result.message || 'Unknown error') + '</p>';
+                }
+                break;
+                
             case 'test_all_phase_one':
                 html += '<h3>Phase One Test Results</h3>';
                 var allPassed = result.overall_success;
@@ -1787,6 +1854,11 @@ jQuery(document).ready(function($) {
         if ($('#all-phase-one-result').length === 0) {
             $('.mpai-phase-one-actions').after('<div class="mpai-diagnostic-result" id="all-phase-one-result" style="display: none;"></div>');
         }
+    });
+    
+    // Bind Phase Two test buttons
+    $('#run-agent-scoring-test').on('click', function() {
+        runPhaseOneTest('test_agent_scoring', '#agent-scoring-result', '#agent-scoring-status-indicator');
     });
     
     // Plugin Logs Functionality

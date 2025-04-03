@@ -34,6 +34,55 @@ class MPAI_MemberPress_Agent extends MPAI_Base_Agent {
 			'create_coupons' => 'Create and manage discount coupons',
 			'export_data' => 'Export MemberPress data',
 		];
+		
+		// Initialize weighted keywords for scoring
+		$this->keywords = [
+			// High weight for direct MemberPress mentions
+			'memberpress' => 35,
+			'member press' => 35,
+			'mepr' => 30,
+			
+			// Medium weight for membership terms
+			'membership' => 25,
+			'memberships' => 25,
+			'member' => 15,
+			'members' => 15,
+			
+			// Medium weight for subscription terms
+			'subscription' => 20,
+			'subscriptions' => 20,
+			'subscriber' => 15,
+			'subscribers' => 15,
+			
+			// Medium weight for transaction terms
+			'transaction' => 20,
+			'transactions' => 20,
+			'payment' => 15,
+			'payments' => 15,
+			'refund' => 15,
+			'charged' => 15,
+			
+			// Medium weight for pricing terms
+			'coupon' => 20,
+			'coupons' => 20,
+			'discount' => 15,
+			'discounts' => 15,
+			'pricing' => 15,
+			'price' => 10,
+			'prices' => 10,
+			
+			// Lower weight for related concepts
+			'license' => 10,
+			'licenses' => 10,
+			'expire' => 10,
+			'expiration' => 10,
+			'renewal' => 10,
+			'access' => 5,
+			'customer' => 5,
+			'customers' => 5,
+			'user' => 3,
+			'users' => 3,
+		];
 	}
 	
 	/**

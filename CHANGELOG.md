@@ -8,6 +8,8 @@
 - Error log management interface integrated with System Diagnostics
 - Configurable log retention settings with automated cleanup
 - Detailed error catalog with resolution steps for troubleshooting
+- Agent Specialization Scoring system for improved request routing
+- Phase Two testing framework in System Diagnostics
 
 ### Fixed
 - Fixed inconsistent test result display in System Diagnostics when using "Run All Phase One Tests" button

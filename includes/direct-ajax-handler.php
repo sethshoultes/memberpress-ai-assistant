@@ -1189,6 +1189,52 @@ switch ($action) {
         }
         break;
         
+    case 'test_agent_scoring':
+        // Test agent specialization scoring system
+        try {
+            error_log('MPAI Phase Two Test: Agent Specialization Scoring test started');
+            
+            // Include the test file
+            $test_file = plugin_dir_path(dirname(__FILE__)) . 'test/test-agent-scoring.php';
+            if (!file_exists($test_file)) {
+                throw new Exception('Agent scoring test file not found at: ' . $test_file);
+            }
+            
+            // Include the test file
+            include_once $test_file;
+            
+            // Call the test function
+            if (!function_exists('mpai_test_agent_specialization_scoring')) {
+                throw new Exception('Agent specialization scoring test function not defined');
+            }
+            
+            $test_results = mpai_test_agent_specialization_scoring();
+            
+            // Format the results
+            $formatted_results = '';
+            if (function_exists('mpai_format_agent_specialization_results')) {
+                $formatted_results = mpai_format_agent_specialization_results($test_results);
+            }
+            
+            // Include formatted results in the response
+            $test_results['formatted_html'] = $formatted_results;
+            
+            error_log('MPAI Phase Two Test: Agent Specialization Scoring - Success: ' . ($test_results['success'] ? 'YES' : 'NO'));
+            
+            echo json_encode(array(
+                'success' => true,
+                'data' => $test_results
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI Phase Two Test: Agent Specialization Scoring Error - ' . $e->getMessage());
+            echo json_encode(array(
+                'success' => false,
+                'message' => 'Agent Specialization Scoring Test failed: ' . $e->getMessage()
+            ));
+        }
+        break;
+        
     case 'test_all_phase_one':
         // Run all phase one tests
         try {

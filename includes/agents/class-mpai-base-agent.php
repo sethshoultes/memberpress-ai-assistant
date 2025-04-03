@@ -115,19 +115,128 @@ abstract class MPAI_Base_Agent implements MPAI_Agent {
 	 * @return int Score from 0-100
 	 */
 	public function evaluate_request($message, $context = []) {
-		// Base implementation using keywords
-		$score = 0;
+		// Base implementation using weighted scoring algorithm
+		$confidence_score = 0;
 		$message_lower = strtolower($message);
 		
-		// Check for agent-specific keywords
+		// 1. Keyword matching (basic matching)
 		foreach ($this->keywords as $keyword => $weight) {
 			if (strpos($message_lower, $keyword) !== false) {
-				$score += $weight;
+				$confidence_score += $weight;
 			}
 		}
 		
+		// 2. Context awareness (if provided)
+		if (!empty($context)) {
+			// Check for previous successful interactions with this agent
+			if (isset($context['memory']) && is_array($context['memory'])) {
+				foreach ($context['memory'] as $memory_item) {
+					if (isset($memory_item['result']) && 
+						isset($memory_item['result']['agent']) && 
+						$memory_item['result']['agent'] === $this->id &&
+						isset($memory_item['result']['success']) && 
+						$memory_item['result']['success'] === true) {
+						// Add points for previous successful interactions
+						$confidence_score += 5; // Modest bonus for past success
+					}
+				}
+			}
+			
+			// Check for user preferences
+			if (isset($context['preferences']) && 
+				isset($context['preferences']['preferred_agent']) && 
+				$context['preferences']['preferred_agent'] === $this->id) {
+				$confidence_score += 10; // Significant bonus for being the preferred agent
+			}
+		}
+		
+		// 3. Capability-based scoring
+		$capability_score = $this->evaluate_capability_match($message, $context);
+		$confidence_score += $capability_score;
+		
+		// Log the detailed scoring process if debug mode is enabled
+		$this->log_scoring_details($message, $confidence_score, $capability_score, $context);
+		
 		// Cap at 100
-		return min($score, 100);
+		return min($confidence_score, 100);
+	}
+	
+	/**
+	 * Evaluate how well the agent's capabilities match the request
+	 *
+	 * @param string $message User message
+	 * @param array $context Additional context
+	 * @return int Capability match score (0-50)
+	 */
+	protected function evaluate_capability_match($message, $context = []) {
+		$capability_score = 0;
+		$message_lower = strtolower($message);
+		
+		// Check each capability for relevance to the message
+		foreach ($this->capabilities as $capability_key => $capability_description) {
+			// Convert capability key and description to relevant terms for matching
+			$capability_terms = array_merge(
+				$this->extract_terms($capability_key),
+				$this->extract_terms($capability_description)
+			);
+			
+			// Score based on term matching
+			foreach ($capability_terms as $term) {
+				if (strpos($message_lower, $term) !== false) {
+					$capability_score += 10; // Significant boost for direct capability match
+					break; // Only count each capability once
+				}
+			}
+		}
+		
+		return min($capability_score, 50); // Cap capability component at 50
+	}
+	
+	/**
+	 * Extract searchable terms from a string
+	 *
+	 * @param string $text Text to extract terms from
+	 * @return array List of terms
+	 */
+	protected function extract_terms($text) {
+		// Convert from camelCase or snake_case
+		$text = strtolower($text);
+		$text = str_replace('_', ' ', $text);
+		$text = preg_replace('/([a-z])([A-Z])/', '$1 $2', $text);
+		
+		// Split into words and filter out common words
+		$words = explode(' ', $text);
+		$common_words = ['and', 'or', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'with', 'by'];
+		
+		return array_filter($words, function($word) use ($common_words) {
+			return !in_array($word, $common_words) && strlen($word) > 2;
+		});
+	}
+	
+	/**
+	 * Log detailed scoring information for debugging
+	 *
+	 * @param string $message Original message
+	 * @param int $total_score Total confidence score
+	 * @param int $capability_score Capability-based score component
+	 * @param array $context Context used for scoring
+	 */
+	protected function log_scoring_details($message, $total_score, $capability_score, $context) {
+		if (!defined('MPAI_DEBUG') || !MPAI_DEBUG) {
+			return;
+		}
+		
+		$log_data = [
+			'agent' => $this->id,
+			'message' => substr($message, 0, 50) . (strlen($message) > 50 ? '...' : ''),
+			'total_score' => $total_score,
+			'keyword_score' => $total_score - $capability_score,
+			'capability_score' => $capability_score,
+			'capabilities' => array_keys($this->capabilities),
+			'keywords' => array_keys($this->keywords)
+		];
+		
+		error_log('MPAI SCORING: ' . json_encode($log_data));
 	}
 	
 	/**
