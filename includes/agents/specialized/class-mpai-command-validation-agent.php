@@ -148,15 +148,24 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
                     $system_cmd_patterns = [
                         '/php.*version/i',           // PHP version queries 
                         '/php\s+([-]{1,2}v|info)/i', // PHP info commands (php -v, php --version, php info)
+                        '/php(?:info)?/i',           // PHP information
                         '/recently.*(?:activated|installed).*plugins/i',  // Recently activated plugins
                         '/(?:active|installed).*plugins/i',  // Plugin queries
                         '/plugin.*(?:status|info)/i',        // Plugin status or info
+                        '/plugin.*(?:log|activity)/i',       // Plugin logs or activity
                         '/database.*info/i',        // Database info
                         '/site.*(?:health|info)/i', // Site health or info
                         '/wp.*php/i',               // WP PHP commands
                         '/wp.*plugins?/i',          // WP plugin commands
+                        '/wp.*info/i',              // WordPress info
                         '/system.*info/i',          // System information
-                        '/plugins?.*recent/i'       // Recent plugins activity
+                        '/plugins?.*recent/i',      // Recent plugins activity
+                        '/version/i',               // Any version queries
+                        '/what.*(?:plugins?|php)/i', // Questions about plugins or PHP
+                        '/which.*(?:plugins?|php)/i', // Questions about plugins or PHP
+                        '/show.*(?:plugins?|php)/i', // Commands to show plugins or PHP
+                        '/list.*(?:plugins?|php)/i', // Commands to list plugins or PHP
+                        '/(?:get|display).*(?:plugins?|php)/i' // Commands to get or display plugins or PHP
                     ];
                     
                     foreach ($system_cmd_patterns as $pattern) {

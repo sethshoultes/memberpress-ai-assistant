@@ -399,15 +399,24 @@ class MPAI_SDK_Integration {
 	/**
 	 * Process a user request using OpenAI Assistants API
 	 *
-	 * @param string $user_message User message
+	 * @param array $intent_data Intent data containing message and context
 	 * @param int $user_id User ID
-	 * @param array $user_context User context
 	 * @return array Response data
 	 */
-	public function process_request( $user_message, $user_id = null, $user_context = [] ) {
+	public function process_request( $intent_data, $user_id = null ) {
 		if ( ! $this->initialized ) {
 			throw new Exception( 'SDK not initialized' );
 		}
+		
+		// Extract user message from intent data
+		$user_message = isset($intent_data['message']) ? $intent_data['message'] : '';
+		$user_context = isset($intent_data['user_context']) ? $intent_data['user_context'] : [];
+		
+		// Check if we have system information in the intent data
+		$system_info = isset($intent_data['system_info']) ? $intent_data['system_info'] : [];
+		
+		// Log the received intent data for debugging
+		error_log("MPAI SDK: Processing request with intent data. Message: " . substr($user_message, 0, 50) . "...");
 		
 		// Determine which agent to use
 		$agent_id = $this->determine_agent_for_message( $user_message, $user_context );
@@ -426,6 +435,18 @@ class MPAI_SDK_Integration {
 		try {
 			// Create or retrieve a thread for this user
 			$thread_id = $this->get_user_thread( $user_id );
+			
+			// If we have system info, add it as a hidden message first
+			if (!empty($system_info)) {
+				$system_info_message = "SYSTEM INFO:\n";
+				foreach ($system_info as $key => $value) {
+					$system_info_message .= "- $key: $value\n";
+				}
+				
+				// Add system info as a system message
+				$this->add_message_to_thread( $thread_id, $system_info_message, 'system' );
+				error_log("MPAI SDK: Added system info to thread");
+			}
 			
 			// Add the user message to the thread
 			$this->add_message_to_thread( $thread_id, $user_message, 'user' );
@@ -458,6 +479,172 @@ class MPAI_SDK_Integration {
 				'error' => $e->getMessage(),
 			];
 		}
+	}
+	
+	/**
+	 * Update the tool registry
+	 *
+	 * @param MPAI_Tool_Registry $tool_registry Tool registry instance
+	 * @return bool Success status
+	 */
+	public function update_tool_registry($tool_registry) {
+		if (!$tool_registry) {
+			error_log("MPAI SDK: Received empty tool registry in update_tool_registry");
+			return false;
+		}
+		
+		// Save reference to tool registry globally for emergency recovery
+		global $mpai_tool_registry;
+		$mpai_tool_registry = $tool_registry;
+		
+		// Store in instance
+		$this->tool_registry = $tool_registry;
+		
+		// Log available tools for debugging
+		$available_tools = $tool_registry->get_available_tools();
+		$tool_ids = array_keys($available_tools);
+		error_log("MPAI SDK: Updated tool registry with " . count($tool_ids) . " tools: " . implode(', ', $tool_ids));
+		
+		// Update available tools
+		$this->prepare_available_tools();
+		
+		// Validate essential tools
+		$this->validate_essential_tools();
+		
+		// Re-register any agents to ensure they have updated tools
+		foreach ($this->registered_agents as $agent_id => $agent_data) {
+			if (isset($agent_data['instance'])) {
+				$this->register_agent($agent_id, $agent_data['instance']);
+			}
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * Validate essential tools and try to recover missing ones
+	 * 
+	 * @return array Missing tools after recovery attempts
+	 */
+	private function validate_essential_tools() {
+		if (!$this->tool_registry) {
+			error_log("MPAI SDK: No tool registry available for validation");
+			return ['wpcli', 'wp_api', 'plugin_logs'];
+		}
+		
+		$available_tools = $this->tool_registry->get_available_tools();
+		$essential_tools = ['wpcli', 'wp_api', 'plugin_logs'];
+		$missing_tools = [];
+		
+		foreach ($essential_tools as $tool_id) {
+			if (!isset($available_tools[$tool_id])) {
+				$missing_tools[] = $tool_id;
+				error_log("MPAI SDK: Essential tool {$tool_id} missing, attempting recovery");
+				
+				// Try to load directly
+				$this->load_tool_directly($tool_id);
+			}
+		}
+		
+		// Recheck after recovery attempts
+		if (!empty($missing_tools)) {
+			$available_tools = $this->tool_registry->get_available_tools();
+			$still_missing = [];
+			
+			foreach ($missing_tools as $tool_id) {
+				if (!isset($available_tools[$tool_id])) {
+					$still_missing[] = $tool_id;
+				}
+			}
+			
+			if (!empty($still_missing)) {
+				error_log("MPAI SDK: Essential tools still missing after recovery: " . implode(', ', $still_missing));
+				return $still_missing;
+			}
+		}
+		
+		error_log("MPAI SDK: All essential tools available");
+		return [];
+	}
+	
+	/**
+	 * Load a tool implementation directly
+	 *
+	 * @param string $tool_id Tool ID to load
+	 * @return bool Success status
+	 */
+	private function load_tool_directly($tool_id) {
+		$tool_map = [
+			'wpcli' => 'MPAI_WP_CLI_Tool',
+			'wp_api' => 'MPAI_WP_API_Tool',
+			'diagnostic' => 'MPAI_Diagnostic_Tool',
+			'plugin_logs' => 'MPAI_Plugin_Logs_Tool'
+		];
+		
+		if (!isset($tool_map[$tool_id])) {
+			return false;
+		}
+		
+		$class_name = $tool_map[$tool_id];
+		
+		// Check if class already exists
+		if (class_exists($class_name)) {
+			try {
+				$tool = new $class_name();
+				$this->tool_registry->register_tool($tool_id, $tool);
+				error_log("MPAI SDK: Directly registered tool {$tool_id} from existing class");
+				return true;
+			} catch (Exception $e) {
+				error_log("MPAI SDK: Error creating tool instance for {$tool_id}: " . $e->getMessage());
+				return false;
+			}
+		}
+		
+		// Try to find and include the file
+		$base_paths = [
+			MPAI_PLUGIN_DIR . 'includes/tools/implementations/',
+			dirname(dirname(__FILE__)) . '/../tools/implementations/',
+			dirname(dirname(dirname(__FILE__))) . '/tools/implementations/'
+		];
+		
+		foreach ($base_paths as $base_path) {
+			$file_path = $base_path . 'class-' . strtolower(str_replace('_', '-', $tool_id)) . '-tool.php';
+			$alt_file_path = $base_path . 'class-mpai-' . strtolower(str_replace('_', '-', $tool_id)) . '-tool.php';
+			
+			if (file_exists($file_path)) {
+				try {
+					require_once $file_path;
+					error_log("MPAI SDK: Loaded tool file from: {$file_path}");
+					break;
+				} catch (Exception $e) {
+					error_log("MPAI SDK: Error loading tool file {$file_path}: " . $e->getMessage());
+				}
+			} elseif (file_exists($alt_file_path)) {
+				try {
+					require_once $alt_file_path;
+					error_log("MPAI SDK: Loaded tool file from: {$alt_file_path}");
+					break;
+				} catch (Exception $e) {
+					error_log("MPAI SDK: Error loading tool file {$alt_file_path}: " . $e->getMessage());
+				}
+			}
+		}
+		
+		// Check if class now exists and create instance
+		if (class_exists($class_name)) {
+			try {
+				$tool = new $class_name();
+				$this->tool_registry->register_tool($tool_id, $tool);
+				error_log("MPAI SDK: Directly registered tool {$tool_id} after loading class file");
+				return true;
+			} catch (Exception $e) {
+				error_log("MPAI SDK: Error creating tool instance for {$tool_id} after loading: " . $e->getMessage());
+				return false;
+			}
+		}
+		
+		return false;
+	}
 	}
 	
 	/**

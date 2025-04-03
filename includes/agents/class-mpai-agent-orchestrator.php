@@ -338,7 +338,24 @@ class MPAI_Agent_Orchestrator {
 			
 			// Create a new registry if needed
 			if (!isset($this->tool_registry) || $force_refresh) {
-				$this->tool_registry = new MPAI_Tool_Registry();
+				try {
+					$this->tool_registry = new MPAI_Tool_Registry();
+					error_log("MPAI: Created new tool registry instance");
+					
+					// Store in global variable for emergency recovery
+					global $mpai_tool_registry;
+					$mpai_tool_registry = $this->tool_registry;
+					
+				} catch (Exception $e) {
+					error_log("MPAI: Error creating tool registry: " . $e->getMessage());
+					
+					// Try to recover from existing global registry
+					global $mpai_tool_registry;
+					if ($mpai_tool_registry && $mpai_tool_registry instanceof MPAI_Tool_Registry) {
+						$this->tool_registry = $mpai_tool_registry;
+						error_log("MPAI: Recovered tool registry from global variable");
+					}
+				}
 			}
 			
 			// Register all available tools
@@ -346,21 +363,116 @@ class MPAI_Agent_Orchestrator {
 			
 			// Verify that essential tools are available
 			$available_tools = $this->tool_registry->get_available_tools();
-			$essential_tools = ['wpcli', 'wp_api'];
+			$essential_tools = ['wpcli', 'wp_api', 'plugin_logs'];
 			$missing_tools = [];
 			
 			foreach ($essential_tools as $tool_id) {
 				if (!isset($available_tools[$tool_id])) {
 					$missing_tools[] = $tool_id;
+					// Try to load the tool directly
+					$this->load_tool_directly($tool_id);
 				}
 			}
 			
+			// Re-check after direct loading attempt
 			if (!empty($missing_tools)) {
-				error_log("MPAI: Warning - Essential tools still missing after initialization: " . implode(', ', $missing_tools));
-			} else {
-				error_log("MPAI: Tool registry properly initialized with " . count($available_tools) . " tools");
+				$available_tools = $this->tool_registry->get_available_tools();
+				$still_missing = [];
+				
+				foreach ($missing_tools as $tool_id) {
+					if (!isset($available_tools[$tool_id])) {
+						$still_missing[] = $tool_id;
+					}
+				}
+				
+				if (!empty($still_missing)) {
+					error_log("MPAI: Warning - Essential tools still missing after recovery: " . implode(', ', $still_missing));
+				} else {
+					error_log("MPAI: Successfully recovered all missing tools");
+				}
+			}
+			
+			error_log("MPAI: Tool registry contains " . count($available_tools) . " tools");
+		}
+	}
+	
+	/**
+	 * Attempt to load a tool implementation directly
+	 *
+	 * @param string $tool_id Tool ID to load
+	 * @return bool Success status
+	 */
+	private function load_tool_directly($tool_id) {
+		$tool_map = [
+			'wpcli' => 'MPAI_WP_CLI_Tool',
+			'wp_api' => 'MPAI_WP_API_Tool',
+			'diagnostic' => 'MPAI_Diagnostic_Tool',
+			'plugin_logs' => 'MPAI_Plugin_Logs_Tool'
+		];
+		
+		if (!isset($tool_map[$tool_id])) {
+			return false;
+		}
+		
+		$class_name = $tool_map[$tool_id];
+		
+		// Check if class already exists
+		if (class_exists($class_name)) {
+			try {
+				$tool = new $class_name();
+				$this->tool_registry->register_tool($tool_id, $tool);
+				error_log("MPAI: Directly registered tool {$tool_id} from existing class");
+				return true;
+			} catch (Exception $e) {
+				error_log("MPAI: Error creating tool instance for {$tool_id}: " . $e->getMessage());
+				return false;
 			}
 		}
+		
+		// Try to find and include the file
+		$base_paths = [
+			MPAI_PLUGIN_DIR . 'includes/tools/implementations/',
+			dirname(__FILE__) . '/../tools/implementations/',
+			dirname(dirname(__FILE__)) . '/tools/implementations/'
+		];
+		
+		foreach ($base_paths as $base_path) {
+			$file_path = $base_path . 'class-' . strtolower(str_replace('_', '-', $tool_id)) . '-tool.php';
+			$alt_file_path = $base_path . 'class-mpai-' . strtolower(str_replace('_', '-', $tool_id)) . '-tool.php';
+			
+			if (file_exists($file_path)) {
+				try {
+					require_once $file_path;
+					error_log("MPAI: Loaded tool file from: {$file_path}");
+					break;
+				} catch (Exception $e) {
+					error_log("MPAI: Error loading tool file {$file_path}: " . $e->getMessage());
+				}
+			} elseif (file_exists($alt_file_path)) {
+				try {
+					require_once $alt_file_path;
+					error_log("MPAI: Loaded tool file from: {$alt_file_path}");
+					break;
+				} catch (Exception $e) {
+					error_log("MPAI: Error loading tool file {$alt_file_path}: " . $e->getMessage());
+				}
+			}
+		}
+		
+		// Check if class now exists and create instance
+		if (class_exists($class_name)) {
+			try {
+				$tool = new $class_name();
+				$this->tool_registry->register_tool($tool_id, $tool);
+				error_log("MPAI: Directly registered tool {$tool_id} after loading class file");
+				return true;
+			} catch (Exception $e) {
+				error_log("MPAI: Error creating tool instance for {$tool_id} after loading: " . $e->getMessage());
+				return false;
+			}
+		}
+		
+		return false;
 	}
 	
 	/**
@@ -419,10 +531,26 @@ class MPAI_Agent_Orchestrator {
 	private function preprocess_system_queries($user_message, &$intent_data) {
 		$user_message_lower = strtolower($user_message);
 		
-		// Check for PHP version queries
-		if (strpos($user_message_lower, 'php version') !== false || 
-			strpos($user_message_lower, 'version of php') !== false) {
-			
+		// Check for PHP version queries using multiple patterns
+		$php_version_patterns = [
+			'/php.*version/i', 
+			'/version.*php/i',
+			'/php.*info/i',
+			'/what.*php.*version/i',
+			'/which.*php.*version/i',
+			'/php\s+([-]{1,2}v|info)/i',
+			'/phpinfo/i'
+		];
+		
+		$is_php_query = false;
+		foreach ($php_version_patterns as $pattern) {
+			if (preg_match($pattern, $user_message)) {
+				$is_php_query = true;
+				break;
+			}
+		}
+		
+		if ($is_php_query) {
 			error_log("MPAI: Detected PHP version query, adding explicit PHP info");
 			
 			// Add explicit PHP version information to the message
@@ -430,30 +558,130 @@ class MPAI_Agent_Orchestrator {
 				"Memory Limit: " . ini_get('memory_limit') . "\n" .
 				"Max Execution Time: " . ini_get('max_execution_time') . " seconds\n" .
 				"Upload Max Filesize: " . ini_get('upload_max_filesize') . "\n" .
-				"Post Max Size: " . ini_get('post_max_size') . "\n";
+				"Post Max Size: " . ini_get('post_max_size') . "\n" .
+				"Max Input Vars: " . ini_get('max_input_vars') . "\n" .
+				"PHP SAPI: " . php_sapi_name() . "\n";
 			
+			// Add loaded extensions (first 10)
+			$extensions = get_loaded_extensions();
+			sort($extensions);
+			$php_info .= "Loaded Extensions (first 10): " . implode(', ', array_slice($extensions, 0, 10)) . "\n";
+			
+			// Add information about different PHP configurations to handle variations
 			$intent_data['enhanced_php_info'] = $php_info;
+			$intent_data['php_version'] = phpversion();
+			$intent_data['php_config'] = [
+				'version' => phpversion(),
+				'memory_limit' => ini_get('memory_limit'),
+				'max_execution_time' => ini_get('max_execution_time'),
+				'sapi' => php_sapi_name(),
+				'upload_max_filesize' => ini_get('upload_max_filesize'),
+				'post_max_size' => ini_get('post_max_size'),
+				'max_input_vars' => ini_get('max_input_vars')
+			];
+			
+			// Directly add to message for better handling
+			$intent_data['message'] .= "\n\nSystem Information: " . $php_info;
 		}
 		
-		// Check for plugin activity queries
-		if (strpos($user_message_lower, 'recent') !== false && 
-			(strpos($user_message_lower, 'plugin') !== false || 
-			 strpos($user_message_lower, 'activated') !== false)) {
+		// Check for plugin activity queries with enhanced patterns
+		$plugin_query_patterns = [
+			'/recent.*(?:plugin|activat|installat|addon)/i',
+			'/(?:plugin|activat|installat|addon).*recent/i',
+			'/what.*plugin/i',
+			'/which.*plugin/i',
+			'/list.*plugin/i',
+			'/show.*plugin/i',
+			'/plugin.*(?:status|info|log|activit)/i'
+		];
+		
+		$is_plugin_query = false;
+		foreach ($plugin_query_patterns as $pattern) {
+			if (preg_match($pattern, $user_message)) {
+				$is_plugin_query = true;
+				break;
+			}
+		}
+		
+		if ($is_plugin_query) {
+			error_log("MPAI: Detected plugin-related query, gathering plugin information");
 			
-			error_log("MPAI: Detected recent plugin activity query, ensuring plugin logger access");
+			// Ensure plugin functions are available
+			if (!function_exists('get_plugins')) {
+				require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+			
+			if (!function_exists('is_plugin_active')) {
+				include_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+			
+			// Get active plugins
+			$all_plugins = get_plugins();
+			$active_plugins = get_option('active_plugins');
+			
+			// Prepare plugin summary info
+			$plugin_summary = "Plugin Information:\n\n";
+			$plugin_summary .= "Total Plugins: " . count($all_plugins) . "\n";
+			$plugin_summary .= "Active Plugins: " . count($active_plugins) . "\n";
+			$plugin_summary .= "Inactive Plugins: " . (count($all_plugins) - count($active_plugins)) . "\n\n";
+			
+			// Add list of active plugins
+			$plugin_summary .= "Active Plugins:\n";
+			$count = 0;
+			
+			foreach ($active_plugins as $plugin) {
+				if (isset($all_plugins[$plugin]) && $count < 10) {
+					$plugin_data = $all_plugins[$plugin];
+					$plugin_summary .= "- {$plugin_data['Name']} v{$plugin_data['Version']}\n";
+					$count++;
+				}
+			}
+			
+			if (count($active_plugins) > 10) {
+				$plugin_summary .= "... and " . (count($active_plugins) - 10) . " more\n";
+			}
 			
 			// Ensure plugin logger is accessible and data is available
 			if (function_exists('mpai_init_plugin_logger')) {
 				$plugin_logger = mpai_init_plugin_logger();
-				if ($plugin_logger && method_exists($plugin_logger, 'maybe_create_table')) {
+				if ($plugin_logger) {
 					try {
 						// Ensure the table exists and has data
-						$plugin_logger->maybe_create_table();
+						if (method_exists($plugin_logger, 'maybe_create_table')) {
+							$plugin_logger->maybe_create_table();
+						}
+						
+						// Get recent logs
+						if (method_exists($plugin_logger, 'get_logs')) {
+							$logs = $plugin_logger->get_logs(array(
+								'limit' => 10,
+								'date_from' => date('Y-m-d H:i:s', strtotime('-30 days')),
+								'orderby' => 'date_time',
+								'order' => 'DESC',
+							));
+							
+							if (!empty($logs)) {
+								$plugin_summary .= "\nRecent Plugin Activity:\n";
+								
+								foreach ($logs as $log) {
+									$action = ucfirst($log['action']);
+									$plugin_name = $log['plugin_name'];
+									$date = date('M j, Y', strtotime($log['date_time']));
+									$plugin_summary .= "- {$plugin_name}: {$action} on {$date}\n";
+								}
+							}
+						}
 					} catch (Exception $e) {
-						error_log("MPAI: Error ensuring plugin logger table: " . $e->getMessage());
+						error_log("MPAI: Error accessing plugin logs: " . $e->getMessage());
 					}
 				}
 			}
+			
+			// Add plugin information to intent data
+			$intent_data['enhanced_plugin_info'] = $plugin_summary;
+			
+			// Directly add to message for better handling
+			$intent_data['message'] .= "\n\nPlugin Information: " . $plugin_summary;
 		}
 	}
 	
