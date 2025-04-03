@@ -7,7 +7,7 @@ Welcome to the MemberPress AI Assistant documentation hub. This directory contai
 The documentation is organized into the following main categories:
 
 - [**Current Features**](current/) - Documentation for implemented and active features
-- [**XML Content System**](xml-content-system/) - Comprehensive documentation for the XML content formatting system
+- [**XML Content System**](xml-content-system/index.md) - Comprehensive documentation for the XML content formatting system
 - [**Scooby Snacks**](_snacks/) - Investigation results, fixes, and technical insights
 - [**Feature Roadmap**](roadmap/) - Documentation for features in planning or development
 - [**Archive**](archive/) - Historical documentation that has been superseded
