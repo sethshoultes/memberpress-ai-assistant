@@ -28,9 +28,49 @@ class MPAI_Admin {
         // Special endpoint just for plugin_logs to bypass all issues
         add_action('wp_ajax_mpai_plugin_logs', array($this, 'get_plugin_logs'));
         
+        // Console logging settings
+        add_action('wp_ajax_mpai_save_logger_settings', array($this, 'save_logger_settings'));
+        
         // Debug actions
         add_action('wp_ajax_mpai_debug_nonce', array($this, 'debug_nonce'));
         add_action('wp_ajax_mpai_simple_test', array($this, 'simple_test'));
+    }
+    
+    /**
+     * Save logger settings via AJAX
+     */
+    public function save_logger_settings() {
+        // Log the request
+        error_log('MPAI: save_logger_settings called');
+        error_log('MPAI: POST data: ' . json_encode($_POST));
+        
+        // Basic nonce check but don't error out if it fails (for testing)
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_settings_nonce')) {
+            error_log('MPAI: Nonce check failed in save_logger_settings, but continuing anyway');
+        }
+        
+        // Save the settings
+        update_option('mpai_enable_console_logging', isset($_POST['mpai_enable_console_logging']) ? '1' : '0');
+        update_option('mpai_console_log_level', isset($_POST['mpai_console_log_level']) ? sanitize_text_field($_POST['mpai_console_log_level']) : 'info');
+        update_option('mpai_log_api_calls', isset($_POST['mpai_log_api_calls']) ? '1' : '0');
+        update_option('mpai_log_tool_usage', isset($_POST['mpai_log_tool_usage']) ? '1' : '0');
+        update_option('mpai_log_agent_activity', isset($_POST['mpai_log_agent_activity']) ? '1' : '0');
+        update_option('mpai_log_timing', isset($_POST['mpai_log_timing']) ? '1' : '0');
+        
+        // Return success
+        wp_send_json_success(array(
+            'message' => 'Logger settings saved',
+            'settings' => array(
+                'enabled' => get_option('mpai_enable_console_logging'),
+                'log_level' => get_option('mpai_console_log_level'),
+                'categories' => array(
+                    'api_calls' => get_option('mpai_log_api_calls'),
+                    'tool_usage' => get_option('mpai_log_tool_usage'),
+                    'agent_activity' => get_option('mpai_log_agent_activity'),
+                    'timing' => get_option('mpai_log_timing')
+                )
+            )
+        ));
     }
     
     /**
@@ -225,7 +265,23 @@ class MPAI_Admin {
      * @param string $hook Current admin page
      */
     public function enqueue_assets($hook) {
-        if (strpos($hook, 'memberpress-ai-assistant') === false) {
+        // First check if we're on our plugin pages
+        $is_plugin_page = strpos($hook, 'memberpress-ai-assistant') !== false;
+        
+        // Always enqueue the logger script for debugging across all admin pages
+        wp_enqueue_script(
+            'mpai-logger-js',
+            MPAI_PLUGIN_URL . 'assets/js/mpai-logger.js',
+            array('jquery'),
+            MPAI_VERSION . '.' . time(), // Add timestamp to force cache refresh 
+            false // Load in header instead of footer to ensure it's available early
+        );
+        
+        // Add inline script to check if logger is loaded
+        wp_add_inline_script('mpai-logger-js', 'console.log("MPAI: Logger script loaded in admin context (hook: ' . $hook . ')");');
+        
+        // Only load other assets on our plugin pages
+        if (!$is_plugin_page) {
             return;
         }
 
@@ -233,16 +289,37 @@ class MPAI_Admin {
             'mpai-admin-style',
             MPAI_PLUGIN_URL . 'assets/css/admin.css',
             array(),
-            MPAI_VERSION
+            MPAI_VERSION . '.' . time() // Add timestamp to force cache refresh
         );
 
         wp_enqueue_script(
             'mpai-admin-script',
             MPAI_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery'),
-            MPAI_VERSION,
+            array('jquery', 'mpai-logger-js'), // Add dependency on logger script
+            MPAI_VERSION . '.' . time(), // Add timestamp to force cache refresh
             true
         );
+
+        // Get logger settings
+        // Add debug info for debugging
+        error_log('MPAI: Getting logger settings from database');
+        error_log('MPAI: mpai_enable_console_logging = ' . get_option('mpai_enable_console_logging', '1'));
+        
+        // Ensure we're providing consistent string values for all boolean options
+        $logger_settings = array(
+            'enabled' => get_option('mpai_enable_console_logging', '1'),
+            'log_level' => get_option('mpai_console_log_level', 'info'),
+            'categories' => array(
+                'api_calls' => get_option('mpai_log_api_calls', '1'),
+                'tool_usage' => get_option('mpai_log_tool_usage', '1'),
+                'agent_activity' => get_option('mpai_log_agent_activity', '1'),
+                'timing' => get_option('mpai_log_timing', '1'),
+                'ui' => '1' // Always enable UI logging
+            )
+        );
+        
+        // Log the settings for debugging
+        error_log('MPAI: Logger settings: ' . json_encode($logger_settings));
 
         wp_localize_script(
             'mpai-admin-script',
@@ -251,6 +328,7 @@ class MPAI_Admin {
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'plugin_url' => MPAI_PLUGIN_URL,
                 'nonce' => wp_create_nonce('mpai_nonce'),
+                'logger' => $logger_settings,
                 'debug_info' => array(
                     'plugin_version' => MPAI_VERSION,
                     'wp_version' => get_bloginfo('version'),

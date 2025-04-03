@@ -74,14 +74,17 @@ class MPAI_Chat_Interface {
      * @since    1.0.0
      */
     public function enqueue_scripts() {
-        // First enqueue the logger
+        // First enqueue the logger with a debug message to ensure it's properly loading
         wp_enqueue_script(
             'mpai-logger-js',
             plugin_dir_url(dirname(__FILE__)) . 'assets/js/mpai-logger.js',
             array('jquery'),
-            $this->version,
-            true
+            $this->version . '.' . time(), // Add timestamp to force cache refresh
+            false // Load in header instead of footer to ensure it's available early
         );
+        
+        // Add inline script to check if logger is loaded
+        wp_add_inline_script('mpai-logger-js', 'console.log("MPAI: Logger script loaded in chat interface context");');
         
         // Enqueue modular scripts in proper dependency order
         
@@ -147,12 +150,33 @@ class MPAI_Chat_Interface {
             true
         );
 
+        // Get logger settings with debug info
+        error_log('MPAI: Getting logger settings for chat interface');
+        error_log('MPAI: mpai_enable_console_logging = ' . get_option('mpai_enable_console_logging', '1'));
+        
+        // Ensure we're providing consistent string values for all boolean options
+        $logger_settings = array(
+            'enabled' => get_option('mpai_enable_console_logging', '1'),
+            'log_level' => get_option('mpai_console_log_level', 'info'),
+            'categories' => array(
+                'api_calls' => get_option('mpai_log_api_calls', '1'),
+                'tool_usage' => get_option('mpai_log_tool_usage', '1'),
+                'agent_activity' => get_option('mpai_log_agent_activity', '1'),
+                'timing' => get_option('mpai_log_timing', '1'),
+                'ui' => '1' // Always enable UI logging
+            )
+        );
+        
+        // Log the settings for debugging
+        error_log('MPAI: Chat interface logger settings: ' . json_encode($logger_settings));
+        
         wp_localize_script(
             $this->plugin_name . '-chat',
             'mpai_chat_data',
             array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('mpai_chat_nonce'),
+                'logger' => $logger_settings,
                 'strings' => array(
                     'send_message' => __('Send message', 'memberpress-ai-assistant'),
                     'typing' => __('MemberPress AI is typing...', 'memberpress-ai-assistant'),

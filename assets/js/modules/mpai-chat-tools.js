@@ -37,6 +37,12 @@ var MPAI_Tools = (function($) {
      * @return {boolean} Whether tool calls were detected and processing
      */
     function processToolCalls(response) {
+        // Comprehensive logging
+        if (window.mpaiLogger) {
+            window.mpaiLogger.debug('Processing response for tool calls', 'tool_usage');
+            window.mpaiLogger.startTimer('tool_detection');
+        }
+        
         // Check for tool call markup
         const toolCallRegex = /<tool:([^>]+)>([\s\S]*?)<\/tool>/g;
         let match;
@@ -44,6 +50,15 @@ var MPAI_Tools = (function($) {
         
         // Create a temporary div to parse HTML
         const $temp = $('<div>').html(response);
+        
+        // Log the parsed HTML for debugging
+        if (window.mpaiLogger) {
+            window.mpaiLogger.debug('Parsed response HTML for tool detection', 'tool_usage', {
+                responseLength: response.length,
+                containsJsonCode: response.includes('```json'),
+                containsToolTag: response.includes('<tool:')
+            });
+        }
         
         // Look for structured tool calls
         const $toolCalls = $temp.find('.mpai-tool-call');

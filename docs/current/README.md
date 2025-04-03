@@ -6,7 +6,9 @@ This directory contains documentation for features that have been implemented an
 
 | Feature | Version Added | Description | Documentation |
 |---------|--------------|-------------|--------------|
+| Independent Operation Mode | 1.5.8 (2025-04-02) | Ability to run without MemberPress being installed | [independent-operation-mode.md](independent-operation-mode.md) |
 | Support Routing System | 1.5.8 (2025-04-02) | Tiered support system with Docsbot integration | [support-routing-system.md](support-routing-system.md) |
+| Chat Interface Copy Icon | 1.5.8 (2025-04-02) | Enhanced message copying functionality | [chat-interface-copy-icon.md](chat-interface-copy-icon.md) |
 | Duplicate Tool Execution Prevention | 1.5.6 (2025-04-01) | Solution for preventing duplicate tool executions | [SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md](SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md) |
 | Enhanced Tool Call Detection | 1.5.2 (2025-03-31) | Improved pattern matching for tool call recognition | [tool-call-detection.md](tool-call-detection.md) |
 | Console Logging System | 1.5.0 (2025-03-30) | Browser console logging with categories and levels | [console-logging-system.md](console-logging-system.md) |

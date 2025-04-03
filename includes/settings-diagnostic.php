@@ -14,6 +14,139 @@ if (!defined('WPINC')) {
 <div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">
     <h3><?php _e('System Diagnostics', 'memberpress-ai-assistant'); ?></h3>
     <p><?php _e('Run various diagnostic tests to check the health of your MemberPress AI Assistant installation.', 'memberpress-ai-assistant'); ?></p>
+    
+    <!-- Super direct console test that doesn't rely on any external code -->
+    <div style="margin: 15px 0; padding: 15px; background: #f8f8f8; border: 1px solid #ddd;">
+        <h4 style="margin-top: 0;">Direct Console Test (No Dependencies)</h4>
+        <p>Click the button below to test if console logging works in your browser.</p>
+        <button type="button" onclick="
+            console.log('💥 ULTRA DIRECT TEST: Button clicked at ' + new Date().toISOString());
+            console.warn('💥 ULTRA DIRECT TEST: Warning message');
+            console.error('💥 ULTRA DIRECT TEST: Error message');
+            console.log('💥 ULTRA DIRECT TEST: Object test:', {test: 'value', number: 123});
+            alert('Direct console log test executed - check your browser console (F12)');
+        " class="button button-primary">Ultra Direct Console Test</button>
+        <p><small>This test uses inline JavaScript that doesn't depend on any external code.</small></p>
+    </div>
+    
+    <!-- Direct AJAX handler test for console logging -->
+    <div style="margin: 15px 0; padding: 15px; background: #f0f9ff; border: 1px solid #c0d8e8;">
+        <h4 style="margin-top: 0;">Direct AJAX Handler Console Test</h4>
+        <p>Click the button below to test the Direct AJAX Handler for console logging.</p>
+        <button type="button" id="mpai-direct-ajax-console-test" class="button button-secondary">Test via Direct AJAX Handler</button>
+        <span id="direct-ajax-test-result" style="margin-left: 10px; font-style: italic;"></span>
+        <p><small>This test uses the Direct AJAX Handler which bypasses WordPress's admin-ajax.php.</small></p>
+        
+        <script>
+            jQuery(document).ready(function($) {
+                $('#mpai-direct-ajax-console-test').on('click', function() {
+                    var $resultSpan = $('#direct-ajax-test-result');
+                    $resultSpan.text('Testing...');
+                    
+                    // Log that we're starting the test
+                    console.group('🌐 Direct AJAX Handler Console Test');
+                    console.log('Starting test at ' + new Date().toISOString());
+                    
+                    // Prepare the form data
+                    var formData = new FormData();
+                    formData.append('action', 'test_console_logging');
+                    formData.append('log_level', $('#mpai_console_log_level').val());
+                    formData.append('enable_logging', $('#mpai_enable_console_logging').is(':checked') ? '1' : '0');
+                    formData.append('log_api_calls', $('#mpai_log_api_calls').is(':checked') ? '1' : '0');
+                    formData.append('log_tool_usage', $('#mpai_log_tool_usage').is(':checked') ? '1' : '0');
+                    formData.append('log_agent_activity', $('#mpai_log_agent_activity').is(':checked') ? '1' : '0');
+                    formData.append('log_timing', $('#mpai_log_timing').is(':checked') ? '1' : '0');
+                    formData.append('save_settings', '1');
+                    
+                    // Get the direct AJAX handler URL
+                    var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . 'includes/direct-ajax-handler.php'; ?>';
+                    
+                    console.log('Sending request to: ' + directHandlerUrl);
+                    console.log('Form data:', {
+                        action: 'test_console_logging',
+                        log_level: $('#mpai_console_log_level').val(),
+                        enable_logging: $('#mpai_enable_console_logging').is(':checked')
+                    });
+                    
+                    // Send the request to the direct AJAX handler
+                    fetch(directHandlerUrl, {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        console.log('Received response:', data);
+                        
+                        if (data.success) {
+                            $resultSpan.html('<span style="color: green;">✓ Test completed successfully!</span>');
+                            
+                            // Log the test results
+                            console.log('Test completed successfully');
+                            console.log('Current settings:', data.current_settings);
+                            console.log('Test result:', data.test_result);
+                            
+                            // Update the UI with the current settings
+                            $('#mpai_enable_console_logging').prop('checked', data.current_settings.enabled === '1');
+                            $('#mpai_console_log_level').val(data.current_settings.log_level);
+                            $('#mpai_log_api_calls').prop('checked', data.current_settings.categories.api_calls === '1');
+                            $('#mpai_log_tool_usage').prop('checked', data.current_settings.categories.tool_usage === '1');
+                            $('#mpai_log_agent_activity').prop('checked', data.current_settings.categories.agent_activity === '1');
+                            $('#mpai_log_timing').prop('checked', data.current_settings.categories.timing === '1');
+                            
+                            // Apply these settings to any existing logger
+                            if (window.mpaiLogger) {
+                                window.mpaiLogger.enabled = data.current_settings.enabled === '1';
+                                window.mpaiLogger.logLevel = data.current_settings.log_level;
+                                window.mpaiLogger.categories = {
+                                    api_calls: data.current_settings.categories.api_calls === '1',
+                                    tool_usage: data.current_settings.categories.tool_usage === '1',
+                                    agent_activity: data.current_settings.categories.agent_activity === '1',
+                                    timing: data.current_settings.categories.timing === '1',
+                                    ui: true // Always enable UI logging
+                                };
+                                
+                                console.log('Updated mpaiLogger with settings from server');
+                            }
+                            
+                            // Save to localStorage as well
+                            try {
+                                localStorage.setItem('mpai_logger_settings', JSON.stringify({
+                                    enabled: data.current_settings.enabled === '1',
+                                    logLevel: data.current_settings.log_level,
+                                    categories: {
+                                        api_calls: data.current_settings.categories.api_calls === '1',
+                                        tool_usage: data.current_settings.categories.tool_usage === '1',
+                                        agent_activity: data.current_settings.categories.agent_activity === '1',
+                                        timing: data.current_settings.categories.timing === '1',
+                                        ui: true
+                                    }
+                                }));
+                                console.log('Saved settings to localStorage');
+                            } catch (e) {
+                                console.error('Error saving to localStorage:', e);
+                            }
+                        } else {
+                            $resultSpan.html('<span style="color: red;">✗ Test failed: ' + data.message + '</span>');
+                            console.error('Test failed:', data.message);
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Error:', error);
+                        $resultSpan.html('<span style="color: red;">✗ Error: ' + error.message + '</span>');
+                    })
+                    .finally(function() {
+                        console.groupEnd();
+                    });
+                });
+            });
+        </script>
+    </div>
 
     <div class="mpai-diagnostic-section">
         <h4><?php _e('Console Logging', 'memberpress-ai-assistant'); ?></h4>
@@ -81,75 +214,35 @@ if (!defined('WPINC')) {
                     <button type="button" id="mpai-test-console-logging" class="button"><?php _e('Test Console Logging', 'memberpress-ai-assistant'); ?></button>
                     <span id="mpai-console-test-result" class="mpai-test-result" style="display: none;"></span>
                     <p class="description"><?php _e('Click to test console logging with your current settings. Check your browser\'s developer console (F12) to see the logs.', 'memberpress-ai-assistant'); ?></p>
+                    
+                    <!-- Ultra simple test button that tests the enabled state directly -->
+                    <button type="button" onclick="testEnabledState()" class="button button-secondary" style="margin-top: 10px;">Check Enabled State Only</button>
+                    
                     <script>
-                    jQuery(document).ready(function($) {
-                        $('#mpai-test-console-logging').on('click', function() {
-                            var $resultContainer = $('#mpai-console-test-result');
+                    /* 
+                     * NOTE: The event handler for the test console logging button
+                     * is now defined in admin.js in the initConsoleLoggingSettings() function.
+                     * This ensures better separation of concerns and modular code.
+                     */
+                    
+                    // Simple function to directly test if the logger is enabled
+                    function testEnabledState() {
+                        if (window.mpaiLogger) {
+                            console.log('========== ENABLED STATE TEST ==========');
+                            console.log('→ The mpaiLogger.enabled value is: ' + window.mpaiLogger.enabled);
+                            console.log('→ The checkbox is: ' + ($('#mpai_enable_console_logging').is(':checked') ? 'CHECKED' : 'UNCHECKED'));
+                            console.log('→ Logging is: ' + (window.mpaiLogger.enabled ? 'ENABLED' : 'DISABLED'));
+                            console.log('→ Testing a log message (should only appear if enabled):');
                             
-                            // Show loading state
-                            $resultContainer.html('<?php _e('Testing...', 'memberpress-ai-assistant'); ?>');
-                            $resultContainer.show();
+                            // Try to log a message - this should only appear if enabled is true
+                            window.mpaiLogger.info('This is a test message from enabled state test', 'ui');
                             
-                            // Check if window.mpaiLogger exists
-                            if (typeof window.mpaiLogger === 'undefined') {
-                                $resultContainer.html('<?php _e('Error: Logger not initialized. Try reloading the page.', 'memberpress-ai-assistant'); ?>');
-                                return;
-                            }
-                            
-                            // Ensure logger is enabled for testing
-                            if (!window.mpaiLogger.enabled) {
-                                window.mpaiLogger.enabled = true;
-                                console.log('MPAI: Temporarily enabling logger for test');
-                            }
-                            
-                            // Run logger test
-                            var testResult = window.mpaiLogger.testLog();
-                            
-                            // Show test results
-                            var resultHtml = '<span style="color: ' + (testResult.enabled ? 'green' : 'red') + '; font-weight: bold;">';
-                            resultHtml += testResult.enabled ? '✓ Logger enabled' : '✗ Logger disabled';
-                            resultHtml += '</span><br>';
-                            resultHtml += '<br><strong>Settings:</strong><br>';
-                            resultHtml += 'Log Level: ' + testResult.logLevel + '<br>';
-                            
-                            // Show enabled categories
-                            resultHtml += 'Categories: ';
-                            var enabledCategories = [];
-                            for (var cat in testResult.categories) {
-                                if (testResult.categories[cat]) {
-                                    enabledCategories.push(cat);
-                                }
-                            }
-                            
-                            if (enabledCategories.length > 0) {
-                                resultHtml += enabledCategories.join(', ');
-                            } else {
-                                resultHtml += 'None enabled';
-                            }
-                            
-                            resultHtml += '<br><br>';
-                            resultHtml += '<?php _e('Check your browser\'s console (F12) for test log messages.', 'memberpress-ai-assistant'); ?>';
-                            
-                            $resultContainer.html(resultHtml);
-                            
-                            // Save settings to localStorage for persistence
-                            try {
-                                localStorage.setItem('mpai_logger_settings', JSON.stringify({
-                                    enabled: $('#mpai_enable_console_logging').is(':checked'),
-                                    logLevel: $('#mpai_console_log_level').val(),
-                                    categories: {
-                                        api_calls: $('#mpai_log_api_calls').is(':checked'),
-                                        tool_usage: $('#mpai_log_tool_usage').is(':checked'), 
-                                        agent_activity: $('#mpai_log_agent_activity').is(':checked'),
-                                        timing: $('#mpai_log_timing').is(':checked')
-                                    }
-                                }));
-                                console.log('MPAI: Saved logger settings to localStorage');
-                            } catch(e) {
-                                console.error('MPAI: Could not save logger settings to localStorage:', e);
-                            }
-                        });
-                    });
+                            alert('Check your console. The enabled state is: ' + (window.mpaiLogger.enabled ? 'ENABLED' : 'DISABLED'));
+                        } else {
+                            console.log('mpaiLogger not found!');
+                            alert('mpaiLogger not found! Check the console for more details.');
+                        }
+                    }
                     </script>
                 </td>
             </tr>

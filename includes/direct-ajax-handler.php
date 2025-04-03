@@ -561,6 +561,61 @@ switch ($action) {
         ));
         break;
         
+    case 'test_console_logging':
+        // Test console logging action
+        $log_level = isset($_POST['log_level']) ? sanitize_text_field($_POST['log_level']) : 'info';
+        
+        // Process enable_logging with detailed debugging
+        $enable_logging_raw = isset($_POST['enable_logging']) ? $_POST['enable_logging'] : '1';
+        error_log('MPAI: enable_logging raw value: ' . $enable_logging_raw . ' (type: ' . gettype($enable_logging_raw) . ')');
+        
+        // Convert to proper boolean value
+        if ($enable_logging_raw === '1' || $enable_logging_raw === 1 || $enable_logging_raw === 'true' || $enable_logging_raw === true) {
+            $enable_logging = true;
+            error_log('MPAI: enable_logging converted to TRUE');
+        } else {
+            $enable_logging = false;
+            error_log('MPAI: enable_logging converted to FALSE');
+        }
+        
+        // Save settings to options if needed
+        if (isset($_POST['save_settings']) && $_POST['save_settings']) {
+            error_log('MPAI: Saving console settings - enable_logging: ' . ($enable_logging ? '1' : '0'));
+            
+            // Always save as string values '1' or '0' for consistency
+            update_option('mpai_enable_console_logging', $enable_logging ? '1' : '0');
+            update_option('mpai_console_log_level', $log_level);
+            
+            // Save category settings
+            update_option('mpai_log_api_calls', isset($_POST['log_api_calls']) ? '1' : '0');
+            update_option('mpai_log_tool_usage', isset($_POST['log_tool_usage']) ? '1' : '0'); 
+            update_option('mpai_log_agent_activity', isset($_POST['log_agent_activity']) ? '1' : '0');
+            update_option('mpai_log_timing', isset($_POST['log_timing']) ? '1' : '0');
+        }
+        
+        // Return test data and current settings
+        echo json_encode(array(
+            'success' => true,
+            'message' => 'Console log test completed successfully',
+            'test_result' => array(
+                'timestamp' => current_time('mysql'),
+                'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : 'Unknown',
+                'level_tested' => $log_level,
+                'random_id' => 'test_' . rand(1000, 9999)
+            ),
+            'current_settings' => array(
+                'enabled' => get_option('mpai_enable_console_logging', '1'),
+                'log_level' => get_option('mpai_console_log_level', 'info'),
+                'categories' => array(
+                    'api_calls' => get_option('mpai_log_api_calls', '1'),
+                    'tool_usage' => get_option('mpai_log_tool_usage', '1'),
+                    'agent_activity' => get_option('mpai_log_agent_activity', '1'),
+                    'timing' => get_option('mpai_log_timing', '1')
+                )
+            )
+        ));
+        break;
+        
     default:
         // Unknown action
         header('HTTP/1.1 400 Bad Request');

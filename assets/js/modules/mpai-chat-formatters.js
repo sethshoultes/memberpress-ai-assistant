@@ -23,9 +23,19 @@ var MPAI_Formatters = (function($) {
      * @return {string} Formatted content
      */
     function formatMessage(content) {
+        // Log the start of formatting
+        if (window.mpaiLogger) {
+            window.mpaiLogger.startTimer('format_message');
+            window.mpaiLogger.debug('Starting message formatting', 'ui', { contentType: typeof content });
+        }
+        
         // Guard for null/undefined first
         if (content === null || content === undefined) {
-            console.error('formatMessage received null or undefined content');
+            if (window.mpaiLogger) {
+                window.mpaiLogger.error('formatMessage received null or undefined content', 'ui');
+            } else {
+                console.error('formatMessage received null or undefined content');
+            }
             return 'No response received';
         }
         
@@ -35,12 +45,22 @@ var MPAI_Formatters = (function($) {
                 if (typeof content === 'object') {
                     // Try to convert object to JSON string
                     content = JSON.stringify(content);
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.debug('Converted object to JSON string', 'ui');
+                    }
                 } else {
                     // Convert any other type to string
                     content = String(content);
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.debug('Converted ' + typeof content + ' to string', 'ui');
+                    }
                 }
             } catch (e) {
-                console.error('Error converting content to string:', e);
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.error('Error converting content to string:', 'ui', e);
+                } else {
+                    console.error('Error converting content to string:', e);
+                }
                 return 'Invalid response format (type: ' + typeof content + ')';
             }
         }
@@ -203,14 +223,39 @@ var MPAI_Formatters = (function($) {
                 content = toolbarHtml + content;
             }
             
+            // End formatting timer
+            if (window.mpaiLogger) {
+                const elapsed = window.mpaiLogger.endTimer('format_message');
+                window.mpaiLogger.debug('Message formatting completed', 'ui', { 
+                    timeMs: elapsed,
+                    responseLength: content.length,
+                    hasCodeBlocks: content.includes('```'),
+                    hasInlineCode: content.includes('`'),
+                    hasLinks: content.includes('http://') || content.includes('https://'),
+                    hasTables: content.includes('|') && content.includes('---')  
+                });
+            }
+            
             return content;
         } catch (error) {
-            console.error('Error in formatMessage:', error, 'with content type:', typeof content);
+            if (window.mpaiLogger) {
+                window.mpaiLogger.error('Error in formatMessage:', 'ui', { 
+                    error: error.message, 
+                    contentType: typeof content,
+                    contentLength: content ? content.length : 0
+                });
+            } else {
+                console.error('Error in formatMessage:', error, 'with content type:', typeof content);
+            }
+            
             try {
                 // Attempt to return the raw content if all formatting fails
                 return 'Error formatting message. Raw content: ' + String(content).substring(0, 100) + 
                        (String(content).length > 100 ? '...' : '');
             } catch (e) {
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.error('Failed to display raw content:', 'ui', e);
+                }
                 return 'Error formatting message and unable to display raw content.';
             }
         }
@@ -223,8 +268,20 @@ var MPAI_Formatters = (function($) {
      * @return {string} Formatted HTML for the plugin logs
      */
     function formatPluginLogsResult(data) {
+        // Log the start of formatting plugin logs
+        if (window.mpaiLogger) {
+            window.mpaiLogger.startTimer('format_plugin_logs');
+            window.mpaiLogger.info('Formatting plugin logs data', 'tool_usage', {
+                hasData: !!data,
+                dataType: typeof data
+            });
+        }
+        
         // Handle the case where data is undefined or null
         if (!data) {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.warn('No plugin logs data available for formatting', 'tool_usage');
+            }
             return '<div class="mpai-plugin-logs-error">No plugin logs data available</div>';
         }
         
@@ -304,6 +361,17 @@ var MPAI_Formatters = (function($) {
         }
         
         html += '</div>';
+        
+        // End timer and log completion
+        if (window.mpaiLogger) {
+            const elapsed = window.mpaiLogger.endTimer('format_plugin_logs');
+            window.mpaiLogger.info('Plugin logs formatting completed', 'tool_usage', {
+                timeMs: elapsed,
+                logCount: logs.length,
+                htmlLength: html.length
+            });
+        }
+        
         return html;
     }
     
@@ -314,7 +382,19 @@ var MPAI_Formatters = (function($) {
      * @return {string} Formatted HTML for the table
      */
     function formatTabularResult(resultData) {
+        // Log the start of formatting tabular results
+        if (window.mpaiLogger) {
+            window.mpaiLogger.startTimer('format_tabular_result');
+            window.mpaiLogger.info('Formatting tabular result data', 'tool_usage', {
+                hasData: !!resultData,
+                commandType: resultData ? (resultData.command_type || 'unknown') : 'none'
+            });
+        }
+        
         if (!resultData || !resultData.result) {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.warn('No result data available for tabular formatting', 'tool_usage');
+            }
             return '<div class="mpai-tool-call-error-message">No result data to format</div>';
         }
         
@@ -470,7 +550,18 @@ var MPAI_Formatters = (function($) {
             }
         </style>`;
         
-        return tableHtml;
+        // End timer and log completion
+    if (window.mpaiLogger) {
+        const elapsed = window.mpaiLogger.endTimer('format_tabular_result');
+        window.mpaiLogger.info('Tabular result formatting completed', 'tool_usage', {
+            timeMs: elapsed,
+            rowCount: nonEmptyRows.length,
+            htmlLength: tableHtml.length,
+            commandType: commandType
+        });
+    }
+    
+    return tableHtml;
     }
     
     // Public API
