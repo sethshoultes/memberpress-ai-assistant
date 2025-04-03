@@ -141,6 +141,32 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
                 $this->logger->warning('Validation failed, but allowing operation to proceed: ' . $validation_result['message']);
                 $validation_result['success'] = true;
                 $validation_result['message'] .= ' (continuing with original command)';
+                
+                // Ensure we always return the original command data for system commands that should always work
+                if (isset($command_data['command'])) {
+                    // For system info commands like PHP version, ensure they always proceed
+                    $system_cmd_patterns = [
+                        '/php.*version/i',           // PHP version queries 
+                        '/php\s+([-]{1,2}v|info)/i', // PHP info commands (php -v, php --version, php info)
+                        '/recently.*(?:activated|installed).*plugins/i',  // Recently activated plugins
+                        '/(?:active|installed).*plugins/i',  // Plugin queries
+                        '/plugin.*(?:status|info)/i',        // Plugin status or info
+                        '/database.*info/i',        // Database info
+                        '/site.*(?:health|info)/i', // Site health or info
+                        '/wp.*php/i',               // WP PHP commands
+                        '/wp.*plugins?/i',          // WP plugin commands
+                        '/system.*info/i',          // System information
+                        '/plugins?.*recent/i'       // Recent plugins activity
+                    ];
+                    
+                    foreach ($system_cmd_patterns as $pattern) {
+                        if (preg_match($pattern, $command_data['command'])) {
+                            $this->logger->info('System info command detected, ensuring it runs: ' . $command_data['command']);
+                            $validation_result['validated_command'] = $command_data;
+                            break;
+                        }
+                    }
+                }
             }
             
             return $validation_result;

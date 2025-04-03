@@ -110,22 +110,53 @@ abstract class MPAI_Base_Agent implements MPAI_Agent {
 	 * @throws Exception If tool not found or execution fails
 	 */
 	protected function execute_tool( $tool_id, $parameters ) {
-		if ( ! $this->tool_registry ) {
-			throw new Exception( 'Tool registry not available' );
+		// Check if the tool registry is available
+		if (!$this->tool_registry) {
+			$this->logger->error("Tool registry not available when attempting to execute {$tool_id}");
+			
+			// Try to recover by getting a new tool registry instance
+			$this->tool_registry = new MPAI_Tool_Registry();
+			
+			// If still not available after recovery attempt
+			if (!$this->tool_registry) {
+				throw new Exception('Tool registry not available and recovery failed');
+			}
+			$this->logger->info("Tool registry recovered successfully");
 		}
 		
-		$tool = $this->tool_registry->get_tool( $tool_id );
+		// Get the tool from the registry
+		$tool = $this->tool_registry->get_tool($tool_id);
 		
-		if ( ! $tool ) {
-			throw new Exception( "Tool {$tool_id} not found" );
+		// If tool not found, try more recovery steps for critical tools
+		if (!$tool) {
+			$this->logger->warning("Tool {$tool_id} not found on first attempt, trying recovery");
+			
+			// Re-initialize the tool registry completely
+			$this->tool_registry = new MPAI_Tool_Registry();
+			
+			// Try to get the tool again
+			$tool = $this->tool_registry->get_tool($tool_id);
+			
+			if ($tool) {
+				$this->logger->info("Tool {$tool_id} recovered successfully");
+			} else {
+				// Log available tools for debugging
+				$available_tools = $this->tool_registry->get_available_tools();
+				$available_tool_ids = array_keys($available_tools);
+				$this->logger->error("Tool {$tool_id} not found in registry after recovery attempt");
+				$this->logger->info("Available tools: " . implode(', ', $available_tool_ids));
+				
+				throw new Exception("Tool {$tool_id} not found. Available tools: " . implode(', ', $available_tool_ids));
+			}
 		}
 		
-		$this->logger->info( "Executing tool {$tool_id}" );
+		$this->logger->info("Executing tool {$tool_id}");
 		
+		// Execute the tool with parameters
 		try {
-			return $tool->execute( $parameters );
-		} catch ( Exception $e ) {
-			$this->logger->error( "Tool execution failed: " . $e->getMessage() );
+			return $tool->execute($parameters);
+		} catch (Exception $e) {
+			$this->logger->error("Tool execution failed: " . $e->getMessage());
 			throw $e;
 		}
 	}

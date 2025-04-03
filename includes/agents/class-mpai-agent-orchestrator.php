@@ -265,14 +265,51 @@ class MPAI_Agent_Orchestrator {
 	 */
 	private function process_with_sdk( $user_message, $user_id = 0, $user_context = [] ) {
 		try {
-			// Create intent data
+			// Ensure the tool registry is properly initialized and available
+			$this->ensure_tool_registry();
+			
+			// Create intent data with tool registry information and enhanced system context
 			$intent_data = [
 				'message' => $user_message,
 				'user_context' => $user_context,
+				'tools' => $this->get_available_tools_info(), // Add available tools info
 			];
+			
+			// Enhanced system information for better handling of system queries
+			$intent_data['system_info'] = $this->get_enhanced_system_info();
+			
+			// Log all tools being passed to SDK
+			error_log("MPAI: Passing " . count($this->tool_registry->get_available_tools()) . " tools to SDK integration");
+			
+			// Make sure the SDK integration has the updated tool_registry
+			if (method_exists($this->sdk_integration, 'update_tool_registry')) {
+				$this->sdk_integration->update_tool_registry($this->tool_registry);
+				error_log("MPAI: Updated tool registry in SDK integration");
+			}
+			
+			// Add a pre-processing step for specific queries to improve handling
+			$this->preprocess_system_queries($user_message, $intent_data);
 			
 			// Process the request with the SDK
 			$sdk_result = $this->sdk_integration->process_request( $intent_data, $user_id );
+			
+			// Verify the response - if it contains an error about missing tools, try recovery
+			if (is_array($sdk_result) && isset($sdk_result['success']) && !$sdk_result['success'] && 
+				isset($sdk_result['error']) && strpos($sdk_result['error'], 'Tool') !== false) {
+				
+				error_log("MPAI: SDK response indicates tool access issue, attempting recovery");
+				
+				// Refresh the tool registry and try again
+				$this->ensure_tool_registry(true); // Force refresh
+				
+				if (method_exists($this->sdk_integration, 'update_tool_registry')) {
+					$this->sdk_integration->update_tool_registry($this->tool_registry);
+					error_log("MPAI: Re-updated tool registry in SDK integration during recovery");
+				}
+				
+				// Try again with refreshed tools
+				$sdk_result = $this->sdk_integration->process_request( $intent_data, $user_id );
+			}
 			
 			// Update memory with results
 			$this->update_memory( $user_id, ['original_message' => $user_message], $sdk_result );
@@ -288,6 +325,161 @@ class MPAI_Agent_Orchestrator {
 			error_log( "MPAI: Falling back to traditional processing method" );
 			return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
 		}
+	}
+	
+	/**
+	 * Ensure tool registry is properly initialized
+	 * 
+	 * @param bool $force_refresh Whether to force a refresh of the registry
+	 */
+	private function ensure_tool_registry($force_refresh = false) {
+		if (!isset($this->tool_registry) || empty($this->tool_registry) || $force_refresh) {
+			error_log("MPAI: " . ($force_refresh ? "Forcing refresh of" : "Initializing") . " tool registry");
+			
+			// Create a new registry if needed
+			if (!isset($this->tool_registry) || $force_refresh) {
+				$this->tool_registry = new MPAI_Tool_Registry();
+			}
+			
+			// Register all available tools
+			$this->register_tools();
+			
+			// Verify that essential tools are available
+			$available_tools = $this->tool_registry->get_available_tools();
+			$essential_tools = ['wpcli', 'wp_api'];
+			$missing_tools = [];
+			
+			foreach ($essential_tools as $tool_id) {
+				if (!isset($available_tools[$tool_id])) {
+					$missing_tools[] = $tool_id;
+				}
+			}
+			
+			if (!empty($missing_tools)) {
+				error_log("MPAI: Warning - Essential tools still missing after initialization: " . implode(', ', $missing_tools));
+			} else {
+				error_log("MPAI: Tool registry properly initialized with " . count($available_tools) . " tools");
+			}
+		}
+	}
+	
+	/**
+	 * Get enhanced system information for queries
+	 * 
+	 * @return array System information
+	 */
+	private function get_enhanced_system_info() {
+		$system_info = [
+			'php_version' => phpversion(),
+			'wordpress_version' => get_bloginfo('version'),
+			'is_multisite' => is_multisite(),
+			'active_plugins_count' => count(get_option('active_plugins')),
+			'memory_limit' => ini_get('memory_limit'),
+			'max_execution_time' => ini_get('max_execution_time'),
+			'upload_max_filesize' => ini_get('upload_max_filesize'),
+			'post_max_size' => ini_get('post_max_size'),
+		];
+		
+		// Add recent plugin activity info if available
+		if (function_exists('mpai_init_plugin_logger')) {
+			$plugin_logger = mpai_init_plugin_logger();
+			if ($plugin_logger) {
+				try {
+					$recent_logs = $plugin_logger->get_logs([
+						'limit' => 5,
+						'orderby' => 'date_time',
+						'order' => 'DESC',
+					]);
+					
+					if (!empty($recent_logs)) {
+						$system_info['recent_plugin_activity'] = [];
+						foreach ($recent_logs as $log) {
+							$system_info['recent_plugin_activity'][] = [
+								'plugin' => $log['plugin_name'],
+								'action' => $log['action'],
+								'time' => $log['date_time']
+							];
+						}
+					}
+				} catch (Exception $e) {
+					error_log("MPAI: Error getting recent plugin logs for system info: " . $e->getMessage());
+				}
+			}
+		}
+		
+		return $system_info;
+	}
+	
+	/**
+	 * Preprocess system queries for improved handling
+	 * 
+	 * @param string $user_message User message
+	 * @param array &$intent_data Intent data to modify
+	 */
+	private function preprocess_system_queries($user_message, &$intent_data) {
+		$user_message_lower = strtolower($user_message);
+		
+		// Check for PHP version queries
+		if (strpos($user_message_lower, 'php version') !== false || 
+			strpos($user_message_lower, 'version of php') !== false) {
+			
+			error_log("MPAI: Detected PHP version query, adding explicit PHP info");
+			
+			// Add explicit PHP version information to the message
+			$php_info = "PHP Version: " . phpversion() . "\n" .
+				"Memory Limit: " . ini_get('memory_limit') . "\n" .
+				"Max Execution Time: " . ini_get('max_execution_time') . " seconds\n" .
+				"Upload Max Filesize: " . ini_get('upload_max_filesize') . "\n" .
+				"Post Max Size: " . ini_get('post_max_size') . "\n";
+			
+			$intent_data['enhanced_php_info'] = $php_info;
+		}
+		
+		// Check for plugin activity queries
+		if (strpos($user_message_lower, 'recent') !== false && 
+			(strpos($user_message_lower, 'plugin') !== false || 
+			 strpos($user_message_lower, 'activated') !== false)) {
+			
+			error_log("MPAI: Detected recent plugin activity query, ensuring plugin logger access");
+			
+			// Ensure plugin logger is accessible and data is available
+			if (function_exists('mpai_init_plugin_logger')) {
+				$plugin_logger = mpai_init_plugin_logger();
+				if ($plugin_logger && method_exists($plugin_logger, 'maybe_create_table')) {
+					try {
+						// Ensure the table exists and has data
+						$plugin_logger->maybe_create_table();
+					} catch (Exception $e) {
+						error_log("MPAI: Error ensuring plugin logger table: " . $e->getMessage());
+					}
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Get available tools information for inclusion in SDK context
+	 * 
+	 * @return array Information about available tools
+	 */
+	private function get_available_tools_info() {
+		$tools_info = [];
+		
+		if (!$this->tool_registry) {
+			return $tools_info;
+		}
+		
+		$available_tools = $this->tool_registry->get_available_tools();
+		
+		foreach ($available_tools as $tool_id => $tool_instance) {
+			$tools_info[$tool_id] = [
+				'name' => method_exists($tool_instance, 'get_name') ? $tool_instance->get_name() : $tool_id,
+				'description' => method_exists($tool_instance, 'get_description') ? $tool_instance->get_description() : '',
+				'parameters' => method_exists($tool_instance, 'get_parameters') ? $tool_instance->get_parameters() : [],
+			];
+		}
+		
+		return $tools_info;
 	}
 	
 	/**
