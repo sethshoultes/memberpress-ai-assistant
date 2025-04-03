@@ -81,7 +81,7 @@ For complete details on the Scooby Snack documentation system, see `/docs/_snack
 - User-friendly error messages for front-end display
 
 ## AJAX Handlers
-- Always use existing AJAX handlers when available rather than creating new ones
+- Always use existing AJAX handlers when available rather than creating new onesagent
 - Leverage the plugin's established AJAX endpoints for communication
 - Reference how existing functionality works rather than creating parallel implementations
 - Maintain consistent parameter naming between frontend and backend
