@@ -152,6 +152,36 @@ settings_errors('mpai_messages');
 
 <div class="wrap mpai-settings-page">
     <h1><?php _e('MemberPress AI Assistant Settings', 'memberpress-ai-assistant'); ?></h1>
+    
+    <!-- Direct console test script -->
+    <script>
+    // These console messages should appear in the browser console regardless of any plugin JS
+    console.log('🟢 SETTINGS PAGE TEST: This message should appear in the console');
+    console.error('🟢 SETTINGS PAGE TEST: This error message should appear in red');
+    console.warn('🟢 SETTINGS PAGE TEST: This warning message should appear in yellow');
+    
+    // Add a test button directly in the settings page
+    document.addEventListener('DOMContentLoaded', function() {
+        var testButton = document.createElement('button');
+        testButton.className = 'button';
+        testButton.innerText = 'Test Console Directly';
+        testButton.style.marginBottom = '10px';
+        testButton.addEventListener('click', function() {
+            console.group('🟢 Direct Console Test from Settings Button');
+            console.log('Button clicked at ' + new Date().toISOString());
+            console.log('Test Object:', { test: 'value', number: 123 });
+            console.error('Test Error Message');
+            console.warn('Test Warning Message');
+            
+            // Add a browser alert so the user knows something happened
+            alert('Test logs sent to console - check developer tools (F12)');
+            
+            console.groupEnd();
+        });
+        
+        document.querySelector('.mpai-settings-page h1').after(testButton);
+    });
+    </script>
 
     <form method="post" action="">
         <?php wp_nonce_field('mpai_settings_nonce', 'mpai_nonce'); ?>

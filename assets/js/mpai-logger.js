@@ -113,24 +113,32 @@
             // Load settings from found config
             console.log('MPAI: Setting from provided config - raw enabled value:', loggerSettings.enabled);
             
-            // Always enable for debugging regardless of settings
-            this.enabled = true;
-            console.log('MPAI: Forcing enabled=true for debugging');
+            // Use the settings from the config - simple check: if it's '1' or true, enable logging
+            var enabledSetting = loggerSettings.enabled;
             
-            // Get log level but default to debug for maximum info
+            // Simplified check - if it's exactly '1' or exactly true, enable logging
+            if (enabledSetting === '1' || enabledSetting === true) {
+                this.enabled = true;
+            } else {
+                this.enabled = false;
+            }
+            
+            console.log('MPAI: Setting enabled from config:', this.enabled);
+            
+            // Get log level
             this.logLevel = loggerSettings.log_level || loggerSettings.logLevel || 'debug';
             console.log('MPAI: Setting log level to:', this.logLevel);
             
             if (loggerSettings.categories) {
                 console.log('MPAI: Setting categories from config:', loggerSettings.categories);
+                // Convert string values ('1'/'0') to boolean if needed
                 this.categories = {
-                    api_calls: true, // Force all categories on for debugging
-                    tool_usage: true,
-                    agent_activity: true,
-                    timing: true,
+                    api_calls: loggerSettings.categories.api_calls === '1' || loggerSettings.categories.api_calls === true,
+                    tool_usage: loggerSettings.categories.tool_usage === '1' || loggerSettings.categories.tool_usage === true,
+                    agent_activity: loggerSettings.categories.agent_activity === '1' || loggerSettings.categories.agent_activity === true,
+                    timing: loggerSettings.categories.timing === '1' || loggerSettings.categories.timing === true,
                     ui: true // Always enable UI logging
                 };
-                console.log('MPAI: Forcing all categories to be enabled for debugging');
             } else {
                 console.log('MPAI: No categories in config, using defaults');
             }
@@ -164,8 +172,8 @@
 
     // Check if logging is enabled for a specific level and category
     MpaiLogger.prototype.shouldLog = function(level, category) {
-        // First check if logging is enabled at all
-        if (!this.enabled) {
+        // First check if logging is enabled at all - strict enforcement
+        if (this.enabled !== true) {
             return false;
         }
 

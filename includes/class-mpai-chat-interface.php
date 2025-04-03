@@ -150,7 +150,11 @@ class MPAI_Chat_Interface {
             true
         );
 
-        // Get logger settings
+        // Get logger settings with debug info
+        error_log('MPAI: Getting logger settings for chat interface');
+        error_log('MPAI: mpai_enable_console_logging = ' . get_option('mpai_enable_console_logging', '1'));
+        
+        // Ensure we're providing consistent string values for all boolean options
         $logger_settings = array(
             'enabled' => get_option('mpai_enable_console_logging', '1'),
             'log_level' => get_option('mpai_console_log_level', 'info'),
@@ -162,6 +166,9 @@ class MPAI_Chat_Interface {
                 'ui' => '1' // Always enable UI logging
             )
         );
+        
+        // Log the settings for debugging
+        error_log('MPAI: Chat interface logger settings: ' . json_encode($logger_settings));
         
         wp_localize_script(
             $this->plugin_name . '-chat',

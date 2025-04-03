@@ -19,6 +19,38 @@ $stats = $api->get_data_summary();
 <div class="wrap mpai-admin-page">
     <h1><?php _e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h1>
     
+    <!-- Direct console logging test script -->
+    <script>
+    // These console messages should appear in the browser console regardless of any plugin JS
+    console.log('🔴 DIRECT TEST: This message should appear in the console');
+    console.error('🔴 DIRECT TEST: This error message should appear in red');
+    console.warn('🔴 DIRECT TEST: This warning message should appear in yellow');
+    
+    // Log every 5 seconds to ensure visibility
+    setInterval(function() {
+        console.log('🔄 INTERVAL TEST: ' + new Date().toISOString());
+    }, 5000);
+    
+    // Add a test button directly in the admin page
+    document.addEventListener('DOMContentLoaded', function() {
+        var testButton = document.createElement('button');
+        testButton.className = 'button';
+        testButton.innerText = 'Test Console (Direct)';
+        testButton.style.marginBottom = '10px';
+        testButton.addEventListener('click', function() {
+            console.group('🔵 Direct Console Test from Button');
+            console.log('Button clicked at ' + new Date().toISOString());
+            console.log('Test Object:', { test: 'value', number: 123 });
+            console.error('Test Error Message');
+            console.warn('Test Warning Message');
+            console.groupEnd();
+            alert('Test logs sent to console - check developer tools (F12)');
+        });
+        
+        document.querySelector('.mpai-admin-page h1').after(testButton);
+    });
+    </script>
+    
     <?php if (empty(get_option('mpai_api_key'))) : ?>
         <div class="notice notice-warning">
             <p><?php _e('Please configure your API key in the settings page before using the AI assistant.', 'memberpress-ai-assistant'); ?></p>
