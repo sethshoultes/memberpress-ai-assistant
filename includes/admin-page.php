@@ -26,10 +26,7 @@ $stats = $api->get_data_summary();
     console.error('🔴 DIRECT TEST: This error message should appear in red');
     console.warn('🔴 DIRECT TEST: This warning message should appear in yellow');
     
-    // Log every 5 seconds to ensure visibility
-    setInterval(function() {
-        console.log('🔄 INTERVAL TEST: ' + new Date().toISOString());
-    }, 5000);
+    // Removed interval test that was logging every 5 seconds
     
     // Add a test button directly in the admin page
     document.addEventListener('DOMContentLoaded', function() {
