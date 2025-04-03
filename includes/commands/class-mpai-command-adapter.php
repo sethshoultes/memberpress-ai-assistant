@@ -16,12 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Command Adapter Class
  */
 class MPAI_Command_Adapter {
-    /**
-     * Logger instance
-     *
-     * @var object
-     */
-    private $logger;
 
     /**
      * Command handler instance
@@ -43,9 +37,6 @@ class MPAI_Command_Adapter {
      * @param MPAI_Tool_Registry $tool_registry Tool registry
      */
     public function __construct($tool_registry = null) {
-        // Initialize logger
-        $this->logger = $this->get_default_logger();
-        
         // Store the tool registry
         $this->tool_registry = $tool_registry;
         
@@ -53,18 +44,6 @@ class MPAI_Command_Adapter {
         $this->initialize_command_handler();
     }
 
-    /**
-     * Get default logger
-     *
-     * @return object Default logger
-     */
-    private function get_default_logger() {
-        return (object) [
-            'info'    => function( $message ) { error_log( 'MPAI ADAPTER INFO: ' . $message ); },
-            'warning' => function( $message ) { error_log( 'MPAI ADAPTER WARNING: ' . $message ); },
-            'error'   => function( $message ) { error_log( 'MPAI ADAPTER ERROR: ' . $message ); },
-        ];
-    }
 
     /**
      * Initialize the command handler
@@ -75,11 +54,11 @@ class MPAI_Command_Adapter {
         // Load and initialize command handler
         if (!class_exists('MPAI_Command_Handler')) {
             include_once $base_path . '/class-mpai-command-handler.php';
-            $this->logger->info('Loaded MPAI_Command_Handler class');
+            error_log('MPAI ADAPTER: Loaded MPAI_Command_Handler class');
         }
         
         $this->command_handler = new MPAI_Command_Handler();
-        $this->logger->info('Initialized command handler');
+        error_log('MPAI ADAPTER: Initialized command handler');
     }
 
     /**
@@ -91,7 +70,7 @@ class MPAI_Command_Adapter {
      * @throws Exception If command execution fails
      */
     public function execute_tool($tool_id, $parameters) {
-        $this->logger->info('Executing tool through adapter: ' . $tool_id);
+        error_log('MPAI ADAPTER: Executing tool through adapter: ' . $tool_id);
         
         switch ($tool_id) {
             case 'wpcli':
@@ -134,7 +113,7 @@ class MPAI_Command_Adapter {
      * @return array Processing result
      */
     public function process_request($message, $context = []) {
-        $this->logger->info('Processing request through adapter: ' . $message);
+        error_log('MPAI ADAPTER: Processing request through adapter: ' . $message);
         
         // Process the request using the command handler
         $result = $this->command_handler->process_request($message, $context);
@@ -155,7 +134,7 @@ class MPAI_Command_Adapter {
      */
     public function register_as_tool($tool_registry) {
         if (!$tool_registry) {
-            $this->logger->error('Cannot register as tool: Tool registry not provided');
+            error_log('MPAI ADAPTER ERROR: Cannot register as tool: Tool registry not provided');
             return false;
         }
         
@@ -176,7 +155,7 @@ class MPAI_Command_Adapter {
         
         // Register the tool
         $tool_registry->register_tool('wpcli_new', $wpcli_tool);
-        $this->logger->info('Registered command adapter as wpcli_new tool');
+        error_log('MPAI ADAPTER: Registered command adapter as wpcli_new tool');
         
         return true;
     }

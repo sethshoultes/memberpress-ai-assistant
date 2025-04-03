@@ -662,14 +662,14 @@ class MPAI_Agent_Orchestrator {
 					if (is_array($result) && isset($result['output'])) {
 						// Use the result from the new command system
 						$php_info = $result['output'];
-						$this->logger->info("Used new command system for PHP version query");
+						error_log("MPAI: Used new command system for PHP version query");
 					} else {
 						// Fall back to direct PHP info if result is unexpected
 						$php_info = $result;
 					}
 				} catch (Exception $e) {
 					// Fall back to direct PHP info on error
-					$this->logger->error("Error using new command system: " . $e->getMessage());
+					error_log("MPAI: Error using new command system: " . $e->getMessage());
 					$php_info = $this->get_php_info_directly();
 				}
 			} else {
