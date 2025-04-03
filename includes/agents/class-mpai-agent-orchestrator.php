@@ -69,6 +69,9 @@ class MPAI_Agent_Orchestrator {
 		// Register all available tools
 		$this->register_tools();
 		
+		// Initialize the new command system
+		$this->init_command_system();
+		
 		// Initialize SDK integration
 		$this->init_sdk_integration();
 		
@@ -90,6 +93,12 @@ class MPAI_Agent_Orchestrator {
 		];
 	}
 	
+	/**
+	 * Command adapter for new command system
+	 * @var object
+	 */
+	private $command_adapter = null;
+
 	/**
 	 * Register tools
 	 */
@@ -140,6 +149,50 @@ class MPAI_Agent_Orchestrator {
 		if (class_exists('MPAI_Analytics_Tool')) {
 			$analytics_tool = new MPAI_Analytics_Tool();
 			$this->tool_registry->register_tool('analytics', $analytics_tool);
+		}
+	}
+	
+	/**
+	 * Initialize the new command system
+	 */
+	private function init_command_system() {
+		try {
+			// Check if the new command system is available
+			$adapter_path = plugin_dir_path( dirname( __FILE__ ) ) . 'commands/class-mpai-command-adapter.php';
+			
+			if ( ! file_exists( $adapter_path ) ) {
+				$this->logger->info( 'New command system not available: ' . $adapter_path );
+				return false;
+			}
+			
+			// Include the adapter file
+			require_once $adapter_path;
+			
+			// Check if adapter class is available
+			if ( ! class_exists( 'MPAI_Command_Adapter' ) ) {
+				$this->logger->error( 'Command adapter class not found' );
+				return false;
+			}
+			
+			// Initialize the command adapter
+			$this->command_adapter = new MPAI_Command_Adapter( $this->tool_registry );
+			$this->logger->info( 'Initialized command adapter' );
+			
+			// Register the adapter as a tool for WP-CLI commands
+			if ( $this->command_adapter->register_as_tool( $this->tool_registry ) ) {
+				$this->logger->info( 'Registered command adapter as tool' );
+				
+				// Replace the standard WP-CLI tool with our new implementation
+				$this->tool_registry->register_tool( 'wpcli', $this->tool_registry->get_tool( 'wpcli_new' ) );
+				$this->logger->info( 'Replaced standard WP-CLI tool with new implementation' );
+				
+				return true;
+			}
+			
+			return false;
+		} catch ( Exception $e ) {
+			$this->logger->error( 'Error initializing command system: ' . $e->getMessage() );
+			return false;
 		}
 	}
 	
@@ -523,6 +576,45 @@ class MPAI_Agent_Orchestrator {
 	}
 	
 	/**
+	 * Get PHP info directly using PHP functions
+	 * 
+	 * @return string Formatted PHP information
+	 */
+	private function get_php_info_directly() {
+		// Get PHP version and other information
+		$php_version = phpversion();
+		$php_uname = php_uname();
+		$php_sapi = php_sapi_name();
+		
+		// Get PHP configuration
+		$memory_limit = ini_get('memory_limit');
+		$max_execution_time = ini_get('max_execution_time');
+		$upload_max_filesize = ini_get('upload_max_filesize');
+		$post_max_size = ini_get('post_max_size');
+		$max_input_vars = ini_get('max_input_vars');
+		
+		// Get loaded extensions
+		$extensions = get_loaded_extensions();
+		sort($extensions);
+		$extensions_str = implode(', ', array_slice($extensions, 0, 10));
+		
+		// Format the output
+		$php_info = "PHP Information:\n\n";
+		$php_info .= "PHP Version: $php_version\n";
+		$php_info .= "System: $php_uname\n";
+		$php_info .= "SAPI: $php_sapi\n";
+		$php_info .= "\nImportant Settings:\n";
+		$php_info .= "memory_limit: $memory_limit\n";
+		$php_info .= "max_execution_time: $max_execution_time seconds\n";
+		$php_info .= "upload_max_filesize: $upload_max_filesize\n";
+		$php_info .= "post_max_size: $post_max_size\n";
+		$php_info .= "max_input_vars: $max_input_vars\n";
+		$php_info .= "\nLoaded Extensions (first 10): $extensions_str\n";
+		
+		return $php_info;
+	}
+	
+	/**
 	 * Preprocess system queries for improved handling
 	 * 
 	 * @param string $user_message User message
@@ -531,15 +623,23 @@ class MPAI_Agent_Orchestrator {
 	private function preprocess_system_queries($user_message, &$intent_data) {
 		$user_message_lower = strtolower($user_message);
 		
-		// Check for PHP version queries using multiple patterns
+		// Check for PHP version queries using even more comprehensive patterns
 		$php_version_patterns = [
-			'/php.*version/i', 
+			'/php.*version/i',
 			'/version.*php/i',
 			'/php.*info/i',
 			'/what.*php.*version/i',
 			'/which.*php.*version/i',
 			'/php\s+([-]{1,2}v|info)/i',
-			'/phpinfo/i'
+			'/phpinfo/i',
+			'/what.*version.*php/i',
+			'/installed.*php.*version/i',
+			'/php.*installed/i',
+			'/check.*php.*version/i',
+			'/show.*php.*version/i',
+			'/tell.*php.*version/i',
+			'/get.*php.*version/i',
+			'/display.*php.*version/i'
 		];
 		
 		$is_php_query = false;
@@ -551,21 +651,31 @@ class MPAI_Agent_Orchestrator {
 		}
 		
 		if ($is_php_query) {
-			error_log("MPAI: Detected PHP version query, adding explicit PHP info");
+			error_log("MPAI: Detected PHP version query, using new command system if available");
 			
-			// Add explicit PHP version information to the message
-			$php_info = "PHP Version: " . phpversion() . "\n" .
-				"Memory Limit: " . ini_get('memory_limit') . "\n" .
-				"Max Execution Time: " . ini_get('max_execution_time') . " seconds\n" .
-				"Upload Max Filesize: " . ini_get('upload_max_filesize') . "\n" .
-				"Post Max Size: " . ini_get('post_max_size') . "\n" .
-				"Max Input Vars: " . ini_get('max_input_vars') . "\n" .
-				"PHP SAPI: " . php_sapi_name() . "\n";
-			
-			// Add loaded extensions (first 10)
-			$extensions = get_loaded_extensions();
-			sort($extensions);
-			$php_info .= "Loaded Extensions (first 10): " . implode(', ', array_slice($extensions, 0, 10)) . "\n";
+			// Try to use the new command system if available
+			if ($this->command_adapter) {
+				try {
+					// Execute the PHP version command directly
+					$result = $this->command_adapter->execute_tool('wpcli', ['command' => 'php -v']);
+					
+					if (is_array($result) && isset($result['output'])) {
+						// Use the result from the new command system
+						$php_info = $result['output'];
+						$this->logger->info("Used new command system for PHP version query");
+					} else {
+						// Fall back to direct PHP info if result is unexpected
+						$php_info = $result;
+					}
+				} catch (Exception $e) {
+					// Fall back to direct PHP info on error
+					$this->logger->error("Error using new command system: " . $e->getMessage());
+					$php_info = $this->get_php_info_directly();
+				}
+			} else {
+				// Use direct PHP info if command adapter not available
+				$php_info = $this->get_php_info_directly();
+			}
 			
 			// Add information about different PHP configurations to handle variations
 			$intent_data['enhanced_php_info'] = $php_info;
@@ -578,6 +688,13 @@ class MPAI_Agent_Orchestrator {
 				'upload_max_filesize' => ini_get('upload_max_filesize'),
 				'post_max_size' => ini_get('post_max_size'),
 				'max_input_vars' => ini_get('max_input_vars')
+			];
+			
+			// Provide the recommended command for getting PHP version directly
+			$intent_data['php_version_commands'] = [
+				'direct' => 'php -v',
+				'wp_cli' => 'wp eval \'echo PHP_VERSION;\'',
+				'wp_php' => 'wp php info'
 			];
 			
 			// Directly add to message for better handling
