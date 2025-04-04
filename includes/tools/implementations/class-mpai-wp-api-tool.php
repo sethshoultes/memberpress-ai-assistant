@@ -90,59 +90,111 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	}
 
 	/**
-	 * Execute the tool
+	 * Get required parameters
 	 *
-	 * @param array $parameters Parameters for execution
+	 * @return array List of required parameter names
+	 */
+	public function get_required_parameters() {
+		return ['action'];
+	}
+	
+	/**
+	 * Execute the tool implementation with validated parameters
+	 *
+	 * @param array $parameters Validated parameters for the tool
 	 * @return mixed Execution result
 	 */
-	public function execute( $parameters ) {
-		// Log all incoming parameters for debugging
-		error_log('MPAI WP_API: Full parameters received by execute: ' . json_encode($parameters));
-		
-		if ( ! isset( $parameters['action'] ) ) {
-			throw new Exception( 'Action parameter is required' );
-		}
-
-		$action = $parameters['action'];
-		error_log('MPAI WP_API: Processing action: ' . $action);
-
-		switch ( $action ) {
-			case 'create_post':
-				// Check required parameters for create_post action
-				if (!isset($parameters['title']) || empty($parameters['title'])) {
-					error_log('MPAI WP_API: Missing title for create_post action');
-				}
-				if (!isset($parameters['content']) || empty($parameters['content'])) {
-					error_log('MPAI WP_API: Missing content for create_post action');
-				}
-				return $this->create_post( $parameters );
-			case 'update_post':
-				return $this->update_post( $parameters );
-			case 'get_post':
-				return $this->get_post( $parameters );
-			case 'create_page':
-				$parameters['post_type'] = 'page';
-				return $this->create_post( $parameters );
-			case 'create_user':
-				return $this->create_user( $parameters );
-			case 'get_users':
-				return $this->get_users( $parameters );
-			case 'get_memberships':
-				return $this->get_memberships( $parameters );
-			case 'create_membership':
-				return $this->create_membership( $parameters );
-			case 'get_transactions':
-				return $this->get_transactions( $parameters );
-			case 'get_subscriptions':
-				return $this->get_subscriptions( $parameters );
-			case 'activate_plugin':
-				return $this->activate_plugin( $parameters );
-			case 'deactivate_plugin':
-				return $this->deactivate_plugin( $parameters );
-			case 'get_plugins':
-				return $this->get_plugins( $parameters );
-			default:
-				throw new Exception( 'Unsupported action: ' . $action );
+	protected function execute_tool( $parameters ) {
+		try {
+			// Log all incoming parameters for debugging
+			error_log('MPAI WP_API: Full parameters received by execute: ' . json_encode($parameters));
+			
+			// Validate action parameter
+			if (!isset($parameters['action']) || empty($parameters['action'])) {
+				$debug_trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+				$caller = isset($debug_trace[1]['function']) ? $debug_trace[1]['function'] : 'unknown';
+				$caller_file = isset($debug_trace[1]['file']) ? basename($debug_trace[1]['file']) : 'unknown';
+				$caller_line = isset($debug_trace[1]['line']) ? $debug_trace[1]['line'] : 'unknown';
+				
+				error_log('MPAI WP_API: Missing action parameter. Called from ' . $caller_file . ':' . $caller_line . ' in ' . $caller);
+				throw new Exception('Action parameter is required but was missing or empty.');
+			}
+			
+			$action = $parameters['action'];
+			error_log('MPAI WP_API: Processing action: ' . $action);
+			
+			// Validate specific action parameters
+			switch ($action) {
+				case 'activate_plugin':
+				case 'deactivate_plugin':
+					if (!isset($parameters['plugin']) || empty($parameters['plugin'])) {
+						error_log('MPAI WP_API: Missing plugin parameter for ' . $action . ' action');
+						throw new Exception('Plugin parameter is required for ' . $action . ' action');
+					}
+					break;
+					
+				case 'update_post':
+				case 'get_post':
+					if (!isset($parameters['post_id']) || empty($parameters['post_id'])) {
+						error_log('MPAI WP_API: Missing post_id parameter for ' . $action . ' action');
+						throw new Exception('Post ID parameter is required for ' . $action . ' action');
+					}
+					break;
+					
+				case 'create_user':
+					if (!isset($parameters['username']) || empty($parameters['username'])) {
+						error_log('MPAI WP_API: Missing username parameter for create_user action');
+						throw new Exception('Username parameter is required for create_user action');
+					}
+					if (!isset($parameters['email']) || empty($parameters['email'])) {
+						error_log('MPAI WP_API: Missing email parameter for create_user action');
+						throw new Exception('Email parameter is required for create_user action');
+					}
+					break;
+			}
+			
+			// Execute the requested action
+			switch ( $action ) {
+				case 'create_post':
+					// Check required parameters for create_post action
+					if (!isset($parameters['title']) || empty($parameters['title'])) {
+						error_log('MPAI WP_API: Missing title for create_post action');
+					}
+					if (!isset($parameters['content']) || empty($parameters['content'])) {
+						error_log('MPAI WP_API: Missing content for create_post action');
+					}
+					return $this->create_post( $parameters );
+				case 'update_post':
+					return $this->update_post( $parameters );
+				case 'get_post':
+					return $this->get_post( $parameters );
+				case 'create_page':
+					$parameters['post_type'] = 'page';
+					return $this->create_post( $parameters );
+				case 'create_user':
+					return $this->create_user( $parameters );
+				case 'get_users':
+					return $this->get_users( $parameters );
+				case 'get_memberships':
+					return $this->get_memberships( $parameters );
+				case 'create_membership':
+					return $this->create_membership( $parameters );
+				case 'get_transactions':
+					return $this->get_transactions( $parameters );
+				case 'get_subscriptions':
+					return $this->get_subscriptions( $parameters );
+				case 'activate_plugin':
+					return $this->activate_plugin( $parameters );
+				case 'deactivate_plugin':
+					return $this->deactivate_plugin( $parameters );
+				case 'get_plugins':
+					return $this->get_plugins( $parameters );
+				default:
+					throw new Exception( 'Unsupported action: ' . $action );
+			}
+		} catch (Exception $e) {
+			error_log('MPAI WP_API execute_tool exception: ' . $e->getMessage());
+			throw $e;
 		}
 	}
 
@@ -995,10 +1047,17 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				}
 			}
 			
-			// Check parameters
-			if ( ! isset( $parameters['plugin'] ) ) {
-				error_log('MPAI WP_API: Missing plugin parameter');
-				throw new Exception( 'Plugin parameter is required. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
+			// Check parameters - provide more detailed error message
+			if ( ! isset( $parameters['plugin'] ) || empty($parameters['plugin']) ) {
+				$debug_trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+				$caller = isset($debug_trace[1]['function']) ? $debug_trace[1]['function'] : 'unknown';
+				$caller_file = isset($debug_trace[1]['file']) ? basename($debug_trace[1]['file']) : 'unknown';
+				$caller_line = isset($debug_trace[1]['line']) ? $debug_trace[1]['line'] : 'unknown';
+				
+				error_log('MPAI WP_API: Missing plugin parameter. Called from ' . $caller_file . ':' . $caller_line . ' in ' . $caller);
+				error_log('MPAI WP_API: Full parameters: ' . json_encode($parameters));
+				
+				throw new Exception( 'Plugin parameter is required but was missing or empty. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
 			}
 			
 			// Ensure proper format without escaped slashes
@@ -1265,10 +1324,17 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				}
 			}
 			
-			// Check parameters
-			if ( ! isset( $parameters['plugin'] ) ) {
-				error_log('MPAI WP_API: Missing plugin parameter');
-				throw new Exception( 'Plugin parameter is required. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
+			// Check parameters - provide more detailed error message
+			if ( ! isset( $parameters['plugin'] ) || empty($parameters['plugin']) ) {
+				$debug_trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+				$caller = isset($debug_trace[1]['function']) ? $debug_trace[1]['function'] : 'unknown';
+				$caller_file = isset($debug_trace[1]['file']) ? basename($debug_trace[1]['file']) : 'unknown';
+				$caller_line = isset($debug_trace[1]['line']) ? $debug_trace[1]['line'] : 'unknown';
+				
+				error_log('MPAI WP_API: Missing plugin parameter. Called from ' . $caller_file . ':' . $caller_line . ' in ' . $caller);
+				error_log('MPAI WP_API: Full parameters: ' . json_encode($parameters));
+				
+				throw new Exception( 'Plugin parameter is required but was missing or empty. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
 			}
 			
 			// Ensure proper format without escaped slashes
