@@ -317,6 +317,9 @@ class MemberPress_AI_Assistant {
         // Load Error Recovery System first for exception handling
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-error-recovery.php';
         
+        // Load State Validation System for state consistency
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-state-validator.php';
+        
         // API Integration Classes
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-openai.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-anthropic.php';
@@ -338,6 +341,11 @@ class MemberPress_AI_Assistant {
         
         // Agent System
         $this->load_agent_system();
+        
+        // Integration Tests
+        if (is_admin() && file_exists(MPAI_PLUGIN_DIR . 'test/integration/register-integration-tests.php')) {
+            require_once MPAI_PLUGIN_DIR . 'test/integration/register-integration-tests.php';
+        }
         
         // CLI Commands - always load to ensure early initialization
         // The CLI commands file itself handles WP-CLI availability checks
@@ -1570,6 +1578,16 @@ class MemberPress_AI_Assistant {
     public function init_plugin_components() {
         // Initialize plugin logger
         mpai_init_plugin_logger();
+        
+        // Initialize error recovery system
+        if (function_exists('mpai_init_error_recovery')) {
+            mpai_init_error_recovery();
+        }
+        
+        // Initialize state validator
+        if (function_exists('mpai_init_state_validator')) {
+            mpai_init_state_validator();
+        }
         
         // Only initialize agent system once per page load
         // Use singleton pattern to avoid duplicate initializations

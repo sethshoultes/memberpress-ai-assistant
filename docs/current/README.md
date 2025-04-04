@@ -12,6 +12,7 @@ The documentation is now organized into system-based subdirectories:
 
 - **core/**: Core system documentation (system map, implementation status, features index)
 - **error-system/**: Error handling and recovery systems
+- **test-system/**: Testing frameworks and implementation
 - **agent-system/**: Agent system documentation
 - **tool-system/**: Tool system documentation
 - **content-system/**: Content-related documentation

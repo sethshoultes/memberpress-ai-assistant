@@ -29,6 +29,11 @@ if (!defined('WPINC')) {
         </div>
     </div>
     
+    <?php 
+    // Extension point for additional diagnostic sections
+    do_action('mpai_run_diagnostics'); 
+    ?>
+    
     <script>
     jQuery(document).ready(function($) {
         // Error Recovery System test
