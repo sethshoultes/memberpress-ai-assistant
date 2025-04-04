@@ -432,20 +432,95 @@ function mpai_test_wp_api_tool() {
             $all_plugins = get_plugins();
             $test_plugin = null;
             
-            // Look for a test plugin that's safe to toggle
-            foreach ($all_plugins as $plugin_file => $plugin_data) {
-                // Skip MemberPress and this plugin to avoid disrupting the test
-                if (
-                    stripos($plugin_file, 'memberpress') === false && 
-                    stripos($plugin_file, 'memberpress-ai-assistant') === false &&
-                    current_user_can('activate_plugins')
-                ) {
+            // Load plugin functions if needed 
+            if (!function_exists('is_plugin_active')) {
+                $plugin_php_path = ABSPATH . 'wp-admin/includes/plugin.php';
+                if (file_exists($plugin_php_path)) {
+                    require_once $plugin_php_path;
+                } else {
+                    // Try alternative path
+                    $alt_path = WP_PLUGIN_DIR . '/../../../wp-admin/includes/plugin.php';
+                    if (file_exists($alt_path)) {
+                        require_once $alt_path;
+                    } else {
+                        throw new Exception('Could not load required plugin.php file');
+                    }
+                }
+            }
+            
+            // Define a list of safe test plugins in order of preference
+            $safe_test_plugins = [
+                'hello.php', // Hello Dolly
+                'akismet/akismet.php', // Akismet
+                'health-check/health-check.php', // Health Check
+                'query-monitor/query-monitor.php', // Query Monitor
+            ];
+            
+            // Try to find a safe test plugin
+            $test_plugin = null;
+            
+            // First, check our safe list
+            foreach ($safe_test_plugins as $plugin_file) {
+                if (isset($all_plugins[$plugin_file])) {
                     $test_plugin = $plugin_file;
+                    error_log('MPAI Test: Found safe test plugin: ' . $plugin_file);
                     break;
                 }
             }
             
+            // If no safe plugin found, look for any non-critical plugin
+            if (!$test_plugin) {
+                foreach ($all_plugins as $plugin_file => $plugin_data) {
+                    // Skip MemberPress and this plugin to avoid disrupting the test
+                    if (
+                        stripos($plugin_file, 'memberpress') === false && 
+                        stripos($plugin_file, 'memberpress-ai-assistant') === false &&
+                        stripos($plugin_file, 'woocommerce') === false &&
+                        $plugin_file !== 'index.php'
+                    ) {
+                        $test_plugin = $plugin_file;
+                        error_log('MPAI Test: Using non-critical plugin: ' . $plugin_file);
+                        break;
+                    }
+                }
+            }
+            
+            // Final fallback - just test error handling if no suitable plugin found
+            if (!$test_plugin) {
+                error_log('MPAI Test: No suitable plugin found, testing parameter validation only');
+                
+                // Create a test that validates the parameter checking
+                $plugin_test['result'] = 'pending';
+                $plugin_test['message'] = "Testing parameter validation only - no suitable test plugin available";
+                
+                // Test invalid parameter handling
+                try {
+                    // Try with empty plugin parameter (should trigger error)
+                    $wp_api_tool->execute([
+                        'action' => 'activate_plugin',
+                        'plugin' => ''
+                    ]);
+                    
+                    // If we get here, it didn't throw an exception as expected
+                    $plugin_test['result'] = 'failed';
+                    $plugin_test['message'] = "Tool failed to reject empty plugin parameter";
+                    $results['failed']++;
+                } catch (Exception $e) {
+                    // Expected behavior - it should reject empty plugin parameter
+                    if (strpos($e->getMessage(), 'Plugin parameter is required') !== false) {
+                        $plugin_test['result'] = 'passed';
+                        $plugin_test['message'] = "Tool correctly rejected empty plugin parameter";
+                        $results['passed']++;
+                    } else {
+                        $plugin_test['result'] = 'failed';
+                        $plugin_test['message'] = "Tool threw unexpected error: " . $e->getMessage();
+                        $results['failed']++;
+                    }
+                }
+            }
+            
             if ($test_plugin) {
+                error_log('MPAI Test: Using plugin "' . $test_plugin . '" for activation/deactivation test');
                 // Remember initial plugin state
                 $initially_active = is_plugin_active($test_plugin);
                 

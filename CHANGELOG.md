@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- WordPress API Tool parameter validation to handle missing or empty plugin parameters 🦴
+  - Added enhanced error handling with debug backtracing for troubleshooting
+  - Improved integration test for plugin activation/deactivation with better fallbacks
+  - Implemented validation for empty parameters, not just undefined ones
+  - Created comprehensive documentation in docs/SCOOBY_SNACK_WP_API_TOOL_FIX.md
+
 ### Added
 - Implemented comprehensive Error Recovery System for improved robustness:
   - Standardized error types and severity levels for consistent handling
@@ -38,6 +45,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added detailed documentation in tool-execution-integration-tests.md
   - Added extension hook (mpai_run_diagnostics) to System Diagnostics page
   - Created complete test-system documentation structure
+- Implemented Input Sanitization Improvements for enhanced security and reliability:
+  - Created centralized MPAI_Input_Validator class for consistent validation and sanitization
+  - Integrated validator with base tool class for automatic parameter validation
+  - Implemented schema-based validation compatible with OpenAI/Anthropic function calling
+  - Added comprehensive validation rules for all data types (string, number, boolean, array, object)
+  - Enhanced error reporting with detailed validation failure messages
+  - Created sanitization methods for all data types with security-focused cleaning
+  - Added default value support for optional parameters
+  - Integrated with Tool Registry for consistent parameter validation across all tools
+  - Implemented comprehensive test suite for validation and sanitization
+  - Created detailed documentation in input-sanitization-improvements.md
 
 ### Fixed
 - Fixed Error Recovery System test 500 error by correcting dependency loading and initialization 🦴
