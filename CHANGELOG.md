@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed System Information Caching test failure by correcting method name discrepancies between test and implementation 🦴
 
 ### Added
+- Scooby Mode investigation protocol for systematic troubleshooting: 🦴
+  - Added triggers to activate dedicated investigation mode
+  - Created comprehensive documentation with templates
+  - Implemented dedicated investigations directory in Scooby Snacks
+  - Enhanced documentation structure for investigation results
+  - Added Investigation section to Scooby Snacks index
 - Phase Two Agent System and Performance Enhancements: 🦴
   - Agent Specialization Scoring system with weighted confidence scoring for improved request routing
   - System Information Caching for PHP, WordPress, and plugin information with 70-80% performance improvement

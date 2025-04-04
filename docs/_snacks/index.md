@@ -1,7 +1,7 @@
 # Scooby Snacks Index
 
 **Status:** ✅ Maintained  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Last Updated:** April 3, 2025
 
 This document provides a categorized index of all Scooby Snacks - detailed documentation of investigations that led to fixes and improvements in the MemberPress AI Assistant plugin.
@@ -73,6 +73,14 @@ This document provides a categorized index of all Scooby Snacks - detailed docum
 
 | Snack Title | Date | Version | Description |
 |-------------|------|---------|-------------|
+| *No entries yet* |  |  |  |
+
+## Investigations
+
+This section contains ongoing or completed investigations that may not yet have implemented solutions.
+
+| Investigation Title | Date | Status | Description |
+|---------------------|------|--------|-------------|
 | *No entries yet* |  |  |  |
 
 ## Using This Index
