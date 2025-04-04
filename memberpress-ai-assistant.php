@@ -162,6 +162,9 @@ class MemberPress_AI_Assistant {
         add_action('admin_menu', array($this, 'add_admin_menu'), 20);
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
         
+        // Process consent form submissions
+        add_action('admin_init', array($this, 'process_consent_form'));
+        
         // Add chat interface to admin footer
         add_action('admin_footer', array($this, 'render_chat_interface'));
         
@@ -505,7 +508,41 @@ class MemberPress_AI_Assistant {
      * Display main admin page
      */
     public function display_admin_page() {
-        require_once MPAI_PLUGIN_DIR . 'includes/admin-page.php';
+        error_log('MPAI DEBUG: Displaying main admin dashboard page');
+        require_once MPAI_PLUGIN_DIR . 'includes/dashboard-page.php';
+    }
+    
+    /**
+     * Process consent form submission from dashboard page
+     */
+    public function process_consent_form() {
+        error_log('MPAI DEBUG: Checking for consent form submission');
+        
+        // Check if the consent form was submitted
+        if (isset($_POST['mpai_save_consent']) && isset($_POST['mpai_consent'])) {
+            // Verify nonce
+            if (!isset($_POST['mpai_consent_nonce']) || !wp_verify_nonce($_POST['mpai_consent_nonce'], 'mpai_consent_nonce')) {
+                error_log('MPAI ERROR: Consent form nonce verification failed');
+                add_settings_error('mpai_messages', 'mpai_consent_error', __('Security check failed.', 'memberpress-ai-assistant'), 'error');
+                return;
+            }
+            
+            // Save consent to options
+            update_option('mpai_consent_given', true);
+            error_log('MPAI DEBUG: User consent saved successfully');
+            
+            // Add a transient message
+            add_settings_error(
+                'mpai_messages', 
+                'mpai_consent_success', 
+                __('Thank you for agreeing to the terms. You can now use the MemberPress AI Assistant.', 'memberpress-ai-assistant'), 
+                'updated'
+            );
+            
+            // Redirect to remove POST data and show the dashboard
+            wp_redirect(admin_url('admin.php?page=memberpress-ai-assistant&consent=given'));
+            exit;
+        }
     }
 
     /**

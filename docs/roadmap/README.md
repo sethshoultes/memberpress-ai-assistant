@@ -2,16 +2,34 @@
 
 This directory contains documentation for features that are planned or in development for future versions of MemberPress AI Assistant. These documents outline the design and implementation plans for upcoming features.
 
+## Phase Four Development Roadmap (April-May 2025)
+
+Phase Four focuses on security enhancements and compliance features. The following components should be implemented in priority order:
+
+1. **Agentic Security Framework** - Begin with the agent validation system
+2. **WordPress Security Integration** - Focus on capability mapping and nonce systems  
+3. **AI Terms & Conditions Consent** - Implement user consent flow and persistence
+4. **Integrated Security Implementation** - Combine all security systems into unified approach
+
+### Implementation Order and Starting Points
+
+| Week | Focus Area | Starting Files | Priority Tasks |
+|------|------------|----------------|----------------|
+| 1 | Agent Security | [agentic-security-framework.md](agentic-security-framework.md) | Create agent validation system, implement operation sanitization |
+| 2 | WordPress Integration | [wp-security-integration-plan.md](wp-security-integration-plan.md) | Map capabilities to WordPress roles, implement AJAX nonce system |
+| 3 | Consent System | [consent-mechanism-plan.md](consent-mechanism-plan.md) | Develop consent UI and persistence layer |
+| 4 | Testing & Integration | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) | Security testing suite, compliance documentation |
+
 ## Features in Development
 
 | Feature | Target Version | Status | Documentation |
 |---------|---------------|--------|--------------|
 | Command System Rewrite | 1.6.2 | Design phase | [command-system-rewrite-plan.md](../current/feature-plans/command-system-rewrite-plan.md) |
-| AI Terms & Conditions Consent | 1.6.0 | Design phase | [consent-mechanism-plan.md](consent-mechanism-plan.md) |
-| Agentic Security Framework | 1.6.0 | Research phase | [agentic-security-framework.md](agentic-security-framework.md) |
-| WordPress Security Integration | 1.6.0 | Design phase | [wp-security-integration-plan.md](wp-security-integration-plan.md) |
-| Integrated Security Implementation | 1.6.0 | Design phase | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) |
-| Enhanced Content Tools | 1.6.1 | Planning phase | [content-tools-specification.md](content-tools-specification.md) |
+| AI Terms & Conditions Consent | 1.6.2 | Starting development | [consent-mechanism-plan.md](consent-mechanism-plan.md) |
+| Agentic Security Framework | 1.6.2 | Starting development | [agentic-security-framework.md](agentic-security-framework.md) |
+| WordPress Security Integration | 1.6.2 | Starting development | [wp-security-integration-plan.md](wp-security-integration-plan.md) |
+| Integrated Security Implementation | 1.6.2 | Starting development | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) |
+| Enhanced Content Tools | 1.7.0 | Planning phase | [content-tools-specification.md](content-tools-specification.md) |
 | New Tools Enhancement Plan | 1.7.0 | Research phase | [new-tools-enhancement-plan.md](new-tools-enhancement-plan.md) |
 | Agent System Enhancements | 1.6.0 | Completed | [_1_agent-system-enhancement-plan.md](./_1_agent-system-enhancement-plan.md) |
 | Performance Optimization | 1.6.0 | Completed | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md) |
