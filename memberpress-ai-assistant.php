@@ -1185,6 +1185,39 @@ class MemberPress_AI_Assistant {
             ));
         }
     }
+    
+    /**
+     * AJAX handler for running edge case tests
+     */
+    public function run_edge_case_tests_ajax() {
+        // Check nonce for security
+        check_ajax_referer('mpai_nonce', 'nonce');
+        
+        // Only allow logged-in users with appropriate capabilities
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+        
+        try {
+            // Ensure the Edge Case Test Suite file is included
+            if (!function_exists('mpai_display_all_edge_case_tests')) {
+                require_once MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php';
+            }
+            
+            if (function_exists('mpai_display_all_edge_case_tests')) {
+                ob_start();
+                mpai_display_all_edge_case_tests();
+                $output = ob_get_clean();
+                
+                wp_send_json_success($output);
+            } else {
+                wp_send_json_error('Edge Case Test Suite functions not found');
+            }
+        } catch (Exception $e) {
+            wp_send_json_error('Error running edge case tests: ' . $e->getMessage());
+        }
+    }
 
     /**
      * Clear chat history via AJAX
@@ -1597,6 +1630,14 @@ class MemberPress_AI_Assistant {
             if (method_exists($orchestrator, 'get_available_agents')) {
                 $orchestrator->get_available_agents();
             }
+        }
+        
+        // Load Edge Case Test Suite in admin
+        if (is_admin() && file_exists(MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php')) {
+            require_once MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php';
+            
+            // Register AJAX handler for running edge case tests
+            add_action('wp_ajax_mpai_run_edge_case_tests', array($this, 'run_edge_case_tests_ajax'));
         }
     }
     

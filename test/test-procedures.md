@@ -137,8 +137,30 @@ Test in the following browsers:
 
 ## Automated Testing
 
-Future implementation:
+### Current Test Implementations
 
+#### Tool Execution Integration Tests
+- [x] End-to-end tests for WP-CLI Tool
+- [x] End-to-end tests for WordPress API Tool
+- [x] End-to-end tests for Plugin Logs Tool
+- [x] Test from System Diagnostics page: `/wp-admin/admin.php?page=memberpress-ai-assistant-diagnostics`
+- [x] Dedicated test page: `/wp-admin/admin.php?page=mpai-test-tool-execution`
+
+#### Edge Case Test Suite
+- [x] Input validation tests for boundary conditions
+- [x] Resource constraint tests for handling limited resources
+- [x] Error condition tests for exceptional scenarios
+- [x] Test from System Diagnostics page: `/wp-admin/admin.php?page=memberpress-ai-assistant-diagnostics`
+- [x] Dedicated test page: `/wp-admin/admin.php?page=mpai-test-edge-cases`
+
+#### Input Validation Tests
+- [x] Basic validation tests for all data types
+- [x] Schema loading tests for OpenAI/Anthropic compatibility
+- [x] Sanitization tests for all data types
+- [x] Error handling tests for validation failures
+- [x] Dedicated test page: `/wp-admin/admin.php?page=mpai-test-input-validator`
+
+### Future Implementation
 - [ ] Unit tests for API integrations
 - [ ] Integration tests for database operations
 - [ ] End-to-end tests for chat functionality

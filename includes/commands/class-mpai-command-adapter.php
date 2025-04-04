@@ -149,7 +149,36 @@ class MPAI_Command_Adapter {
             }
             
             public function execute($parameters) {
+                return $this->execute_tool($parameters);
+            }
+            
+            protected function execute_tool($parameters) {
                 return $this->adapter->execute_tool('wpcli', $parameters);
+            }
+            
+            public function get_parameters() {
+                return [
+                    'command' => [
+                        'type' => 'string',
+                        'description' => 'The WP-CLI command to execute',
+                        'required' => true
+                    ],
+                    'timeout' => [
+                        'type' => 'integer',
+                        'description' => 'Execution timeout in seconds (max 60)',
+                        'default' => 30
+                    ],
+                    'format' => [
+                        'type' => 'string',
+                        'description' => 'Output format',
+                        'enum' => ['text', 'json', 'array'],
+                        'default' => 'text'
+                    ]
+                ];
+            }
+            
+            public function get_required_parameters() {
+                return ['command'];
             }
         };
         

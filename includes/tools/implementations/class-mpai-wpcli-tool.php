@@ -118,17 +118,55 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 	}
 	
 	/**
-	 * Execute a WP-CLI command
+	 * Get parameters for function calling
 	 *
-	 * @param array $parameters Parameters for the tool
+	 * @return array Parameters schema
+	 */
+	public function get_parameters() {
+		return [
+			'command' => [
+				'type' => 'string',
+				'description' => 'The WP-CLI command to execute',
+				'required' => true
+			],
+			'timeout' => [
+				'type' => 'integer',
+				'description' => 'Execution timeout in seconds (max 60)',
+				'default' => 30,
+				'min' => 1,
+				'max' => 60
+			],
+			'format' => [
+				'type' => 'string',
+				'description' => 'Output format',
+				'enum' => ['text', 'json', 'array'],
+				'default' => 'text'
+			],
+			'skip_cache' => [
+				'type' => 'boolean',
+				'description' => 'Skip cache and execute command directly',
+				'default' => false
+			]
+		];
+	}
+	
+	/**
+	 * Get required parameters
+	 *
+	 * @return array List of required parameter names
+	 */
+	public function get_required_parameters() {
+		return ['command'];
+	}
+	
+	/**
+	 * Execute the tool implementation with validated parameters
+	 *
+	 * @param array $parameters Validated parameters for the tool
 	 * @return mixed Command result
 	 * @throws Exception If command validation fails or execution error
 	 */
-	public function execute( $parameters ) {
-		if ( ! isset( $parameters['command'] ) ) {
-			throw new Exception( 'Command parameter is required' );
-		}
-		
+	protected function execute_tool( $parameters ) {
 		$command = $parameters['command'];
 		error_log('MPAI_WP_CLI_Tool: Executing command: ' . $command);
 		
