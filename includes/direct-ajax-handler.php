@@ -48,6 +48,82 @@ if (empty($_POST['action'])) {
 $action = sanitize_text_field($_POST['action']);
 
 switch ($action) {
+    // Test Error Recovery System
+    case 'test_error_recovery':
+        // Include the test script
+        $test_file = dirname(dirname(__FILE__)) . '/test/test-error-recovery.php';
+        error_log('MPAI: Loading Error Recovery test file from: ' . $test_file);
+        
+        try {
+            // Load required dependencies first
+            if (!class_exists('MPAI_Plugin_Logger')) {
+                $plugin_logger_file = dirname(__FILE__) . '/class-mpai-plugin-logger.php';
+                error_log('MPAI: Loading Plugin Logger from: ' . $plugin_logger_file);
+                if (file_exists($plugin_logger_file)) {
+                    require_once($plugin_logger_file);
+                    error_log('MPAI: Plugin Logger loaded successfully');
+                } else {
+                    error_log('MPAI: Plugin Logger file not found');
+                }
+            }
+    
+            // Make sure the plugin logger function exists
+            if (!function_exists('mpai_init_plugin_logger')) {
+                error_log('MPAI: mpai_init_plugin_logger function not found, creating locally');
+                function mpai_init_plugin_logger() {
+                    return MPAI_Plugin_Logger::get_instance();
+                }
+            }
+            
+            // Load error recovery class
+            if (!class_exists('MPAI_Error_Recovery')) {
+                $error_recovery_file = dirname(__FILE__) . '/class-mpai-error-recovery.php';
+                error_log('MPAI: Loading Error Recovery from: ' . $error_recovery_file);
+                if (file_exists($error_recovery_file)) {
+                    require_once($error_recovery_file);
+                    error_log('MPAI: Error Recovery loaded successfully');
+                } else {
+                    throw new Exception('Error Recovery file not found at: ' . $error_recovery_file);
+                }
+            }
+            
+            // Make sure the error recovery function exists
+            if (!function_exists('mpai_init_error_recovery')) {
+                error_log('MPAI: mpai_init_error_recovery function not found, creating locally');
+                function mpai_init_error_recovery() {
+                    return MPAI_Error_Recovery::get_instance();
+                }
+            }
+            
+            // Now load the test script
+            if (file_exists($test_file)) {
+                error_log('MPAI: Loading Error Recovery test file');
+                require_once($test_file);
+                
+                if (function_exists('mpai_test_error_recovery')) {
+                    error_log('MPAI: Running Error Recovery tests');
+                    $results = mpai_test_error_recovery();
+                    echo json_encode($results);
+                    error_log('MPAI: Error Recovery tests completed');
+                } else {
+                    throw new Exception('Error recovery test function not found after loading test file');
+                }
+            } else {
+                throw new Exception('Error recovery test file not found at: ' . $test_file);
+            }
+        } catch (Exception $e) {
+            error_log('MPAI: Error in Error Recovery test: ' . $e->getMessage());
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error running tests: ' . $e->getMessage(),
+                'error_details' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]
+            ]);
+        }
+        exit;
     case 'plugin_logs':
         // Direct plugin logs handler for AI tool calls
         if (!is_user_logged_in()) {
@@ -1631,8 +1707,8 @@ switch ($action) {
                     }
                 }
                 
-                // Create an orchestrator instance
-                $orchestrator = new MPAI_Agent_Orchestrator();
+                // Get an orchestrator instance (singleton)
+                $orchestrator = MPAI_Agent_Orchestrator::get_instance();
                 
                 // Get discovered agents
                 $agents = $orchestrator->get_available_agents();

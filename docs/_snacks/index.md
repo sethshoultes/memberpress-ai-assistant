@@ -2,7 +2,7 @@
 
 **Status:** ✅ Maintained  
 **Version:** 1.1.0  
-**Last Updated:** April 4, 2025
+**Last Updated:** April 5, 2025
 
 This document provides a categorized index of all Scooby Snacks - detailed documentation of investigations that led to fixes and improvements in the MemberPress AI Assistant plugin.
 
@@ -11,6 +11,7 @@ This document provides a categorized index of all Scooby Snacks - detailed docum
 | Snack Title | Date | Version | Description |
 |-------------|------|---------|-------------|
 | [Chat Interface Copy Icon Fix](interface/chat-interface-copy-icon-fix.md) | 2024-04-02 | 1.5.8 | Fixed issues with the copy button in chat interface |
+| [Chat History Clearing Fix](chat-interface/chat-history-clearing-fix.md) | 2025-04-05 | 1.6.1 | Fixed issue with chat history not being fully cleared from all storage locations |
 
 ## Performance
 

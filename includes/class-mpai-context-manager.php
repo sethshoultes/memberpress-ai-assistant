@@ -50,10 +50,25 @@ class MPAI_Context_Manager {
     private $chat_instance;
 
     /**
+     * Error recovery system instance
+     *
+     * @var MPAI_Error_Recovery
+     */
+    private $error_recovery;
+
+    /**
      * Constructor
      */
     public function __construct() {
         error_log('MPAI_Context_Manager v' . self::VERSION . ' initialized');
+        
+        // Initialize error recovery system
+        if (class_exists('MPAI_Error_Recovery')) {
+            $this->error_recovery = mpai_init_error_recovery();
+        } else {
+            error_log('MPAI: Error recovery system not available');
+        }
+        
         $this->openai = new MPAI_OpenAI();
         $this->memberpress_api = new MPAI_MemberPress_API();
         $this->allowed_commands = get_option('mpai_allowed_cli_commands', array());
@@ -249,11 +264,42 @@ class MPAI_Context_Manager {
                 $wp_cli_tool = new MPAI_WP_CLI_Tool();
                 error_log('MPAI: Created MPAI_WP_CLI_Tool instance at ' . date('H:i:s'));
                 
-                // Execute the command with a clean tabular format
-                $result = $wp_cli_tool->execute(array(
-                    'command' => 'wp plugin list',
-                    'format' => 'table' // Force table format
-                ));
+                // Define execution and fallback functions for error recovery
+                $execute_command = function() use ($wp_cli_tool) {
+                    return $wp_cli_tool->execute(array(
+                        'command' => 'wp plugin list',
+                        'format' => 'table' // Force table format
+                    ));
+                };
+                
+                $fallback_execution = function() {
+                    // Fallback to legacy command execution if tool execution fails
+                    return $this->execute_wp_cli_command('wp plugin list --format=table');
+                };
+                
+                // Use error recovery system if available
+                if ($this->error_recovery) {
+                    // Create tool execution context
+                    $result = $this->error_recovery->handle_error(
+                        $this->error_recovery->create_tool_error('wp_cli', 'tool_execution', 'Tool execution with error recovery', [
+                            'command' => 'wp plugin list',
+                        ]),
+                        'wp_cli',
+                        $execute_command,
+                        [],
+                        $fallback_execution,
+                        []
+                    );
+                    
+                    // If result is WP_Error, use the formatted message
+                    if (is_wp_error($result)) {
+                        error_log('MPAI: Command execution failed even with error recovery');
+                        return $this->error_recovery->format_error_for_display($result);
+                    }
+                } else {
+                    // Execute directly if no error recovery available
+                    $result = $execute_command();
+                }
                 
                 error_log('MPAI: wp_cli_tool execution complete at ' . date('H:i:s') . ', result length: ' . strlen($result));
                 error_log('MPAI: Result preview: ' . substr($result, 0, 100) . '...');
@@ -277,6 +323,18 @@ class MPAI_Context_Manager {
                 return $result;
             } catch (Exception $e) {
                 error_log('MPAI: Error executing wp plugin list with WP CLI Tool: ' . $e->getMessage());
+                
+                // Use error recovery formatting if available
+                if ($this->error_recovery) {
+                    $error = $this->error_recovery->create_tool_error(
+                        'wp_cli', 
+                        'execution_exception', 
+                        'Error executing command: ' . $e->getMessage(),
+                        ['exception' => $e->getMessage(), 'command' => 'wp plugin list']
+                    );
+                    return $this->error_recovery->format_error_for_display($error);
+                }
+                
                 return 'Error executing command: ' . $e->getMessage();
             }
         }

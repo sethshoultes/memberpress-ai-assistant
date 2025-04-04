@@ -1,8 +1,10 @@
 # MemberPress AI Assistant Scooby Snacks
 
+![Scooby Doo Mode](../images/scooby-doo-mode.png)
+
 **Status:** ✅ Maintained  
 **Version:** 1.1.0  
-**Last Updated:** April 3, 2025
+**Last Updated:** April 5, 2025
 
 ## What are "Scooby Snacks"?
 

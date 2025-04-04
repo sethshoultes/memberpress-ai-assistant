@@ -15,6 +15,20 @@ if ( ! defined( 'WPINC' ) ) {
  */
 class MPAI_Agent_Orchestrator {
 	/**
+	 * Instance of this class (singleton)
+	 *
+	 * @var MPAI_Agent_Orchestrator
+	 */
+	private static $instance = null;
+	
+	/**
+	 * Whether the orchestrator has been fully initialized
+	 *
+	 * @var bool
+	 */
+	private static $initialized = false;
+	
+	/**
 	 * Available agents
 	 *
 	 * @var array
@@ -50,6 +64,13 @@ class MPAI_Agent_Orchestrator {
 	private $sdk_integration = null;
 	
 	/**
+	 * Error recovery system instance
+	 *
+	 * @var MPAI_Error_Recovery
+	 */
+	private $error_recovery = null;
+	
+	/**
 	 * Logger instance
 	 * 
 	 * @var object
@@ -57,11 +78,37 @@ class MPAI_Agent_Orchestrator {
 	private $logger = null;
 	
 	/**
+	 * Get instance (singleton pattern)
+	 *
+	 * @return MPAI_Agent_Orchestrator
+	 */
+	public static function get_instance() {
+		if (self::$instance === null) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+	
+	/**
 	 * Constructor
 	 */
-	public function __construct() {
+	private function __construct() {
 		// Initialize logger
 		$this->logger = $this->get_default_logger();
+		
+		// Prevent duplicate initialization
+		if (self::$initialized) {
+			$this->logger->debug('Orchestrator already initialized, skipping');
+			return;
+		}
+		
+		// Initialize error recovery system if available
+		if (class_exists('MPAI_Error_Recovery')) {
+			$this->error_recovery = mpai_init_error_recovery();
+			$this->logger->info('Error recovery system initialized');
+		} else {
+			$this->logger->warning('Error recovery system not available');
+		}
 		
 		// Initialize the tool registry
 		$this->tool_registry = new MPAI_Tool_Registry();
@@ -77,6 +124,9 @@ class MPAI_Agent_Orchestrator {
 		
 		// Register all core agents
 		$this->register_core_agents();
+		
+		// Mark as initialized
+		self::$initialized = true;
 	}
 	
 	/**
@@ -85,12 +135,27 @@ class MPAI_Agent_Orchestrator {
 	 * @return object Default logger
 	 */
 	private function get_default_logger() {
-		return (object) [
-			'info'    => function( $message, $context = [] ) { error_log( 'MPAI ORCHESTRATOR INFO: ' . $message ); },
-			'warning' => function( $message, $context = [] ) { error_log( 'MPAI ORCHESTRATOR WARNING: ' . $message ); },
-			'error'   => function( $message, $context = [] ) { error_log( 'MPAI ORCHESTRATOR ERROR: ' . $message ); },
-			'debug'   => function( $message, $context = [] ) { error_log( 'MPAI ORCHESTRATOR DEBUG: ' . $message ); },
-		];
+		// Create a simple logger class instead of using stdClass with function properties
+		// This is safer across PHP versions
+		$logger = new class {
+			public function info($message, $context = []) {
+				error_log('MPAI ORCHESTRATOR INFO: ' . $message);
+			}
+			
+			public function warning($message, $context = []) {
+				error_log('MPAI ORCHESTRATOR WARNING: ' . $message);
+			}
+			
+			public function error($message, $context = []) {
+				error_log('MPAI ORCHESTRATOR ERROR: ' . $message);
+			}
+			
+			public function debug($message, $context = []) {
+				error_log('MPAI ORCHESTRATOR DEBUG: ' . $message);
+			}
+		};
+		
+		return $logger;
 	}
 	
 	/**
@@ -365,28 +430,87 @@ class MPAI_Agent_Orchestrator {
 	 * @return array Response data
 	 */
 	public function process_request( $user_message, $user_id = 0 ) {
-		try {
-			// Get user context
-			$user_context = $this->get_user_context( $user_id );
+		// If error recovery system is available, use it for robust error handling
+		if ($this->error_recovery) {
+			// Define the main processing function
+			$process_func = function() use ($user_message, $user_id) {
+				// Get user context
+				$user_context = $this->get_user_context( $user_id );
+				
+				// Log the request
+				error_log( "MPAI: Processing request - User ID: " . $user_id . ", Using SDK: " . ($this->sdk_initialized ? "Yes" : "No"));
+				
+				// If SDK is initialized, use it for processing
+				if ( $this->sdk_initialized && $this->sdk_integration ) {
+					return $this->process_with_sdk( $user_message, $user_id, $user_context );
+				}
+				
+				// Otherwise use the traditional processing method
+				return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
+			};
 			
-			// Log the request
-			error_log( "MPAI: Processing request - User ID: " . $user_id . ", Using SDK: " . ($this->sdk_initialized ? "Yes" : "No"));
+			// Define fallback processing function that uses traditional method
+			$fallback_func = function() use ($user_message, $user_id) {
+				$user_context = $this->get_user_context( $user_id );
+				error_log("MPAI: Fallback processing with traditional method");
+				return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
+			};
 			
-			// If SDK is initialized, use it for processing
-			if ( $this->sdk_initialized && $this->sdk_integration ) {
-				return $this->process_with_sdk( $user_message, $user_id, $user_context );
+			// Create an error with proper context for the error recovery system
+			$error = $this->error_recovery->create_agent_error(
+				'orchestrator', 
+				'agent_processing', 
+				'Agent request processing with recovery', 
+				['user_id' => $user_id]
+			);
+			
+			// Process with error recovery
+			$result = $this->error_recovery->handle_error(
+				$error, 
+				'request_processing', 
+				$process_func, 
+				[], 
+				$fallback_func, 
+				[]
+			);
+			
+			// If result is a WP_Error, format it appropriately for the user
+			if (is_wp_error($result)) {
+				error_log("MPAI: Error recovery failed, returning formatted error");
+				$error_message = $this->error_recovery->format_error_for_display($result);
+				return [
+					'success' => false,
+					'message' => $error_message,
+					'error' => $result->get_error_message(),
+				];
 			}
 			
-			// Otherwise use the traditional processing method
-			return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
-		} catch ( Exception $e ) {
-			error_log( "MPAI: Error processing request: " . $e->getMessage() );
-			
-			return [
-				'success' => false,
-				'message' => "Sorry, I couldn't process that request: " . $e->getMessage(),
-				'error' => $e->getMessage(),
-			];
+			return $result;
+		} else {
+			// Traditional error handling if error recovery is not available
+			try {
+				// Get user context
+				$user_context = $this->get_user_context( $user_id );
+				
+				// Log the request
+				error_log( "MPAI: Processing request - User ID: " . $user_id . ", Using SDK: " . ($this->sdk_initialized ? "Yes" : "No"));
+				
+				// If SDK is initialized, use it for processing
+				if ( $this->sdk_initialized && $this->sdk_integration ) {
+					return $this->process_with_sdk( $user_message, $user_id, $user_context );
+				}
+				
+				// Otherwise use the traditional processing method
+				return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
+			} catch ( Exception $e ) {
+				error_log( "MPAI: Error processing request: " . $e->getMessage() );
+				
+				return [
+					'success' => false,
+					'message' => "Sorry, I couldn't process that request: " . $e->getMessage(),
+					'error' => $e->getMessage(),
+				];
+			}
 		}
 	}
 	
