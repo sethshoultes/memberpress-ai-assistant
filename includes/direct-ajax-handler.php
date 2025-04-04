@@ -1241,6 +1241,351 @@ switch ($action) {
         }
         break;
         
+    case 'test_system_cache':
+        // Test system information caching
+        try {
+            error_log('MPAI: Phase Two Test - System Information Cache test started');
+            
+            // First, load the required classes
+            $system_cache_file = dirname(__FILE__) . '/class-mpai-system-cache.php';
+            if (!class_exists('MPAI_System_Cache') && file_exists($system_cache_file)) {
+                require_once $system_cache_file;
+                error_log('MPAI: Loaded system cache class from: ' . $system_cache_file);
+            } else {
+                error_log('MPAI: MPAI_System_Cache class already loaded or not found at: ' . $system_cache_file);
+            }
+            
+            $base_tool_file = dirname(__FILE__) . '/tools/class-mpai-base-tool.php';
+            if (!class_exists('MPAI_Base_Tool') && file_exists($base_tool_file)) {
+                require_once $base_tool_file;
+                error_log('MPAI: Loaded base tool class from: ' . $base_tool_file);
+            } else {
+                error_log('MPAI: MPAI_Base_Tool class already loaded or not found at: ' . $base_tool_file);
+            }
+            
+            $wp_cli_tool_file = dirname(__FILE__) . '/tools/implementations/class-mpai-wpcli-tool.php';
+            if (!class_exists('MPAI_WP_CLI_Tool') && file_exists($wp_cli_tool_file)) {
+                require_once $wp_cli_tool_file;
+                error_log('MPAI: Loaded WP CLI tool class from: ' . $wp_cli_tool_file);
+            } else {
+                error_log('MPAI: MPAI_WP_CLI_Tool class already loaded or not found at: ' . $wp_cli_tool_file);
+            }
+            
+            // Check if the required classes exist
+            if (!class_exists('MPAI_System_Cache')) {
+                throw new Exception('MPAI_System_Cache class is not available');
+            }
+            
+            // Initialize system cache
+            $system_cache = MPAI_System_Cache::get_instance();
+            error_log('MPAI: Successfully initialized system cache instance');
+            
+            // Prepare results container
+            $test_results = [
+                'success' => true,
+                'message' => 'System Information Cache tests completed',
+                'data' => [
+                    'tests' => [],
+                    'cache_hits' => 0,
+                    'timing' => []
+                ]
+            ];
+            
+            // Track number of cache hits
+            $cache_hits = 0;
+            
+            // Clear existing cache for clean testing
+            $system_cache->clear();
+            error_log('MPAI: Cleared existing cache for testing');
+            
+            // Test 1: Basic Cache Operations
+            error_log('MPAI: Running Test 1: Basic Cache Operations');
+            $start_time = microtime(true);
+            $test_data = ['test_key' => 'test_value', 'timestamp' => time()];
+            $set_result = $system_cache->set('test_key', $test_data, 'default');
+            $get_result = $system_cache->get('test_key', 'default');
+            $end_time = microtime(true);
+            
+            if ($get_result && isset($get_result['test_key']) && $get_result['test_key'] === 'test_value') {
+                $cache_hits++;
+            }
+            
+            $test_results['data']['tests'][] = [
+                'name' => 'Basic Cache Operations',
+                'success' => ($set_result && $get_result !== null && isset($get_result['test_key']) && $get_result['test_key'] === 'test_value'),
+                'message' => 'Cache can store and retrieve data correctly',
+                'timing' => number_format(($end_time - $start_time) * 1000, 2) . ' ms'
+            ];
+            
+            // Test 2: Cache with Different Types
+            error_log('MPAI: Running Test 2: Cache with Different Types');
+            $types = ['php_info', 'wp_info', 'plugin_list', 'theme_list'];
+            $type_test_success = true;
+            
+            foreach ($types as $type) {
+                $type_key = 'test_' . $type;
+                $type_data = ['type' => $type, 'data' => 'Test data for ' . $type];
+                $set_type = $system_cache->set($type_key, $type_data, $type);
+                $get_type = $system_cache->get($type_key, $type);
+                
+                if (!$set_type || !$get_type || !isset($get_type['type']) || $get_type['type'] !== $type) {
+                    $type_test_success = false;
+                    break;
+                }
+                
+                if ($get_type) {
+                    $cache_hits++;
+                }
+            }
+            
+            $test_results['data']['tests'][] = [
+                'name' => 'Type-specific Caching',
+                'success' => $type_test_success,
+                'message' => 'Cache can handle different types of data with different TTLs',
+                'timing' => 'Multiple operations'
+            ];
+            
+            // Test 3: Cache Expiration (simulate with a very short TTL)
+            error_log('MPAI: Running Test 3: Cache Expiration');
+            try {
+                // Set a testing key with a manually short TTL
+                $system_cache->set('expiring_test', 'This data should expire', 'default');
+                
+                // Use reflection to temporarily modify the TTL settings
+                $reflection = new ReflectionClass($system_cache);
+                $ttl_property = $reflection->getProperty('ttl_settings');
+                $ttl_property->setAccessible(true);
+                $original_ttl = $ttl_property->getValue($system_cache);
+                
+                // Set a very short TTL (1 second)
+                $test_ttl = $original_ttl;
+                $test_ttl['default'] = 1;
+                $ttl_property->setValue($system_cache, $test_ttl);
+                
+                // Wait for expiration
+                sleep(2);
+                
+                // Try to get the value - should be null after expiration
+                $expired_result = $system_cache->get('expiring_test', 'default');
+                $expiration_success = ($expired_result === null);
+                
+                // Restore original TTL settings
+                $ttl_property->setValue($system_cache, $original_ttl);
+                
+                $test_results['data']['tests'][] = [
+                    'name' => 'Cache Expiration',
+                    'success' => $expiration_success,
+                    'message' => 'Cache entries expire after their TTL',
+                    'timing' => '2000 ms (sleep duration)'
+                ];
+            } catch (Exception $exp_e) {
+                error_log('MPAI: Error in expiration test: ' . $exp_e->getMessage());
+                $test_results['data']['tests'][] = [
+                    'name' => 'Cache Expiration',
+                    'success' => false,
+                    'message' => 'Error testing expiration: ' . $exp_e->getMessage(),
+                    'timing' => 'N/A'
+                ];
+            }
+            
+            // Test 4: Cache Invalidation
+            error_log('MPAI: Running Test 4: Cache Invalidation');
+            // Store a value in the plugin cache
+            $system_cache->set('test_invalidation', 'Plugin cache test data', 'plugin_list');
+            
+            // Invalidate the plugin cache
+            $system_cache->invalidate_plugin_cache();
+            
+            // Try to get the value - should be null after invalidation
+            $invalidated_result = $system_cache->get('test_invalidation', 'plugin_list');
+            
+            $test_results['data']['tests'][] = [
+                'name' => 'Cache Invalidation',
+                'success' => ($invalidated_result === null),
+                'message' => 'Cache entries are invalidated by specific events',
+                'timing' => 'N/A'
+            ];
+            
+            // Test 5: Performance comparison
+            error_log('MPAI: Running Test 5: Performance comparison');
+            
+            // Function to generate a large test dataset
+            $generate_test_data = function() {
+                $data = [];
+                for ($i = 0; $i < 500; $i++) {
+                    $data['item_' . $i] = [
+                        'id' => $i,
+                        'name' => 'Test item ' . $i,
+                        'value' => md5('test_' . $i),
+                        'nested' => [
+                            'prop1' => 'value ' . $i,
+                            'prop2' => 'value ' . ($i * 2)
+                        ]
+                    ];
+                }
+                return $data;
+            };
+            
+            // Clear the specific test key if it exists
+            $system_cache->delete('performance_test');
+            
+            // First request - should be uncached
+            $start_time_first = microtime(true);
+            $large_data = $generate_test_data();
+            $system_cache->set('performance_test', $large_data, 'default');
+            $end_time_first = microtime(true);
+            
+            // Second request - should be cached
+            $start_time_second = microtime(true);
+            $cached_data = $system_cache->get('performance_test', 'default');
+            $end_time_second = microtime(true);
+            
+            if ($cached_data) {
+                $cache_hits++;
+            }
+            
+            $first_timing = number_format(($end_time_first - $start_time_first) * 1000, 2);
+            $second_timing = number_format(($end_time_second - $start_time_second) * 1000, 2);
+            $performance_improvement = number_format(($first_timing - $second_timing) / $first_timing * 100, 2);
+            
+            $test_results['data']['tests'][] = [
+                'name' => 'Performance Improvement',
+                'success' => (($first_timing - $second_timing) / $first_timing > 0.5),  // At least 50% improvement
+                'message' => 'Cache provides significant performance improvement',
+                'timing' => [
+                    'first_request' => $first_timing . ' ms',
+                    'second_request' => $second_timing . ' ms',
+                    'improvement' => $performance_improvement . '%'
+                ]
+            ];
+            
+            // Test 6: Filesystem Persistence
+            error_log('MPAI: Running Test 6: Filesystem Persistence');
+            // Set a value to be persisted
+            $persist_key = 'filesystem_test';
+            $persist_data = ['test' => 'filesystem persistence', 'timestamp' => time()];
+            $system_cache->set($persist_key, $persist_data, 'default');
+            
+            // Force persistence
+            $reflection = new ReflectionClass($system_cache);
+            $persistence_method = $reflection->getMethod('persist_to_filesystem');
+            $persistence_method->setAccessible(true);
+            $persistence_method->invoke($system_cache);
+            
+            // Clear in-memory cache
+            $memory_cache_prop = $reflection->getProperty('cache');
+            $memory_cache_prop->setAccessible(true);
+            $memory_cache_prop->setValue($system_cache, []);
+            
+            // Try to load from filesystem
+            $load_method = $reflection->getMethod('load_from_filesystem');
+            $load_method->setAccessible(true);
+            $load_method->invoke($system_cache);
+            
+            // Get the value - should be loaded from filesystem
+            $persisted_data = $system_cache->get($persist_key, 'default');
+            
+            if ($persisted_data && isset($persisted_data['test'])) {
+                $cache_hits++;
+            }
+            
+            $test_results['data']['tests'][] = [
+                'name' => 'Filesystem Persistence',
+                'success' => ($persisted_data !== null && isset($persisted_data['test']) && $persisted_data['test'] === 'filesystem persistence'),
+                'message' => 'Cache data persists to filesystem and can be reloaded',
+                'timing' => 'N/A'
+            ];
+            
+            // Update the total cache hits
+            $test_results['data']['cache_hits'] = $cache_hits;
+            
+            // Determine overall success
+            $all_tests_succeeded = true;
+            foreach ($test_results['data']['tests'] as $test) {
+                if (!$test['success']) {
+                    $all_tests_succeeded = false;
+                    break;
+                }
+            }
+            
+            $test_results['success'] = $all_tests_succeeded;
+            
+            if ($all_tests_succeeded) {
+                $test_results['message'] = 'All System Information Cache tests passed successfully';
+            } else {
+                $test_results['message'] = 'Some System Information Cache tests failed. See details.';
+            }
+            
+            // Log detailed results
+            $formatted_results = "\n\n## System Information Cache Test Results - " . date('Y-m-d H:i:s') . "\n\n";
+            $formatted_results .= "Status: " . ($test_results['success'] ? 'SUCCESS' : 'FAILURE') . "\n\n";
+            $formatted_results .= "Message: " . $test_results['message'] . "\n\n";
+            
+            // Add detailed test results
+            $formatted_results .= "### Test Details:\n\n";
+            
+            foreach ($test_results['data']['tests'] as $test) {
+                $formatted_results .= "- **" . $test['name'] . "**: " . ($test['success'] ? 'PASSED' : 'FAILED') . "\n";
+                $formatted_results .= "  - " . $test['message'] . "\n";
+                
+                // Add timing information
+                if (is_array($test['timing'])) {
+                    $formatted_results .= "  - First Request: " . $test['timing']['first_request'] . "\n";
+                    $formatted_results .= "  - Second Request: " . $test['timing']['second_request'] . "\n";
+                    $formatted_results .= "  - Improvement: " . $test['timing']['improvement'] . "\n";
+                } else {
+                    $formatted_results .= "  - Timing: " . $test['timing'] . "\n";
+                }
+                
+                $formatted_results .= "\n";
+            }
+            
+            // Add cache hit information
+            $formatted_results .= "Cache Hits: " . $test_results['data']['cache_hits'] . "\n\n";
+            
+            error_log('MPAI: Phase Two Test - System Information Cache - Success: ' . ($test_results['success'] ? 'YES' : 'NO'));
+            
+            // Append test result to _scooby/_error_log.md if it exists
+            $error_log_file = plugin_dir_path(dirname(__FILE__)) . '_scooby/_error_log.md';
+            if (file_exists($error_log_file) && is_writable($error_log_file)) {
+                file_put_contents($error_log_file, $formatted_results, FILE_APPEND);
+            }
+            
+            // Return the test results
+            echo json_encode([
+                'success' => true,
+                'data' => $test_results
+            ]);
+            
+        } catch (Exception $e) {
+            error_log('MPAI: Phase Two Test - System Information Cache Error - ' . $e->getMessage());
+            
+            // Create a fallback result with the error message
+            $error_results = [
+                'success' => false,
+                'message' => 'System Information Cache tests failed: ' . $e->getMessage(),
+                'data' => [
+                    'tests' => [
+                        [
+                            'name' => 'Error',
+                            'success' => false,
+                            'message' => $e->getMessage(),
+                            'timing' => 'N/A'
+                        ]
+                    ],
+                    'cache_hits' => 0,
+                    'timing' => []
+                ]
+            ];
+            
+            echo json_encode([
+                'success' => false,
+                'data' => $error_results,
+                'message' => 'System Information Cache Test failed: ' . $e->getMessage()
+            ]);
+        }
+        break;
+        
     case 'test_all_phase_one':
         // Run all phase one tests
         try {

@@ -462,6 +462,96 @@ if (!defined('WPINC')) {
                 </div>
                 <div class="mpai-diagnostic-result" id="agent-scoring-result" style="display: none;"></div>
             </div>
+            
+            <div class="mpai-diagnostic-card">
+                <div class="mpai-diagnostic-header">
+                    <h4><?php _e('System Information Caching', 'memberpress-ai-assistant'); ?></h4>
+                    <div class="mpai-status-indicator" id="system-cache-status-indicator">
+                        <span class="mpai-status-dot mpai-status-unknown"></span>
+                        <span class="mpai-status-text"><?php _e('Not Tested', 'memberpress-ai-assistant'); ?></span>
+                    </div>
+                </div>
+                <div class="mpai-diagnostic-actions">
+                    <button type="button" id="run-system-cache-test" class="button" data-test-type="system_cache" 
+                        onclick="(function() {
+                            console.log('MPAI: Ultra-direct onclick handler for System Cache test button');
+                            var $button = jQuery(this);
+                            var $result = jQuery('#system-cache-result');
+                            var $status = jQuery('#system-cache-status-indicator');
+                            
+                            // Show loading state
+                            $result.html('&lt;p&gt;Running test...&lt;/p&gt;').show();
+                            $status.find('.mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success mpai-status-error').addClass('mpai-status-unknown');
+                            $status.find('.mpai-status-text').text('Running...');
+                            
+                            // Make direct fetch request
+                            var formData = new FormData();
+                            formData.append('action', 'test_system_cache');
+                            
+                            var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . 'includes/direct-ajax-handler.php'; ?>';
+                            
+                            fetch(directHandlerUrl, {
+                                method: 'POST',
+                                body: formData,
+                                credentials: 'same-origin'
+                            })
+                            .then(function(response) { return response.json(); })
+                            .then(function(data) {
+                                console.log('MPAI: System Cache test ultra-direct response:', data);
+                                if (data.success) {
+                                    // Show success
+                                    $status.find('.mpai-status-dot').removeClass('mpai-status-unknown mpai-status-error').addClass('mpai-status-success');
+                                    $status.find('.mpai-status-text').text('Success');
+                                    
+                                    // Simple output for the ultra-direct approach
+                                    var output = '';
+                                    output += '&lt;div style=&quot;border: 1px solid #4CAF50; padding: 10px; background-color: #E8F5E9&quot;&gt;';
+                                    output += '&lt;h4&gt;System Information Cache Test Successful&lt;/h4&gt;';
+                                    
+                                    if (data.data && data.data.message) {
+                                        output += '&lt;p&gt;' + data.data.message + '&lt;/p&gt;';
+                                    }
+                                    
+                                    if (data.data && data.data.data && data.data.data.cache_hits) {
+                                        output += '&lt;p&gt;Cache Hits: ' + data.data.data.cache_hits + '&lt;/p&gt;';
+                                    }
+                                    
+                                    output += '&lt;/div&gt;';
+                                    $result.html(output);
+                                } else {
+                                    // Show error
+                                    $status.find('.mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success').addClass('mpai-status-error');
+                                    $status.find('.mpai-status-text').text('Error');
+                                    
+                                    var errorOutput = '';
+                                    errorOutput += '&lt;div style=&quot;border: 1px solid #F44336; padding: 10px; background-color: #FFEBEE&quot;&gt;';
+                                    errorOutput += '&lt;h4&gt;Test Failed&lt;/h4&gt;';
+                                    errorOutput += '&lt;p&gt;' + (data.message || 'Unknown error') + '&lt;/p&gt;';
+                                    errorOutput += '&lt;/div&gt;';
+                                    
+                                    $result.html(errorOutput);
+                                }
+                            })
+                            .catch(function(error) {
+                                console.error('MPAI: Ultra-direct error:', error);
+                                $status.find('.mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success').addClass('mpai-status-error');
+                                $status.find('.mpai-status-text').text('Error');
+                                
+                                var errorOutput = '';
+                                errorOutput += '&lt;div style=&quot;border: 1px solid #F44336; padding: 10px; background-color: #FFEBEE&quot;&gt;';
+                                errorOutput += '&lt;h4&gt;Test Error&lt;/h4&gt;';
+                                errorOutput += '&lt;p&gt;Error: ' + error.message + '&lt;/p&gt;';
+                                errorOutput += '&lt;/div&gt;';
+                                
+                                $result.html(errorOutput);
+                            });
+                            
+                            // Prevent double-handling
+                            return false;
+                        }).call(this);"><?php _e('Run Test', 'memberpress-ai-assistant'); ?></button>
+                </div>
+                <div class="mpai-diagnostic-result" id="system-cache-result" style="display: none;"></div>
+            </div>
         </div>
     </div>
     
@@ -2202,6 +2292,146 @@ jQuery(document).ready(function($) {
     if ($('#tab-diagnostic').is(':visible')) {
         console.log('MPAI: Initial plugin logs load (immediate - tab visible)');
         loadPluginLogs();
+    }
+    
+    // DIRECT INLINE HANDLER FOR SYSTEM CACHE TEST BUTTON
+    // This is a direct workaround for the system-cache-test.js script not working
+    console.log('MPAI INLINE: Adding direct System Cache test button handler');
+    
+    $('#run-system-cache-test').on('click', function(e) {
+        e.preventDefault();
+        console.log('MPAI INLINE: System Cache test button clicked');
+        
+        // Get the result container and status indicator
+        var $resultContainer = $('#system-cache-result');
+        var $statusIndicator = $('#system-cache-status-indicator');
+        
+        // Show loading state
+        $resultContainer.html('<p>Running test...</p>');
+        $resultContainer.show();
+        
+        // Update status indicator
+        $statusIndicator.find('.mpai-status-dot')
+            .removeClass('mpai-status-unknown mpai-status-success mpai-status-error')
+            .addClass('mpai-status-unknown');
+        $statusIndicator.find('.mpai-status-text').text('Running...');
+        
+        // Create form data for request
+        var formData = new FormData();
+        formData.append('action', 'test_system_cache');
+        
+        // Use direct AJAX handler - get URL directly from the page
+        var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . "includes/direct-ajax-handler.php"; ?>';
+        
+        console.log('MPAI INLINE: Running System Cache test via direct handler URL:', directHandlerUrl);
+        
+        // Make the request
+        fetch(directHandlerUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            console.log('MPAI INLINE: System Cache test response received');
+            return response.json();
+        })
+        .then(function(data) {
+            console.log('MPAI INLINE: System Cache test data:', data);
+            
+            if (data.success) {
+                // Update status indicator for success
+                $statusIndicator.find('.mpai-status-dot')
+                    .removeClass('mpai-status-unknown mpai-status-error')
+                    .addClass('mpai-status-success');
+                $statusIndicator.find('.mpai-status-text').text('Success');
+                
+                // Format and display the result
+                var formattedResult = formatSystemCacheResult(data.data);
+                $resultContainer.html(formattedResult);
+            } else {
+                // Update status indicator for failure
+                $statusIndicator.find('.mpai-status-dot')
+                    .removeClass('mpai-status-unknown mpai-status-success')
+                    .addClass('mpai-status-error');
+                $statusIndicator.find('.mpai-status-text').text('Failed');
+                
+                // Display error message
+                var errorMessage = data.message || 'Unknown error occurred';
+                var formattedError = '<div class="mpai-system-test-result mpai-test-error">';
+                formattedError += '<h4>Test Failed</h4>';
+                formattedError += '<p>' + errorMessage + '</p>';
+                formattedError += '</div>';
+                
+                $resultContainer.html(formattedError);
+            }
+        })
+        .catch(function(error) {
+            console.error('MPAI INLINE: Error in System Cache test:', error);
+            
+            // Update status indicator for error
+            $statusIndicator.find('.mpai-status-dot')
+                .removeClass('mpai-status-unknown mpai-status-success')
+                .addClass('mpai-status-error');
+            $statusIndicator.find('.mpai-status-text').text('Error');
+            
+            // Display error message
+            var formattedError = '<div class="mpai-system-test-result mpai-test-error">';
+            formattedError += '<h4>Test Error</h4>';
+            formattedError += '<p>Error executing test: ' + error.message + '</p>';
+            formattedError += '</div>';
+            
+            $resultContainer.html(formattedError);
+        });
+    });
+    
+    /**
+     * Format the system cache test results
+     * Added as inline function to handle system cache test without external JS
+     */
+    function formatSystemCacheResult(data) {
+        var output = '<div class="mpai-system-test-result mpai-test-success">';
+        output += '<h4>System Information Cache Test Results</h4>';
+        
+        if (data.success) {
+            output += '<p class="mpai-test-success-message">' + data.message + '</p>';
+            
+            // Add test details
+            output += '<h5>Test Details:</h5>';
+            output += '<table class="mpai-test-results-table">';
+            output += '<tr><th>Test</th><th>Result</th><th>Timing</th></tr>';
+            
+            data.data.tests.forEach(function(test) {
+                var resultClass = test.success ? 'mpai-test-success' : 'mpai-test-error';
+                var resultText = test.success ? 'PASSED' : 'FAILED';
+                
+                output += '<tr>';
+                output += '<td>' + test.name + '</td>';
+                output += '<td class="' + resultClass + '">' + resultText + '</td>';
+                
+                // Format timing information
+                var timing = '';
+                if (typeof test.timing === 'object') {
+                    timing = 'First Request: ' + test.timing.first_request + '<br>';
+                    timing += 'Second Request: ' + test.timing.second_request + '<br>';
+                    timing += 'Improvement: ' + test.timing.improvement;
+                } else {
+                    timing = test.timing;
+                }
+                
+                output += '<td>' + timing + '</td>';
+                output += '</tr>';
+            });
+            
+            output += '</table>';
+            
+            // Add cache hits
+            output += '<p>Cache Hits: ' + data.data.cache_hits + '</p>';
+        } else {
+            output += '<p class="mpai-test-error-message">' + data.message + '</p>';
+        }
+        
+        output += '</div>';
+        return output;
     }
 });
 </script>
