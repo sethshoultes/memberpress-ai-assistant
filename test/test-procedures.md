@@ -1,6 +1,17 @@
 # MemberPress AI Assistant - Testing Procedures
 
-This document outlines the testing procedures for the MemberPress AI Assistant plugin. These tests should be performed before each release to ensure functionality and quality.
+**Status:** ✅ Maintained  
+**Version:** 1.0.0  
+**Last Updated:** April 3, 2025
+
+This document outlines the comprehensive testing procedures for the MemberPress AI Assistant plugin. These tests should be performed before each release to ensure functionality and quality.
+
+## Quick Links
+
+- [Test Directory Index](index.md) - Categorized list of all test files
+- [Specialized Tests](specialized-tests.md) - Detailed tests for specific components
+- [Console Logging Tests](logging-and-tool-detection-tests.md) - Tests for logging system
+- [README](README.md) - Overview of the testing system
 
 ## Prerequisites
 
