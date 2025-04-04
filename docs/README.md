@@ -7,6 +7,7 @@ Welcome to the MemberPress AI Assistant documentation hub. This directory contai
 The documentation is organized into the following main categories:
 
 - [**Current Features**](current/) - Documentation for implemented and active features
+  - [**Error Systems**](current/error-system/) - Error handling and recovery systems
 - [**XML Content System**](xml-content-system/index.md) - Comprehensive documentation for the XML content formatting system
 - [**Scooby Snacks**](_snacks/) - Investigation results, fixes, and technical insights
 - [**Testing System**](../test/README.md) - Comprehensive testing documentation and procedures
@@ -45,6 +46,7 @@ All documentation files include status indicators to help identify their current
 
 ## Recent Updates
 
+### Documentation System 
 The documentation has been completely reorganized and consolidated following a five-phase Documentation Consolidation Plan:
 
 - **Phase 1**: Reorganized existing files into appropriate directories ([Phase 1 Results](current/core/documentation-consolidation-results.md))
@@ -53,7 +55,11 @@ The documentation has been completely reorganized and consolidated following a f
 - **Phase 4**: Standardized documentation formats ([Phase 4 Results](current/core/phase-4-documentation-consolidation-results.md))
 - **Phase 5**: System-based directory organization ([Phase 5 Results](current/core/documentation-map.md))
 
-A new "Scooby Snacks" documentation system has also been added to capture the results of technical investigations and fixes.
+### Documentation Additions (April 2025)
+- Added [Error Recovery System](current/error-system/error-recovery-system.md) documentation
+- Created dedicated Error System documentation section in [current/error-system/](current/error-system/)
+- Added new Scooby Snack investigation for [Error Recovery System Test Fix](_snacks/investigations/error-recovery-system-fix.md)
+- Enhanced Scooby Snacks documentation with visual elements
 
 ## Scooby Snack Protocol
 
