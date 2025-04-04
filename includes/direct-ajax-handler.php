@@ -1466,11 +1466,10 @@ switch ($action) {
             $persist_data = ['test' => 'filesystem persistence', 'timestamp' => time()];
             $system_cache->set($persist_key, $persist_data, 'default');
             
-            // Force persistence
-            $reflection = new ReflectionClass($system_cache);
-            $persistence_method = $reflection->getMethod('persist_to_filesystem');
-            $persistence_method->setAccessible(true);
-            $persistence_method->invoke($system_cache);
+            // Don't need to force persistence - it happens automatically in set()
+            // The method 'persist_to_filesystem' doesn't exist, it's actually called 'set_in_filesystem'
+            // Just call set() again to ensure it's in the filesystem
+            $system_cache->set($persist_key, $persist_data, 'default');
             
             // Clear in-memory cache
             $memory_cache_prop = $reflection->getProperty('cache');
@@ -1478,7 +1477,9 @@ switch ($action) {
             $memory_cache_prop->setValue($system_cache, []);
             
             // Try to load from filesystem
-            $load_method = $reflection->getMethod('load_from_filesystem');
+            // The method 'load_from_filesystem' doesn't exist, but 'get_from_filesystem' does
+            // However, we can just call 'maybe_load_filesystem_cache()' instead
+            $load_method = $reflection->getMethod('maybe_load_filesystem_cache');
             $load_method->setAccessible(true);
             $load_method->invoke($system_cache);
             

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed System Information Caching test failure by correcting method name discrepancies between test and implementation 🦴
+
 ### Added
 - Phase Two Agent System and Performance Enhancements: 🦴
   - Agent Specialization Scoring system with weighted confidence scoring for improved request routing
