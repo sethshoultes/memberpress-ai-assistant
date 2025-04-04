@@ -299,6 +299,15 @@ class MPAI_Admin {
             MPAI_VERSION . '.' . time(), // Add timestamp to force cache refresh
             true
         );
+        
+        // Enqueue Phase Two test script for System Information Caching
+        wp_enqueue_script(
+            'mpai-system-cache-test',
+            MPAI_PLUGIN_URL . 'assets/js/system-cache-test.js',
+            array('jquery', 'mpai-admin-script'),
+            MPAI_VERSION . '.' . time(), // Add timestamp to force cache refresh
+            true
+        );
 
         // Get logger settings
         // Get logger settings from database

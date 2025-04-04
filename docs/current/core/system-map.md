@@ -170,6 +170,8 @@ MemberPress AI Assistant is structured with the following main components:
 `/includes/tools/implementations/class-mpai-wpcli-tool.php`:
 - Tool for WP-CLI command execution
 - Manages command validation and execution
+- Integrates with System Information Caching for improved performance
+- Caches expensive system queries like plugin lists and PHP information
 
 ### CLI Integration
 
@@ -185,6 +187,12 @@ MemberPress AI Assistant is structured with the following main components:
 - Provides enhanced diagnostics for MemberPress
 
 ### Feature-Specific Files
+
+`/includes/class-mpai-system-cache.php`:
+- Implements system information caching
+- Provides multi-tiered caching with in-memory and filesystem storage
+- Manages automatic invalidation and TTL-based expiration
+- Significantly improves performance for repeated system queries
 
 `/includes/best-selling-membership.php`:
 - Implementation guidance for best-selling membership feature
@@ -278,6 +286,10 @@ MemberPress AI Assistant is structured with the following main components:
 `/test/test-validate-command.php`:
 - Tests command validation functionality
 - Verifies CLI command validation
+
+`/test/test-system-cache.php`:
+- Tests System Information Caching functionality
+- Verifies cache operations, TTL settings, and performance improvements
 
 `/test/test-validate-theme-block.php`:
 - Tests theme and block validation

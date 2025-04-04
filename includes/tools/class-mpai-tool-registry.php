@@ -21,6 +21,18 @@ class MPAI_Tool_Registry {
 	private $tools = [];
 	
 	/**
+	 * Tool definitions for lazy loading
+	 * @var array
+	 */
+	private $tool_definitions = [];
+	
+	/**
+	 * Loaded tools tracking
+	 * @var array
+	 */
+	private $loaded_tools = [];
+	
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -40,6 +52,28 @@ class MPAI_Tool_Registry {
 		}
 		
 		$this->tools[$tool_id] = $tool;
+		$this->loaded_tools[$tool_id] = true;
+		return true;
+	}
+	
+	/**
+	 * Register a tool definition for lazy loading
+	 *
+	 * @param string $tool_id Unique tool identifier
+	 * @param string $class_name Tool class name
+	 * @param string $file_path Optional file path to include if class isn't loaded
+	 * @return bool Success status
+	 */
+	public function register_tool_definition( $tool_id, $class_name, $file_path = null ) {
+		if ( isset( $this->tools[$tool_id] ) || isset( $this->tool_definitions[$tool_id] ) ) {
+			return false;
+		}
+		
+		$this->tool_definitions[$tool_id] = [
+			'class' => $class_name,
+			'file' => $file_path
+		];
+		
 		return true;
 	}
 	
@@ -50,7 +84,33 @@ class MPAI_Tool_Registry {
 	 * @return object|null Tool instance or null if not found
 	 */
 	public function get_tool( $tool_id ) {
-		return isset( $this->tools[$tool_id] ) ? $this->tools[$tool_id] : null;
+		// Return already loaded tool if available
+		if ( isset( $this->tools[$tool_id] ) ) {
+			return $this->tools[$tool_id];
+		}
+		
+		// Check if tool definition exists
+		if ( !isset( $this->tool_definitions[$tool_id] ) ) {
+			return null;
+		}
+		
+		// Load the tool file if provided
+		$definition = $this->tool_definitions[$tool_id];
+		if ( !empty( $definition['file'] ) && file_exists( $definition['file'] ) ) {
+			require_once $definition['file'];
+		}
+		
+		// Check if class exists
+		if ( !class_exists( $definition['class'] ) ) {
+			return null;
+		}
+		
+		// Create instance and store
+		$tool = new $definition['class']();
+		$this->tools[$tool_id] = $tool;
+		$this->loaded_tools[$tool_id] = true;
+		
+		return $tool;
 	}
 	
 	/**
@@ -59,7 +119,28 @@ class MPAI_Tool_Registry {
 	 * @return array All registered tools
 	 */
 	public function get_available_tools() {
-		return $this->tools;
+		// Return combination of loaded tools and definitions
+		$tools = [];
+		
+		// Add loaded tools
+		foreach ( $this->tools as $tool_id => $tool ) {
+			$tools[$tool_id] = $tool;
+		}
+		
+		// Add tool definitions for tools not yet loaded
+		foreach ( $this->tool_definitions as $tool_id => $definition ) {
+			if ( !isset( $this->tools[$tool_id] ) ) {
+				// Create placeholder with basic info
+				$tools[$tool_id] = [
+					'id' => $tool_id,
+					'class' => $definition['class'],
+					'loaded' => false,
+					'status' => 'not_loaded'
+				];
+			}
+		}
+		
+		return $tools;
 	}
 	
 	/**

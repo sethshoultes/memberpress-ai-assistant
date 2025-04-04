@@ -1076,6 +1076,14 @@
     $(document).ready(function() {
         console.log('MPAI: Admin script ready');
         
+        // Verify direct-ajax-handler.php URL (for debugging)
+        if (typeof mpai_data !== 'undefined' && mpai_data.plugin_url) {
+            var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
+            console.log('MPAI: Direct AJAX handler URL:', directHandlerUrl);
+        } else {
+            console.error('MPAI: mpai_data is not defined or missing plugin_url');
+        }
+        
         // Initialize consent mechanism
         initConsent();
         

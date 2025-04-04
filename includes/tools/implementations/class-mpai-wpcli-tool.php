@@ -54,6 +54,18 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 	private $execution_timeout = 30;
 	
 	/**
+	 * System cache instance
+	 * @var MPAI_System_Cache
+	 */
+	private $system_cache = null;
+	
+	/**
+	 * Whether caching is enabled
+	 * @var bool
+	 */
+	private $caching_enabled = true;
+	
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -62,6 +74,47 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		
 		// Allow plugins to extend the allowed commands
 		$this->allowed_command_prefixes = apply_filters( 'mpai_allowed_cli_commands', $this->allowed_command_prefixes );
+		
+		// Initialize system cache
+		$this->init_system_cache();
+	}
+	
+	/**
+	 * Initialize system cache
+	 */
+	private function init_system_cache() {
+		// Check if caching is enabled
+		$this->caching_enabled = apply_filters('mpai_enable_system_cache', true);
+		
+		if ($this->caching_enabled) {
+			// Require the system cache class if not already loaded
+			if (!class_exists('MPAI_System_Cache')) {
+				$system_cache_file = dirname(dirname(dirname(__FILE__))) . '/class-mpai-system-cache.php';
+				if (file_exists($system_cache_file)) {
+					require_once $system_cache_file;
+					error_log('MPAI_WP_CLI_Tool: Loaded System Cache class');
+				} else {
+					error_log('MPAI_WP_CLI_Tool: Could not find System Cache file');
+					$this->caching_enabled = false;
+					return;
+				}
+			}
+			
+			// Get or create system cache instance
+			$this->system_cache = MPAI_System_Cache::get_instance();
+			
+			// Preload common system information (non-blocking)
+			add_action('admin_init', [$this, 'preload_system_cache']);
+		}
+	}
+	
+	/**
+	 * Preload system cache with common system information
+	 */
+	public function preload_system_cache() {
+		if ($this->caching_enabled && $this->system_cache) {
+			$this->system_cache->preload_common_info();
+		}
 	}
 	
 	/**
@@ -84,9 +137,37 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 			throw new Exception( 'Command validation failed: not in allowlist' );
 		}
 		
+		// Check for cached response first if caching is enabled
+		if ($this->caching_enabled && $this->system_cache) {
+			$cache_key = md5($command);
+			$cache_type = $this->get_cache_type_for_command($command);
+			
+			// Skip cache for commands that should never be cached
+			$skip_cache = isset($parameters['skip_cache']) ? (bool)$parameters['skip_cache'] : false;
+			if (!$skip_cache) {
+				$cached_result = $this->system_cache->get($cache_key, $cache_type);
+				if ($cached_result !== null) {
+					error_log('MPAI_WP_CLI_Tool: Returning cached result for command: ' . $command);
+					// Add cache indicator for debugging
+					if (is_string($cached_result)) {
+						$cached_result = "[CACHED] " . $cached_result;
+					}
+					return $cached_result;
+				}
+			}
+		}
+		
 		// Special handling for specific commands that should use internal WordPress functions
 		if (strpos($command, 'wp plugin list') === 0) {
-			return $this->handle_plugin_list_command($command, $parameters);
+			$result = $this->handle_plugin_list_command($command, $parameters);
+			
+			// Cache the result if appropriate
+			if ($this->caching_enabled && $this->system_cache && !empty($result)) {
+				$cache_key = md5($command);
+				$this->system_cache->set($cache_key, $result, 'plugin_list');
+			}
+			
+			return $result;
 		}
 		
 		// Set execution timeout
@@ -97,7 +178,16 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		// Check if WP-CLI is available
 		if (!class_exists('WP_CLI')) {
 			error_log('MPAI_WP_CLI_Tool: WP-CLI not available, using alternative methods');
-			return $this->handle_command_without_wpcli($command, $parameters);
+			$result = $this->handle_command_without_wpcli($command, $parameters);
+			
+			// Cache the result if appropriate
+			if ($this->caching_enabled && $this->system_cache && !empty($result)) {
+				$cache_key = md5($command);
+				$cache_type = $this->get_cache_type_for_command($command);
+				$this->system_cache->set($cache_key, $result, $cache_type);
+			}
+			
+			return $result;
 		}
 		
 		// Build the command
@@ -114,8 +204,51 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		
 		// Parse the output based on requested format
 		$format = isset( $parameters['format'] ) ? $parameters['format'] : 'text';
+		$result = $this->parse_output( $output, $format );
 		
-		return $this->parse_output( $output, $format );
+		// Cache the result if appropriate
+		if ($this->caching_enabled && $this->system_cache && !empty($result)) {
+			$cache_key = md5($command);
+			$cache_type = $this->get_cache_type_for_command($command);
+			$this->system_cache->set($cache_key, $result, $cache_type);
+		}
+		
+		return $result;
+	}
+	
+	/**
+	 * Determine the cache type for a specific command
+	 *
+	 * @param string $command The command to analyze
+	 * @return string Cache type
+	 */
+	private function get_cache_type_for_command($command) {
+		// Default cache type
+		$cache_type = 'default';
+		
+		// Analyze command to determine appropriate cache type
+		if (stripos($command, 'php') !== false && 
+			(stripos($command, 'info') !== false || stripos($command, 'version') !== false)) {
+			$cache_type = 'php_info';
+		} elseif (stripos($command, 'core version') !== false || 
+				 stripos($command, 'wp info') !== false) {
+			$cache_type = 'wp_info';
+		} elseif (stripos($command, 'plugin list') !== false) {
+			$cache_type = 'plugin_list';
+		} elseif (stripos($command, 'plugin') !== false &&
+				 (stripos($command, 'status') !== false || stripos($command, 'info') !== false)) {
+			$cache_type = 'plugin_status';
+		} elseif (stripos($command, 'theme list') !== false) {
+			$cache_type = 'theme_list';
+		} elseif (stripos($command, 'site health') !== false || 
+				 stripos($command, 'system-info') !== false) {
+			$cache_type = 'site_health';
+		} elseif (stripos($command, 'db info') !== false) {
+			$cache_type = 'db_info';
+		}
+		
+		// Allow plugins to modify the cache type
+		return apply_filters('mpai_system_cache_type', $cache_type, $command);
 	}
 	
 	/**
@@ -494,7 +627,37 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 	private function handle_php_info_command($command, $parameters) {
 		error_log('MPAI_WP_CLI_Tool: Getting PHP info');
 		
-		// Get PHP version
+		// Check cache first
+		if ($this->caching_enabled && $this->system_cache) {
+			$cached_php_info = $this->system_cache->get('php_info', 'php_info');
+			if ($cached_php_info !== null) {
+				error_log('MPAI_WP_CLI_Tool: Using cached PHP info');
+				
+				// Get timestamp for generated output
+				$cache_indicator = "[CACHED] ";
+				
+				// Format into a table using cached data
+				$output = $cache_indicator . "PHP Information:\n\n";
+				$output .= "PHP Version: " . $cached_php_info['version'] . "\n";
+				$output .= "System: " . php_uname() . "\n";
+				$output .= "SAPI: " . $cached_php_info['sapi'] . "\n";
+				$output .= "\nImportant Settings:\n";
+				$output .= "memory_limit: " . $cached_php_info['memory_limit'] . "\n";
+				$output .= "max_execution_time: " . $cached_php_info['max_execution_time'] . " seconds\n";
+				$output .= "upload_max_filesize: " . $cached_php_info['upload_max_filesize'] . "\n";
+				$output .= "post_max_size: " . $cached_php_info['post_max_size'] . "\n";
+				
+				// Get extensions
+				$extensions = $cached_php_info['extensions'];
+				sort($extensions);
+				$extensions_str = implode(', ', array_slice($extensions, 0, 15)) . '...';
+				$output .= "\nExtensions: $extensions_str\n";
+				
+				return $output;
+			}
+		}
+		
+		// If not cached or caching disabled, get live data
 		$php_version = phpversion();
 		$php_uname = php_uname();
 		$php_sapi = php_sapi_name();
@@ -510,6 +673,22 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		$loaded_extensions = get_loaded_extensions();
 		sort($loaded_extensions);
 		$extensions_str = implode(', ', array_slice($loaded_extensions, 0, 15)) . '...';
+		
+		// Store in cache if enabled
+		if ($this->caching_enabled && $this->system_cache) {
+			$php_info = [
+				'version' => $php_version,
+				'sapi' => $php_sapi,
+				'memory_limit' => $memory_limit,
+				'max_execution_time' => $max_execution_time,
+				'upload_max_filesize' => $upload_max_filesize,
+				'post_max_size' => $post_max_size,
+				'max_input_vars' => $max_input_vars,
+				'extensions' => $loaded_extensions,
+			];
+			
+			$this->system_cache->set('php_info', $php_info, 'php_info');
+		}
 		
 		// Format into a table
 		$output = "PHP Information:\n\n";
@@ -537,6 +716,21 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 	private function handle_site_health_command($command, $parameters) {
 		error_log('MPAI_WP_CLI_Tool: Getting site health info');
 		
+		// Check cache first
+		if ($this->caching_enabled && $this->system_cache) {
+			$cache_key = 'site_health';
+			$cached_site_health = $this->system_cache->get($cache_key, 'site_health');
+			
+			// Only use cache for skip_plugins parameter
+			$skip_plugins = isset($parameters['skip_plugins']) ? (bool)$parameters['skip_plugins'] : false;
+			
+			if ($cached_site_health !== null && $skip_plugins) {
+				error_log('MPAI_WP_CLI_Tool: Using cached site health info');
+				
+				return "[CACHED] " . $cached_site_health;
+			}
+		}
+		
 		global $wp_version;
 		global $wpdb;
 		
@@ -560,30 +754,41 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		$output .= "Name: " . $theme->get('Name') . "\n";
 		$output .= "Version: " . $theme->get('Version') . "\n";
 		
-		// Plugin counts
-		if (!function_exists('get_plugins')) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-		$all_plugins = get_plugins();
-		$active_plugins = get_option('active_plugins');
+		// Skip plugin information if requested
+		$skip_plugins = isset($parameters['skip_plugins']) ? (bool)$parameters['skip_plugins'] : false;
 		
-		$output .= "\nPlugin Status:\n";
-		$output .= "Active Plugins: " . count($active_plugins) . "\n";
-		$output .= "Total Plugins: " . count($all_plugins) . "\n";
-		
-		// Recently activated plugins
-		$recently_activated = get_option('recently_activated');
-		if (!empty($recently_activated)) {
-			$output .= "\nRecently Activated Plugins:\n";
-			$count = 0;
-			foreach ($recently_activated as $plugin => $time) {
-				if ($count++ < 5) {
-					$plugin_data = isset($all_plugins[$plugin]) ? $all_plugins[$plugin] : array('Name' => $plugin);
-					$plugin_name = isset($plugin_data['Name']) ? $plugin_data['Name'] : $plugin;
-					$time_str = human_time_diff(time(), $time) . ' ago';
-					$output .= "- $plugin_name (Deactivated $time_str)\n";
+		if (!$skip_plugins) {
+			// Plugin counts
+			if (!function_exists('get_plugins')) {
+				require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+			$all_plugins = get_plugins();
+			$active_plugins = get_option('active_plugins');
+			
+			$output .= "\nPlugin Status:\n";
+			$output .= "Active Plugins: " . count($active_plugins) . "\n";
+			$output .= "Total Plugins: " . count($all_plugins) . "\n";
+			
+			// Recently activated plugins
+			$recently_activated = get_option('recently_activated');
+			if (!empty($recently_activated)) {
+				$output .= "\nRecently Activated Plugins:\n";
+				$count = 0;
+				foreach ($recently_activated as $plugin => $time) {
+					if ($count++ < 5) {
+						$plugin_data = isset($all_plugins[$plugin]) ? $all_plugins[$plugin] : array('Name' => $plugin);
+						$plugin_name = isset($plugin_data['Name']) ? $plugin_data['Name'] : $plugin;
+						$time_str = human_time_diff(time(), $time) . ' ago';
+						$output .= "- $plugin_name (Deactivated $time_str)\n";
+					}
 				}
 			}
+		}
+		
+		// Store in cache if enabled
+		if ($this->caching_enabled && $this->system_cache) {
+			$cache_key = 'site_health';
+			$this->system_cache->set($cache_key, $output, 'site_health');
 		}
 		
 		return $output;
