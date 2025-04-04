@@ -380,6 +380,15 @@
     margin: 15px 0;
 }
 
+/* Admin Menu Icon */
+.toplevel_page_memberpress-ai-assistant-settings .wp-menu-image img,
+.toplevel_page_memberpress-ai-assistant .wp-menu-image img {
+    width: 20px;
+    height: 20px;
+    padding: 6px 0 0 0 !important;
+    opacity: 1;
+}
+
 /* Utility classes */
 .mpai-hidden {
     display: none !important;

@@ -162,6 +162,9 @@ class MemberPress_AI_Assistant {
         add_action('admin_menu', array($this, 'add_admin_menu'), 20);
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
         
+        // Enqueue admin menu icon styles on all admin pages
+        add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_menu_styles'));
+        
         // Process consent form submissions
         add_action('admin_init', array($this, 'process_consent_form'));
         
@@ -804,6 +807,19 @@ class MemberPress_AI_Assistant {
                 $admin_data
             );
         }
+    }
+    
+    /**
+     * Enqueue admin menu styles - handles the icon size in admin menu
+     */
+    public function enqueue_admin_menu_styles() {
+        // Load the admin menu styles on all admin pages
+        wp_enqueue_style(
+            'mpai-admin-menu-css',
+            MPAI_PLUGIN_URL . 'assets/css/admin-menu.css',
+            array(),
+            MPAI_VERSION
+        );
     }
 
     /**
