@@ -183,6 +183,9 @@ class MemberPress_AI_Assistant {
         // Special AI assistant plugin logs handler with no nonce check
         add_action('wp_ajax_mpai_ai_plugin_logs', array($this, 'get_ai_plugin_logs_ajax'));
         
+        // Error Recovery System test handler
+        add_action('wp_ajax_mpai_test_error_recovery', array($this, 'test_error_recovery_ajax'));
+        
         // Register activation and deactivation hooks
         register_activation_hook(__FILE__, array($this, 'activate'));
         register_deactivation_hook(__FILE__, array($this, 'deactivate'));
@@ -311,6 +314,9 @@ class MemberPress_AI_Assistant {
      * Load required dependencies
      */
     private function load_dependencies() {
+        // Load Error Recovery System first for exception handling
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-error-recovery.php';
+        
         // API Integration Classes
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-openai.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-anthropic.php';
@@ -1129,11 +1135,55 @@ class MemberPress_AI_Assistant {
             wp_send_json_error('Error updating setting: ' . $e->getMessage());
         }
     }
+    
+    /**
+     * AJAX handler for testing the Error Recovery System
+     */
+    public function test_error_recovery_ajax() {
+        // Check nonce for security
+        check_ajax_referer('mpai_nonce', 'nonce');
+        
+        // Only allow logged-in users with appropriate capabilities
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+        
+        try {
+            // Include the test script
+            $test_file = MPAI_PLUGIN_DIR . 'test/test-error-recovery.php';
+            if (file_exists($test_file)) {
+                require_once($test_file);
+                
+                if (function_exists('mpai_test_error_recovery')) {
+                    $results = mpai_test_error_recovery();
+                    wp_send_json($results);
+                } else {
+                    wp_send_json_error(array(
+                        'message' => 'Error recovery test function not found',
+                        'success' => false
+                    ));
+                }
+            } else {
+                wp_send_json_error(array(
+                    'message' => 'Error recovery test file not found at: ' . $test_file,
+                    'success' => false
+                ));
+            }
+        } catch (Exception $e) {
+            wp_send_json_error(array(
+                'message' => 'Error running tests: ' . $e->getMessage(),
+                'success' => false
+            ));
+        }
+    }
 
     /**
      * Clear chat history via AJAX
      */
     public function clear_chat_history_ajax() {
+        global $wpdb;
+        
         // Check nonce for security
         check_ajax_referer('mpai_chat_nonce', 'nonce');
 
@@ -1142,13 +1192,60 @@ class MemberPress_AI_Assistant {
             wp_send_json_error('Unauthorized access');
         }
 
-        // Clear the conversation history
-        $user_id = get_current_user_id();
-        delete_user_meta($user_id, 'mpai_conversation_history');
-
-        wp_send_json_success(array(
-            'message' => __('Chat history cleared', 'memberpress-ai-assistant'),
-        ));
+        try {
+            // 1. Clear the user meta conversation history (legacy storage)
+            $user_id = get_current_user_id();
+            delete_user_meta($user_id, 'mpai_conversation_history');
+            
+            // 2. Clear the database table messages
+            $table_conversations = $wpdb->prefix . 'mpai_conversations';
+            $table_messages = $wpdb->prefix . 'mpai_messages';
+            
+            // First check if tables exist
+            $conversations_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_conversations}'") === $table_conversations;
+            $messages_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_messages}'") === $table_messages;
+            
+            if ($conversations_exists && $messages_exists) {
+                // Get the user's conversations
+                $conversations = $wpdb->get_col(
+                    $wpdb->prepare(
+                        "SELECT conversation_id FROM $table_conversations WHERE user_id = %d",
+                        $user_id
+                    )
+                );
+                
+                // Delete all messages for these conversations
+                if (!empty($conversations)) {
+                    foreach ($conversations as $conversation_id) {
+                        $wpdb->delete(
+                            $table_messages,
+                            array('conversation_id' => $conversation_id)
+                        );
+                    }
+                    
+                    error_log('MPAI: Cleared database messages for user ' . $user_id);
+                }
+            }
+            
+            // 3. Force chat class to reset if it exists
+            if (class_exists('MPAI_Chat')) {
+                $chat = new MPAI_Chat();
+                if (method_exists($chat, 'reset_conversation')) {
+                    $chat->reset_conversation();
+                    error_log('MPAI: Reset conversation in chat class');
+                }
+            }
+            
+            error_log('MPAI: Chat history fully cleared from all storage locations');
+            
+            wp_send_json_success(array(
+                'message' => __('Chat history cleared', 'memberpress-ai-assistant'),
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI: Error clearing chat history: ' . $e->getMessage());
+            wp_send_json_error('Error clearing chat history: ' . $e->getMessage());
+        }
     }
     
     /**
