@@ -1468,9 +1468,9 @@ class MemberPress_AI_Assistant {
             update_option('mpai_agent_system_version', MPAI_VERSION);
             update_option('mpai_agent_system_initialized', true);
             
-            // Create an instance of the agent orchestrator
+            // Get an instance of the agent orchestrator (singleton)
             // This will trigger agent registration and SDK initialization
-            $orchestrator = new MPAI_Agent_Orchestrator();
+            $orchestrator = MPAI_Agent_Orchestrator::get_instance();
             
             // Log success
             // Agent system initialized
@@ -1571,11 +1571,11 @@ class MemberPress_AI_Assistant {
         // Initialize plugin logger
         mpai_init_plugin_logger();
         
-        // Force refresh of agent system and tools on every page load
-        // This ensures the AI system picks up new tools like our plugin logger
-        // In production, you'd want to be more selective with this
+        // Only initialize agent system once per page load
+        // Use singleton pattern to avoid duplicate initializations
         if (class_exists('MPAI_Agent_Orchestrator')) {
-            $orchestrator = new MPAI_Agent_Orchestrator();
+            // Get the singleton instance instead of creating a new one
+            $orchestrator = MPAI_Agent_Orchestrator::get_instance();
             if (method_exists($orchestrator, 'get_available_agents')) {
                 $orchestrator->get_available_agents();
             }

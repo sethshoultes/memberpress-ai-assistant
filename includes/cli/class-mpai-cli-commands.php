@@ -201,7 +201,7 @@ class MPAI_CLI_Commands extends WP_CLI_Command {
             // Check if using new agent system or legacy chat
             if (class_exists('MPAI_Agent_Orchestrator') || $this->load_agent_system()) {
                 // Use agent system if available
-                $orchestrator = new MPAI_Agent_Orchestrator();
+                $orchestrator = MPAI_Agent_Orchestrator::get_instance();
                 
                 // Process the message
                 $result = $orchestrator->process_request($message);
@@ -267,7 +267,7 @@ class MPAI_CLI_Commands extends WP_CLI_Command {
             // Check if using new agent system or legacy context manager
             if (class_exists('MPAI_Agent_Orchestrator') || $this->load_agent_system()) {
                 // Use agent system if available
-                $orchestrator = new MPAI_Agent_Orchestrator();
+                $orchestrator = MPAI_Agent_Orchestrator::get_instance();
                 
                 // Create a natural language request for the command
                 $request = "Run this command and explain the results: {$command}";
@@ -350,8 +350,8 @@ class MPAI_CLI_Commands extends WP_CLI_Command {
         }
 
         try {
-            // Process the request using the agent orchestrator
-            $orchestrator = new MPAI_Agent_Orchestrator();
+            // Process the request using the agent orchestrator (singleton)
+            $orchestrator = MPAI_Agent_Orchestrator::get_instance();
             
             // If specific agent is requested, validate it exists
             if ($agent) {

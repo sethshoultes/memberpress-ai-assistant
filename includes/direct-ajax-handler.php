@@ -1707,8 +1707,8 @@ switch ($action) {
                     }
                 }
                 
-                // Create an orchestrator instance
-                $orchestrator = new MPAI_Agent_Orchestrator();
+                // Get an orchestrator instance (singleton)
+                $orchestrator = MPAI_Agent_Orchestrator::get_instance();
                 
                 // Get discovered agents
                 $agents = $orchestrator->get_available_agents();

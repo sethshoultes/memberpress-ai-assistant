@@ -15,6 +15,20 @@ if ( ! defined( 'WPINC' ) ) {
  */
 class MPAI_Agent_Orchestrator {
 	/**
+	 * Instance of this class (singleton)
+	 *
+	 * @var MPAI_Agent_Orchestrator
+	 */
+	private static $instance = null;
+	
+	/**
+	 * Whether the orchestrator has been fully initialized
+	 *
+	 * @var bool
+	 */
+	private static $initialized = false;
+	
+	/**
 	 * Available agents
 	 *
 	 * @var array
@@ -64,11 +78,29 @@ class MPAI_Agent_Orchestrator {
 	private $logger = null;
 	
 	/**
+	 * Get instance (singleton pattern)
+	 *
+	 * @return MPAI_Agent_Orchestrator
+	 */
+	public static function get_instance() {
+		if (self::$instance === null) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+	
+	/**
 	 * Constructor
 	 */
-	public function __construct() {
+	private function __construct() {
 		// Initialize logger
 		$this->logger = $this->get_default_logger();
+		
+		// Prevent duplicate initialization
+		if (self::$initialized) {
+			$this->logger->debug('Orchestrator already initialized, skipping');
+			return;
+		}
 		
 		// Initialize error recovery system if available
 		if (class_exists('MPAI_Error_Recovery')) {
@@ -92,6 +124,9 @@ class MPAI_Agent_Orchestrator {
 		
 		// Register all core agents
 		$this->register_core_agents();
+		
+		// Mark as initialized
+		self::$initialized = true;
 	}
 	
 	/**
