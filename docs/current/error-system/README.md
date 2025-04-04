@@ -11,7 +11,7 @@ This directory contains documentation for the error handling, recovery, and vali
 - [**Error Recovery System**](error-recovery-system.md) - Core error handling and recovery mechanisms
 - [**State Validation System**](state-validation-system.md) - System state consistency and validation
 - [**Input Sanitization System**](input-sanitization-improvements.md) - Comprehensive input validation and sanitization
-- [**Error Catalog System**](/docs/current/MPAI_Error_Catalog_System.md) - Comprehensive error typing and catalog system
+- [**Error Catalog System**](error-catalog-system.md) - Comprehensive error typing and catalog system
 
 ## Features
 

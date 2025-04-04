@@ -7,7 +7,6 @@
 - `/includes/class-mpai-error-recovery.php`
 - `/includes/class-mpai-plugin-logger.php`
 - `/docs/current/error-system/error-catalog-system.md`
-- `/docs/current/MPAI_Error_Catalog_System.md`
 
 ## Problem Statement
 

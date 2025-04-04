@@ -6,7 +6,7 @@ This directory contains documentation for features that are planned or in develo
 
 | Feature | Target Version | Status | Documentation |
 |---------|---------------|--------|--------------|
-| Error Catalog System | 1.6.0 | Design phase | [MPAI_Error_Catalog_System.md](../current/MPAI_Error_Catalog_System.md) |
+| Error Catalog System | 1.6.0 | Design phase | [error-catalog-system.md](../current/error-system/error-catalog-system.md) |
 | AI Terms & Conditions Consent | 1.6.0 | Design phase | [consent-mechanism-plan.md](consent-mechanism-plan.md) |
 | Agentic Security Framework | 1.6.0 | Research phase | [agentic-security-framework.md](agentic-security-framework.md) |
 | WordPress Security Integration | 1.6.0 | Design phase | [wp-security-integration-plan.md](wp-security-integration-plan.md) |

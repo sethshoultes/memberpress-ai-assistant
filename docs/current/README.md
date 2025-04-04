@@ -55,7 +55,7 @@ For new developers, we recommend starting with:
 | Feature | Version Added | Status | Documentation |
 |---------|--------------|--------|--------------|
 | Error Recovery System | 1.6.1 (2025-04-05) | ✅ Implemented | [error-recovery-system.md](error-system/error-recovery-system.md) |
-| Error Catalog System | 1.6.1 (2025-04-05) | ✅ Implemented | [MPAI_Error_Catalog_System.md](MPAI_Error_Catalog_System.md) |
+| Error Catalog System | 1.6.1 (2025-04-05) | ✅ Implemented | [error-catalog-system.md](error-system/error-catalog-system.md) |
 | Blog XML Formatting | 1.6.0 (2025-04-03) | ✅ Implemented | [blog-xml-formatting-implementation.md](content-system/blog-xml-formatting-implementation.md) |
 | Blog XML & Membership Implementation | 1.6.0 (2025-04-03) | ✅ Implemented | [blog-xml-membership-implementation-plan.md](content-system/blog-xml-membership-implementation-plan.md) |
 | Independent Operation Mode | 1.5.8 (2025-04-02) | ✅ Implemented | [independent-operation-implementation.md](../archive/MEMBERPRESS_INDEPENDENT_OPERATION.md) (Archived) |
@@ -75,7 +75,7 @@ For new developers, we recommend starting with:
 ### Error System
 - [Error Recovery System](error-system/error-recovery-system.md) - ✅
 - [Error Recovery System Test Fix](../_snacks/investigations/error-recovery-system-fix.md) - ✅ (Investigation)
-- [Error Catalog System](MPAI_Error_Catalog_System.md) - ✅
+- [Error Catalog System](error-system/error-catalog-system.md) - ✅
 
 ### Agent System
 - [Agent System Reference](agent-system/agent-system-reference.md) - ✅
