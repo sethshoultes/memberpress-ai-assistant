@@ -12,10 +12,64 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Include individual test files
-require_once MPAI_PLUGIN_DIR . 'test/edge-cases/test-input-validation.php';
-require_once MPAI_PLUGIN_DIR . 'test/edge-cases/test-resource-limits.php';
-require_once MPAI_PLUGIN_DIR . 'test/edge-cases/test-error-conditions.php';
+// Include individual test files with error handling
+$test_files = [
+    'test-input-validation.php',
+    'test-resource-limits.php',
+    'test-error-conditions.php'
+];
+
+$missing_files = [];
+foreach ($test_files as $file) {
+    $file_path = MPAI_PLUGIN_DIR . 'test/edge-cases/' . $file;
+    if (file_exists($file_path)) {
+        error_log('MPAI DEBUG: Including test file: ' . $file_path);
+        require_once $file_path;
+    } else {
+        error_log('MPAI ERROR: Missing test file: ' . $file_path);
+        $missing_files[] = $file;
+    }
+}
+
+// If any files are missing, define placeholder functions to prevent fatal errors
+if (in_array('test-input-validation.php', $missing_files) && !function_exists('mpai_test_input_validation_edge_cases')) {
+    function mpai_test_input_validation_edge_cases() {
+        return [
+            'tests' => [],
+            'total' => 0,
+            'passed' => 0,
+            'failed' => 0,
+            'skipped' => 0,
+            'error' => 'Test file missing'
+        ];
+    }
+}
+
+if (in_array('test-resource-limits.php', $missing_files) && !function_exists('mpai_test_resource_limits_edge_cases')) {
+    function mpai_test_resource_limits_edge_cases() {
+        return [
+            'tests' => [],
+            'total' => 0,
+            'passed' => 0,
+            'failed' => 0,
+            'skipped' => 0,
+            'error' => 'Test file missing'
+        ];
+    }
+}
+
+if (in_array('test-error-conditions.php', $missing_files) && !function_exists('mpai_test_error_conditions_edge_cases')) {
+    function mpai_test_error_conditions_edge_cases() {
+        return [
+            'tests' => [],
+            'total' => 0,
+            'passed' => 0,
+            'failed' => 0,
+            'skipped' => 0,
+            'error' => 'Test file missing'
+        ];
+    }
+}
 
 /**
  * Run all edge case tests

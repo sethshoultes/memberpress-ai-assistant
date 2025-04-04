@@ -10,9 +10,28 @@ if (!defined('WPINC')) {
     die;
 }
 
+// Add extra error reporting for debugging
+error_log('MPAI DEBUG: Settings page is being loaded');
+error_log('MPAI DEBUG: PHP Version: ' . phpversion());
+error_log('MPAI DEBUG: WordPress Version: ' . get_bloginfo('version'));
+error_log('MPAI DEBUG: Plugin Constants: ' . (defined('MPAI_VERSION') ? 'MPAI_VERSION=' . MPAI_VERSION : 'MPAI_VERSION not defined') . 
+    ', ' . (defined('MPAI_PLUGIN_URL') ? 'MPAI_PLUGIN_URL is defined' : 'MPAI_PLUGIN_URL not defined'));
+
+// Try loading MPAI_Settings class if needed
+if (!class_exists('MPAI_Settings')) {
+    error_log('MPAI DEBUG: MPAI_Settings class not loaded yet, attempting to load it');
+    $settings_path = dirname(__FILE__) . '/class-mpai-settings.php';
+    if (file_exists($settings_path)) {
+        error_log('MPAI DEBUG: Loading MPAI_Settings from: ' . $settings_path);
+        require_once $settings_path;
+    } else {
+        error_log('MPAI ERROR: MPAI_Settings file not found at: ' . $settings_path);
+    }
+}
+
 // Generate the nonce for AJAX requests
 $mpai_settings_nonce = wp_create_nonce('mpai_nonce');
-error_log('MPAI: Settings page nonce generated: ' . substr($mpai_settings_nonce, 0, 5) . '...');
+error_log('MPAI DEBUG: Settings page nonce generated: ' . substr($mpai_settings_nonce, 0, 5) . '...');
 
 // Process form submission - direct approach without using Settings API
 if (isset($_POST['mpai_save_settings']) && check_admin_referer('mpai_settings_nonce', 'mpai_nonce')) {
@@ -506,8 +525,35 @@ settings_errors('mpai_messages');
             
             
             <?php 
-            // Include the diagnostics tab
-            require_once MPAI_PLUGIN_DIR . 'includes/settings-diagnostic.php';
+            // Include the diagnostics tab with error handling
+            error_log('MPAI DEBUG: About to include diagnostics tab from: ' . MPAI_PLUGIN_DIR . 'includes/settings-diagnostic.php');
+            
+            $diagnostic_file = MPAI_PLUGIN_DIR . 'includes/settings-diagnostic.php';
+            if (file_exists($diagnostic_file)) {
+                error_log('MPAI DEBUG: Diagnostic file exists, including it');
+                try {
+                    include_once $diagnostic_file;
+                    error_log('MPAI DEBUG: Diagnostic file included successfully');
+                } catch (Exception $e) {
+                    error_log('MPAI ERROR: Exception including diagnostic file: ' . $e->getMessage());
+                    // Add a fallback UI if the file can't be included
+                    echo '<div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">';
+                    echo '<h3>Diagnostics</h3>';
+                    echo '<div class="mpai-notice mpai-notice-error">';
+                    echo '<p>Error loading diagnostics tab: ' . esc_html($e->getMessage()) . '</p>';
+                    echo '</div>';
+                    echo '</div>';
+                }
+            } else {
+                error_log('MPAI ERROR: Diagnostic file not found at: ' . $diagnostic_file);
+                // Add a fallback UI if the file doesn't exist
+                echo '<div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">';
+                echo '<h3>Diagnostics</h3>';
+                echo '<div class="mpai-notice mpai-notice-error">';
+                echo '<p>Diagnostic file not found. This component may not be available in the current branch.</p>';
+                echo '</div>';
+                echo '</div>';
+            }
             ?>
         </div>
         

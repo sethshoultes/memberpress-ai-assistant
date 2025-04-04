@@ -5,9 +5,48 @@
 (function($) {
     'use strict';
     
+    // Output debug information about when admin.js is being loaded
+    console.log('MPAI DEBUG: admin.js file is being executed');
+    console.log('MPAI DEBUG: jQuery version:', typeof $ !== 'undefined' ? $.fn.jquery : 'jQuery not available');
+    console.log('MPAI DEBUG: mpai_data:', typeof mpai_data !== 'undefined' ? 'Available' : 'NOT AVAILABLE');
+    
+    // If mpai_data is defined, show its keys
+    if (typeof mpai_data !== 'undefined') {
+        console.log('MPAI DEBUG: mpai_data keys:', Object.keys(mpai_data));
+        console.log('MPAI DEBUG: mpai_data.ajax_url:', mpai_data.ajax_url);
+        console.log('MPAI DEBUG: mpai_data.nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+        console.log('MPAI DEBUG: mpai_data.plugin_url:', mpai_data.plugin_url);
+    }
+    
+    // Add a direct event listener to window load to make sure we see any errors
+    window.addEventListener('load', function() {
+        console.log('MPAI DEBUG: Window load event fired');
+        console.log('MPAI DEBUG: mpai_data on window load:', typeof mpai_data !== 'undefined' ? 'Available' : 'NOT AVAILABLE');
+    });
+    
     // Check if mpai_data is available - with minimal logging
     if (typeof mpai_data === 'undefined') {
-        console.error('MPAI: mpai_data is not available in admin.js');
+        console.error('MPAI ERROR: mpai_data is not available in admin.js - THIS WILL CAUSE UI FAILURES');
+        
+        // Try to recover by creating a dummy mpai_data object if it doesn't exist
+        console.log('MPAI DEBUG: Attempting to create a fallback mpai_data object');
+        window.mpai_data = window.mpai_data || {
+            ajax_url: '/wp-admin/admin-ajax.php',
+            plugin_url: window.location.pathname.split('/wp-admin/')[0] + '/wp-content/plugins/memberpress-ai-assistant/',
+            nonce: '',
+            logger: {
+                enabled: true,
+                log_level: 'debug',
+                categories: {
+                    api_calls: true,
+                    tool_usage: true,
+                    agent_activity: true,
+                    timing: true,
+                    ui: true
+                }
+            }
+        };
+        console.log('MPAI DEBUG: Created fallback mpai_data:', window.mpai_data);
     } else {
         // Use the logger if available, but only if explicitly enabled
         if (window.mpaiLogger && window.mpaiLogger.enabled === true) {
@@ -1074,7 +1113,52 @@
     }
 
     $(document).ready(function() {
-        console.log('MPAI: Admin script ready');
+        console.log('MPAI DEBUG: Document ready fired in admin.js');
+        
+        // First fix tab navigation immediately since that's critical
+        console.log('MPAI DEBUG: Setting up tab navigation...');
+        
+        // Setup the tab navigation directly without waiting for mpai_data
+        try {
+            // Hide all tabs first except the first one
+            $('.mpai-settings-tab').hide();
+            $('.mpai-settings-tab:first').show();
+            
+            // Make sure the first tab is active
+            $('.nav-tab-wrapper a.nav-tab:first').addClass('nav-tab-active');
+            
+            // Setup tab click handler
+            $('.nav-tab-wrapper a.nav-tab').on('click', function(e) {
+                e.preventDefault();
+                console.log('MPAI DEBUG: Tab clicked:', $(this).attr('href'));
+                
+                // Hide all tabs
+                $('.mpai-settings-tab').hide();
+                
+                // Remove active class from all tabs
+                $('.nav-tab').removeClass('nav-tab-active');
+                
+                // Show the selected tab
+                $($(this).attr('href')).show();
+                
+                // Add active class to clicked tab
+                $(this).addClass('nav-tab-active');
+                
+                // Dispatch a custom event that other parts of the code can listen for
+                $(document).trigger('mpai-tab-shown', [$(this).attr('href')]);
+                
+                // For diagnostic tab specifically, trigger plugin logs loading
+                if ($(this).attr('href') === '#tab-diagnostic') {
+                    console.log('MPAI DEBUG: Diagnostic tab clicked, triggering plugin logs load');
+                    // Trigger a custom event that the logs section can listen for
+                    $(document).trigger('mpai-load-plugin-logs');
+                }
+            });
+            
+            console.log('MPAI DEBUG: Tab navigation setup successfully');
+        } catch (e) {
+            console.error('MPAI ERROR: Failed to set up tab navigation:', e);
+        }
         
         // Verify direct-ajax-handler.php URL (for debugging)
         if (typeof mpai_data !== 'undefined' && mpai_data.plugin_url) {
@@ -1133,24 +1217,6 @@
                 $(document).trigger('mpai-load-plugin-logs');
             }, 100);
         }
-        
-        // Handle tab navigation for the settings page
-        // This ensures that content is properly loaded when tabs are clicked
-        $('.nav-tab-wrapper a.nav-tab').on('click', function(e) {
-            e.preventDefault();
-            
-            const tabId = $(this).attr('href');
-            
-            // Dispatch a custom event that other parts of the code can listen for
-            $(document).trigger('mpai-tab-shown', [tabId]);
-            
-            // For diagnostic tab specifically, trigger plugin logs loading
-            if (tabId === '#tab-diagnostic') {
-                console.log('MPAI: Diagnostic tab clicked, triggering plugin logs load');
-                // Trigger a custom event that the logs section can listen for
-                $(document).trigger('mpai-load-plugin-logs');
-            }
-        });
         
         console.log('MPAI: Admin script initialization complete');
     });

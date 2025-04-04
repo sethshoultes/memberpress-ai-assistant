@@ -408,58 +408,64 @@ class MemberPress_AI_Assistant {
         // Log the status for debugging
         // Adding admin menu
         
-        // Main menu page slug
-        $main_page_slug = 'memberpress-ai-assistant';
+        // Main menu page slug - pointing to settings page directly
+        $main_page_slug = 'memberpress-ai-assistant-settings';
+        
+        // Log what we're doing
+        error_log('MPAI DEBUG: Setting up admin menu with main slug: ' . $main_page_slug);
         
         if ($this->has_memberpress) {
             // If MemberPress is active, add as a submenu to MemberPress
-            // Add menu as submenu of MemberPress
+            // Add menu as submenu of MemberPress that goes directly to settings
             
             $main_page = add_submenu_page(
                 'memberpress', // Parent menu slug
                 __('AI Assistant', 'memberpress-ai-assistant'), // Page title
                 __('AI Assistant', 'memberpress-ai-assistant'), // Menu title
                 'manage_options', // Capability
-                $main_page_slug, // Menu slug
-                array($this, 'display_admin_page') // Callback function
+                $main_page_slug, // Menu slug points to settings
+                array($this, 'display_settings_page') // Use settings page as the main page
             );
         } else {
             // If MemberPress is not active, add as a top-level menu
-            // Add menu as top-level menu
+            // Add menu as top-level menu - pointing directly to settings
             
             $main_page = add_menu_page(
                 __('MemberPress AI', 'memberpress-ai-assistant'), // Page title
                 __('MemberPress AI', 'memberpress-ai-assistant'), // Menu title
                 'manage_options', // Capability
-                $main_page_slug, // Menu slug
-                array($this, 'display_admin_page'), // Callback function
+                $main_page_slug, // Menu slug points to settings
+                array($this, 'display_settings_page'), // Use settings page as the main page
                 MPAI_PLUGIN_URL . 'assets/images/memberpress-logo.svg', // Icon
                 30 // Position
             );
             
-            // Add a submenu item that matches the parent for clarity
+            // No need for a duplicate "Dashboard" entry since we're using settings as the main page
+
+            // Add a submenu item for the settings page to match parent
             add_submenu_page(
                 $main_page_slug, 
-                __('Dashboard', 'memberpress-ai-assistant'),
-                __('Dashboard', 'memberpress-ai-assistant'),
+                __('Settings', 'memberpress-ai-assistant'),
+                __('Settings', 'memberpress-ai-assistant'),
                 'manage_options',
                 $main_page_slug, 
-                array($this, 'display_admin_page')
+                array($this, 'display_settings_page')
             );
         }
         
-        // Register the settings page (always as a submenu of our main page)
-        $settings_page = add_submenu_page(
-            $main_page_slug, // Always add settings under our main page slug
-            __('Settings', 'memberpress-ai-assistant'),
-            __('Settings', 'memberpress-ai-assistant'),
+        // Add the dashboard page as a submenu
+        $dashboard_page = add_submenu_page(
+            $main_page_slug, // Add under our main settings page
+            __('Dashboard', 'memberpress-ai-assistant'),
+            __('Dashboard', 'memberpress-ai-assistant'),
             'manage_options',
-            'memberpress-ai-assistant-settings',
-            array($this, 'display_settings_page')
+            'memberpress-ai-assistant',
+            array($this, 'display_admin_page')
         );
         
         // Make sure settings are properly registered for this page
-        add_action('load-' . $settings_page, array($this, 'settings_page_load'));
+        // Note: $main_page is now our settings page
+        add_action('load-' . $main_page, array($this, 'settings_page_load'));
     }
     
     /**
