@@ -160,45 +160,66 @@ If you're working on MemberPress-specific integrations:
 
 If you're working on the agent system or adding specialized agents:
 
-1. **Start here**: [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md)
+1. **Start here**: 
+   - [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md) - Comprehensive agent system guide
+   - [/docs/current/agent-system/unified-agent-system.md](/docs/current/agent-system/unified-agent-system.md) - Unified reference
+   - [/docs/current/agent-system/agent-specialization-scoring.md](/docs/current/agent-system/agent-specialization-scoring.md) - Agent scoring system
 2. **Key files**:
-   - `/includes/agents/interfaces/interface-mpai-agent.php`
-   - `/includes/agents/class-mpai-base-agent.php`
-   - `/includes/agents/class-mpai-agent-orchestrator.php`
-3. **Example implementations**:
+   - `/includes/agents/interfaces/interface-mpai-agent.php` - Core interface
+   - `/includes/agents/class-mpai-base-agent.php` - Base implementation with scoring
+   - `/includes/agents/class-mpai-agent-orchestrator.php` - Orchestration and routing
+3. **Phase Two Enhancements**:
+   - Agent Specialization Scoring system with weighted confidence scoring
+   - Capability-based matching for more accurate request routing
+   - Contextual modifiers for conversation continuity and user preferences
+   - Tiebreaker logic for ambiguous requests
+4. **Example implementations**:
    - `/includes/agents/specialized/class-mpai-memberpress-agent.php`
    - `/includes/agents/specialized/class-mpai-command-validation-agent.php`
-4. **Testing**:
-   - Use `/test/test-agent-system.php`
+5. **Testing**:
+   - Use `/test/test-agent-system.php` for agent system tests
+   - Use `/test/test-agent-scoring.php` for agent scoring tests
 
 **Development workflow**:
-1. Understand the agent interface and base implementation
-2. Create a specialized agent class
+1. Understand the agent interface, base implementation, and scoring system
+2. Create a specialized agent class with appropriate keywords and capabilities
 3. Implement required methods for your specific domain
-4. Register the agent with the orchestrator
-5. Update system prompts to utilize the agent capabilities
-6. Create tests for your agent
+4. Add weighted keywords and capability descriptions for scoring
+5. Register the agent with the orchestrator
+6. Update system prompts to utilize the agent capabilities
+7. Create tests for your agent, including scoring verification
 
 ### Performance Optimizations
 
 If you're working on performance improvements:
 
-1. **Start here**: [WordPress Performance](https://developer.wordpress.org/plugins/performance/)
-2. **Areas to focus**:
+1. **Start here**: 
+   - [/docs/current/core/system-information-caching.md](/docs/current/core/system-information-caching.md) - System Information Caching
+   - [WordPress Performance](https://developer.wordpress.org/plugins/performance/)
+2. **Key files**:
+   - `/includes/class-mpai-system-cache.php` - System information caching implementation
+   - `/includes/class-mpai-response-cache.php` - AI response caching implementation
+   - `/includes/tools/class-mpai-tool-registry.php` - Lazy loading implementation
+3. **Areas to focus**:
+   - Multi-tiered caching with in-memory and filesystem storage
    - JavaScript optimization in `/assets/js/`
    - Database query optimization in API classes
-   - Caching strategies for expensive operations
    - API call optimization to reduce tokens and latency
-3. **Logging**:
+4. **Phase Two Performance Features**:
+   - System Information Caching for PHP and WordPress information (70-80% improvement)
+   - Lazy loading of tools for reduced memory usage and faster startup
+   - Response caching for frequently used AI responses
+5. **Logging**:
    - Use the logging system in `/assets/js/mpai-logger.js`
    - PHP logging with `error_log('MPAI: message')`
 
 **Development workflow**:
 1. Establish performance benchmarks before changes
-2. Identify bottlenecks using profiling
-3. Implement optimizations
-4. Measure impact
-5. Document performance improvements
+2. Check existing caching implementations for patterns to follow
+3. Identify bottlenecks using profiling
+4. Implement optimizations with appropriate TTL settings
+5. Measure impact and document in Scooby Snack format
+6. Update documentation and changelog
 
 ### Security Enhancements
 
@@ -286,20 +307,36 @@ Follow the detailed documentation in [/docs/current/tool-system/tool-implementat
 
 ## Testing and Quality Assurance
 
-1. **Manual testing**:
+1. **Testing System Documentation**:
+   - Comprehensive test system overview: `/test/README.md`
+   - Categorized index of all tests: `/test/index.md`
+   - Specialized test documentation: `/test/specialized-tests.md`
+   - Testing procedures: `/test/test-procedures.md`
+
+2. **Manual testing**:
    - Follow procedures in `/test/test-procedures.md`
    - Test with both OpenAI and Anthropic providers
    - Test in different WordPress environments
+   - Use Phase One and Phase Two test buttons in System Diagnostics
 
-2. **Test scripts**:
-   - Create test scripts in `/test/` directory
-   - Follow existing patterns like `test-agent-system.php`
+3. **Test scripts**:
+   - Create test scripts in `/test/` directory following the organized structure
+   - Unit tests in `/test/unit/` directory
+   - Feature tests follow the `test-feature-name.php` pattern
+   - Integration tests follow the `system-name-test.php` pattern
 
-3. **Quality standards**:
+4. **Testing Categories**:
+   - Agent System tests: `test-agent-system.php`, `test-agent-scoring.php`
+   - Performance tests: `test-system-cache.php`
+   - Tool System tests: Found in `test/specialized-tests.md`
+   - WordPress Integration tests: `test-plugin-list.php`, `test-validate-theme-block.php`
+
+5. **Quality standards**:
    - Follow WordPress coding standards
    - Include comprehensive error handling
    - Document all methods and complex logic
    - Write clean, maintainable code
+   - Create appropriate tests for new features
 
 ## Documentation Standards
 
