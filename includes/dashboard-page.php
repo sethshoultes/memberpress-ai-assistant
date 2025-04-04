@@ -49,8 +49,17 @@ $consent_given = get_option('mpai_consent_given', false);
             <div class="mpai-consent-form">
                 <form method="post" action="">
                     <?php wp_nonce_field('mpai_consent_nonce', 'mpai_consent_nonce'); ?>
-                    <label id="mpai-consent-label">
-                        <input type="checkbox" name="mpai_consent" id="mpai-consent-checkbox" value="1" <?php checked(get_option('mpai_consent_given', false)); ?> <?php echo get_option('mpai_consent_given', false) ? 'readonly disabled' : ''; ?> />
+                    
+                    <?php if (get_option('mpai_consent_given', false)): ?>
+                    <!-- Hidden field to always send consent value even if checkbox is readonly -->
+                    <input type="hidden" name="mpai_consent" value="1" />
+                    <?php endif; ?>
+                    
+                    <label id="mpai-consent-label" class="<?php echo get_option('mpai_consent_given', false) ? 'consent-given' : ''; ?>">
+                        <input type="checkbox" name="mpai_consent" id="mpai-consent-checkbox" value="1" 
+                            <?php echo get_option('mpai_consent_given', false) ? 'checked="checked"' : ''; ?> 
+                            <?php echo get_option('mpai_consent_given', false) ? 'readonly="readonly" onclick="return false;"' : ''; ?> 
+                        />
                         <?php _e('I agree to the terms and conditions of using the MemberPress AI Assistant', 'memberpress-ai-assistant'); ?>
                     </label>
                     <?php if (get_option('mpai_consent_given', false)): ?>
@@ -188,6 +197,47 @@ $consent_given = get_option('mpai_consent_given', false);
     font-weight: 500;
 }
 
+#mpai-consent-label.consent-given {
+    color: #46b450;
+    font-weight: 600;
+}
+
+/* Style for readonly checkbox */
+#mpai-consent-checkbox[readonly] {
+    opacity: 0.7;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Make sure the checkbox appears checked when readonly */
+#mpai-consent-checkbox[readonly]:before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 12px;
+    border: solid #46b450;
+    border-width: 0 2px 2px 0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -75%) rotate(45deg);
+}
+
+/* Additional styles for Firefox */
+@-moz-document url-prefix() {
+    #mpai-consent-checkbox[readonly] {
+        background-color: #f6f7f7 !important;
+        box-shadow: 0 0 0 1px #8c8f94;
+        outline: 2px solid transparent;
+    }
+}
+
+/* Make consent checkbox disabled and checked visually obvious */
+.consent-given #mpai-consent-checkbox {
+    background-color: rgba(70, 180, 80, 0.1) !important;
+    border-color: #46b450 !important;
+}
+
 .consent-required .button-primary {
     opacity: 0.7;
     cursor: not-allowed;
@@ -277,14 +327,112 @@ $consent_given = get_option('mpai_consent_given', false);
 
 <script>
 jQuery(document).ready(function($) {
-    // Check if consent checkbox is already checked on page load
-    if ($('#mpai-consent-checkbox').is(':checked')) {
-        $('#mpai-open-chat').prop('disabled', false);
-        $('#mpai-welcome-buttons').removeClass('consent-required');
+    // Function to check if consent was previously given
+    function wasConsentGiven() {
+        // Get the checkbox "checked" attribute
+        var isChecked = $('#mpai-consent-checkbox').prop('checked');
+        var hasCheckedAttr = $('#mpai-consent-checkbox').attr('checked') === 'checked';
+        
+        // Look for the "already agreed" message as another indicator
+        var hasConsentMessage = $('.mpai-consent-form .description').length > 0;
+        
+        // Check for readonly attribute which indicates consent was given
+        var isReadonly = $('#mpai-consent-checkbox').attr('readonly') === 'readonly';
+        
+        // Check if the label has the consent-given class
+        var hasConsentClass = $('#mpai-consent-label').hasClass('consent-given');
+        
+        // Check for the hidden consent field
+        var hasHiddenField = $('input[type="hidden"][name="mpai_consent"]').length > 0;
+        
+        console.log('MPAI DEBUG: Consent state - isChecked:', isChecked, 
+                    'hasCheckedAttr:', hasCheckedAttr, 
+                    'hasConsentMessage:', hasConsentMessage,
+                    'isReadonly:', isReadonly,
+                    'hasConsentClass:', hasConsentClass,
+                    'hasHiddenField:', hasHiddenField);
+        
+        // Save to session storage to persist between page refreshes
+        if (isChecked || hasCheckedAttr || hasConsentMessage || isReadonly || hasConsentClass || hasHiddenField) {
+            try {
+                sessionStorage.setItem('mpai_consent_given', 'true');
+                console.log('MPAI DEBUG: Saved consent state to session storage');
+            } catch (e) {
+                console.error('MPAI DEBUG: Failed to save consent to session storage:', e);
+            }
+        }
+        
+        // Check session storage as a final fallback
+        var sessionConsent = false;
+        try {
+            sessionConsent = sessionStorage.getItem('mpai_consent_given') === 'true';
+        } catch (e) {
+            console.error('MPAI DEBUG: Failed to read consent from session storage:', e);
+        }
+        
+        return isChecked || hasCheckedAttr || hasConsentMessage || isReadonly || hasConsentClass || hasHiddenField || sessionConsent;
     }
     
-    // Handle consent checkbox
+    // When DOM is fully loaded, check all our consent indicators
+    $(window).on('load', function() {
+        // Check session storage first
+        var sessionConsent = false;
+        try {
+            sessionConsent = sessionStorage.getItem('mpai_consent_given') === 'true';
+            console.log('MPAI DEBUG: Session storage consent:', sessionConsent);
+        } catch (e) {
+            console.error('MPAI DEBUG: Error reading session storage:', e);
+        }
+        
+        // Force the checkbox to be checked if any consent indicator is present
+        var consentGiven = wasConsentGiven() || sessionConsent || 
+                          $('#mpai-consent-checkbox').attr('readonly') || 
+                          $('.consent-given').length > 0;
+        
+        if (consentGiven) {
+            // Force the checkbox to remain checked
+            $('#mpai-consent-checkbox').prop('checked', true);
+            
+            // Enable the button
+            $('#mpai-open-chat').prop('disabled', false);
+            $('#mpai-welcome-buttons').removeClass('consent-required');
+            
+            console.log('MPAI DEBUG: Force-enabled consent because indicators show consent was given');
+            
+            // Persist this in session storage
+            try {
+                sessionStorage.setItem('mpai_consent_given', 'true');
+            } catch (e) {
+                console.error('MPAI DEBUG: Error writing to session storage:', e);
+            }
+        }
+    });
+    
+    // Immediate check as well
+    if (wasConsentGiven() || $('#mpai-consent-checkbox').attr('readonly')) {
+        $('#mpai-consent-checkbox').prop('checked', true);
+        $('#mpai-open-chat').prop('disabled', false);
+        $('#mpai-welcome-buttons').removeClass('consent-required');
+        console.log('MPAI DEBUG: Enabling button because consent indicators are present');
+    }
+    
+    // Handle consent checkbox - prevent unchecking if it should be read-only
+    $('#mpai-consent-checkbox').on('click', function(e) {
+        if ($(this).attr('readonly') || $(this).hasClass('readonly')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Handle consent checkbox changes
     $('#mpai-consent-checkbox').on('change', function() {
+        // If the checkbox has the readonly attribute, it should always remain checked
+        if ($(this).attr('readonly') || $(this).hasClass('readonly')) {
+            $(this).prop('checked', true);
+            console.log('MPAI DEBUG: Preventing readonly checkbox from being unchecked');
+            return;
+        }
+        
         if ($(this).is(':checked')) {
             $('#mpai-open-chat').prop('disabled', false);
             $('#mpai-welcome-buttons').removeClass('consent-required');
@@ -293,13 +441,6 @@ jQuery(document).ready(function($) {
             $('#mpai-welcome-buttons').addClass('consent-required');
         }
     });
-    
-    // If the checkbox is disabled (which means consent was previously given),
-    // make sure the button is enabled
-    if ($('#mpai-consent-checkbox').prop('disabled')) {
-        $('#mpai-open-chat').prop('disabled', false);
-        $('#mpai-welcome-buttons').removeClass('consent-required');
-    }
     
     // Handle terms link click
     $('#mpai-terms-link').on('click', function(e) {
