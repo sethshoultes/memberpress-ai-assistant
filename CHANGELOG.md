@@ -9,11 +9,15 @@
 - Configurable log retention settings with automated cleanup
 - Detailed error catalog with resolution steps for troubleshooting
 - Agent Specialization Scoring system for improved request routing 🦴
+- System Information Caching for optimized performance 🦴
 - Phase Two testing framework in System Diagnostics
 
 ### Fixed
 - Fixed inconsistent test result display in System Diagnostics when using "Run All Phase One Tests" button
 - All test results (Agent Discovery, Lazy Loading, Response Cache, and Agent Messaging) now display consistently without requiring additional clicks
+- Fixed System Information Caching test button functionality in the diagnostics panel 🦴
+- Implemented comprehensive real tests for the System Information Caching feature
+- Added error handling and fallback mechanisms to ensure diagnostic tests work reliably
 
 ## [6.0.0] - 2024-04-01
 
