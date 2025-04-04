@@ -1,5 +1,7 @@
 # MemberPress AI Assistant
 
+![MemberPress AI Assistant](assets/images/memberpress-ai-assistant.png)
+
 ## Description
 
 MemberPress AI Assistant integrates powerful AI language models (OpenAI and Anthropic) with your MemberPress WordPress plugin, providing intelligent insights, content analysis, and WP-CLI command assistance. This plugin helps site administrators better understand their membership data and streamline site management tasks with features like best-selling membership analysis, tiered support routing, and comprehensive diagnostic capabilities.
