@@ -20,8 +20,16 @@ $consent_given = get_option('mpai_consent_given', false);
 <div class="wrap mpai-dashboard-page">
     <h1><?php _e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h1>
     
+    <?php
+    // Show a success message if they've just given consent (from redirect)
+    if (isset($_GET['consent']) && $_GET['consent'] == 'given'): ?>
+    <div class="notice notice-success is-dismissible">
+        <p><strong><?php _e('Success!', 'memberpress-ai-assistant'); ?></strong> <?php _e('Thank you for agreeing to the terms. You can now use the MemberPress AI Assistant.', 'memberpress-ai-assistant'); ?></p>
+    </div>
+    <?php endif; ?>
+    
     <?php if (!$consent_given): ?>
-    <!-- Opt-in/Consent Section -->
+    <!-- Opt-in/Consent Section - Only shown if consent hasn't been given -->
     <div class="mpai-welcome-section mpai-consent-section">
         <h2><?php _e('Welcome to MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h2>
         
@@ -42,11 +50,17 @@ $consent_given = get_option('mpai_consent_given', false);
                 <form method="post" action="">
                     <?php wp_nonce_field('mpai_consent_nonce', 'mpai_consent_nonce'); ?>
                     <label id="mpai-consent-label">
-                        <input type="checkbox" name="mpai_consent" id="mpai-consent-checkbox" value="1" />
+                        <input type="checkbox" name="mpai_consent" id="mpai-consent-checkbox" value="1" <?php checked(get_option('mpai_consent_given', false)); ?> <?php echo get_option('mpai_consent_given', false) ? 'readonly disabled' : ''; ?> />
                         <?php _e('I agree to the terms and conditions of using the MemberPress AI Assistant', 'memberpress-ai-assistant'); ?>
                     </label>
-                    <p id="mpai-welcome-buttons" class="consent-required">
-                        <input type="submit" name="mpai_save_consent" id="mpai-open-chat" class="button button-primary" value="<?php esc_attr_e('Get Started', 'memberpress-ai-assistant'); ?>" disabled />
+                    <?php if (get_option('mpai_consent_given', false)): ?>
+                    <p class="description" style="color: #46b450;">
+                        <span class="dashicons dashicons-yes-alt"></span> 
+                        <?php _e('You have already agreed to the terms. This agreement will persist until the plugin is deactivated.', 'memberpress-ai-assistant'); ?>
+                    </p>
+                    <?php endif; ?>
+                    <p id="mpai-welcome-buttons" class="<?php echo get_option('mpai_consent_given', false) ? '' : 'consent-required'; ?>">
+                        <input type="submit" name="mpai_save_consent" id="mpai-open-chat" class="button button-primary" value="<?php esc_attr_e('Get Started', 'memberpress-ai-assistant'); ?>" <?php echo get_option('mpai_consent_given', false) ? '' : 'disabled'; ?> />
                         <a href="#" id="mpai-terms-link" class="button"><?php _e('Review Full Terms', 'memberpress-ai-assistant'); ?></a>
                     </p>
                 </form>
@@ -263,6 +277,12 @@ $consent_given = get_option('mpai_consent_given', false);
 
 <script>
 jQuery(document).ready(function($) {
+    // Check if consent checkbox is already checked on page load
+    if ($('#mpai-consent-checkbox').is(':checked')) {
+        $('#mpai-open-chat').prop('disabled', false);
+        $('#mpai-welcome-buttons').removeClass('consent-required');
+    }
+    
     // Handle consent checkbox
     $('#mpai-consent-checkbox').on('change', function() {
         if ($(this).is(':checked')) {
@@ -273,6 +293,13 @@ jQuery(document).ready(function($) {
             $('#mpai-welcome-buttons').addClass('consent-required');
         }
     });
+    
+    // If the checkbox is disabled (which means consent was previously given),
+    // make sure the button is enabled
+    if ($('#mpai-consent-checkbox').prop('disabled')) {
+        $('#mpai-open-chat').prop('disabled', false);
+        $('#mpai-welcome-buttons').removeClass('consent-required');
+    }
     
     // Handle terms link click
     $('#mpai-terms-link').on('click', function(e) {
