@@ -13,8 +13,23 @@ if (!defined('WPINC')) {
 // Log page load for debugging
 error_log('MPAI DEBUG: Dashboard page is being loaded');
 
-// Check if terms have been accepted
-$consent_given = get_option('mpai_consent_given', false);
+// Check if terms have been accepted - check both options and user meta
+$consent_given = false;
+
+// First check the global option
+$global_consent = get_option('mpai_consent_given', false);
+
+// Then check user-specific consent
+if (!$global_consent && is_user_logged_in()) {
+    $user_id = get_current_user_id();
+    $user_consent = get_user_meta($user_id, 'mpai_has_consented', true);
+    $consent_given = !empty($user_consent);
+    
+    // For debugging
+    error_log('MPAI DEBUG: User consent status - User ID: ' . $user_id . ', Has consented: ' . ($consent_given ? 'Yes' : 'No'));
+} else {
+    $consent_given = $global_consent;
+}
 ?>
 
 <div class="wrap mpai-dashboard-page">
@@ -50,26 +65,26 @@ $consent_given = get_option('mpai_consent_given', false);
                 <form method="post" action="">
                     <?php wp_nonce_field('mpai_consent_nonce', 'mpai_consent_nonce'); ?>
                     
-                    <?php if (get_option('mpai_consent_given', false)): ?>
+                    <?php if ($consent_given): ?>
                     <!-- Hidden field to always send consent value even if checkbox is readonly -->
                     <input type="hidden" name="mpai_consent" value="1" />
                     <?php endif; ?>
                     
-                    <label id="mpai-consent-label" class="<?php echo get_option('mpai_consent_given', false) ? 'consent-given' : ''; ?>">
+                    <label id="mpai-consent-label" class="<?php echo $consent_given ? 'consent-given' : ''; ?>">
                         <input type="checkbox" name="mpai_consent" id="mpai-consent-checkbox" value="1" 
-                            <?php echo get_option('mpai_consent_given', false) ? 'checked="checked"' : ''; ?> 
-                            <?php echo get_option('mpai_consent_given', false) ? 'readonly="readonly" onclick="return false;"' : ''; ?> 
+                            <?php echo $consent_given ? 'checked="checked"' : ''; ?> 
+                            <?php echo $consent_given ? 'readonly="readonly" onclick="return false;"' : ''; ?> 
                         />
                         <?php _e('I agree to the terms and conditions of using the MemberPress AI Assistant', 'memberpress-ai-assistant'); ?>
                     </label>
-                    <?php if (get_option('mpai_consent_given', false)): ?>
+                    <?php if ($consent_given): ?>
                     <p class="description" style="color: #46b450;">
                         <span class="dashicons dashicons-yes-alt"></span> 
                         <?php _e('You have already agreed to the terms. This agreement will persist until the plugin is deactivated.', 'memberpress-ai-assistant'); ?>
                     </p>
                     <?php endif; ?>
-                    <p id="mpai-welcome-buttons" class="<?php echo get_option('mpai_consent_given', false) ? '' : 'consent-required'; ?>">
-                        <input type="submit" name="mpai_save_consent" id="mpai-open-chat" class="button button-primary" value="<?php esc_attr_e('Get Started', 'memberpress-ai-assistant'); ?>" <?php echo get_option('mpai_consent_given', false) ? '' : 'disabled'; ?> />
+                    <p id="mpai-welcome-buttons" class="<?php echo $consent_given ? '' : 'consent-required'; ?>">
+                        <input type="submit" name="mpai_save_consent" id="mpai-open-chat" class="button button-primary" value="<?php esc_attr_e('Get Started', 'memberpress-ai-assistant'); ?>" <?php echo $consent_given ? '' : 'disabled'; ?> />
                         <a href="#" id="mpai-terms-link" class="button"><?php _e('Review Full Terms', 'memberpress-ai-assistant'); ?></a>
                     </p>
                 </form>
@@ -436,9 +451,57 @@ jQuery(document).ready(function($) {
         if ($(this).is(':checked')) {
             $('#mpai-open-chat').prop('disabled', false);
             $('#mpai-welcome-buttons').removeClass('consent-required');
+            
+            // Ensure mpai_data object exists
+            if (typeof mpai_data === 'undefined') {
+                console.warn('MPAI DEBUG: mpai_data is undefined, creating fallback');
+                window.mpai_data = {
+                    ajax_url: '/wp-admin/admin-ajax.php',
+                    nonce: $('#mpai_consent_nonce').val()
+                };
+            }
+            
+            // Save consent to server when checked
+            var $checkbox = $(this); // Save checkbox reference for later use in callbacks
+            
+            $.ajax({
+                url: mpai_data.ajax_url,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'mpai_save_consent',
+                    nonce: mpai_data.nonce || $('#mpai_consent_nonce').val(), // Use either mpai_data nonce or the form nonce
+                    consent: true
+                },
+                success: function(response) {
+                    if (response.success) {
+                        console.log('MPAI: Consent saved successfully');
+                        
+                        // Alternative: Submit the form for server-side processing
+                        var $form = $checkbox.closest('form');
+                        if ($form.length) {
+                            $form.submit();
+                            return;
+                        }
+                        
+                        // Reload the page to reflect the saved consent state
+                        window.location.reload();
+                    } else {
+                        console.error('MPAI: Error saving consent:', response.data);
+                        // Still try to submit the form even if AJAX fails
+                        $checkbox.closest('form').submit();
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('MPAI: AJAX error when saving consent:', status, error);
+                    // As a fallback, submit the form for server-side processing
+                    $checkbox.closest('form').submit();
+                }
+            });
         } else {
-            $('#mpai-open-chat').prop('disabled', true);
-            $('#mpai-welcome-buttons').addClass('consent-required');
+            // If they try to uncheck, prevent it - consent can only be revoked by deactivating the plugin
+            $(this).prop('checked', true);
+            alert('Consent can only be revoked by deactivating the plugin.');
         }
     });
     
