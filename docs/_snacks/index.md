@@ -6,6 +6,8 @@
 
 This document provides a categorized index of all Scooby Snacks - detailed documentation of investigations that led to fixes and improvements in the MemberPress AI Assistant plugin.
 
+![Scooby Doo Investigation Mode](../images/scooby-doo-investigation-mode.png)
+
 ## UI/UX
 
 | Snack Title | Date | Version | Description |
