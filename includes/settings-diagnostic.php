@@ -15,6 +15,188 @@ if (!defined('WPINC')) {
     <h3><?php _e('System Diagnostics', 'memberpress-ai-assistant'); ?></h3>
     <p><?php _e('Run various diagnostic tests to check the health of your MemberPress AI Assistant installation.', 'memberpress-ai-assistant'); ?></p>
     
+    <!-- Phase Three Features Test Section -->
+    <div class="mpai-debug-section">
+        <h4><?php _e('Phase Three Features Tests', 'memberpress-ai-assistant'); ?></h4>
+        <p><?php _e('Test Phase Three features including Error Recovery System, AI Response Validation, and Connection Pooling.', 'memberpress-ai-assistant'); ?></p>
+        
+        <button type="button" id="mpai-test-error-recovery" class="button"><?php _e('Test Error Recovery System', 'memberpress-ai-assistant'); ?></button>
+        <a href="<?php echo plugins_url('test/test-error-recovery-page.php', dirname(dirname(__FILE__))); ?>" class="button" target="_blank"><?php _e('Direct Test Page', 'memberpress-ai-assistant'); ?></a>
+        
+        <div id="mpai-phase-three-results" class="mpai-debug-results" style="display: none;">
+            <h4><?php _e('Test Results', 'memberpress-ai-assistant'); ?></h4>
+            <div id="mpai-phase-three-output"></div>
+        </div>
+    </div>
+    
+    <script>
+    jQuery(document).ready(function($) {
+        // Error Recovery System test
+        $('#mpai-test-error-recovery').on('click', function() {
+            var $resultsContainer = $('#mpai-phase-three-results');
+            var $outputContainer = $('#mpai-phase-three-output');
+            
+            $resultsContainer.show();
+            $outputContainer.html('<p>Testing Error Recovery System, please wait...</p>');
+            
+            // Log that we're starting the test
+            console.log('MPAI: Starting Error Recovery System test');
+            
+            // Use standard ajaxurl which is guaranteed to be defined in admin
+            if (typeof ajaxurl === 'undefined') {
+                console.error('MPAI: ajaxurl is not defined');
+                $outputContainer.html('<div style="color: red; margin-bottom: 15px;"><h4>Error: ajaxurl is not defined</h4><p>This is likely a WordPress configuration issue.</p></div>');
+                return;
+            }
+            
+            console.log('MPAI: Using ajaxurl:', ajaxurl);
+            
+            // Create FormData for fetch API
+            var formData = new FormData();
+            formData.append('action', 'mpai_test_error_recovery');
+            formData.append('nonce', mpai_data.nonce);
+            
+            // Use fetch API with WordPress ajaxurl
+            console.log('MPAI: Sending request to:', ajaxurl);
+            console.log('MPAI: Request data:', {
+                action: 'mpai_test_error_recovery',
+                nonce: mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined'
+            });
+            
+            fetch(ajaxurl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                console.log('MPAI: Error Recovery test response status:', response.status);
+                console.log('MPAI: Response headers:', response.headers);
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                
+                // Debug log the raw response
+                return response.text().then(function(text) {
+                    console.log('MPAI: Raw response:', text);
+                    
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('MPAI: Failed to parse JSON:', e);
+                        throw new Error('Failed to parse response as JSON: ' + e.message);
+                    }
+                });
+            })
+            .then(function(data) {
+                console.log('MPAI: Error Recovery test response:', data);
+                
+                // Format the results in HTML
+                var resultHtml = '<div style="margin-bottom: 15px;">';
+                resultHtml += '<span style="color: ' + (data.success ? 'green' : 'red') + '; font-weight: bold; font-size: 16px;">';
+                resultHtml += data.success ? '✓ All tests passed!' : '✗ Some tests failed!';
+                resultHtml += '</span>';
+                resultHtml += '<p>' + data.message + '</p>';
+                resultHtml += '</div>';
+                
+                // Add overall timing information
+                if (data.data && data.data.timing) {
+                    resultHtml += '<div style="margin-bottom: 15px;">';
+                    resultHtml += '<h4>Performance</h4>';
+                    resultHtml += '<p>Total execution time: <strong>' + (data.data.timing.total * 1000).toFixed(2) + ' ms</strong></p>';
+                    resultHtml += '</div>';
+                }
+                
+                // Add test results table
+                if (data.data && data.data.tests) {
+                    resultHtml += '<h4>Individual Test Results</h4>';
+                    resultHtml += '<table class="widefat" style="margin-bottom: 15px;">';
+                    resultHtml += '<thead><tr>';
+                    resultHtml += '<th>Test Name</th>';
+                    resultHtml += '<th>Status</th>';
+                    resultHtml += '<th>Message</th>';
+                    resultHtml += '<th>Details</th>';
+                    resultHtml += '</tr></thead><tbody>';
+                    
+                    // Add each test result
+                    Object.keys(data.data.tests).forEach(function(testName) {
+                        var test = data.data.tests[testName];
+                        resultHtml += '<tr>';
+                        resultHtml += '<td><strong>' + testName.replace(/_/g, ' ') + '</strong></td>';
+                        resultHtml += '<td>' + (test.success ? 
+                            '<span style="color: green;">✓ Pass</span>' : 
+                            '<span style="color: red;">✗ Fail</span>') + '</td>';
+                        resultHtml += '<td>' + test.message + '</td>';
+                        resultHtml += '<td>';
+                        
+                        if (test.details) {
+                            resultHtml += '<button type="button" class="button toggle-details" data-target="details-' + testName + '">Show Details</button>';
+                            resultHtml += '<div id="details-' + testName + '" style="display: none; margin-top: 10px;">';
+                            resultHtml += '<pre style="max-height: 200px; overflow: auto;">' + JSON.stringify(test.details, null, 2) + '</pre>';
+                            resultHtml += '</div>';
+                        } else {
+                            resultHtml += '<em>No details available</em>';
+                        }
+                        
+                        resultHtml += '</td>';
+                        resultHtml += '</tr>';
+                    });
+                    
+                    resultHtml += '</tbody></table>';
+                }
+                
+                // Add documentation link
+                resultHtml += '<div>';
+                resultHtml += '<p><strong>Documentation:</strong> <a href="<?php echo admin_url('admin.php?page=memberpress-ai-assistant&view-doc=error-recovery-system.md'); ?>" target="_blank">Error Recovery System Documentation</a></p>';
+                resultHtml += '</div>';
+                
+                // Set the HTML content
+                $outputContainer.html(resultHtml);
+                
+                // Add event listeners for toggle buttons
+                $('.toggle-details').on('click', function() {
+                    var targetId = $(this).data('target');
+                    $('#' + targetId).toggle();
+                    $(this).text($(this).text() === 'Show Details' ? 'Hide Details' : 'Show Details');
+                });
+            })
+            .catch(function(error) {
+                console.error('MPAI: Error Recovery test error:', error);
+                
+                // Show error message with debugging info
+                var errorHtml = '<div style="color: red; margin-bottom: 15px;">';
+                errorHtml += '<h4>Error Running Tests</h4>';
+                errorHtml += '<p>' + error.message + '</p>';
+                errorHtml += '</div>';
+                
+                errorHtml += '<div style="margin-bottom: 15px;">';
+                errorHtml += '<h4>Troubleshooting Information</h4>';
+                errorHtml += '<p>Please check the following:</p>';
+                errorHtml += '<ol>';
+                errorHtml += '<li>The Error Recovery System is properly installed</li>';
+                errorHtml += '<li>The test file exists at: <code><?php echo MPAI_PLUGIN_DIR; ?>test/test-error-recovery.php</code></li>';
+                errorHtml += '<li>The AJAX handler for "mpai_test_error_recovery" is registered in the plugin</li>';
+                errorHtml += '<li>Check your browser console (F12) for more detailed error information</li>';
+                errorHtml += '</ol>';
+                errorHtml += '</div>';
+                
+                errorHtml += '<div style="margin-bottom: 15px;">';
+                errorHtml += '<h4>Plugin Information</h4>';
+                errorHtml += '<p>Plugin Version: <?php echo MPAI_VERSION; ?></p>';
+                errorHtml += '<p>WordPress Version: <?php echo get_bloginfo('version'); ?></p>';
+                errorHtml += '<p>PHP Version: <?php echo phpversion(); ?></p>';
+                errorHtml += '</div>';
+                
+                errorHtml += '<div>';
+                errorHtml += '<p><strong>Try alternative method:</strong> <a href="<?php echo esc_url(admin_url('admin.php')); ?>?page=memberpress-ai-assistant&view=test-error-recovery" class="button">Run Tests Directly</a></p>';
+                errorHtml += '</div>';
+                
+                $outputContainer.html(errorHtml);
+            });
+        });
+    });
+    </script>
+    
     <!-- Super direct console test that doesn't rely on any external code -->
     <div style="margin: 15px 0; padding: 15px; background: #f8f8f8; border: 1px solid #ddd;">
         <h4 style="margin-top: 0;">Direct Console Test (No Dependencies)</h4>
