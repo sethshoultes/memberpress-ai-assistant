@@ -30,6 +30,8 @@
 - Run tests for specific features according to test checklist
 
 ## Scooby Snack Protocol
+
+### Reward Protocol - "You get a Scooby Snack"
 - When given a "Scooby Snack" for a successful solution or implementation:
   1. Create a detailed document following the Scooby Snack template in `/docs/_snacks/`
   2. Place it in the appropriate category folder (e.g., `tool-system`, `content-system`, etc.)
@@ -39,6 +41,28 @@
   6. Create a git commit with the documentation and implementation changes
   7. Include "🦴 Scooby Snack" in the commit message to track successful solutions
   8. The commit should summarize what worked, why it worked, and any lessons learned
+
+### Investigation Protocol - "Scooby Mode", "Scooby Doo", "Scooby", or "Jinkies"
+- When one of these trigger phrases is used, activate investigation mode:
+  1. Stop active coding and shift to diagnostic/investigative approach
+  2. Ask detailed information to help diagnose the issue:
+     - What specific error messages are shown?
+     - What expected vs. actual behavior is observed?
+     - What files and code paths are involved?
+     - What recent changes might have affected this functionality?
+  3. Conduct a methodical investigation:
+     - Examine relevant code, logs, and test results
+     - Look for patterns in failures
+     - Identify potential root causes
+     - Consider multiple failure scenarios
+  4. Document findings in Scooby Snack format:
+     - Problem statement
+     - Root cause analysis
+     - Solution or recommended approach
+     - Lessons learned
+  5. If a solution is implemented, include "🦴 Scooby Snack" in the commit message
+  6. If only investigation is completed without fixes, document findings in `_snacks/` directory
+     with "Investigation:" prefix in filename
 
 For complete details on the Scooby Snack documentation system, see `/docs/_snacks/README.md`
 
