@@ -8,21 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Comprehensive developer onboarding system with _0_START_HERE_.md and tool implementation map
-- Detailed documentation of tool development workflow and integration points
-- XML blog post formatter tool for structured content creation
-- Documentation consolidation and navigation improvements:
-  - Added implementation status tracking with consistent indicators
-  - Created documentation map for better navigation
-  - Added agent system reference pointing to comprehensive documentation
-  - Archived superseded documentation with clear notices
-  - Moved blog XML formatting documentation to current directory
-- Created comprehensive documentation for the consolidation results
+- Phase Two Agent System and Performance Enhancements: 🦴
+  - Agent Specialization Scoring system with weighted confidence scoring for improved request routing
+  - System Information Caching for PHP, WordPress, and plugin information with 70-80% performance improvement
+  - Enhanced diagnostic panel with Phase Two test framework
+  - Comprehensive documentation for all Phase Two features
+- XML Content System with structured documentation:
+  - Created comprehensive index for XML Content System documentation
+  - Added code examples for XML content creation
+  - Organized example XML files with clear categorization
+- Testing System Organization:
+  - Comprehensive documentation structure for all test files
+  - Categorized index of test files by feature and purpose
+  - Detailed guides for running and creating tests
+- Documentation System Enhancements:
+  - Comprehensive developer onboarding system with _0_START_HERE_.md and tool implementation map
+  - Detailed documentation of tool development workflow and integration points
+  - Documentation consolidation and navigation improvements:
+    - Added implementation status tracking with consistent indicators
+    - Created documentation map for better navigation
+    - Added agent system reference pointing to comprehensive documentation
+    - Archived superseded documentation with clear notices
+    - Organized Scooby Snacks by category with improved indexing
 
 ### Changed
 - Enhanced documentation structure with new tool implementation guide
 - Improved developer experience with centralized entry point documentation
 - Reorganized agent system documentation with root-level comprehensive guide
+- Optimized WP-CLI Tool with caching integration
+- Enhanced diagnostic panel with more comprehensive testing capabilities
 
 ## [1.5.8] - 2025-04-02
 
