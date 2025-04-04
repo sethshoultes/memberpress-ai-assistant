@@ -21,6 +21,7 @@ memberpress-ai-assistant/
 │   │   │   ├── implementation-status.md # Feature status overview
 │   │   │   ├── features-index.md # Feature index
 │   │   │   ├── documentation-categories.md # Documentation categories
+│   │   │   ├── system-information-caching.md # System Information Caching feature
 │   │   │   ├── documentation-consolidation-results.md # Phase 1 results
 │   │   │   └── phase-2/3/4-documentation-consolidation-results.md # Phase results
 │   │   ├── agent-system/        # Agent system documentation
@@ -102,6 +103,12 @@ memberpress-ai-assistant/
 1. Review [chat-interface-copy-icon-fix.md](../../_snacks/interface/chat-interface-copy-icon-fix.md) - UI enhancement example
 2. Implement [console-logging-system.md](../js-system/console-logging-system.md) - Debugging utilities
 3. Check related [Scooby Snacks](../../_snacks/interface/) for UI development insights
+
+### For Performance Optimization
+
+1. Study [system-information-caching.md](system-information-caching.md) - Core caching system
+2. Check [Scooby Snack on System Information Caching](../../_snacks/performance/system-information-caching.md) - Implementation details
+3. Explore other [Performance Snacks](../../_snacks/performance/) for optimization techniques
 
 ### For Debugging and Issue Resolution
 
