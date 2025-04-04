@@ -27,6 +27,7 @@ This document provides a comprehensive overview of the implementation status of 
 | Content Marker System | ✅ | 1.5.3 | [CONTENT_MARKER_SYSTEM.md](CONTENT_MARKER_SYSTEM.md) |
 | Plugin Logger | ✅ | 1.5.0 | [class-mpai-plugin-logger.php](../../../includes/class-mpai-plugin-logger.php) |
 | Error Recovery System | ✅ | 1.6.1 | [error-recovery-system.md](../error-system/error-recovery-system.md) |
+| State Validation System | ✅ | 1.6.1 | [state-validation-system.md](../error-system/state-validation-system.md) |
 | Error Catalog System | ✅ | 1.6.1 | [error-catalog-system.md](../error-system/error-catalog-system.md) |
 | Command System Rewrite | 🚧 | - | [command-system-rewrite-plan.md](command-system-rewrite-plan.md) |
 
@@ -105,6 +106,7 @@ This document provides a comprehensive overview of the implementation status of 
 | Feature | Status | Version | Documentation |
 |---------|--------|---------|--------------|
 | Tool Execution Integration Tests | ✅ | 1.6.1 | [tool-execution-integration-tests.md](../test-system/tool-execution-integration-tests.md) |
+| State Validation System Tests | ✅ | 1.6.1 | [state-validation-implementation.md](../../_snacks/error-system/state-validation-implementation.md) |
 | Error Recovery System Tests | ✅ | 1.6.1 | [error-recovery-system-fix.md](../../_snacks/investigations/error-recovery-system-fix.md) |
 | System Cache Tests | ✅ | 1.6.1 | [system-cache-test-fix.md](../../_snacks/investigations/system-cache-test-fix.md) |
 | Test Procedures | ✅ | 1.5.0 | [test-procedures.md](../../../test/test-procedures.md) |
