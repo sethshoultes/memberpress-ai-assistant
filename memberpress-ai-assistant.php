@@ -168,6 +168,9 @@ class MemberPress_AI_Assistant {
         // Process consent form submissions
         add_action('admin_init', array($this, 'process_consent_form'));
         
+        // Handle redirection after plugin activation
+        add_action('admin_init', array($this, 'maybe_redirect_after_activation'));
+        
         // Add chat interface to admin footer
         add_action('admin_footer', array($this, 'render_chat_interface'));
         
@@ -414,64 +417,61 @@ class MemberPress_AI_Assistant {
         // Log the status for debugging
         // Adding admin menu
         
-        // Main menu page slug - pointing to settings page directly
-        $main_page_slug = 'memberpress-ai-assistant-settings';
+        // Main menu page slug - pointing to dashboard page
+        $main_page_slug = 'memberpress-ai-assistant';
         
         // Log what we're doing
         error_log('MPAI DEBUG: Setting up admin menu with main slug: ' . $main_page_slug);
         
         if ($this->has_memberpress) {
             // If MemberPress is active, add as a submenu to MemberPress
-            // Add menu as submenu of MemberPress that goes directly to settings
+            // Add menu as submenu of MemberPress that goes directly to dashboard
             
             $main_page = add_submenu_page(
                 'memberpress', // Parent menu slug
                 __('AI Assistant', 'memberpress-ai-assistant'), // Page title
                 __('AI Assistant', 'memberpress-ai-assistant'), // Menu title
                 'manage_options', // Capability
-                $main_page_slug, // Menu slug points to settings
-                array($this, 'display_settings_page') // Use settings page as the main page
+                $main_page_slug, // Menu slug points to dashboard
+                array($this, 'display_admin_page') // Use dashboard page as the main page
             );
         } else {
             // If MemberPress is not active, add as a top-level menu
-            // Add menu as top-level menu - pointing directly to settings
+            // Add menu as top-level menu - pointing directly to dashboard
             
             $main_page = add_menu_page(
                 __('MemberPress AI', 'memberpress-ai-assistant'), // Page title
                 __('MemberPress AI', 'memberpress-ai-assistant'), // Menu title
                 'manage_options', // Capability
-                $main_page_slug, // Menu slug points to settings
-                array($this, 'display_settings_page'), // Use settings page as the main page
+                $main_page_slug, // Menu slug points to dashboard
+                array($this, 'display_admin_page'), // Use dashboard page as the main page
                 MPAI_PLUGIN_URL . 'assets/images/memberpress-logo.svg', // Icon
                 30 // Position
             );
             
-            // No need for a duplicate "Dashboard" entry since we're using settings as the main page
-
-            // Add a submenu item for the settings page to match parent
+            // Add a submenu item for the dashboard to match parent
             add_submenu_page(
                 $main_page_slug, 
-                __('Settings', 'memberpress-ai-assistant'),
-                __('Settings', 'memberpress-ai-assistant'),
+                __('Dashboard', 'memberpress-ai-assistant'),
+                __('Dashboard', 'memberpress-ai-assistant'),
                 'manage_options',
                 $main_page_slug, 
-                array($this, 'display_settings_page')
+                array($this, 'display_admin_page')
             );
         }
         
-        // Add the dashboard page as a submenu
-        $dashboard_page = add_submenu_page(
-            $main_page_slug, // Add under our main settings page
-            __('Dashboard', 'memberpress-ai-assistant'),
-            __('Dashboard', 'memberpress-ai-assistant'),
+        // Add the settings page as a submenu
+        $settings_page = add_submenu_page(
+            $main_page_slug, // Add under our main dashboard page
+            __('Settings', 'memberpress-ai-assistant'),
+            __('Settings', 'memberpress-ai-assistant'),
             'manage_options',
-            'memberpress-ai-assistant',
-            array($this, 'display_admin_page')
+            'memberpress-ai-assistant-settings',
+            array($this, 'display_settings_page')
         );
         
-        // Make sure settings are properly registered for this page
-        // Note: $main_page is now our settings page
-        add_action('load-' . $main_page, array($this, 'settings_page_load'));
+        // Add hook for settings page load
+        add_action('load-' . $settings_page, array($this, 'settings_page_load'));
     }
     
     /**
@@ -542,7 +542,7 @@ class MemberPress_AI_Assistant {
                 'updated'
             );
             
-            // Redirect to remove POST data and show the dashboard
+            // Redirect to remove POST data and show the dashboard (which is now our main page)
             wp_redirect(admin_url('admin.php?page=memberpress-ai-assistant&consent=given'));
             exit;
         }
@@ -1546,6 +1546,27 @@ class MemberPress_AI_Assistant {
         
         // Clear rewrite rules
         flush_rewrite_rules();
+        
+        // Set a transient to redirect after activation
+        set_transient('mpai_activation_redirect', true, 30);
+    }
+    
+    /**
+     * Redirect after plugin activation
+     */
+    public function maybe_redirect_after_activation() {
+        // Check if we should redirect after activation
+        if (get_transient('mpai_activation_redirect')) {
+            // Delete the transient
+            delete_transient('mpai_activation_redirect');
+            
+            // Make sure this is not an AJAX, cron, or other system request
+            if (!wp_doing_ajax() && !wp_doing_cron() && !defined('DOING_AUTOSAVE') && !defined('WP_INSTALLING')) {
+                // Redirect to the dashboard page
+                wp_safe_redirect(admin_url('admin.php?page=memberpress-ai-assistant'));
+                exit;
+            }
+        }
     }
     
     /**
