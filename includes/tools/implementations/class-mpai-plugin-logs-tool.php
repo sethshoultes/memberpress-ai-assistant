@@ -105,12 +105,21 @@ class MPAI_Plugin_Logs_Tool extends MPAI_Base_Tool {
     }
     
     /**
-     * Execute the plugin logs tool
+     * Get required parameters
      *
-     * @param array $parameters Tool parameters
+     * @return array List of required parameter names
+     */
+    public function get_required_parameters() {
+        return []; // No required parameters for this tool
+    }
+    
+    /**
+     * Execute the tool implementation with validated parameters
+     *
+     * @param array $parameters Validated tool parameters
      * @return array Result of the plugin logs query
      */
-    public function execute($parameters) {
+    protected function execute_tool($parameters) {
         // Initialize the plugin logger
         if (!function_exists('mpai_init_plugin_logger')) {
             if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
@@ -132,12 +141,12 @@ class MPAI_Plugin_Logs_Tool extends MPAI_Base_Tool {
             ];
         }
         
-        // Parse parameters
-        $action = isset($parameters['action']) ? sanitize_text_field($parameters['action']) : '';
-        $plugin_name = isset($parameters['plugin_name']) ? sanitize_text_field($parameters['plugin_name']) : '';
-        $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
-        $limit = isset($parameters['limit']) ? intval($parameters['limit']) : 25;
-        $summary_only = isset($parameters['summary_only']) ? (bool)$parameters['summary_only'] : false;
+        // Parameters are already validated and sanitized by the base class
+        $action = isset($parameters['action']) ? $parameters['action'] : '';
+        $plugin_name = isset($parameters['plugin_name']) ? $parameters['plugin_name'] : '';
+        $days = isset($parameters['days']) ? $parameters['days'] : 30;
+        $limit = isset($parameters['limit']) ? $parameters['limit'] : 25;
+        $summary_only = isset($parameters['summary_only']) ? $parameters['summary_only'] : false;
         
         // Calculate date range
         $date_from = '';

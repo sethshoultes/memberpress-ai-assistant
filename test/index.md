@@ -88,6 +88,13 @@ This document provides a categorized index of all tests available for the Member
 | Test File | Type | Description |
 |-----------|------|-------------|
 | [test-phase-one.php](test-phase-one.php) | Integration | Tests Phase One functionality |
+| [test-input-validator.php](test-input-validator.php) | Feature | Tests Input Validation system |
+| [integration/tools/test-wpcli-tool.php](integration/tools/test-wpcli-tool.php) | Integration | Tests WP-CLI Tool execution |
+| [integration/tools/test-wp-api-tool.php](integration/tools/test-wp-api-tool.php) | Integration | Tests WordPress API Tool execution |
+| [integration/tools/test-plugin-logs-tool.php](integration/tools/test-plugin-logs-tool.php) | Integration | Tests Plugin Logs Tool execution |
+| [edge-cases/test-input-validation.php](edge-cases/test-input-validation.php) | Edge Case | Tests input validation edge cases |
+| [edge-cases/test-resource-limits.php](edge-cases/test-resource-limits.php) | Edge Case | Tests resource constraint handling |
+| [edge-cases/test-error-conditions.php](edge-cases/test-error-conditions.php) | Edge Case | Tests error condition handling |
 
 ## Tests by Type
 
@@ -112,6 +119,7 @@ This document provides a categorized index of all tests available for the Member
 - [diagnostic-page.php](diagnostic-page.php) - Diagnostic UI
 - [test-agent-scoring.php](test-agent-scoring.php) - Agent scoring
 - [test-best-selling.php](test-best-selling.php) - Best selling memberships
+- [test-input-validator.php](test-input-validator.php) - Input validation system
 - [test-plugin-logs.php](test-plugin-logs.php) - Logging system
 - [test-system-cache.php](test-system-cache.php) - Response cache
 - [test-update-message.php](test-update-message.php) - Update notifications

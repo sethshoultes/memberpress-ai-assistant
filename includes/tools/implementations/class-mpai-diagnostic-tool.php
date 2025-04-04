@@ -65,21 +65,22 @@ class MPAI_Diagnostic_Tool extends MPAI_Base_Tool {
     }
     
     /**
-     * Execute the diagnostic tool
+     * Get required parameters
      *
-     * @param array $parameters Tool parameters
+     * @return array List of required parameter names
+     */
+    public function get_required_parameters() {
+        return ['test_type'];
+    }
+    
+    /**
+     * Execute the tool implementation with validated parameters
+     *
+     * @param array $parameters Validated tool parameters
      * @return array Result of the diagnostic test
      */
-    public function execute($parameters) {
-        if (!isset($parameters['test_type'])) {
-            return [
-                'success' => false,
-                'message' => 'Missing required parameter: test_type',
-                'available_tests' => ['openai_connection', 'anthropic_connection', 'memberpress_connection', 'wordpress_info', 'plugin_status', 'site_health', 'all']
-            ];
-        }
-        
-        $test_type = sanitize_text_field($parameters['test_type']);
+    protected function execute_tool($parameters) {
+        $test_type = $parameters['test_type'];
         $result = [];
         
         switch ($test_type) {
