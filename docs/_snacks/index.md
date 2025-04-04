@@ -76,7 +76,7 @@ This document provides a categorized index of all Scooby Snacks - detailed docum
 
 | Snack Title | Date | Version | Description |
 |-------------|------|---------|-------------|
-| *No entries yet* |  |  |  |
+| [Error Catalog System Implementation](error-system/error-catalog-system-implementation.md) | 2025-04-05 | 1.6.1 | Implemented comprehensive error typing and catalog system with performance optimizations |
 
 ## Investigations
 
@@ -85,6 +85,7 @@ This section contains ongoing or completed investigations that may not yet have 
 | Investigation Title | Date | Status | Description |
 |---------------------|------|--------|-------------|
 | [System Information Caching Test Failure](investigations/system-cache-test-fix.md) | 2025-04-04 | ✅ Fixed | Identified and fixed method name discrepancies in the System Information Caching tests |
+| [Error Recovery System Test Fix](investigations/error-recovery-system-fix.md) | 2025-04-05 | ✅ Fixed | Fixed 500 error in Error Recovery System tests by resolving dependency issues |
 
 ## Using This Index
 

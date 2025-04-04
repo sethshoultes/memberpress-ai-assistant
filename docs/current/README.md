@@ -1,7 +1,7 @@
 # Current Features Documentation
 
-**Version:** 2.0.0  
-**Last Updated:** 2025-04-03  
+**Version:** 2.0.1  
+**Last Updated:** 2025-04-05  
 **Status:** ✅ Maintained
 
 This directory contains documentation for features that have been implemented and are currently active in the MemberPress AI Assistant plugin. Each document describes the feature's implementation, usage, and configuration options.
@@ -11,6 +11,7 @@ This directory contains documentation for features that have been implemented an
 The documentation is now organized into system-based subdirectories:
 
 - **core/**: Core system documentation (system map, implementation status, features index)
+- **error-system/**: Error handling and recovery systems
 - **agent-system/**: Agent system documentation
 - **tool-system/**: Tool system documentation
 - **content-system/**: Content-related documentation
@@ -38,6 +39,7 @@ For new developers, we recommend starting with:
 |----------|------------|--------|
 | [Unified Agent System](agent-system/unified-agent-system.md) | Consolidated agent system reference | ✅ Maintained |
 | [Unified XML Content System](content-system/unified-xml-content-system.md) | Consolidated XML content system | ✅ Maintained |
+| [Error Recovery System](error-system/error-recovery-system.md) | Standardized error handling and recovery | ✅ Maintained |
 | [System Map](core/system-map.md) | Complete file-level overview of system architecture | ✅ Maintained |
 | [Tool Implementation Map](tool-system/tool-implementation-map.md) | Guide for implementing new tools | ✅ Maintained |
 | [Agent System Reference](agent-system/agent-system-reference.md) | Reference to comprehensive agent system docs | ✅ Maintained |
@@ -51,6 +53,8 @@ For new developers, we recommend starting with:
 
 | Feature | Version Added | Status | Documentation |
 |---------|--------------|--------|--------------|
+| Error Recovery System | 1.6.1 (2025-04-05) | ✅ Implemented | [error-recovery-system.md](error-system/error-recovery-system.md) |
+| Error Catalog System | 1.6.1 (2025-04-05) | ✅ Implemented | [MPAI_Error_Catalog_System.md](MPAI_Error_Catalog_System.md) |
 | Blog XML Formatting | 1.6.0 (2025-04-03) | ✅ Implemented | [blog-xml-formatting-implementation.md](content-system/blog-xml-formatting-implementation.md) |
 | Blog XML & Membership Implementation | 1.6.0 (2025-04-03) | ✅ Implemented | [blog-xml-membership-implementation-plan.md](content-system/blog-xml-membership-implementation-plan.md) |
 | Independent Operation Mode | 1.5.8 (2025-04-02) | ✅ Implemented | [independent-operation-implementation.md](../archive/MEMBERPRESS_INDEPENDENT_OPERATION.md) (Archived) |
@@ -66,6 +70,11 @@ For new developers, we recommend starting with:
 | Documentation Consolidation | 1.6.0 (2025-04-03) | ✅ Implemented | [documentation-consolidation-results.md](core/documentation-consolidation-results.md) |
 
 ## Feature Categories
+
+### Error System
+- [Error Recovery System](error-system/error-recovery-system.md) - ✅
+- [Error Recovery System Test Fix](../_snacks/investigations/error-recovery-system-fix.md) - ✅ (Investigation)
+- [Error Catalog System](MPAI_Error_Catalog_System.md) - ✅
 
 ### Agent System
 - [Agent System Reference](agent-system/agent-system-reference.md) - ✅

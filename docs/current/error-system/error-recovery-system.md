@@ -1,5 +1,10 @@
 # MemberPress AI Assistant - Error Recovery System
 
+**Status:** ✅ Maintained  
+**Version:** 1.6.1  
+**Last Updated:** April 5, 2025  
+**Category:** Core System
+
 The Error Recovery System provides standardized error handling and recovery mechanisms for the MemberPress AI Assistant plugin. It enables graceful degradation when errors occur and improves the overall robustness of the plugin.
 
 ## Features
