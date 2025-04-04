@@ -250,6 +250,8 @@ class MPAI_Chat_Interface {
      * @since    1.0.0
      */
     public function clear_chat_history() {
+        global $wpdb;
+        
         // Check nonce for security
         check_ajax_referer('mpai_chat_nonce', 'nonce');
 
@@ -258,13 +260,60 @@ class MPAI_Chat_Interface {
             wp_send_json_error('Unauthorized access');
         }
 
-        // Clear the conversation history
-        $user_id = get_current_user_id();
-        delete_user_meta($user_id, 'mpai_conversation_history');
-
-        wp_send_json_success(array(
-            'message' => __('Chat history cleared', 'memberpress-ai-assistant'),
-        ));
+        try {
+            // 1. Clear the user meta conversation history (legacy storage)
+            $user_id = get_current_user_id();
+            delete_user_meta($user_id, 'mpai_conversation_history');
+            
+            // 2. Clear the database table messages
+            $table_conversations = $wpdb->prefix . 'mpai_conversations';
+            $table_messages = $wpdb->prefix . 'mpai_messages';
+            
+            // First check if tables exist
+            $conversations_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_conversations}'") === $table_conversations;
+            $messages_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_messages}'") === $table_messages;
+            
+            if ($conversations_exists && $messages_exists) {
+                // Get the user's conversations
+                $conversations = $wpdb->get_col(
+                    $wpdb->prepare(
+                        "SELECT conversation_id FROM $table_conversations WHERE user_id = %d",
+                        $user_id
+                    )
+                );
+                
+                // Delete all messages for these conversations
+                if (!empty($conversations)) {
+                    foreach ($conversations as $conversation_id) {
+                        $wpdb->delete(
+                            $table_messages,
+                            array('conversation_id' => $conversation_id)
+                        );
+                    }
+                    
+                    error_log('MPAI: Cleared database messages for user ' . $user_id);
+                }
+            }
+            
+            // 3. Force chat class to reset if it exists
+            if (class_exists('MPAI_Chat')) {
+                $chat = new MPAI_Chat();
+                if (method_exists($chat, 'reset_conversation')) {
+                    $chat->reset_conversation();
+                    error_log('MPAI: Reset conversation in chat class');
+                }
+            }
+            
+            error_log('MPAI: Chat history fully cleared from all storage locations');
+            
+            wp_send_json_success(array(
+                'message' => __('Chat history cleared', 'memberpress-ai-assistant'),
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI: Error clearing chat history: ' . $e->getMessage());
+            wp_send_json_error('Error clearing chat history: ' . $e->getMessage());
+        }
     }
     
     /**
