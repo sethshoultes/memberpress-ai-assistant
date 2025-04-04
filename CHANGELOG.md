@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed System Information Caching test failure by correcting method name discrepancies between test and implementation 🦴
+  - Changed `persist_to_filesystem()` call to use the existing `set()` method which handles filesystem persistence internally
+  - Replaced `load_from_filesystem()` with the correct `maybe_load_filesystem_cache()` method
+  - Documented remaining issues with cache expiration and invalidation tests
+  - Created comprehensive investigation document in Scooby Snacks system
 
 ### Added
 - Scooby Mode investigation protocol for systematic troubleshooting: 🦴

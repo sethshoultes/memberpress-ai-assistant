@@ -2,7 +2,7 @@
 
 **Status:** ✅ Maintained  
 **Version:** 1.1.0  
-**Last Updated:** April 3, 2025
+**Last Updated:** April 4, 2025
 
 This document provides a categorized index of all Scooby Snacks - detailed documentation of investigations that led to fixes and improvements in the MemberPress AI Assistant plugin.
 
@@ -81,7 +81,7 @@ This section contains ongoing or completed investigations that may not yet have 
 
 | Investigation Title | Date | Status | Description |
 |---------------------|------|--------|-------------|
-| *No entries yet* |  |  |  |
+| [System Information Caching Test Failure](investigations/system-cache-test-fix.md) | 2025-04-04 | ✅ Fixed | Identified and fixed method name discrepancies in the System Information Caching tests |
 
 ## Using This Index
 
