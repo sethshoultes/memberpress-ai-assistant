@@ -10,6 +10,7 @@ This directory contains documentation for the error handling, recovery, and vali
 
 - [**Error Recovery System**](error-recovery-system.md) - Core error handling and recovery mechanisms
 - [**State Validation System**](state-validation-system.md) - System state consistency and validation
+- [**Input Sanitization System**](input-sanitization-improvements.md) - Comprehensive input validation and sanitization
 - [**Error Catalog System**](/docs/current/MPAI_Error_Catalog_System.md) - Comprehensive error typing and catalog system
 
 ## Features
@@ -27,6 +28,13 @@ This directory contains documentation for the error handling, recovery, and vali
   - Component state monitoring with consistency checks
   - Validation rules for core components
   - Assertion framework for state verification
+
+- **Input Sanitization**:
+  - Schema-based validation for all parameter types
+  - Integration with OpenAI/Anthropic function calling
+  - Type enforcement and range validation
+  - Automatic sanitization for security
+  - Detailed error reporting for invalid inputs
 
 - **Error Catalog and Logging**:
   - Performance-optimized logging

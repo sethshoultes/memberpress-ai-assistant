@@ -9,6 +9,7 @@ This directory contains documentation for the testing systems in the MemberPress
 ## Testing Components
 
 - [**Tool Execution Integration Tests**](tool-execution-integration-tests.md) - Comprehensive end-to-end testing for tools
+- [**Edge Case Test Suite**](edge-case-test-suite.md) - Testing extreme conditions and input validation
 - [**Error Recovery System Tests**](../../_snacks/investigations/error-recovery-system-fix.md) - Tests for the error handling mechanisms
 - [**System Cache Tests**](../../_snacks/investigations/system-cache-test-fix.md) - Tests for system information caching
 
@@ -26,6 +27,7 @@ For detailed testing procedures, see the [Test Procedures](../../../test/test-pr
 ## Recent Implementations
 
 - **Phase Three Tool Execution Tests** - Comprehensive end-to-end testing for the WP-CLI, WordPress API, and Plugin Logs tools
+- **Edge Case Test Suite** - Testing extreme conditions including input validation and resource limits
 - **Error Recovery System Tests** - Dependency management and error handling tests
 - **System Cache Tests** - Validation of caching mechanisms and expiration
 

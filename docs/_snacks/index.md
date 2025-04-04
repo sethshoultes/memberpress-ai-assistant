@@ -51,6 +51,7 @@ This document provides a categorized index of all Scooby Snacks - detailed docum
 | Snack Title | Date | Version | Description |
 |-------------|------|---------|-------------|
 | [Duplicate Tool Execution Prevention](tool-system/duplicate-tool-execution-snack.md) | 2024-02-20 | 1.5.6 | Fixed issue with tools being executed multiple times |
+| [WP API Tool Parameter Validation Fix](tool-system/wp-api-tool-parameter-validation-fix.md) | 2025-04-05 | 1.6.1 | Fixed WordPress API Tool parameter validation issues in integration tests |
 
 ## Agent System
 
