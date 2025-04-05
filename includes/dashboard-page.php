@@ -109,10 +109,11 @@ if (!$global_consent && is_user_logged_in()) {
                         <?php _e('Open AI Chat', 'memberpress-ai-assistant'); ?>
                     </a>
                 </li>
+                <!-- Diagnostic button has been removed -->
                 <li>
-                    <a href="admin.php?page=memberpress-ai-assistant-settings#tab-diagnostic" class="button">
-                        <span class="dashicons dashicons-chart-bar"></span>
-                        <?php _e('Run Diagnostics', 'memberpress-ai-assistant'); ?>
+                    <a href="admin.php?page=memberpress-ai-assistant-settings#tab-advanced" class="button">
+                        <span class="dashicons dashicons-admin-tools"></span>
+                        <?php _e('Advanced Settings', 'memberpress-ai-assistant'); ?>
                     </a>
                 </li>
             </ul>

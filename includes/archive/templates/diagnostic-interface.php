@@ -11,6 +11,27 @@
 if (!defined('WPINC')) {
     die;
 }
+
+// Check if an element with id="tab-diagnostic" already exists in the DOM to prevent duplicates
+$diagnostics_exists = false;
+?>
+<script>
+// Check if the diagnostic tab already exists before rendering
+var diagnosticsExists = document.getElementById('tab-diagnostic') !== null;
+if (diagnosticsExists) {
+    console.log('MPAI WARNING: Diagnostic tab already exists, preventing duplicate rendering');
+    document.write('<div style="display:none;" class="mpai-diagnostic-duplicate-prevention"></div>');
+}
+</script>
+<?php 
+// Get the current tab from URL parameter if it exists
+$current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : '';
+
+// If we are explicitly loading the diagnostic tab, don't continue
+if ($current_tab === 'diagnostic') {
+    error_log('MPAI: Skipping diagnostic interface render due to explicit diagnostic tab URL parameter');
+    return;
+}
 ?>
 
 <div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">

@@ -341,8 +341,30 @@ class MPAI_Diagnostics {
     
     /**
      * Render the diagnostic interface
+     * 
+     * @param bool $force Force rendering even if duplicate prevention is in place
      */
-    public static function render_interface() {
+    public static function render_interface($force = false) {
+        // Check for duplicate rendering if not forced
+        if (!$force) {
+            // Check if we're rendering based on a tab URL parameter
+            $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : '';
+            if ($tab === 'diagnostic') {
+                error_log('MPAI: Diagnostics interface render skipped - explicit tab=diagnostic parameter');
+                return;
+            }
+            
+            // Create a static flag to make sure we only render once per page load
+            static $interface_rendered = false;
+            if ($interface_rendered) {
+                error_log('MPAI: Diagnostics interface already rendered once, skipping duplicate render');
+                return;
+            }
+            
+            // Mark as rendered
+            $interface_rendered = true;
+        }
+        
         // Include template for diagnostic interface
         include MPAI_PLUGIN_DIR . 'includes/templates/diagnostic-interface.php';
     }

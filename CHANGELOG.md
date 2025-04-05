@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Implemented Phase 1 of Admin UI Overhaul plan:
+  - Created new MPAI_Admin_Menu class for centralized menu registration
+  - Implemented MPAI_Settings_Manager with proper tab navigation
+  - Added MPAI_Diagnostics_Page for improved diagnostics experience
+  - Created consistent admin UI styling with admin-ui.css
+  - Added diagnostics.js for enhanced admin interactions
+  - Implemented comprehensive menu highlighting solution that doesn't rely on JavaScript
+  - Created server-side tab navigation for improved state persistence
+  - Added dedicated settings group system for better organization
+  - Enhanced diagnostics page with system information display
+  - Created diagnostic test framework with AJAX-based test execution
+  - Added tool registration system for better extensibility
+
+### Fixed
+- Fixed duplicate sections in diagnostic tab by properly enforcing new diagnostic system 🦴
+  - Identified duplication caused by fallback code in settings-page.php
+  - Removed 800+ lines of legacy diagnostic functionality
+  - Ensured only the modern diagnostic system (MPAI_Diagnostics) is used
+  - Eliminated all duplicate UI sections while preserving functionality
+  - Reduced code complexity and improved maintainability
+  - Created comprehensive documentation in DIAGNOSTIC_TAB_DUPLICATE_FIX.md
+
 ### Changed
 - Updated roadmap documentation with accurate implementation status:
   - Added Phase 3.5 to prioritize essential features that need completion
