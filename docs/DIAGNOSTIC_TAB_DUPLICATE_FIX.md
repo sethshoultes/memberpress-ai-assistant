@@ -16,22 +16,26 @@ After investigation, we identified that the issue was caused by how the diagnost
 
 Instead of trying to patch the existing code with flags or other workarounds, we implemented a direct approach:
 
-1. Replaced the `include_once` code section in `settings-page.php` with a clean, direct implementation
-2. Implemented only the essential diagnostic sections directly in the main settings file:
-   - System Information with Cache Test
-   - Console Logging configuration
-   - Plugin Logs display
-   - Legacy Test Scripts
-3. Removed all duplicated sections while maintaining the exact same functionality
-4. Consolidated and simplified the JavaScript code to ensure proper functionality
+1. Identified the source of duplication in `settings-page.php` was the large fallback block of code that ran when the modern diagnostics system wasn't found
+2. Observed that the new diagnostics system (`class-mpai-diagnostics.php` and `class-mpai-diagnostics-page.php`) was present but wasn't being used exclusively
+3. Modified `settings-page.php` to:
+   - Keep the code that loads and uses the new diagnostic system (`MPAI_Diagnostics`)
+   - Replace the large fallback code block (800+ lines) with a simple error message
+   - Prevent loading of the old diagnostic functionality completely
+4. This ensures only one version of the diagnostic tab is rendered and eliminates all duplication
 
 ## Code Changes
 
 The primary change was in `includes/settings-page.php` where we:
 
-1. Removed the code that was including `settings-diagnostic.php`
-2. Replaced it with a direct implementation of the diagnostic tab content
-3. Maintained all the same functionality but with a cleaner implementation
+1. Kept the code that loads and properly uses the MPAI_Diagnostics class
+2. Completely removed the large fallback code block (approximately 800 lines) that was implementing duplicate functionality
+3. Replaced the fallback with a simple error message (<10 lines) if the diagnostics system can't be loaded
+4. This approach:
+   - Reduces code complexity dramatically
+   - Eliminates all duplicated sections
+   - Ensures only one diagnostic interface is ever rendered
+   - Preserves all functionality through the modern OOP implementation
 
 ## Benefits
 
