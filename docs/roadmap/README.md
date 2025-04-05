@@ -2,9 +2,21 @@
 
 This directory contains documentation for features that are planned or in development for future versions of MemberPress AI Assistant. These documents outline the design and implementation plans for upcoming features.
 
-## Phase Four Development Roadmap (April-May 2025)
+## Phase 3.5: Completing Essential Features (April 2025)
 
-Phase Four focuses on security enhancements and compliance features. The following components should be implemented in priority order:
+Before moving fully into the security-focused Phase Four, the following essential features from earlier phases need to be implemented or completed:
+
+### Implementation Order and Priority Tasks
+
+| Week | Focus Area | Starting Files | Priority Tasks |
+|------|------------|----------------|----------------|
+| 1 | Error Catalog System | [error-catalog-system.md](../current/error-system/error-catalog-system.md) | Create MPAI_Error_Catalog class, implement error code system, integrate with Error Recovery |
+| 2 | Command System Rewrite | [command-system-rewrite-plan.md](../current/feature-plans/command-system-rewrite-plan.md) | Implement simpler command validation, consolidate execution flow |
+| 3 | Connection & Stream Optimizations | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md) | Implement Connection Pooling and Stream Processing for API responses |
+
+## Phase Four Development Roadmap (May-June 2025)
+
+Once Phase 3.5 is complete, Phase Four will focus on security enhancements and compliance features. The following components should be implemented in priority order:
 
 1. **Agentic Security Framework** - Begin with the agent validation system
 2. **WordPress Security Integration** - Focus on capability mapping and nonce systems  
@@ -22,15 +34,15 @@ Phase Four focuses on security enhancements and compliance features. The followi
 
 | Feature | Target Version | Status | Documentation |
 |---------|---------------|--------|--------------|
-| Command System Rewrite | 1.6.2 | Design phase | [command-system-rewrite-plan.md](../current/feature-plans/command-system-rewrite-plan.md) |
+| Command System Rewrite | 1.6.2 | Design phase | [command-system-rewrite-plan.md](../current/feature-plans/command-system-rewrite-plan.md) (Scheduled for Phase 3.5) |
 | AI Terms & Conditions Consent | 1.6.1 | Implemented ✅ | [dashboard-page.php](../../../includes/dashboard-page.php) |
 | Agentic Security Framework | 1.6.2 | Starting development | [agentic-security-framework.md](agentic-security-framework.md) |
 | WordPress Security Integration | 1.6.2 | Starting development | [wp-security-integration-plan.md](wp-security-integration-plan.md) |
 | Integrated Security Implementation | 1.6.2 | Starting development | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) |
 | Enhanced Content Tools | 1.7.0 | Planning phase | [content-tools-specification.md](content-tools-specification.md) |
 | New Tools Enhancement Plan | 1.7.0 | Research phase | [new-tools-enhancement-plan.md](new-tools-enhancement-plan.md) |
-| Stream Processing | 1.6.2 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#12-stream-processing-) |
-| Connection Pooling | 1.6.2 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#13-connection-pooling-) |
+| Stream Processing | 1.6.2 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#12-stream-processing-) (Scheduled for Phase 3.5) |
+| Connection Pooling | 1.6.2 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#13-connection-pooling-) (Scheduled for Phase 3.5) |
 | UI Rendering Optimization | 1.6.3 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#32-ui-rendering-optimization-) |
 | Resource Cleanup | 1.6.2 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#22-resource-cleanup-) |
 | Agent Response Caching | 1.6.2 | In Progress 🚧 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#52-agent-response-caching-) |
@@ -55,7 +67,7 @@ These features have been implemented and documentation has been moved to the [cu
 | Tool Execution Integration Tests | 1.6.1 | [tool-execution-integration-tests.md](../current/test-system/tool-execution-integration-tests.md) |
 | Error Recovery System | 1.6.1 | [error-recovery-system.md](../current/error-system/error-recovery-system.md) |
 | State Validation System | 1.6.1 | [state-validation-system.md](../current/error-system/state-validation-system.md) |
-| Error Catalog System | 1.6.1 | [error-catalog-system.md](../current/error-system/error-catalog-system.md) (Documentation only - Implementation pending) |
+| Error Catalog System | 1.6.2 | [error-catalog-system.md](../current/error-system/error-catalog-system.md) (Documentation only - Implementation pending, scheduled for Phase 3.5) |
 | Input Sanitization System | 1.6.1 | [input-sanitization-improvements.md](../current/error-system/input-sanitization-improvements.md) |
 | Edge Case Test Suite | 1.6.1 | [edge-case-test-suite.md](../current/test-system/edge-case-test-suite.md) |
 | Blog Post XML Formatting | 1.6.0 | [blog-xml-formatting-implementation.md](../current/content-system/blog-xml-formatting-implementation.md) |
