@@ -2,9 +2,23 @@
 
 This directory contains documentation for features that are planned or in development for future versions of MemberPress AI Assistant. These documents outline the design and implementation plans for upcoming features.
 
-## Phase 3.5: Completing Essential Features (April 2025)
+## CRITICAL: Admin UI Overhaul (April 2025)
 
-Before moving fully into the security-focused Phase Four, the following essential features from earlier phases need to be implemented or completed:
+A comprehensive rewrite of the entire admin interface is required due to persistent issues with menu highlighting, tab navigation, and overall UI stability. This overhaul must be completed before moving forward with any other roadmap items.
+
+### Implementation Order and Priority Tasks
+
+| Week | Focus Area | Starting Files | Priority Tasks |
+|------|------------|----------------|----------------|
+| 1-2 | Admin Menu System Rewrite | [admin-ui-overhaul-plan.md](admin-ui-overhaul-plan.md) | Replace current menu registration system, implement robust parent/child menu relationships, create consistent menu API |
+| 3 | Settings Page Architecture | [admin-ui-overhaul-plan.md](admin-ui-overhaul-plan.md) | Create modular settings framework, implement proper tab navigation with state persistence, develop reliable global settings API |
+| 4 | Diagnostics System Redesign | [admin-ui-overhaul-plan.md](admin-ui-overhaul-plan.md) | Rebuild diagnostics UI as standalone page, implement proper AJAX handling for tests, create dedicated diagnostics API |
+| 5 | Chat Interface Settings Integration | [admin-ui-overhaul-plan.md](admin-ui-overhaul-plan.md) | Redesign chat settings page, improve integration with main settings, add visual configuration options |
+| 6 | UI Testing & Quality Assurance | [admin-ui-overhaul-plan.md](admin-ui-overhaul-plan.md) | Create comprehensive UI test suite, implement automated navigation tests, develop visual regression testing |
+
+## Phase 3.5: Completing Essential Features (May 2025)
+
+After the Admin UI Overhaul is complete, the following essential features from earlier phases need to be implemented or completed:
 
 ### Implementation Order and Priority Tasks
 
@@ -14,7 +28,7 @@ Before moving fully into the security-focused Phase Four, the following essentia
 | 2 | Command System Rewrite | [command-system-rewrite-plan.md](../current/feature-plans/command-system-rewrite-plan.md) | Implement simpler command validation, consolidate execution flow |
 | 3 | Connection & Stream Optimizations | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md) | Implement Connection Pooling and Stream Processing for API responses |
 
-## Phase Four Development Roadmap (May-June 2025)
+## Phase Four Development Roadmap (June-July 2025)
 
 Once Phase 3.5 is complete, Phase Four will focus on security enhancements and compliance features. The following components should be implemented in priority order:
 
@@ -34,19 +48,21 @@ Once Phase 3.5 is complete, Phase Four will focus on security enhancements and c
 
 | Feature | Target Version | Status | Documentation |
 |---------|---------------|--------|--------------|
-| Command System Rewrite | 1.6.2 | Design phase | [command-system-rewrite-plan.md](../current/feature-plans/command-system-rewrite-plan.md) (Scheduled for Phase 3.5) |
+| **Admin UI Complete Overhaul** | 1.7.0 | **CRITICAL PRIORITY ⚠️** | [admin-ui-overhaul-plan.md](admin-ui-overhaul-plan.md) |
+| Command System Rewrite | 1.7.0 | On hold ⏸️ | [command-system-rewrite-plan.md](../current/feature-plans/command-system-rewrite-plan.md) |
+| Error Catalog System | 1.7.0 | On hold ⏸️ | [error-catalog-system.md](../current/error-system/error-catalog-system.md) |
+| Agentic Security Framework | 1.7.1 | On hold ⏸️ | [agentic-security-framework.md](agentic-security-framework.md) |
+| WordPress Security Integration | 1.7.1 | On hold ⏸️ | [wp-security-integration-plan.md](wp-security-integration-plan.md) |
+| Integrated Security Implementation | 1.7.1 | On hold ⏸️ | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) |
+| Stream Processing | 1.7.0 | On hold ⏸️ | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#12-stream-processing-) |
+| Connection Pooling | 1.7.0 | On hold ⏸️ | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#13-connection-pooling-) |
+| UI Rendering Optimization | 1.7.0 | Integrated with Admin UI Overhaul | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#32-ui-rendering-optimization-) |
+| Resource Cleanup | 1.7.0 | On hold ⏸️ | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#22-resource-cleanup-) |
+| Agent Response Caching | 1.7.0 | On hold ⏸️ | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#52-agent-response-caching-) |
+| Tool Result Caching | 1.7.1 | On hold ⏸️ | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#53-tool-result-caching-) |
+| Enhanced Content Tools | 1.8.0 | Planning phase | [content-tools-specification.md](content-tools-specification.md) |
+| New Tools Enhancement Plan | 1.8.0 | Research phase | [new-tools-enhancement-plan.md](new-tools-enhancement-plan.md) |
 | AI Terms & Conditions Consent | 1.6.1 | Implemented ✅ | [dashboard-page.php](../../../includes/dashboard-page.php) |
-| Agentic Security Framework | 1.6.2 | Starting development | [agentic-security-framework.md](agentic-security-framework.md) |
-| WordPress Security Integration | 1.6.2 | Starting development | [wp-security-integration-plan.md](wp-security-integration-plan.md) |
-| Integrated Security Implementation | 1.6.2 | Starting development | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) |
-| Enhanced Content Tools | 1.7.0 | Planning phase | [content-tools-specification.md](content-tools-specification.md) |
-| New Tools Enhancement Plan | 1.7.0 | Research phase | [new-tools-enhancement-plan.md](new-tools-enhancement-plan.md) |
-| Stream Processing | 1.6.2 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#12-stream-processing-) (Scheduled for Phase 3.5) |
-| Connection Pooling | 1.6.2 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#13-connection-pooling-) (Scheduled for Phase 3.5) |
-| UI Rendering Optimization | 1.6.3 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#32-ui-rendering-optimization-) |
-| Resource Cleanup | 1.6.2 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#22-resource-cleanup-) |
-| Agent Response Caching | 1.6.2 | In Progress 🚧 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#52-agent-response-caching-) |
-| Tool Result Caching | 1.6.3 | Planned 🔮 | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md#53-tool-result-caching-) |
 | Agent System Enhancements | 1.6.0 | Partially Completed | [_1_agent-system-enhancement-plan.md](./_1_agent-system-enhancement-plan.md) |
 | Performance Optimization | 1.6.0 | Partially Completed | [_2_performance-optimization-plan.md](./_2_performance-optimization-plan.md) |
 | Testing & Stability | 1.6.1 | Partially Completed | [_3_testing-stability-plan.md](./_3_testing-stability-plan.md) |
