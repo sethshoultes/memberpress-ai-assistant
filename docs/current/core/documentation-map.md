@@ -1,7 +1,7 @@
 # MemberPress AI Assistant Documentation Map
 
-**Version:** 1.0.0  
-**Last Updated:** 2025-04-03  
+**Version:** 1.1.0  
+**Last Updated:** 2025-04-05  
 **Status:** ✅ Maintained
 
 This document provides a visual map of the MemberPress AI Assistant documentation, helping developers navigate the resources efficiently based on their needs.
@@ -21,6 +21,7 @@ memberpress-ai-assistant/
 │   │   │   ├── implementation-status.md # Feature status overview
 │   │   │   ├── features-index.md # Feature index
 │   │   │   ├── documentation-categories.md # Documentation categories
+│   │   │   ├── documentation-improvement-plan.md # Documentation enhancement plan
 │   │   │   ├── system-information-caching.md # System Information Caching feature
 │   │   │   ├── documentation-consolidation-results.md # Phase 1 results
 │   │   │   └── phase-2/3/4-documentation-consolidation-results.md # Phase results
@@ -74,6 +75,7 @@ memberpress-ai-assistant/
 1. Start with [_0_START_HERE_.md](../../../_0_START_HERE_.md) - Primary entry point
 2. Review [system-map.md](system-map.md) - System architecture overview
 3. Explore [implementation-status.md](implementation-status.md) - Feature status
+4. Check [documentation-improvement-plan.md](documentation-improvement-plan.md) - Documentation roadmap
 
 ### For Agent System Development
 
