@@ -356,6 +356,16 @@ class MemberPress_AI_Assistant {
             require_once MPAI_PLUGIN_DIR . 'test/integration/register-integration-tests.php';
         }
         
+        // Load the new diagnostics system
+        if (is_admin() && file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics.php')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics.php';
+            
+            // Load test files
+            if (file_exists(MPAI_PLUGIN_DIR . 'includes/tests/load-tests.php')) {
+                require_once MPAI_PLUGIN_DIR . 'includes/tests/load-tests.php';
+            }
+        }
+        
         // CLI Commands - always load to ensure early initialization
         // The CLI commands file itself handles WP-CLI availability checks
         require_once MPAI_PLUGIN_DIR . 'includes/cli/class-mpai-cli-commands.php';
