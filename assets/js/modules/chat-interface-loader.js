@@ -290,8 +290,23 @@
         $(document).on('click', '.mpai-runnable-command', function() {
             const command = $(this).data('command');
             if (command && elements.chatInput) {
+                // Log the click event
+                console.log('Clicked runnable command:', command);
+                
+                // Set the command in the input field
                 elements.chatInput.val(command);
-                elements.chatForm.trigger('submit');
+                
+                // Add visual feedback
+                const $this = $(this);
+                $this.css('background-color', '#d4edff');
+                
+                // Submit the form after a brief delay to show the visual feedback
+                setTimeout(function() {
+                    elements.chatForm.trigger('submit');
+                    $this.css('background-color', '');
+                }, 200);
+            } else {
+                console.warn('Runnable command clicked but no command data found or no input field available');
             }
         });
         

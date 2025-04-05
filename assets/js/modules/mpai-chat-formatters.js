@@ -454,8 +454,8 @@ var MPAI_Formatters = (function($) {
                 wpCommands.push(command);
                 return '<code class="mpai-runnable-command" data-command="' + 
                     command.replace(/"/g, '&quot;') + 
-                    '">' + p1.replace(/</g, '&lt;').replace(/>/g, '&gt;') + 
-                    ' <span class="mpai-run-indicator">▶</span></code>';
+                    '" style="cursor:pointer;">' + p1.replace(/</g, '&lt;').replace(/>/g, '&gt;') + 
+                    ' <span class="mpai-run-indicator" style="color:#0073aa;">▶</span></code>';
             });
                 
             // Convert `code` to <code>code</code> (excluding what's already processed for WP commands)
