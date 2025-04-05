@@ -14,17 +14,16 @@ Phase Four focuses on security enhancements and compliance features. The followi
 
 | Week | Focus Area | Starting Files | Priority Tasks |
 |------|------------|----------------|----------------|
-| 1 | Agent Security | [agentic-security-framework.md](agentic-security-framework.md) | Create agent validation system, implement operation sanitization |
-| 2 | WordPress Integration | [wp-security-integration-plan.md](wp-security-integration-plan.md) | Map capabilities to WordPress roles, implement AJAX nonce system |
-| 3 | Consent System | [consent-mechanism-plan.md](consent-mechanism-plan.md) | Develop consent UI and persistence layer |
-| 4 | Testing & Integration | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) | Security testing suite, compliance documentation |
+| 1-2 | Agent Security | [agentic-security-framework.md](agentic-security-framework.md) | Create agent validation system, implement operation sanitization |
+| 3-4 | WordPress Integration | [wp-security-integration-plan.md](wp-security-integration-plan.md) | Map capabilities to WordPress roles, implement AJAX nonce system |
+| 5-6 | Security Integration | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) | Security testing suite, compliance documentation |
 
 ## Features in Development
 
 | Feature | Target Version | Status | Documentation |
 |---------|---------------|--------|--------------|
 | Command System Rewrite | 1.6.2 | Design phase | [command-system-rewrite-plan.md](../current/feature-plans/command-system-rewrite-plan.md) |
-| AI Terms & Conditions Consent | 1.6.2 | Starting development | [consent-mechanism-plan.md](consent-mechanism-plan.md) |
+| AI Terms & Conditions Consent | 1.6.1 | Implemented ✅ | [dashboard-page.php](../../../includes/dashboard-page.php) |
 | Agentic Security Framework | 1.6.2 | Starting development | [agentic-security-framework.md](agentic-security-framework.md) |
 | WordPress Security Integration | 1.6.2 | Starting development | [wp-security-integration-plan.md](wp-security-integration-plan.md) |
 | Integrated Security Implementation | 1.6.2 | Starting development | [integrated-security-implementation-plan.md](integrated-security-implementation-plan.md) |
@@ -46,6 +45,7 @@ These features have been implemented and documentation has been moved to the [cu
 
 | Feature | Version Added | Documentation |
 |---------|--------------|--------------|
+| AI Terms & Conditions Consent | 1.6.1 | [dashboard-page.php](../../../includes/dashboard-page.php) |
 | Tool Execution Integration Tests | 1.6.1 | [tool-execution-integration-tests.md](../current/test-system/tool-execution-integration-tests.md) |
 | Error Recovery System | 1.6.1 | [error-recovery-system.md](../current/error-system/error-recovery-system.md) |
 | State Validation System | 1.6.1 | [state-validation-system.md](../current/error-system/state-validation-system.md) |
