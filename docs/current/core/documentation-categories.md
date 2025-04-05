@@ -35,7 +35,7 @@ These documents describe specific features of the system:
 
 | Feature Area | Key Documents | Status |
 |--------------|--------------|--------|
-| **Agent System** | [unified-agent-system.md](unified-agent-system.md), [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) | ✅ |
+| **Agent System** | [unified-agent-system.md](../agent-system/unified-agent-system.md), [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) | ✅ |
 | **XML Content System** | [unified-xml-content-system.md](unified-xml-content-system.md), [xml-content-system/README.md](../xml-content-system/README.md) | ✅ |
 | **Tool System** | [tool-implementation-map.md](tool-implementation-map.md), [tool-call-detection.md](tool-call-detection.md) | ✅ |
 | **UI Components** | [chat-interface-copy-icon.md](chat-interface-copy-icon.md), [js-modularization-plan.md](js-modularization-plan.md) | ✅ |
@@ -58,7 +58,7 @@ These documents provide guidance for specific development tasks:
 
 | Development Area | Key Documents | Status |
 |-----------------|--------------|--------|
-| **Agent Development** | [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) | ✅ |
+| **Agent Development** | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) | ✅ |
 | **Tool Development** | [tool-implementation-map.md](tool-implementation-map.md) | ✅ |
 | **XML Content Development** | [unified-xml-content-system.md](unified-xml-content-system.md) | ✅ |
 | **Documentation Development** | [templates/README.md](../templates/README.md) | ✅ |
@@ -71,7 +71,7 @@ These documents provide detailed technical specifications:
 | Reference Area | Key Documents | Status |
 |----------------|--------------|--------|
 | **System Architecture** | [system-map.md](system-map.md) | ✅ |
-| **Agent System API** | [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) | ✅ |
+| **Agent System API** | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) | ✅ |
 | **Tool System API** | [tools/class-mpai-base-tool.php](../../../includes/tools/class-mpai-base-tool.php) | ✅ |
 | **XML Formatting** | [xml-content-system/README.md](../xml-content-system/README.md) | ✅ |
 | **Command System** | [command-system-rewrite-plan.md](command-system-rewrite-plan.md) | 🚧 |
@@ -83,7 +83,7 @@ Step-by-step guides for specific tasks:
 | Tutorial Area | Key Documents | Status |
 |---------------|--------------|--------|
 | **Tool Implementation** | [tool-implementation-map.md](tool-implementation-map.md) | ✅ |
-| **Agent Creation** | [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) | ✅ |
+| **Agent Creation** | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) | ✅ |
 | **XML Content Creation** | [unified-xml-content-system.md](unified-xml-content-system.md) | ✅ |
 | **JavaScript Modules** | [js-modularization-plan.md](js-modularization-plan.md) | ✅ |
 
@@ -94,7 +94,7 @@ These documents describe the system architecture:
 | Architecture Area | Key Documents | Status |
 |-------------------|--------------|--------|
 | **Overall Architecture** | [system-map.md](system-map.md) | ✅ |
-| **Agent System Architecture** | [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) | ✅ |
+| **Agent System Architecture** | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) | ✅ |
 | **Tool System Architecture** | [tool-implementation-map.md](tool-implementation-map.md) | ✅ |
 | **XML Content Architecture** | [unified-xml-content-system.md](unified-xml-content-system.md) | ✅ |
 | **JavaScript Architecture** | [js-modularization-plan.md](js-modularization-plan.md) | ✅ |
@@ -127,7 +127,7 @@ Developers implementing new features should focus on:
 
 1. Relevant feature documentation in the Feature Documentation section
 2. [tool-implementation-map.md](tool-implementation-map.md) for tool development
-3. [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) for agent development
+3. [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) for agent development
 4. [templates/README.md](../templates/README.md) for documentation templates
 
 ### For Maintainers

@@ -87,7 +87,7 @@ Depending on the type of feature you're developing, you'll need to focus on diff
 
 If you're working on AI chat capabilities (new tools, improved responses, etc.):
 
-1. **Start here**: [/docs/current/tool-system/tool-implementation-map.md](/docs/current/tool-system/tool-implementation-map.md) and [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md#tool-system-integration)
+1. **Start here**: [/docs/current/tool-system/tool-implementation-map.md](/docs/current/tool-system/tool-implementation-map.md) and [Comprehensive Agent System Guide](/docs/current/agent-system/comprehensive-agent-system-guide.md#tool-system-integration)
 2. **Key files**:
    - `/includes/tools/class-mpai-base-tool.php`
    - `/includes/tools/class-mpai-tool-registry.php`
@@ -161,7 +161,7 @@ If you're working on MemberPress-specific integrations:
 If you're working on the agent system or adding specialized agents:
 
 1. **Start here**: 
-   - [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md) - Comprehensive agent system guide
+   - [Comprehensive Agent System Guide](/docs/current/agent-system/comprehensive-agent-system-guide.md) - Complete agent system guide
    - [/docs/current/agent-system/unified-agent-system.md](/docs/current/agent-system/unified-agent-system.md) - Unified reference
    - [/docs/current/agent-system/agent-specialization-scoring.md](/docs/current/agent-system/agent-specialization-scoring.md) - Agent scoring system
 2. **Key files**:
@@ -247,7 +247,7 @@ If you're working on security improvements:
 
 ### Adding a New Tool
 
-Follow the detailed documentation in [/docs/current/tool-system/tool-implementation-map.md](/docs/current/tool-system/tool-implementation-map.md) and [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md#tool-system-integration).
+Follow the detailed documentation in [/docs/current/tool-system/tool-implementation-map.md](/docs/current/tool-system/tool-implementation-map.md) and [Comprehensive Agent System Guide](/docs/current/agent-system/comprehensive-agent-system-guide.md#tool-system-integration).
 
 ### Adding a New Agent
 
@@ -360,8 +360,8 @@ Follow the detailed documentation in [/docs/current/tool-system/tool-implementat
 1. **Internal documentation**:
    - Primary entry points: 
      - [_0_START_HERE_.md](./_0_START_HERE_.md) - This guide
-     - [_1_AGENTIC_SYSTEMS_.md](./_1_AGENTIC_SYSTEMS_.md) - Agent system guide
-   - Main documentation index: `/docs/README.md`
+     - [Comprehensive Agent System Guide](/docs/current/agent-system/comprehensive-agent-system-guide.md) - Agent system guide
+   - Main documentation index: `/docs/index.md`
    - System architecture: `/docs/current/core/system-map.md`
    - Tool implementation: `/docs/current/tool-system/tool-implementation-map.md`
    - Documentation Map: `/docs/current/core/documentation-map.md`

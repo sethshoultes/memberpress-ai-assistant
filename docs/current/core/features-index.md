@@ -33,12 +33,12 @@ This document provides a comprehensive index of all implemented features in the 
 
 | Feature | Status | Version | Documentation | Description |
 |---------|--------|---------|--------------|-------------|
-| Agent System | ✅ | 1.5.0 | [unified-agent-system.md](unified-agent-system.md) | Comprehensive agent system reference |
-| Agent Orchestrator | ✅ | 1.5.0 | [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md#agent-orchestrator) | Manages and routes agents |
-| Base Agent | ✅ | 1.5.0 | [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md#base-agent) | Foundation for specialized agents |
-| MemberPress Agent | ✅ | 1.5.0 | [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md#memberpress-agent) | MemberPress-specific agent |
-| Command Validation | ✅ | 1.5.0 | [command-validation-agent.md](command-validation-agent.md) | Validates and secures commands |
-| SDK Integration | ✅ | 1.5.0 | [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md#sdk-integration) | AI provider SDK integration |
+| Agent System | ✅ | 1.5.0 | [unified-agent-system.md](../agent-system/unified-agent-system.md) | Comprehensive agent system reference |
+| Agent Orchestrator | ✅ | 1.5.0 | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md#agent-system-components) | Manages and routes agents |
+| Base Agent | ✅ | 1.5.0 | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md#agent-interfaces-and-base-class) | Foundation for specialized agents |
+| MemberPress Agent | ✅ | 1.5.0 | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md#specialized-agents) | MemberPress-specific agent |
+| Command Validation | ✅ | 1.5.0 | [command-validation-agent.md](../agent-system/command-validation-agent.md) | Validates and secures commands |
+| SDK Integration | ✅ | 1.5.0 | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md#architecture) | AI provider SDK integration |
 
 ## Tool System
 

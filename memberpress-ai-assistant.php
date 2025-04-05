@@ -330,6 +330,48 @@ class MemberPress_AI_Assistant {
             <?php
         }
     }
+    
+    /**
+     * Globally highlight the parent menu for our plugin pages
+     * This is a central function that will be called from multiple places
+     * to ensure consistent menu highlighting
+     * 
+     * @param string $parent_file The parent file
+     * @return string Modified parent file
+     */
+    public function highlight_parent_menu($parent_file) {
+        global $plugin_page, $submenu_file;
+        
+        // Debug info to help diagnose issues
+        error_log('MPAI DEBUG: highlight_parent_menu - plugin_page: ' . $plugin_page);
+        error_log('MPAI DEBUG: highlight_parent_menu - parent_file before: ' . $parent_file);
+        error_log('MPAI DEBUG: highlight_parent_menu - has_memberpress: ' . ($this->has_memberpress ? 'true' : 'false'));
+        
+        // If we're on our settings page or any plugin page
+        if ($plugin_page === 'memberpress-ai-assistant-settings' || 
+            $plugin_page === 'memberpress-ai-assistant') {
+            
+            // Set the correct parent file based on whether MemberPress is active
+            if ($this->has_memberpress) {
+                // If MemberPress is active, set parent to the MemberPress menu
+                $parent_file = 'memberpress';
+                
+                // Also set the submenu file for proper submenu highlighting
+                if ($plugin_page === 'memberpress-ai-assistant-settings') {
+                    $GLOBALS['submenu_file'] = 'memberpress-ai-assistant-settings';
+                } else {
+                    $GLOBALS['submenu_file'] = 'memberpress-ai-assistant';
+                }
+            } else {
+                // If MemberPress is not active, set parent to our own top-level menu
+                $parent_file = 'memberpress-ai-assistant';
+            }
+            
+            error_log('MPAI DEBUG: highlight_parent_menu - parent_file after: ' . $parent_file);
+        }
+        
+        return $parent_file;
+    }
 
     /**
      * Load required dependencies
@@ -503,6 +545,9 @@ class MemberPress_AI_Assistant {
         // Register a late-running action to fix menu highlighting
         add_action('admin_head', array($this, 'fix_settings_page_menu_highlight'), 9999);
         
+        // Add filter for parent file to fix menu highlighting
+        add_filter('parent_file', array($this, 'highlight_parent_menu'), 999);
+        
         // Register settings
         register_setting('mpai_options', 'mpai_api_key');
         register_setting('mpai_options', 'mpai_model');
@@ -586,6 +631,8 @@ class MemberPress_AI_Assistant {
             return;
         }
         
+        error_log('MPAI DEBUG: fix_settings_page_menu_highlight - Setting up menu highlighting');
+        
         // Force MemberPress detection
         $this->check_memberpress();
         
@@ -597,11 +644,17 @@ class MemberPress_AI_Assistant {
             // Add JavaScript to ensure menu is visible
             echo "<script>
                 jQuery(document).ready(function($) {
-                    // Highlight the MemberPress menu
-                    $('#toplevel_page_memberpress').addClass('wp-has-current-submenu wp-menu-open').removeClass('wp-not-current-submenu');
-                    $('#toplevel_page_memberpress > a').addClass('wp-has-current-submenu wp-menu-open').removeClass('wp-not-current-submenu');
+                    // Adding tab-switching handler to maintain menu state
+                    $(document).on('click', '.nav-tab', function() {
+                        // Highlight the MemberPress menu
+                        $('#toplevel_page_memberpress').addClass('wp-has-current-submenu wp-menu-open').removeClass('wp-not-current-submenu');
+                        $('#toplevel_page_memberpress > a').addClass('wp-has-current-submenu wp-menu-open').removeClass('wp-not-current-submenu');
+                        
+                        // Find and highlight our submenu item
+                        $('#toplevel_page_memberpress .wp-submenu li a[href*=\"memberpress-ai-assistant-settings\"]').parent().addClass('current');
+                    });
                     
-                    // Find and highlight our submenu item
+                    // Highlight the MemberPress menu
                     $('#toplevel_page_memberpress .wp-submenu li a[href*=\"memberpress-ai-assistant-settings\"]').parent().addClass('current');
                 });
             </script>";
@@ -900,7 +953,7 @@ class MemberPress_AI_Assistant {
         // Get the current page from URL
         $current_page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : '';
         
-        // Special handling for our settings page
+        // Special handling for our settings page (including any tabs within it)
         if ($current_page === 'memberpress-ai-assistant-settings') {
             // Force check MemberPress status
             $this->check_memberpress();
@@ -922,6 +975,23 @@ class MemberPress_AI_Assistant {
                     // Highlight our AI Assistant submenu item
                     $('#toplevel_page_memberpress .wp-submenu li a[href*="memberpress-ai-assistant-settings"]')
                         .parent().addClass('current');
+                    
+                    // Handle tab switching to maintain menu highlighting
+                    $('.nav-tab').on('click', function() {
+                        // Reapply menu highlighting when tabs are clicked
+                        setTimeout(function() {
+                            $('#toplevel_page_memberpress')
+                                .addClass('wp-has-current-submenu wp-menu-open')
+                                .removeClass('wp-not-current-submenu');
+                            
+                            $('#toplevel_page_memberpress > a')
+                                .addClass('wp-has-current-submenu wp-menu-open')
+                                .removeClass('wp-not-current-submenu');
+                            
+                            $('#toplevel_page_memberpress .wp-submenu li a[href*="memberpress-ai-assistant-settings"]')
+                                .parent().addClass('current');
+                        }, 50);
+                    });
                     
                     console.log('MemberPress AI: Fixed menu highlighting for settings page');
                 });

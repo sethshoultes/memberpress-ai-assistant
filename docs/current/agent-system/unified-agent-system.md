@@ -12,7 +12,7 @@ This document provides a consolidated reference point for the Agent System imple
 
 This unified reference consolidates information from:
 
-- Comprehensive root document: [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md)
+- Comprehensive agent system guide: [comprehensive-agent-system-guide.md](./comprehensive-agent-system-guide.md)
 - Legacy implementation details in archive directory
 - Related documentation across the codebase
 
@@ -142,7 +142,7 @@ When working with the Agent System:
 
 For complete, detailed documentation on the Agent System, refer to:
 
-- [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md): Comprehensive guide
+- [comprehensive-agent-system-guide.md](./comprehensive-agent-system-guide.md): Comprehensive guide
 - [command-validation-agent.md](command-validation-agent.md): Example agent implementation
 - [tool-implementation-map.md](tool-implementation-map.md): Guide for implementing tools
 

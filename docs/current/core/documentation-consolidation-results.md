@@ -14,7 +14,7 @@ This document summarizes the successful implementation of Phase 1 of the Documen
 
 Three new reference files were created to improve documentation navigation and provide clear status information:
 
-- **agent-system-reference.md**: Serves as a pointer to the comprehensive root `_1_AGENTIC_SYSTEMS_.md` document
+- **agent-system-reference.md**: Serves as a pointer to the comprehensive agent system guide document
 - **documentation-map.md**: Provides a visual map of all documentation with navigation paths for different tasks
 - **implementation-status.md**: Tracks the status of all features across the system with consistent indicators
 
@@ -62,7 +62,7 @@ The new documentation structure follows a clear hierarchy:
 ```
 memberpress-ai-assistant/
 ├── _0_START_HERE_.md            # Primary entry point for new developers
-├── _1_AGENTIC_SYSTEMS_.md       # Comprehensive agent system guide
+├── _1_AGENTIC_SYSTEMS_.md       # MOVED - See docs/current/agent-system/comprehensive-agent-system-guide.md
 ├── docs/
 │   ├── current/                 # Implemented features
 │   │   ├── README.md            # Index of current documentation

@@ -73,7 +73,7 @@ class MPAI_My_Custom_Agent extends MPAI_Base_Agent implements MPAI_Agent {
 }
 ```
 
-Documentation: [Agent System](../../_1_AGENTIC_SYSTEMS_.md)
+Documentation: [Agent System](../agent-system/comprehensive-agent-system-guide.md)
 
 ### Creating a New Tool
 
@@ -266,5 +266,5 @@ function my_custom_tool_hook($tool_name, $parameters, $result) {
 
 - [System Map](system-map.md) - System architecture overview
 - [Tool Implementation Map](tool-implementation-map.md) - Guide for implementing tools
-- [Agent System Documentation](../../_1_AGENTIC_SYSTEMS_.md) - Comprehensive agent system guide
+- [Agent System Documentation](../agent-system/comprehensive-agent-system-guide.md) - Comprehensive agent system guide
 - [XML Content System](unified-xml-content-system.md) - XML content format and usage

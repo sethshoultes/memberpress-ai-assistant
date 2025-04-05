@@ -6,9 +6,9 @@ The MemberPress AI Assistant provides a comprehensive Agent System that enables 
 
 ## Agent System Documentation
 
-The full documentation for the MemberPress AI Assistant Agent System is now maintained in the root-level document:
+The full documentation for the MemberPress AI Assistant Agent System is now maintained in:
 
-- [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md)
+- [Comprehensive Agent System Guide](./comprehensive-agent-system-guide.md)
 
 This comprehensive document includes:
 
@@ -18,6 +18,7 @@ This comprehensive document includes:
 4. **Extension Points** - Information on extending the agent system
 5. **Security Considerations** - Best practices for agent system security
 6. **Performance Optimization** - Tips for optimizing agent system performance
+7. **Troubleshooting and FAQ** - Solutions to common issues and questions
 
 ## Legacy Documentation
 
@@ -41,4 +42,4 @@ The agent system consists of the following key components:
 
 ## Usage
 
-For detailed usage instructions, please refer to the comprehensive documentation in [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md).
+For detailed usage instructions, please refer to the comprehensive documentation in [comprehensive-agent-system-guide.md](./comprehensive-agent-system-guide.md).

@@ -15,6 +15,28 @@ if (!defined('WPINC')) {
     <h3><?php _e('System Diagnostics', 'memberpress-ai-assistant'); ?></h3>
     <p><?php _e('Run various diagnostic tests to check the health of your MemberPress AI Assistant installation.', 'memberpress-ai-assistant'); ?></p>
     
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+        // Add special handler for this diagnostic tab to fix menu highlighting
+        $('#tab-diagnostic').on('show', function() {
+            // Ensure MemberPress menu is highlighted and expanded
+            $('#toplevel_page_memberpress')
+                .addClass('wp-has-current-submenu wp-menu-open')
+                .removeClass('wp-not-current-submenu');
+            
+            $('#toplevel_page_memberpress > a')
+                .addClass('wp-has-current-submenu wp-menu-open')
+                .removeClass('wp-not-current-submenu');
+            
+            // Highlight our AI Assistant submenu item
+            $('#toplevel_page_memberpress .wp-submenu li a[href*="memberpress-ai-assistant-settings"]')
+                .parent().addClass('current');
+                
+            console.log('Diagnostic tab: Fixed menu highlighting');
+        });
+    });
+    </script>
+    
     <!-- Phase Three Features Test Section -->
     <div class="mpai-debug-section">
         <h4><?php _e('Phase Three Features Tests', 'memberpress-ai-assistant'); ?></h4>

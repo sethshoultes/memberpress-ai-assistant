@@ -11,7 +11,7 @@ This document provides a visual map of the MemberPress AI Assistant documentatio
 ```
 memberpress-ai-assistant/
 ├── _0_START_HERE_.md            # Entry point for new developers
-├── _1_AGENTIC_SYSTEMS_.md       # Comprehensive agent system guide
+├── _1_AGENTIC_SYSTEMS_.md       # ARCHIVED - Moved to agent-system directory
 ├── docs/
 │   ├── current/                 # Implemented features
 │   │   ├── README.md            # Index of current documentation
@@ -25,6 +25,7 @@ memberpress-ai-assistant/
 │   │   │   ├── documentation-consolidation-results.md # Phase 1 results
 │   │   │   └── phase-2/3/4-documentation-consolidation-results.md # Phase results
 │   │   ├── agent-system/        # Agent system documentation
+│   │   │   ├── comprehensive-agent-system-guide.md # Complete agent system guide
 │   │   │   ├── unified-agent-system.md # Consolidated agent system docs
 │   │   │   ├── agent-system-reference.md # Reference to agent system docs
 │   │   │   └── command-validation-agent.md # Command validation agent
@@ -76,8 +77,8 @@ memberpress-ai-assistant/
 
 ### For Agent System Development
 
-1. Start with [unified-agent-system.md](../agent-system/unified-agent-system.md) - Consolidated reference
-2. Read [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md) - Comprehensive guide
+1. Start with [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) - Complete guide
+2. Read [unified-agent-system.md](../agent-system/unified-agent-system.md) - Consolidated reference 
 3. Use [agent-system-reference.md](../agent-system/agent-system-reference.md) - Quick reference
 4. Study [command-validation-agent.md](../agent-system/command-validation-agent.md) - Example agent implementation
 

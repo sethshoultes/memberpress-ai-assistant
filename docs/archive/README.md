@@ -12,9 +12,10 @@ This directory contains documentation that is no longer current or has been supe
 | site-health-integration-plan.md | site-health-implementation-example.md | 2025-04-02 | Plan implemented in version 1.5.5 |
 | agent-system-spec.md | agent-system-implementation.md | 2025-04-02 | Initial spec replaced by actual implementation |
 | site-health-migration-guide.md | N/A | 2025-04-02 | Migration complete, no longer needed |
-| agent-system-implementation.md | _1_AGENTIC_SYSTEMS_.md | 2025-04-03 | Superseded by comprehensive root documentation |
-| agent-system-quickstart.md | _1_AGENTIC_SYSTEMS_.md | 2025-04-03 | Superseded by comprehensive root documentation |
-| agent-system-user-guide.md | _1_AGENTIC_SYSTEMS_.md | 2025-04-03 | Superseded by comprehensive root documentation |
+| agent-system-implementation.md | comprehensive-agent-system-guide.md | 2025-04-03 | Superseded by comprehensive agent system guide |
+| agent-system-quickstart.md | comprehensive-agent-system-guide.md | 2025-04-03 | Superseded by comprehensive agent system guide |
+| agent-system-user-guide.md | comprehensive-agent-system-guide.md | 2025-04-03 | Superseded by comprehensive agent system guide |
+| _1_AGENTIC_SYSTEMS_.md | comprehensive-agent-system-guide.md | 2025-04-05 | Moved to docs/current/agent-system for better organization |
 | blog-post-formatting-plan.md | blog-xml-formatting-implementation.md | 2025-04-03 | Plan implemented with working XML content system |
 
 ## Archival Process

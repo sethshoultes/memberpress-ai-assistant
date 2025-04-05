@@ -30,7 +30,7 @@ For efficient navigation of the documentation:
 
 For new developers, we recommend starting with:
 1. [_0_START_HERE_.md](../../_0_START_HERE_.md) - Primary entry point for developers
-2. [_1_AGENTIC_SYSTEMS_.md](../../_1_AGENTIC_SYSTEMS_.md) - Comprehensive agent system guide
+2. [comprehensive-agent-system-guide.md](agent-system/comprehensive-agent-system-guide.md) - Comprehensive agent system guide
 3. [unified-agent-system.md](agent-system/unified-agent-system.md) - Consolidated agent system reference
 4. [unified-xml-content-system.md](content-system/unified-xml-content-system.md) - Consolidated XML content system
 

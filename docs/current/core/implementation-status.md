@@ -36,12 +36,12 @@ This document provides a comprehensive overview of the implementation status of 
 
 | Feature | Status | Version | Documentation |
 |---------|--------|---------|--------------|
-| Agent Orchestrator | ✅ | 1.5.0 | [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md) |
-| Base Agent | ✅ | 1.5.0 | [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md) |
-| Agent Interface | ✅ | 1.5.0 | [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md) |
-| MemberPress Agent | ✅ | 1.5.0 | [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md) |
-| Command Validation Agent | ✅ | 1.5.0 | [command-validation-agent.md](command-validation-agent.md) |
-| SDK Integration | ✅ | 1.5.0 | [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md) |
+| Agent Orchestrator | ✅ | 1.5.0 | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) |
+| Base Agent | ✅ | 1.5.0 | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) |
+| Agent Interface | ✅ | 1.5.0 | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) |
+| MemberPress Agent | ✅ | 1.5.0 | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) |
+| Command Validation Agent | ✅ | 1.5.0 | [command-validation-agent.md](../agent-system/command-validation-agent.md) |
+| SDK Integration | ✅ | 1.5.0 | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) |
 | Agent Security Framework | 🔮 | - | [agentic-security-framework.md](../roadmap/agentic-security-framework.md) |
 | Content Agent | 🚧 | - | - |
 
@@ -98,7 +98,7 @@ This document provides a comprehensive overview of the implementation status of 
 |---------|--------|---------|--------------|
 | Developer Onboarding System | ✅ | 1.6.0 | [_0_START_HERE_.md](../../../_0_START_HERE_.md) |
 | Tool Implementation Map | ✅ | 1.6.0 | [tool-implementation-map.md](tool-implementation-map.md) |
-| Agent System Documentation | ✅ | 1.6.0 | [_1_AGENTIC_SYSTEMS_.md](../../../_1_AGENTIC_SYSTEMS_.md) |
+| Agent System Documentation | ✅ | 1.6.0 | [comprehensive-agent-system-guide.md](../agent-system/comprehensive-agent-system-guide.md) |
 | Documentation Map | ✅ | 1.6.0 | [documentation-map.md](documentation-map.md) |
 | Implementation Status | ✅ | 1.6.0 | [implementation-status.md](implementation-status.md) |
 

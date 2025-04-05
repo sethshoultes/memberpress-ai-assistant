@@ -50,7 +50,7 @@ The documentation structure now includes a dedicated XML Content System section:
 ```
 memberpress-ai-assistant/
 ├── _0_START_HERE_.md            # Primary entry point for new developers
-├── _1_AGENTIC_SYSTEMS_.md       # Comprehensive agent system guide
+├── _1_AGENTIC_SYSTEMS_.md       # MOVED to docs/current/agent-system/comprehensive-agent-system-guide.md
 ├── docs/
 │   ├── current/                 # Implemented features
 │   │   ├── unified-agent-system.md    # Consolidated agent docs

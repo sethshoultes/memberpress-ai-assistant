@@ -5,6 +5,27 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Updated roadmap documentation with accurate implementation status:
+  - Added Phase 3.5 to prioritize essential features that need completion
+  - Updated _1_agent-system-enhancement-plan.md with more accurate task scheduling
+  - Updated _2_performance-optimization-plan.md with implementation status indicators
+  - Created comprehensive roadmap index with feature categorization and priority ordering
+  - Moved implemented blog-post-formatting-plan.md to archive directory
+  - Added implementation status indicators (✅, 🚧, 🔮) across all roadmap documents
+- Enhanced documentation structure and organization:
+  - Created master documentation index at /docs/index.md
+  - Moved DOCUMENTATION_PLAN.md to archive now that all phases are complete
+  - Updated documentation with Final Documentation Structure reflecting system-based organization
+  - Added more detailed Entry Points for specific development tasks
+  - Enhanced links between documentation files for better navigation
+  - Added Recent Major Documentation Updates section to index.md
+  - Moved and renamed _1_AGENTIC_SYSTEMS_.md to /docs/current/agent-system/comprehensive-agent-system-guide.md
+  - Updated all references to point to the new location
+  - Created redirect notice in the old file location
+
 ## [1.6.1] - 2025-04-05
 
 ### Fixed

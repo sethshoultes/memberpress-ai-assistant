@@ -1,7 +1,15 @@
-# MemberPress AI Assistant Agentic Systems
+# ARCHIVED: MemberPress AI Assistant Agentic Systems
 
 **Version:** 1.0.0  
-**Last Updated:** 2025-04-03
+**Last Updated:** 2025-04-05  
+**Status:** 🗄️ Archived
+
+> **IMPORTANT: This document has been moved and archived!**
+> 
+> Please see the new location:  
+> [Comprehensive Agent System Guide](/docs/current/agent-system/comprehensive-agent-system-guide.md)
+> 
+> This file is maintained for historical reference only and should not be used for current development.
 
 ## Overview
 

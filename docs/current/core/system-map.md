@@ -331,7 +331,7 @@ The project root contains two key documentation files that serve as primary entr
 
 1. **`_0_START_HERE_.md`**: Primary entry point for new developers with pathways to different types of development tasks
 
-2. **`_1_AGENTIC_SYSTEMS_.md`**: Comprehensive guide to the agent system with detailed implementation information
+2. **`comprehensive-agent-system-guide.md`**: (in /docs/current/agent-system/) Comprehensive guide to the agent system with detailed implementation information
 
 These files should be the starting point for new developers working with the codebase.
 
@@ -349,7 +349,7 @@ The documentation is organized into several key areas:
 
 1. **Root Documentation**: Primary entry points for developers
    - `_0_START_HERE_.md`
-   - `_1_AGENTIC_SYSTEMS_.md`
+   - `/docs/current/agent-system/comprehensive-agent-system-guide.md` (moved from root)
 
 2. **Feature Documentation**: Details on specific features
    - `/docs/current/`: Documentation for implemented features
@@ -381,4 +381,4 @@ The MemberPress AI Assistant is a well-structured plugin with clear separation o
 
 Most files serve a clear purpose in the system and are actively used. The few files that could be removed or consolidated are primarily related to the SDK integration which appears to be a future expansion point rather than currently active functionality.
 
-For developers working with this codebase, please refer to the root documentation files (`_0_START_HERE_.md` and `_1_AGENTIC_SYSTEMS_.md`) for the most up-to-date guidance on development approaches and best practices.
+For developers working with this codebase, please refer to the primary documentation files (`_0_START_HERE_.md` and `/docs/current/agent-system/comprehensive-agent-system-guide.md`) for the most up-to-date guidance on development approaches and best practices.
