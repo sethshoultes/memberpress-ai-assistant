@@ -165,34 +165,12 @@ settings_errors('mpai_messages');
 <div class="wrap mpai-settings-page">
     <h1><?php _e('MemberPress AI Assistant Settings', 'memberpress-ai-assistant'); ?></h1>
     
-    <!-- Direct console test script -->
+    <!-- Console debug messages -->
     <script>
-    // These console messages should appear in the browser console regardless of any plugin JS
-    console.log('🟢 SETTINGS PAGE TEST: This message should appear in the console');
-    console.error('🟢 SETTINGS PAGE TEST: This error message should appear in red');
-    console.warn('🟢 SETTINGS PAGE TEST: This warning message should appear in yellow');
-    
-    // Add a test button directly in the settings page
-    document.addEventListener('DOMContentLoaded', function() {
-        var testButton = document.createElement('button');
-        testButton.className = 'button';
-        testButton.innerText = 'Test Console Directly';
-        testButton.style.marginBottom = '10px';
-        testButton.addEventListener('click', function() {
-            console.group('🟢 Direct Console Test from Settings Button');
-            console.log('Button clicked at ' + new Date().toISOString());
-            console.log('Test Object:', { test: 'value', number: 123 });
-            console.error('Test Error Message');
-            console.warn('Test Warning Message');
-            
-            // Add a browser alert so the user knows something happened
-            alert('Test logs sent to console - check developer tools (F12)');
-            
-            console.groupEnd();
-        });
-        
-        document.querySelector('.mpai-settings-page h1').after(testButton);
-    });
+    // Basic console messages for testing logger functionality
+    console.log('🟢 SETTINGS PAGE: Console logger test');
+    console.error('🟢 SETTINGS PAGE: Error logger test');
+    console.warn('🟢 SETTINGS PAGE: Warning logger test');
     </script>
 
     <form method="post" action="">
@@ -205,7 +183,6 @@ settings_errors('mpai_messages');
                 <a href="#tab-cli" class="nav-tab"><?php _e('CLI Commands', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-tools" class="nav-tab"><?php _e('AI Tools', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-advanced" class="nav-tab"><?php _e('Advanced', 'memberpress-ai-assistant'); ?></a>
-                <a href="#tab-diagnostic" class="nav-tab"><?php _e('Diagnostics', 'memberpress-ai-assistant'); ?></a>
             </h2>
             
             <div id="tab-api" class="mpai-settings-tab">
@@ -518,53 +495,7 @@ settings_errors('mpai_messages');
             
             
             <?php 
-            // Load the new diagnostic system with error handling
-            error_log('MPAI DEBUG: Loading improved diagnostic system...');
-            
-            // Check for the diagnostic class
-            if (!class_exists('MPAI_Diagnostics')) {
-                $diagnostics_class_file = MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics.php';
-                if (file_exists($diagnostics_class_file)) {
-                    error_log('MPAI DEBUG: Loading MPAI_Diagnostics class file...');
-                    try {
-                        include_once $diagnostics_class_file;
-                        error_log('MPAI DEBUG: MPAI_Diagnostics class loaded successfully');
-                    } catch (Exception $e) {
-                        error_log('MPAI ERROR: Failed to load diagnostics class: ' . $e->getMessage());
-                    }
-                } else {
-                    error_log('MPAI ERROR: Diagnostics class file not found at: ' . $diagnostics_class_file);
-                }
-            }
-            
-            // Render the diagnostic interface if the class exists
-            if (class_exists('MPAI_Diagnostics')) {
-                error_log('MPAI DEBUG: Rendering improved diagnostics interface...');
-                try {
-                    MPAI_Diagnostics::render_interface();
-                    error_log('MPAI DEBUG: Diagnostics interface rendered successfully');
-                } catch (Exception $e) {
-                    error_log('MPAI ERROR: Exception rendering diagnostics interface: ' . $e->getMessage());
-                    // Fallback UI on error
-                    echo '<div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">';
-                    echo '<h3>Diagnostics</h3>';
-                    echo '<div class="mpai-notice mpai-notice-error">';
-                    echo '<p>Error rendering diagnostics interface: ' . esc_html($e->getMessage()) . '</p>';
-                    echo '</div>';
-                    echo '</div>';
-                }
-            } else {
-                // Display simple error message instead of loading the duplicate diagnostic content
-                error_log('MPAI ERROR: MPAI_Diagnostics class not available, displaying error message');
-                ?>
-                <div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">
-                    <h3><?php _e('System Diagnostics', 'memberpress-ai-assistant'); ?></h3>
-                    <div class="mpai-notice mpai-notice-error">
-                        <p><?php _e('Diagnostics system could not be loaded. Please check error logs.', 'memberpress-ai-assistant'); ?></p>
-                    </div>
-                </div>
-                <?php
-            }
+            // Diagnostic tab has been completely removed
             ?>
         </div>
         
