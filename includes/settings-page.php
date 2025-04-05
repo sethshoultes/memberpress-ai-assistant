@@ -525,34 +525,71 @@ settings_errors('mpai_messages');
             
             
             <?php 
-            // Include the diagnostics tab with error handling
-            error_log('MPAI DEBUG: About to include diagnostics tab from: ' . MPAI_PLUGIN_DIR . 'includes/settings-diagnostic.php');
+            // Load the new diagnostic system with error handling
+            error_log('MPAI DEBUG: Loading improved diagnostic system...');
             
-            $diagnostic_file = MPAI_PLUGIN_DIR . 'includes/settings-diagnostic.php';
-            if (file_exists($diagnostic_file)) {
-                error_log('MPAI DEBUG: Diagnostic file exists, including it');
+            // Check for the diagnostic class
+            if (!class_exists('MPAI_Diagnostics')) {
+                $diagnostics_class_file = MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics.php';
+                if (file_exists($diagnostics_class_file)) {
+                    error_log('MPAI DEBUG: Loading MPAI_Diagnostics class file...');
+                    try {
+                        include_once $diagnostics_class_file;
+                        error_log('MPAI DEBUG: MPAI_Diagnostics class loaded successfully');
+                    } catch (Exception $e) {
+                        error_log('MPAI ERROR: Failed to load diagnostics class: ' . $e->getMessage());
+                    }
+                } else {
+                    error_log('MPAI ERROR: Diagnostics class file not found at: ' . $diagnostics_class_file);
+                }
+            }
+            
+            // Render the diagnostic interface if the class exists
+            if (class_exists('MPAI_Diagnostics')) {
+                error_log('MPAI DEBUG: Rendering improved diagnostics interface...');
                 try {
-                    include_once $diagnostic_file;
-                    error_log('MPAI DEBUG: Diagnostic file included successfully');
+                    MPAI_Diagnostics::render_interface();
+                    error_log('MPAI DEBUG: Diagnostics interface rendered successfully');
                 } catch (Exception $e) {
-                    error_log('MPAI ERROR: Exception including diagnostic file: ' . $e->getMessage());
-                    // Add a fallback UI if the file can't be included
+                    error_log('MPAI ERROR: Exception rendering diagnostics interface: ' . $e->getMessage());
+                    // Fallback UI on error
                     echo '<div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">';
                     echo '<h3>Diagnostics</h3>';
                     echo '<div class="mpai-notice mpai-notice-error">';
-                    echo '<p>Error loading diagnostics tab: ' . esc_html($e->getMessage()) . '</p>';
+                    echo '<p>Error rendering diagnostics interface: ' . esc_html($e->getMessage()) . '</p>';
                     echo '</div>';
                     echo '</div>';
                 }
             } else {
-                error_log('MPAI ERROR: Diagnostic file not found at: ' . $diagnostic_file);
-                // Add a fallback UI if the file doesn't exist
-                echo '<div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">';
-                echo '<h3>Diagnostics</h3>';
-                echo '<div class="mpai-notice mpai-notice-error">';
-                echo '<p>Diagnostic file not found. This component may not be available in the current branch.</p>';
-                echo '</div>';
-                echo '</div>';
+                // Try loading the legacy diagnostic file as fallback
+                error_log('MPAI DEBUG: Falling back to legacy diagnostics tab...');
+                
+                $diagnostic_file = MPAI_PLUGIN_DIR . 'includes/settings-diagnostic.php';
+                if (file_exists($diagnostic_file)) {
+                    error_log('MPAI DEBUG: Legacy diagnostic file exists, including it');
+                    try {
+                        include_once $diagnostic_file;
+                        error_log('MPAI DEBUG: Legacy diagnostic file included successfully');
+                    } catch (Exception $e) {
+                        error_log('MPAI ERROR: Exception including legacy diagnostic file: ' . $e->getMessage());
+                        // Add a fallback UI if the file can't be included
+                        echo '<div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">';
+                        echo '<h3>Diagnostics</h3>';
+                        echo '<div class="mpai-notice mpai-notice-error">';
+                        echo '<p>Error loading diagnostics tab: ' . esc_html($e->getMessage()) . '</p>';
+                        echo '</div>';
+                        echo '</div>';
+                    }
+                } else {
+                    error_log('MPAI ERROR: Diagnostic file not found at: ' . $diagnostic_file);
+                    // Add a fallback UI if the file doesn't exist
+                    echo '<div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">';
+                    echo '<h3>Diagnostics</h3>';
+                    echo '<div class="mpai-notice mpai-notice-error">';
+                    echo '<p>Diagnostic file not found. This component may not be available in the current branch.</p>';
+                    echo '</div>';
+                    echo '</div>';
+                }
             }
             ?>
         </div>

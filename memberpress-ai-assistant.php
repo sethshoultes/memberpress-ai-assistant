@@ -165,6 +165,9 @@ class MemberPress_AI_Assistant {
         // Enqueue admin menu icon styles on all admin pages
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_menu_styles'));
         
+        // Fix menu highlighting for settings page
+        add_action('admin_head', array($this, 'fix_global_menu_highlighting'));
+        
         // Process consent form submissions
         add_action('admin_init', array($this, 'process_consent_form'));
         
@@ -273,6 +276,15 @@ class MemberPress_AI_Assistant {
             }
         }
         
+        // Special case for settings page - Always force MemberPress detection on settings page
+        // This ensures the MemberPress menu is highlighted and visible
+        global $pagenow;
+        if (($pagenow === 'admin.php' && isset($_GET['page']) && $_GET['page'] === 'memberpress-ai-assistant-settings') ||
+            (isset($plugin_page) && $plugin_page === 'memberpress-ai-assistant-settings')) {
+            $has_memberpress = true;
+            error_log('MPAI DEBUG: Force-enabling MemberPress detection on settings page for menu highlight');
+        }
+        
         // Store the result
         $this->has_memberpress = $has_memberpress;
         
@@ -354,6 +366,16 @@ class MemberPress_AI_Assistant {
         // Integration Tests
         if (is_admin() && file_exists(MPAI_PLUGIN_DIR . 'test/integration/register-integration-tests.php')) {
             require_once MPAI_PLUGIN_DIR . 'test/integration/register-integration-tests.php';
+        }
+        
+        // Load the new diagnostics system
+        if (is_admin() && file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics.php')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics.php';
+            
+            // Load test files
+            if (file_exists(MPAI_PLUGIN_DIR . 'includes/tests/load-tests.php')) {
+                require_once MPAI_PLUGIN_DIR . 'includes/tests/load-tests.php';
+            }
         }
         
         // CLI Commands - always load to ensure early initialization
@@ -478,6 +500,9 @@ class MemberPress_AI_Assistant {
      * Settings page load hook
      */
     public function settings_page_load() {
+        // Register a late-running action to fix menu highlighting
+        add_action('admin_head', array($this, 'fix_settings_page_menu_highlight'), 9999);
+        
         // Register settings
         register_setting('mpai_options', 'mpai_api_key');
         register_setting('mpai_options', 'mpai_model');
@@ -549,9 +574,49 @@ class MemberPress_AI_Assistant {
     }
 
     /**
+     * Fix menu highlighting for settings page
+     * This function runs in admin_head to directly manipulate the global variables
+     * responsible for menu highlighting
+     */
+    public function fix_settings_page_menu_highlight() {
+        global $parent_file, $submenu_file, $plugin_page;
+        
+        // Only run on our settings page
+        if ($plugin_page !== 'memberpress-ai-assistant-settings') {
+            return;
+        }
+        
+        // Force MemberPress detection
+        $this->check_memberpress();
+        
+        if ($this->has_memberpress) {
+            // Set the global variables directly
+            $parent_file = 'memberpress';
+            $submenu_file = 'memberpress-ai-assistant-settings';
+            
+            // Add JavaScript to ensure menu is visible
+            echo "<script>
+                jQuery(document).ready(function($) {
+                    // Highlight the MemberPress menu
+                    $('#toplevel_page_memberpress').addClass('wp-has-current-submenu wp-menu-open').removeClass('wp-not-current-submenu');
+                    $('#toplevel_page_memberpress > a').addClass('wp-has-current-submenu wp-menu-open').removeClass('wp-not-current-submenu');
+                    
+                    // Find and highlight our submenu item
+                    $('#toplevel_page_memberpress .wp-submenu li a[href*=\"memberpress-ai-assistant-settings\"]').parent().addClass('current');
+                });
+            </script>";
+            
+            error_log('MPAI DEBUG: Fixed menu highlighting in admin_head with JS');
+        }
+    }
+    
+    /**
      * Display settings page
      */
     public function display_settings_page() {
+        // Make sure MemberPress status is checked
+        $this->check_memberpress();
+        
         require_once MPAI_PLUGIN_DIR . 'includes/settings-page.php';
     }
 
@@ -820,6 +885,50 @@ class MemberPress_AI_Assistant {
             array(),
             MPAI_VERSION
         );
+    }
+    
+    /**
+     * Fix menu highlighting globally by using JavaScript
+     * This runs on all admin pages but only applies fixes when needed
+     */
+    public function fix_global_menu_highlighting() {
+        // Only run in admin
+        if (!is_admin()) {
+            return;
+        }
+        
+        // Get the current page from URL
+        $current_page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : '';
+        
+        // Special handling for our settings page
+        if ($current_page === 'memberpress-ai-assistant-settings') {
+            // Force check MemberPress status
+            $this->check_memberpress();
+            
+            if ($this->has_memberpress) {
+                // Add JavaScript to fix menu highlighting
+                ?>
+                <script type="text/javascript">
+                jQuery(document).ready(function($) {
+                    // Ensure MemberPress menu is highlighted and expanded
+                    $('#toplevel_page_memberpress')
+                        .addClass('wp-has-current-submenu wp-menu-open')
+                        .removeClass('wp-not-current-submenu');
+                    
+                    $('#toplevel_page_memberpress > a')
+                        .addClass('wp-has-current-submenu wp-menu-open')
+                        .removeClass('wp-not-current-submenu');
+                    
+                    // Highlight our AI Assistant submenu item
+                    $('#toplevel_page_memberpress .wp-submenu li a[href*="memberpress-ai-assistant-settings"]')
+                        .parent().addClass('current');
+                    
+                    console.log('MemberPress AI: Fixed menu highlighting for settings page');
+                });
+                </script>
+                <?php
+            }
+        }
     }
 
     /**

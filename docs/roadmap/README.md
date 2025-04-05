@@ -8,8 +8,7 @@ Phase Four focuses on security enhancements and compliance features. The followi
 
 1. **Agentic Security Framework** - Begin with the agent validation system
 2. **WordPress Security Integration** - Focus on capability mapping and nonce systems  
-3. **AI Terms & Conditions Consent** - Implement user consent flow and persistence
-4. **Integrated Security Implementation** - Combine all security systems into unified approach
+3. **Integrated Security Implementation** - Combine all security systems into unified approach
 
 ### Implementation Order and Starting Points
 
