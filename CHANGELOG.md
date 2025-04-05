@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved integration test for plugin activation/deactivation with better fallbacks
   - Implemented validation for empty parameters, not just undefined ones
   - Created comprehensive documentation in docs/SCOOBY_SNACK_WP_API_TOOL_FIX.md
+- Fixed clickable WordPress command links in chat interface 🦴
+  - Enhanced the runnable command CSS styling for better visibility
+  - Improved click handler with visual feedback and delay
+  - Added distinct styling to make commands appear as clickable buttons
+  - Made the 'run' indicator more visible with blue color
+- Fixed missing clickable suggestion links in dashboard 🦴
+  - Changed plain text suggestions to clickable links with mpai-suggestion class
+  - Added styling to make the suggestions appear as clickable links
+  - Implemented JavaScript to handle clicks on suggestions and send to chat
+  - Ensured the chat opens when clicking on a suggestion if it's not already open
 
 ### Added
 - Completed Phase Three: Stability & Testing Enhancement with comprehensive improvements:
@@ -139,6 +149,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Detailed implementation documentation in MEMBERPRESS_INDEPENDENT_OPERATION.md
 
 ### Fixed
+- Fixed "wp plugin list" command functionality with proper error handling:
+  - Created missing JavaScript modules for better separation of concerns:
+    - mpai-chat-tools.js - Handles tool execution and formatting
+    - mpai-chat-formatters.js - Manages message formatting 
+    - mpai-chat-history.js - Handles chat history operations
+  - Fixed response format in MPAI_Chat to use 'message' instead of 'response' key
+  - Improved error handling in Context Manager and WP CLI Tool
+  - Enhanced JavaScript response format parsing to handle multiple formats
+  - Fixed code block detection and tabular data extraction in chat interface
+  - Added extensive logging for better troubleshooting
 - Copy icon functionality in chat interface now correctly copies message content to clipboard
 - Enhanced clipboard operations with modern Clipboard API and fallback for older browsers
 - Fixed JavaScript modularization issues with chat interface functionality
@@ -150,6 +170,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented proper type conversion between string and boolean values for settings
   - Added direct checkbox handler to update logger state immediately when changed
   - Created comprehensive documentation of the solution in docs/console-logging-issues-fix.md
+
+## [1.5.7] - 2025-04-02
 
 ### Added
 - Implemented best-selling membership feature:

@@ -121,10 +121,10 @@ if (!$global_consent && is_user_logged_in()) {
         <div class="mpai-dashboard-card">
             <h2><?php _e('Usage Tips', 'memberpress-ai-assistant'); ?></h2>
             <ul class="mpai-tips-list">
-                <li><?php _e('Ask the AI about your membership data, like "What are my top-selling memberships?"', 'memberpress-ai-assistant'); ?></li>
-                <li><?php _e('Get recommendations for WP-CLI commands to manage your site', 'memberpress-ai-assistant'); ?></li>
-                <li><?php _e('Ask for help with configuring MemberPress settings', 'memberpress-ai-assistant'); ?></li>
-                <li><?php _e('Troubleshoot issues with your membership site', 'memberpress-ai-assistant'); ?></li>
+                <li><a href="#" class="mpai-suggestion"><?php _e('What are my top-selling memberships?', 'memberpress-ai-assistant'); ?></a></li>
+                <li><a href="#" class="mpai-suggestion"><?php _e('Show me some useful WP-CLI commands for managing users', 'memberpress-ai-assistant'); ?></a></li>
+                <li><a href="#" class="mpai-suggestion"><?php _e('Help me configure MemberPress payment settings', 'memberpress-ai-assistant'); ?></a></li>
+                <li><a href="#" class="mpai-suggestion"><?php _e('How do I troubleshoot membership access issues?', 'memberpress-ai-assistant'); ?></a></li>
             </ul>
         </div>
         
@@ -300,6 +300,21 @@ if (!$global_consent && is_user_logged_in()) {
 
 .mpai-tips-list li {
     margin-bottom: 10px;
+}
+
+.mpai-suggestion {
+    color: #135e96;
+    text-decoration: none;
+    transition: color 0.2s;
+    display: inline-block;
+    cursor: pointer;
+    padding: 2px 0;
+    border-bottom: 1px dotted #ccc;
+}
+
+.mpai-suggestion:hover {
+    color: #0073aa;
+    border-bottom-color: #0073aa;
 }
 
 .mpai-status-grid {
@@ -553,6 +568,30 @@ jQuery(document).ready(function($) {
         // Trigger the floating chat interface toggle button if it exists
         if ($('#mpai-chat-toggle').length) {
             $('#mpai-chat-toggle').click();
+        } else {
+            alert('Chat interface is not available. Please check your settings.');
+        }
+    });
+    
+    // Handle clickable suggestion links
+    $('.mpai-suggestion').on('click', function(e) {
+        e.preventDefault();
+        // Get the suggestion text
+        var message = $(this).text();
+        console.log('MPAI: Suggestion clicked: ' + message);
+        
+        // Check if there's a chat interface
+        if ($('#mpai-chat-toggle').length) {
+            // Open the chat if it's not already open
+            if (!$('#mpai-chat-container').is(':visible')) {
+                $('#mpai-chat-toggle').click();
+            }
+            
+            // Insert the suggestion into the chat input and submit
+            setTimeout(function() {
+                $('#mpai-chat-input').val(message);
+                $('#mpai-chat-form').submit();
+            }, 300); // Short delay to ensure the chat is open
         } else {
             alert('Chat interface is not available. Please check your settings.');
         }
