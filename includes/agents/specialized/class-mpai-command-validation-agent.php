@@ -35,10 +35,66 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
         $this->name = 'Command Validation Agent';
         $this->description = 'Validates commands before execution to prevent errors';
         $this->capabilities = [
-            'validate_wp_plugin_commands',
-            'validate_wp_theme_commands',
-            'validate_wp_block_commands',
-            'validate_wp_api_requests',
+            'validate_wp_plugin_commands' => 'Verify WordPress plugin commands for validity',
+            'validate_wp_theme_commands' => 'Ensure theme-related commands use correct identifiers',
+            'validate_wp_block_commands' => 'Validate block commands against registered blocks',
+            'validate_wp_api_requests' => 'Verify API requests for proper parameters and permissions',
+        ];
+        
+        // Initialize weighted keywords for agent scoring
+        $this->keywords = [
+            // Direct command validation terms (high weight)
+            'validate' => 30,
+            'validation' => 30,
+            'validator' => 30,
+            'verify' => 25,
+            'verification' => 25,
+            'check' => 20,
+            
+            // Command-related terms (high weight)
+            'command' => 25,
+            'commands' => 25,
+            'cli' => 20,
+            'wpcli' => 25,
+            'wp-cli' => 25,
+            
+            // Security-related terms (medium weight)
+            'security' => 15,
+            'secure' => 15,
+            'safe' => 15,
+            'permission' => 15,
+            'permissions' => 15,
+            
+            // Plugin-related terms (medium weight)
+            'plugin' => 15,
+            'plugins' => 15,
+            'activate' => 10,
+            'deactivate' => 10,
+            'install plugin' => 20,
+            
+            // Theme-related terms (medium weight)
+            'theme' => 15,
+            'themes' => 15,
+            
+            // Block-related terms (medium weight)
+            'block' => 10,
+            'blocks' => 10,
+            'gutenberg' => 10,
+            
+            // Error-related terms (medium weight)
+            'error' => 15,
+            'errors' => 15,
+            'warning' => 15,
+            'warnings' => 15,
+            'fix' => 10,
+            'prevent' => 10,
+            
+            // Request-related terms (low weight)
+            'request' => 10,
+            'api' => 10,
+            'call' => 5,
+            'parameter' => 5,
+            'parameters' => 5,
         ];
         
         // Initialize fallback logger if none was provided
@@ -141,6 +197,47 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
                 $this->logger->warning('Validation failed, but allowing operation to proceed: ' . $validation_result['message']);
                 $validation_result['success'] = true;
                 $validation_result['message'] .= ' (continuing with original command)';
+                
+                // Ensure we always return the original command data for system commands that should always work
+                if (isset($command_data['command'])) {
+                    // For system info commands like PHP version, ensure they always proceed
+                    $system_cmd_patterns = [
+                        '/php.*version/i',           // PHP version queries 
+                        '/php\s+([-]{1,2}v|info)/i', // PHP info commands (php -v, php --version, php info)
+                        '/php(?:info)?/i',           // PHP information
+                        '/recently.*(?:activated|installed).*plugins/i',  // Recently activated plugins
+                        '/(?:active|installed).*plugins/i',  // Plugin queries
+                        '/plugin.*(?:status|info)/i',        // Plugin status or info
+                        '/plugin.*(?:log|activity)/i',       // Plugin logs or activity
+                        '/database.*info/i',        // Database info
+                        '/site.*(?:health|info)/i', // Site health or info
+                        '/wp.*php/i',               // WP PHP commands
+                        '/wp.*plugins?/i',          // WP plugin commands
+                        '/wp.*info/i',              // WordPress info
+                        '/system.*info/i',          // System information
+                        '/plugins?.*recent/i',      // Recent plugins activity
+                        '/version/i',               // Any version queries
+                        '/what.*(?:plugins?|php)/i', // Questions about plugins or PHP
+                        '/which.*(?:plugins?|php)/i', // Questions about plugins or PHP
+                        '/show.*(?:plugins?|php)/i', // Commands to show plugins or PHP
+                        '/list.*(?:plugins?|php)/i', // Commands to list plugins or PHP
+                        '/(?:get|display).*(?:plugins?|php)/i', // Commands to get or display plugins or PHP
+                        '/wp eval/i',              // WP eval commands (for retrieving PHP_VERSION, etc.)
+                        '/installed.*php/i',       // Queries about installed PHP version
+                        '/php.*installed/i',       // Queries about PHP installed
+                        '/check.*php/i',           // Commands to check PHP
+                        '/tell.*(?:about|me).*php/i', // Questions about PHP
+                        '/what.*version.*php/i'    // Alternative PHP version queries
+                    ];
+                    
+                    foreach ($system_cmd_patterns as $pattern) {
+                        if (preg_match($pattern, $command_data['command'])) {
+                            $this->logger->info('System info command detected, ensuring it runs: ' . $command_data['command']);
+                            $validation_result['validated_command'] = $command_data;
+                            break;
+                        }
+                    }
+                }
             }
             
             return $validation_result;

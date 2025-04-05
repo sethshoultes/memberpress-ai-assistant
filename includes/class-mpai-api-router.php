@@ -33,6 +33,13 @@ class MPAI_API_Router {
     private $primary_api;
 
     /**
+     * Error recovery system
+     *
+     * @var MPAI_Error_Recovery
+     */
+    private $error_recovery;
+
+    /**
      * Constructor
      */
     public function __construct() {
@@ -46,8 +53,13 @@ class MPAI_API_Router {
             require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-anthropic.php';
         }
         
+        if (!class_exists('MPAI_Error_Recovery')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-error-recovery.php';
+        }
+        
         $this->openai = new MPAI_OpenAI();
         $this->anthropic = new MPAI_Anthropic();
+        $this->error_recovery = mpai_init_error_recovery();
         $this->primary_api = get_option('mpai_primary_api', 'openai');
     }
 
@@ -71,9 +83,15 @@ class MPAI_API_Router {
         
         // Default to primary API unless forced
         $primary = $force_api ?: $this->primary_api;
-        $result = null;
+        $fallback = ($primary === 'openai') ? 'anthropic' : 'openai';
         
+        // Skip fallback if API is forced
+        $skip_fallback = ($force_api !== null);
+        
+        // Try primary API with error recovery system
         try {
+            $result = null;
+            
             if ($primary === 'openai') {
                 error_log('MPAI: Trying OpenAI API first');
                 
@@ -87,7 +105,47 @@ class MPAI_API_Router {
                 $result = $this->openai->send_request($messages, $openai_params);
                 
                 if (is_wp_error($result)) {
-                    throw new Exception($result->get_error_message());
+                    // Create standardized API error
+                    $api_error = $this->error_recovery->create_api_error(
+                        'openai',
+                        $result->get_error_code(),
+                        $result->get_error_message(),
+                        $result->get_error_data()
+                    );
+                    
+                    // Define retry callback for OpenAI
+                    $retry_callback = function() use ($messages, $openai_params) {
+                        error_log('MPAI: Retrying OpenAI API');
+                        $retry_result = $this->openai->send_request($messages, $openai_params);
+                        
+                        if (is_wp_error($retry_result)) {
+                            return $retry_result;
+                        }
+                        
+                        return $this->format_openai_response($retry_result);
+                    };
+                    
+                    // Define fallback callback for Anthropic
+                    $fallback_callback = function() use ($messages, $tools) {
+                        error_log('MPAI: Using Anthropic API as fallback');
+                        $anthropic_tools = !empty($tools) ? $this->anthropic->convert_tools_to_anthropic_format($tools) : array();
+                        $fallback_result = $this->anthropic->send_request($messages, $anthropic_tools);
+                        
+                        if (is_wp_error($fallback_result)) {
+                            return $fallback_result;
+                        }
+                        
+                        return $this->format_anthropic_response($fallback_result);
+                    };
+                    
+                    // Use error recovery system
+                    return $this->error_recovery->handle_error(
+                        $api_error,
+                        'openai',
+                        $retry_callback,
+                        [],
+                        $skip_fallback ? null : $fallback_callback
+                    );
                 }
                 
                 return $this->format_openai_response($result);
@@ -100,57 +158,131 @@ class MPAI_API_Router {
                 $result = $this->anthropic->send_request($messages, $anthropic_tools);
                 
                 if (is_wp_error($result)) {
-                    throw new Exception($result->get_error_message());
+                    // Create standardized API error
+                    $api_error = $this->error_recovery->create_api_error(
+                        'anthropic',
+                        $result->get_error_code(),
+                        $result->get_error_message(),
+                        $result->get_error_data()
+                    );
+                    
+                    // Define retry callback for Anthropic
+                    $retry_callback = function() use ($messages, $anthropic_tools) {
+                        error_log('MPAI: Retrying Anthropic API');
+                        $retry_result = $this->anthropic->send_request($messages, $anthropic_tools);
+                        
+                        if (is_wp_error($retry_result)) {
+                            return $retry_result;
+                        }
+                        
+                        return $this->format_anthropic_response($retry_result);
+                    };
+                    
+                    // Define fallback callback for OpenAI
+                    $fallback_callback = function() use ($messages, $tools) {
+                        error_log('MPAI: Using OpenAI API as fallback');
+                        $openai_params = array();
+                        if (!empty($tools)) {
+                            $openai_tools = $this->format_tools_for_openai($tools);
+                            $openai_params['tools'] = $openai_tools;
+                        }
+                        
+                        $fallback_result = $this->openai->send_request($messages, $openai_params);
+                        
+                        if (is_wp_error($fallback_result)) {
+                            return $fallback_result;
+                        }
+                        
+                        return $this->format_openai_response($fallback_result);
+                    };
+                    
+                    // Use error recovery system
+                    return $this->error_recovery->handle_error(
+                        $api_error,
+                        'anthropic',
+                        $retry_callback,
+                        [],
+                        $skip_fallback ? null : $fallback_callback
+                    );
                 }
                 
                 return $this->format_anthropic_response($result);
             }
         } catch (Exception $e) {
-            // Log the failure
-            error_log("MPAI: Primary API ($primary) failed: " . $e->getMessage());
+            error_log("MPAI: Exception in process_request for $primary API: " . $e->getMessage());
             
-            // If forced to use a specific API, don't fall back
-            if ($force_api !== null) {
-                return new WP_Error('api_error', "The selected API ($force_api) failed: " . $e->getMessage());
+            // Create standardized exception error
+            $error = $this->error_recovery->create_api_error(
+                $primary,
+                'api_exception',
+                $e->getMessage(),
+                [
+                    'exception_class' => get_class($e),
+                    'exception_trace' => $e->getTraceAsString()
+                ]
+            );
+            
+            // If forced to use a specific API, don't use fallback
+            if ($skip_fallback) {
+                return $error;
             }
             
-            // Try fallback API
-            try {
-                if ($primary === 'openai') {
-                    error_log('MPAI: Trying Anthropic API as fallback');
+            // Define fallback callback for the other API
+            $fallback_callback = function() use ($fallback, $messages, $tools) {
+                try {
+                    error_log("MPAI: Using $fallback API as fallback after exception");
                     
-                    // For Anthropic, we need to format tools correctly
-                    $anthropic_tools = !empty($tools) ? $this->anthropic->convert_tools_to_anthropic_format($tools) : array();
-                    
-                    $result = $this->anthropic->send_request($messages, $anthropic_tools);
-                    
-                    if (is_wp_error($result)) {
-                        throw new Exception($result->get_error_message());
+                    if ($fallback === 'openai') {
+                        $openai_params = array();
+                        if (!empty($tools)) {
+                            $openai_tools = $this->format_tools_for_openai($tools);
+                            $openai_params['tools'] = $openai_tools;
+                        }
+                        
+                        $result = $this->openai->send_request($messages, $openai_params);
+                        
+                        if (is_wp_error($result)) {
+                            return $result;
+                        }
+                        
+                        return $this->format_openai_response($result);
+                    } else {
+                        $anthropic_tools = !empty($tools) ? $this->anthropic->convert_tools_to_anthropic_format($tools) : array();
+                        
+                        $result = $this->anthropic->send_request($messages, $anthropic_tools);
+                        
+                        if (is_wp_error($result)) {
+                            return $result;
+                        }
+                        
+                        return $this->format_anthropic_response($result);
                     }
+                } catch (Exception $e2) {
+                    error_log("MPAI: Fallback API ($fallback) also failed: " . $e2->getMessage());
                     
-                    return $this->format_anthropic_response($result);
-                } else {
-                    error_log('MPAI: Trying OpenAI API as fallback');
-                    
-                    // For OpenAI, we need to format tools correctly
-                    $openai_params = array();
-                    if (!empty($tools)) {
-                        $openai_tools = $this->format_tools_for_openai($tools);
-                        $openai_params['tools'] = $openai_tools;
-                    }
-                    
-                    $result = $this->openai->send_request($messages, $openai_params);
-                    
-                    if (is_wp_error($result)) {
-                        throw new Exception($result->get_error_message());
-                    }
-                    
-                    return $this->format_openai_response($result);
+                    // Create combined error
+                    return $this->error_recovery->create_api_error(
+                        $fallback,
+                        'fallback_exception',
+                        $e2->getMessage(),
+                        [
+                            'primary_api' => $primary,
+                            'primary_error' => $e->getMessage(),
+                            'exception_class' => get_class($e2),
+                            'exception_trace' => $e2->getTraceAsString()
+                        ]
+                    );
                 }
-            } catch (Exception $e2) {
-                error_log("MPAI: Fallback API also failed: " . $e2->getMessage());
-                return new WP_Error('api_error', 'Both APIs failed. Primary error: ' . $e->getMessage() . ', Fallback error: ' . $e2->getMessage());
-            }
+            };
+            
+            // Use error recovery with fallback
+            return $this->error_recovery->handle_error(
+                $error,
+                $primary,
+                null,
+                [],
+                $fallback_callback
+            );
         }
     }
 

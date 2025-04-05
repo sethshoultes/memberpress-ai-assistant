@@ -1,14 +1,22 @@
 # MemberPress AI Assistant Development Guidelines
 
 ## Quick Reference
-- **System Map**: `/docs/current/system-map.md` - Complete system architecture overview
+- **System Map**: `/docs/current/core/system-map.md` - Complete system architecture overview
+- **Documentation Map**: `/docs/current/core/documentation-map.md` - Visual guide to documentation
 - **Key Files**:
   - `memberpress-ai-assistant.php` - Main plugin file
   - `class-mpai-chat.php` - Core chat processing
   - `class-mpai-context-manager.php` - Tool execution
   - `class-mpai-api-router.php` - AI provider management
 - **Documentation Structure**:
-  - `/docs/current/` - Implemented features
+  - `/docs/current/` - Implemented features organized by system:
+    - `/docs/current/core/` - Core system documentation
+    - `/docs/current/agent-system/` - Agent system documentation
+    - `/docs/current/tool-system/` - Tool system documentation
+    - `/docs/current/content-system/` - Content system documentation
+    - `/docs/current/js-system/` - JavaScript system documentation
+    - `/docs/current/feature-plans/` - Feature planning documentation
+  - `/docs/_snacks/` - Investigation results and solutions ("Scooby Snacks")
   - `/docs/roadmap/` - Planned features
   - `/docs/archive/` - Outdated documentation
 
@@ -22,13 +30,41 @@
 - Run tests for specific features according to test checklist
 
 ## Scooby Snack Protocol
+
+### Reward Protocol - "You get a Scooby Snack"
 - When given a "Scooby Snack" for a successful solution or implementation:
-  1. Create a detailed document of the findings/solution in an appropriate location (usually in `/docs/`)
-  2. Update any existing documentation that relates to the solution
-  3. Add an entry to the CHANGELOG.md file if it's a significant fix or feature
-  4. Create a git commit with the documentation and implementation changes
-  5. Include "🦴 Scooby Snack" in the commit message to track successful solutions
-  6. The commit should summarize what worked, why it worked, and any lessons learned
+  1. Create a detailed document following the Scooby Snack template in `/docs/_snacks/`
+  2. Place it in the appropriate category folder (e.g., `tool-system`, `content-system`, etc.)
+  3. Update the Scooby Snack index at `/docs/_snacks/index.md` with the new entry
+  4. Update any existing documentation that relates to the solution
+  5. Add an entry to the CHANGELOG.md file if it's a significant fix or feature
+  6. Create a git commit with the documentation and implementation changes
+  7. Include "🦴 Scooby Snack" in the commit message to track successful solutions
+  8. The commit should summarize what worked, why it worked, and any lessons learned
+
+### Investigation Protocol - "Scooby Mode", "Scooby Doo", "Scooby", or "Jinkies"
+- When one of these trigger phrases is used, activate investigation mode:
+  1. Stop active coding and shift to diagnostic/investigative approach
+  2. Ask detailed information to help diagnose the issue:
+     - What specific error messages are shown?
+     - What expected vs. actual behavior is observed?
+     - What files and code paths are involved?
+     - What recent changes might have affected this functionality?
+  3. Conduct a methodical investigation:
+     - Examine relevant code, logs, and test results
+     - Look for patterns in failures
+     - Identify potential root causes
+     - Consider multiple failure scenarios
+  4. Document findings in Scooby Snack format:
+     - Problem statement
+     - Root cause analysis
+     - Solution or recommended approach
+     - Lessons learned
+  5. If a solution is implemented, include "🦴 Scooby Snack" in the commit message
+  6. If only investigation is completed without fixes, document findings in `_snacks/` directory
+     with "Investigation:" prefix in filename
+
+For complete details on the Scooby Snack documentation system, see `/docs/_snacks/README.md`
 
 ## Code Style
 - Follow WordPress PHP Coding Standards
@@ -46,12 +82,19 @@
 - Class files in `includes/` directory
 - Assets (JS/CSS) in `assets/` directory
 - Documentation in `docs/` directory:
-  - `docs/current/` - Current feature documentation
+  - `docs/current/` - Current feature documentation organized by system:
+    - `core/` - Core system documentation
+    - `agent-system/` - Agent system documentation
+    - `tool-system/` - Tool system documentation
+    - `content-system/` - Content system documentation
+    - `js-system/` - JavaScript system documentation
+    - `feature-plans/` - Feature planning documentation
+  - `docs/_snacks/` - Investigation results and solutions ("Scooby Snacks")
   - `docs/roadmap/` - Planned feature documentation
   - `docs/archive/` - Archived documentation
 - WP-CLI commands in `includes/cli/` directory
 - Follow MVC-like pattern where appropriate
-- **Important**: For complete system architecture, refer to `/docs/current/system-map.md`
+- **Important**: For complete system architecture, refer to `/docs/current/core/system-map.md`
 
 ## Error Handling
 - Use `wp_send_json_error()` for AJAX errors
@@ -62,7 +105,7 @@
 - User-friendly error messages for front-end display
 
 ## AJAX Handlers
-- Always use existing AJAX handlers when available rather than creating new ones
+- Always use existing AJAX handlers when available rather than creating new onesagent
 - Leverage the plugin's established AJAX endpoints for communication
 - Reference how existing functionality works rather than creating parallel implementations
 - Maintain consistent parameter naming between frontend and backend
@@ -76,10 +119,18 @@
   - Use bullet points for each significant change
   - Group related changes with sub-bullet points
 - Create or update documentation in the proper directory:
-  - `/docs/current/` - For implemented features
+  - `/docs/current/` - For implemented features, place in appropriate system directory:
+    - `core/` - Core system documentation
+    - `agent-system/` - Agent system documentation
+    - `tool-system/` - Tool system documentation
+    - `content-system/` - Content system documentation
+    - `js-system/` - JavaScript system documentation
+    - `feature-plans/` - Feature planning documentation
+  - `/docs/_snacks/` - For investigation results and solutions, place in appropriate category
   - `/docs/roadmap/` - For planned features
   - `/docs/archive/` - For outdated documentation
-- When working on existing features, first check the system map at `/docs/current/system-map.md`
+- When working on existing features, first check the system map at `/docs/current/core/system-map.md`
+- Check the documentation map at `/docs/current/core/documentation-map.md` for navigation guidance
 - Reference documentation in code comments for complex functionality
 - Update main `docs/README.md` when adding new documentation files
 - When adding new PHP files, update the system map to include them
@@ -107,8 +158,15 @@
   ```
 
 ## System Architecture Exploration
-- When first approaching the codebase, begin by reviewing `/docs/current/system-map.md`
-- For AI-specific components, understand these key relationships:
+- When first approaching the codebase, begin by reviewing:
+  - [`_0_START_HERE_.md`](/_0_START_HERE_.md) - Primary entry point with development pathways
+  - [`/docs/current/core/system-map.md`](/docs/current/core/system-map.md) - Complete system architecture
+  - [`/docs/current/core/documentation-map.md`](/docs/current/core/documentation-map.md) - Documentation structure
+- For specific systems, refer to the unified documentation:
+  - [`/docs/current/agent-system/unified-agent-system.md`](/docs/current/agent-system/unified-agent-system.md) - Agent system
+  - [`/docs/current/content-system/unified-xml-content-system.md`](/docs/current/content-system/unified-xml-content-system.md) - Content system
+  - [`/docs/current/tool-system/tool-implementation-map.md`](/docs/current/tool-system/tool-implementation-map.md) - Tool system
+- Key relationships to understand:
   - `memberpress-ai-assistant.php` initializes the plugin
   - `class-mpai-chat.php` processes user messages and AI responses
   - `class-mpai-api-router.php` routes requests between different AI providers
@@ -122,6 +180,7 @@
   - Add new tools to `/includes/tools/implementations/`
   - Register tools in the context manager
   - Update system prompt to include new capabilities
+  - Create appropriate documentation in the correct system directory
 
 ## Development Workflows
 
@@ -180,12 +239,20 @@
 - **Test in different WordPress environments** (admin area, frontend, CLI)
 
 ### Feature Implementation Strategy
-- First update the system map with your planned changes
+- First check the system map and documentation map to understand related components
+- Update the system map with your planned changes
 - Create tests before implementing the feature
 - Add tool definitions to the context manager
 - Update relevant agent implementations
 - Validate with both AI providers
-- Update documentation and changelog
+- Document your implementation in the appropriate system directory:
+  - `core/` - For core system features
+  - `agent-system/` - For agent system features
+  - `tool-system/` - For tool system features
+  - `content-system/` - For content-related features
+  - `js-system/` - For JavaScript features
+- If solving a complex issue, create a Scooby Snack in the `_snacks/` directory
+- Update main documentation and changelog
 
 ## AI Integration Guidelines
 

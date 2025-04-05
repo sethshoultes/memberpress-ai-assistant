@@ -1,5 +1,7 @@
 # MemberPress AI Assistant
 
+![MemberPress AI Assistant](assets/images/memberpress-ai-assistant.png)
+
 ## Description
 
 MemberPress AI Assistant integrates powerful AI language models (OpenAI and Anthropic) with your MemberPress WordPress plugin, providing intelligent insights, content analysis, and WP-CLI command assistance. This plugin helps site administrators better understand their membership data and streamline site management tasks with features like best-selling membership analysis, tiered support routing, and comprehensive diagnostic capabilities.
@@ -90,14 +92,15 @@ wp mpai run <command> [--context=<context>]
 
 For detailed information, please check these documentation files:
 
-- [Project Specification](docs/project-specification.md) - Complete project overview and technical specifications
-- [User Guide](docs/user-guide.md) - Complete guide for users
-- [Developer Guide](docs/developer-guide.md) - Information for developers who want to extend the plugin
-- [Agent System Specification](docs/agent-system-spec.md) - Detailed specification of the agent system
-- [Agent System Implementation](docs/agent-system-implementation.md) - Implementation details for the agent system
-- [Agent System Quick Start](docs/agent-system-quickstart.md) - Get started with the agent system quickly
-- [Content Marker System](docs/CONTENT_MARKER_SYSTEM.md) - Comprehensive documentation of the content marker implementation
-- [Testing Procedures](tests/test-procedures.md) - Procedures for testing the plugin
+- [Primary Entry Point](_0_START_HERE_.md) - Comprehensive entry point with development pathways
+- [Project Specification](docs/current/core/project-specification.md) - Complete project overview and technical specifications
+- [User Guide](docs/current/core/user-guide.md) - Complete guide for users
+- [Developer Guide](docs/current/core/developer-guide.md) - Information for developers who want to extend the plugin
+- [Unified Agent System](docs/current/agent-system/unified-agent-system.md) - Comprehensive agent system documentation
+- [Agent System Reference](docs/current/agent-system/agent-system-reference.md) - Quick reference for the agent system
+- [Content Marker System](docs/current/content-system/CONTENT_MARKER_SYSTEM.md) - Comprehensive documentation of the content marker system
+- [Tool Implementation Map](docs/current/tool-system/tool-implementation-map.md) - Guide for implementing tools
+- [Testing Procedures](test/test-procedures.md) - Procedures for testing the plugin
 
 ## Agent System
 
@@ -116,7 +119,7 @@ The plugin also implements a multi-agent data processing approach:
 
 This two-stage processing ensures optimal display of information with context-aware formatting based on the command type.
 
-For more information, see the [Agent System Specification](docs/agent-system-spec.md).
+For more information, see the [Unified Agent System](docs/current/agent-system/unified-agent-system.md) documentation.
 
 ## Security
 
@@ -133,17 +136,25 @@ The plugin is organized into the following structure:
 
 - `/assets/` - CSS and JavaScript files
 - `/docs/` - Documentation files
-  - `/docs/current/` - Current feature documentation
+  - `/docs/current/` - Current feature documentation organized by system:
+    - `/docs/current/core/` - Core system documentation
+    - `/docs/current/agent-system/` - Agent system documentation
+    - `/docs/current/tool-system/` - Tool system documentation
+    - `/docs/current/content-system/` - Content system documentation
+    - `/docs/current/js-system/` - JavaScript system documentation
+    - `/docs/current/feature-plans/` - Feature planning documentation
+  - `/docs/_snacks/` - Investigation results and solutions ("Scooby Snacks")
   - `/docs/roadmap/` - Planned feature documentation
   - `/docs/archive/` - Archived and deprecated files
 - `/includes/` - PHP class files
   - `/includes/agents/` - Agent system files
   - `/includes/cli/` - WP-CLI command files
   - `/includes/tools/` - Tool implementation files
-- `/_scooby/` - Scooby Snack protocol files
 - `/test/` - Testing procedures and test files
 
-For a detailed description of all files and their purpose, see the [System Map](docs/current/system-map.md).
+For a detailed description of all files and their purpose, see the [System Map](docs/current/core/system-map.md).
+
+For an overview of the documentation structure, see the [Documentation Map](docs/current/core/documentation-map.md).
 
 ## Development Resources
 

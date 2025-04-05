@@ -122,8 +122,8 @@ class MPAI_OpenAI {
             return "I'm sorry, but the OpenAI API key is not configured. Please add your API key in the settings page to use the AI assistant.";
         }
         
-        // Let's log the messages for debugging
-        error_log('MPAI: Sending messages to OpenAI: ' . json_encode($messages));
+        // Only log a summary of the request, not the entire content
+        error_log('MPAI: Sending request to OpenAI API - ' . count($messages) . ' messages');
         
         try {
             $response = $this->send_request($messages);

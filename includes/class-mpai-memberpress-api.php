@@ -24,6 +24,13 @@ class MPAI_MemberPress_API {
      * @var string
      */
     private $base_url;
+    
+    /**
+     * Whether MemberPress is available
+     *
+     * @var bool
+     */
+    private $has_memberpress;
 
     /**
      * Constructor
@@ -31,6 +38,35 @@ class MPAI_MemberPress_API {
     public function __construct() {
         $this->api_key = get_option('mpai_memberpress_api_key', '');
         $this->base_url = site_url('/wp-json/mp/v1/');
+        $this->has_memberpress = class_exists('MeprAppCtrl');
+    }
+    
+    /**
+     * Check if MemberPress is available
+     *
+     * @return bool
+     */
+    public function is_memberpress_available() {
+        return $this->has_memberpress;
+    }
+    
+    /**
+     * Generate upsell response for when MemberPress is not available
+     *
+     * @param string $feature The MemberPress feature being requested
+     * @return array Response with upsell message
+     */
+    private function get_upsell_response($feature) {
+        return array(
+            'status' => 'memberpress_not_available',
+            'message' => sprintf(
+                __('This feature requires MemberPress to be installed and activated. %sLearn more about MemberPress%s', 'memberpress-ai-assistant'),
+                '<a href="https://memberpress.com/plans/?utm_source=ai_assistant&utm_medium=api&utm_campaign=upsell" target="_blank">',
+                '</a>'
+            ),
+            'feature' => $feature,
+            'memberpress_url' => 'https://memberpress.com/plans/?utm_source=ai_assistant&utm_medium=api&utm_campaign=upsell'
+        );
     }
     
     /**
@@ -51,6 +87,11 @@ class MPAI_MemberPress_API {
      * @return array|WP_Error The data response or error
      */
     public function request($endpoint, $method = 'GET', $data = array()) {
+        // Check if MemberPress is available
+        if (!$this->has_memberpress) {
+            return $this->get_upsell_response($endpoint);
+        }
+        
         // We don't use the REST API anymore - direct database access instead
         
         // Determine what data to fetch based on the endpoint
@@ -824,6 +865,14 @@ class MPAI_MemberPress_API {
      * @return array|string The best-selling membership data or formatted string
      */
     public function get_best_selling_membership($params = array(), $formatted = false) {
+        // Check if MemberPress is available
+        if (!$this->has_memberpress) {
+            if ($formatted) {
+                return __("MemberPress is not installed. Install MemberPress to access best-selling membership data and analytics.", 'memberpress-ai-assistant');
+            }
+            return $this->get_upsell_response('best_selling_membership');
+        }
+        
         global $wpdb;
         
         try {
@@ -1014,11 +1063,11 @@ class MPAI_MemberPress_API {
      */
     public function get_data_summary($force_refresh = false) {
         try {
-            error_log('MPAI: Getting MemberPress data summary' . ($force_refresh ? ' (forced refresh)' : ''));
+            // Getting MemberPress data summary
             
             // Clear any cached data if forcing refresh
             if ($force_refresh) {
-                error_log('MPAI: Clearing any cached MemberPress data');
+                // Clearing any cached MemberPress data
                 global $wpdb;
                 wp_cache_flush();
                 
@@ -1045,14 +1094,14 @@ class MPAI_MemberPress_API {
             
             // Check if MemberPress is active
             if (!class_exists('MeprAppCtrl')) {
-                error_log('MPAI: MemberPress is not active');
+                // MemberPress is not active
                 $summary['status'] = 'MemberPress is not active';
                 return $summary;
             }
             
             // Check if API key is configured
             if (empty($this->api_key)) {
-                error_log('MPAI: MemberPress API key is not configured, using fallback methods');
+                // MemberPress API key is not configured, using fallback methods
                 $summary['status'] = 'MemberPress API key is not configured';
                 
                 // Try to use direct database queries as fallback
@@ -1079,15 +1128,15 @@ class MPAI_MemberPress_API {
                         );
                     }
                     
-                    error_log('MPAI: Found ' . $summary['total_members'] . ' members and ' . $summary['total_memberships'] . ' memberships using fallback method');
+                    // Found members and memberships using fallback method
                 } else {
-                    error_log('MPAI: Cannot access MemberPress classes for fallback method');
+                    // Cannot access MemberPress classes for fallback method
                 }
                 
                 return $summary;
             }
             
-            error_log('MPAI: Using MemberPress API to fetch data');
+            // Using MemberPress API to fetch data
             
             // Get summary of members
             $members = $this->get_members(array('per_page' => 5));
@@ -1101,7 +1150,7 @@ class MPAI_MemberPress_API {
                                  (isset($member['last_name']) ? $member['last_name'] : ''),
                     );
                 }
-                error_log('MPAI: Successfully retrieved members data');
+                // Successfully retrieved members data
             } else {
                 error_log('MPAI: Failed to retrieve members data');
                 if (is_wp_error($members)) {
@@ -1121,7 +1170,7 @@ class MPAI_MemberPress_API {
                         'period_type' => isset($membership['period_type']) ? $membership['period_type'] : '',
                     );
                 }
-                error_log('MPAI: Successfully retrieved memberships data');
+                // Successfully retrieved memberships data
             } else {
                 error_log('MPAI: Failed to retrieve memberships data');
                 if (is_wp_error($memberships)) {
@@ -1134,7 +1183,7 @@ class MPAI_MemberPress_API {
             if (!is_wp_error($transactions) && is_array($transactions)) {
                 $summary['total_transactions'] = count($transactions);
                 $summary['transaction_count'] = $summary['total_transactions'];
-                error_log('MPAI: Successfully retrieved transactions data');
+                // Successfully retrieved transactions data
             } else {
                 error_log('MPAI: Failed to retrieve transactions data');
                 if (is_wp_error($transactions)) {
@@ -1147,7 +1196,7 @@ class MPAI_MemberPress_API {
             if (!is_wp_error($subscriptions) && is_array($subscriptions)) {
                 $summary['total_subscriptions'] = count($subscriptions);
                 $summary['subscription_count'] = $summary['total_subscriptions'];
-                error_log('MPAI: Successfully retrieved subscriptions data');
+                // Successfully retrieved subscriptions data
             } else {
                 error_log('MPAI: Failed to retrieve subscriptions data');
                 if (is_wp_error($subscriptions)) {

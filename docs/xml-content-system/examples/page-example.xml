@@ -1,0 +1,34 @@
+<wp-post>
+  <post-title>About Our Membership Program</post-title>
+  <post-content>
+    <block type="paragraph">Welcome to our membership program! We're excited to have you join our community of like-minded individuals who are passionate about learning and growing together.</block>
+    
+    <block type="heading" level="2">What We Offer</block>
+    <block type="paragraph">Our membership program provides exclusive access to premium content, resources, and community features that will help you achieve your goals.</block>
+    
+    <block type="list">
+      <item>Premium tutorials and courses</item>
+      <item>Monthly live Q&A sessions</item>
+      <item>Private community forum</item>
+      <item>Downloadable resources</item>
+    </block>
+    
+    <block type="heading" level="2">Membership Levels</block>
+    <block type="paragraph">We offer the following membership options to suit your needs:</block>
+    
+    <block type="heading" level="3">Basic Membership</block>
+    <block type="paragraph">Our entry-level membership gives you access to core content and community features.</block>
+    
+    <block type="heading" level="3">Premium Membership</block>
+    <block type="paragraph">Our most popular option includes everything in Basic plus exclusive workshops and priority support.</block>
+    
+    <block type="heading" level="3">Enterprise Membership</block>
+    <block type="paragraph">Designed for teams and organizations, this level includes bulk licensing and custom training options.</block>
+    
+    <block type="heading" level="2">Join Today</block>
+    <block type="paragraph">Ready to get started? Click the button below to view our membership options and join our community today!</block>
+  </post-content>
+  <post-excerpt>Learn about our exclusive membership program offering premium content, resources, and community features to help you succeed.</post-excerpt>
+  <post-status>draft</post-status>
+  <post-type>page</post-type>
+</wp-post>

@@ -1,6 +1,28 @@
 /**
  * MemberPress AI Assistant - Chat Interface Script
+ * 
+ * THIS FILE HAS BEEN MODULARIZED
+ * 
+ * The code previously in this file has been moved to the following modules 
+ * in the /assets/js/modules/ directory:
+ * 
+ * - mpai-chat-messages.js: Message handling and display
+ * - mpai-chat-tools.js: Tool call detection and execution
+ * - mpai-chat-formatters.js: Text and response formatting
+ * - mpai-chat-history.js: Chat history management
+ * - mpai-chat-ui-utils.js: UI utilities
+ * - chat-interface-loader.js: Main entry point that initializes all modules
+ * 
+ * Please modify the modular files directly rather than changing this file.
+ * 
+ * This file is no longer used by the plugin but remains as a placeholder
+ * for backward compatibility purposes. The code in this file has been fully
+ * migrated to the modular structure.
  */
+
+// This file is now a placeholder
+
+// The original file contents are listed below
 
 (function($) {
     'use strict';

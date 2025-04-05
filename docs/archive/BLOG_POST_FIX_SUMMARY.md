@@ -1,5 +1,7 @@
 # Blog Post Publishing Fix Summary
 
+**STATUS: ARCHIVED - Migrated to Scooby Snack system at `_snacks/content-system/blog-post-publishing-fix.md`**
+
 ## Issue Analysis
 After examining the code and error logs, we identified the following issues:
 

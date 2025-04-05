@@ -14,6 +14,326 @@ if (!defined('WPINC')) {
 <div id="tab-diagnostic" class="mpai-settings-tab" style="display: none;">
     <h3><?php _e('System Diagnostics', 'memberpress-ai-assistant'); ?></h3>
     <p><?php _e('Run various diagnostic tests to check the health of your MemberPress AI Assistant installation.', 'memberpress-ai-assistant'); ?></p>
+    
+    <!-- Phase Three Features Test Section -->
+    <div class="mpai-debug-section">
+        <h4><?php _e('Phase Three Features Tests', 'memberpress-ai-assistant'); ?></h4>
+        <p><?php _e('Test Phase Three features including Error Recovery System, AI Response Validation, and Connection Pooling.', 'memberpress-ai-assistant'); ?></p>
+        
+        <button type="button" id="mpai-test-error-recovery" class="button"><?php _e('Test Error Recovery System', 'memberpress-ai-assistant'); ?></button>
+        <a href="<?php echo plugins_url('test/test-error-recovery-page.php', dirname(dirname(__FILE__))); ?>" class="button" target="_blank"><?php _e('Direct Test Page', 'memberpress-ai-assistant'); ?></a>
+        
+        <div id="mpai-phase-three-results" class="mpai-debug-results" style="display: none;">
+            <h4><?php _e('Test Results', 'memberpress-ai-assistant'); ?></h4>
+            <div id="mpai-phase-three-output"></div>
+        </div>
+    </div>
+    
+    <?php 
+    // Extension point for additional diagnostic sections
+    do_action('mpai_run_diagnostics'); 
+    ?>
+    
+    <script>
+    jQuery(document).ready(function($) {
+        // Error Recovery System test
+        $('#mpai-test-error-recovery').on('click', function() {
+            var $resultsContainer = $('#mpai-phase-three-results');
+            var $outputContainer = $('#mpai-phase-three-output');
+            
+            $resultsContainer.show();
+            $outputContainer.html('<p>Testing Error Recovery System, please wait...</p>');
+            
+            // Log that we're starting the test
+            console.log('MPAI: Starting Error Recovery System test');
+            
+            // Use standard ajaxurl which is guaranteed to be defined in admin
+            if (typeof ajaxurl === 'undefined') {
+                console.error('MPAI: ajaxurl is not defined');
+                $outputContainer.html('<div style="color: red; margin-bottom: 15px;"><h4>Error: ajaxurl is not defined</h4><p>This is likely a WordPress configuration issue.</p></div>');
+                return;
+            }
+            
+            console.log('MPAI: Using ajaxurl:', ajaxurl);
+            
+            // Create FormData for fetch API
+            var formData = new FormData();
+            formData.append('action', 'mpai_test_error_recovery');
+            formData.append('nonce', mpai_data.nonce);
+            
+            // Use fetch API with WordPress ajaxurl
+            console.log('MPAI: Sending request to:', ajaxurl);
+            console.log('MPAI: Request data:', {
+                action: 'mpai_test_error_recovery',
+                nonce: mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined'
+            });
+            
+            fetch(ajaxurl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                console.log('MPAI: Error Recovery test response status:', response.status);
+                console.log('MPAI: Response headers:', response.headers);
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                
+                // Debug log the raw response
+                return response.text().then(function(text) {
+                    console.log('MPAI: Raw response:', text);
+                    
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('MPAI: Failed to parse JSON:', e);
+                        throw new Error('Failed to parse response as JSON: ' + e.message);
+                    }
+                });
+            })
+            .then(function(data) {
+                console.log('MPAI: Error Recovery test response:', data);
+                
+                // Format the results in HTML
+                var resultHtml = '<div style="margin-bottom: 15px;">';
+                resultHtml += '<span style="color: ' + (data.success ? 'green' : 'red') + '; font-weight: bold; font-size: 16px;">';
+                resultHtml += data.success ? '✓ All tests passed!' : '✗ Some tests failed!';
+                resultHtml += '</span>';
+                resultHtml += '<p>' + data.message + '</p>';
+                resultHtml += '</div>';
+                
+                // Add overall timing information
+                if (data.data && data.data.timing) {
+                    resultHtml += '<div style="margin-bottom: 15px;">';
+                    resultHtml += '<h4>Performance</h4>';
+                    resultHtml += '<p>Total execution time: <strong>' + (data.data.timing.total * 1000).toFixed(2) + ' ms</strong></p>';
+                    resultHtml += '</div>';
+                }
+                
+                // Add test results table
+                if (data.data && data.data.tests) {
+                    resultHtml += '<h4>Individual Test Results</h4>';
+                    resultHtml += '<table class="widefat" style="margin-bottom: 15px;">';
+                    resultHtml += '<thead><tr>';
+                    resultHtml += '<th>Test Name</th>';
+                    resultHtml += '<th>Status</th>';
+                    resultHtml += '<th>Message</th>';
+                    resultHtml += '<th>Details</th>';
+                    resultHtml += '</tr></thead><tbody>';
+                    
+                    // Add each test result
+                    Object.keys(data.data.tests).forEach(function(testName) {
+                        var test = data.data.tests[testName];
+                        resultHtml += '<tr>';
+                        resultHtml += '<td><strong>' + testName.replace(/_/g, ' ') + '</strong></td>';
+                        resultHtml += '<td>' + (test.success ? 
+                            '<span style="color: green;">✓ Pass</span>' : 
+                            '<span style="color: red;">✗ Fail</span>') + '</td>';
+                        resultHtml += '<td>' + test.message + '</td>';
+                        resultHtml += '<td>';
+                        
+                        if (test.details) {
+                            resultHtml += '<button type="button" class="button toggle-details" data-target="details-' + testName + '">Show Details</button>';
+                            resultHtml += '<div id="details-' + testName + '" style="display: none; margin-top: 10px;">';
+                            resultHtml += '<pre style="max-height: 200px; overflow: auto;">' + JSON.stringify(test.details, null, 2) + '</pre>';
+                            resultHtml += '</div>';
+                        } else {
+                            resultHtml += '<em>No details available</em>';
+                        }
+                        
+                        resultHtml += '</td>';
+                        resultHtml += '</tr>';
+                    });
+                    
+                    resultHtml += '</tbody></table>';
+                }
+                
+                // Add documentation link
+                resultHtml += '<div>';
+                resultHtml += '<p><strong>Documentation:</strong> <a href="<?php echo admin_url('admin.php?page=memberpress-ai-assistant&view-doc=error-recovery-system.md'); ?>" target="_blank">Error Recovery System Documentation</a></p>';
+                resultHtml += '</div>';
+                
+                // Set the HTML content
+                $outputContainer.html(resultHtml);
+                
+                // Add event listeners for toggle buttons
+                $('.toggle-details').on('click', function() {
+                    var targetId = $(this).data('target');
+                    $('#' + targetId).toggle();
+                    $(this).text($(this).text() === 'Show Details' ? 'Hide Details' : 'Show Details');
+                });
+            })
+            .catch(function(error) {
+                console.error('MPAI: Error Recovery test error:', error);
+                
+                // Show error message with debugging info
+                var errorHtml = '<div style="color: red; margin-bottom: 15px;">';
+                errorHtml += '<h4>Error Running Tests</h4>';
+                errorHtml += '<p>' + error.message + '</p>';
+                errorHtml += '</div>';
+                
+                errorHtml += '<div style="margin-bottom: 15px;">';
+                errorHtml += '<h4>Troubleshooting Information</h4>';
+                errorHtml += '<p>Please check the following:</p>';
+                errorHtml += '<ol>';
+                errorHtml += '<li>The Error Recovery System is properly installed</li>';
+                errorHtml += '<li>The test file exists at: <code><?php echo MPAI_PLUGIN_DIR; ?>test/test-error-recovery.php</code></li>';
+                errorHtml += '<li>The AJAX handler for "mpai_test_error_recovery" is registered in the plugin</li>';
+                errorHtml += '<li>Check your browser console (F12) for more detailed error information</li>';
+                errorHtml += '</ol>';
+                errorHtml += '</div>';
+                
+                errorHtml += '<div style="margin-bottom: 15px;">';
+                errorHtml += '<h4>Plugin Information</h4>';
+                errorHtml += '<p>Plugin Version: <?php echo MPAI_VERSION; ?></p>';
+                errorHtml += '<p>WordPress Version: <?php echo get_bloginfo('version'); ?></p>';
+                errorHtml += '<p>PHP Version: <?php echo phpversion(); ?></p>';
+                errorHtml += '</div>';
+                
+                errorHtml += '<div>';
+                errorHtml += '<p><strong>Try alternative method:</strong> <a href="<?php echo esc_url(admin_url('admin.php')); ?>?page=memberpress-ai-assistant&view=test-error-recovery" class="button">Run Tests Directly</a></p>';
+                errorHtml += '</div>';
+                
+                $outputContainer.html(errorHtml);
+            });
+        });
+    });
+    </script>
+    
+    <!-- Super direct console test that doesn't rely on any external code -->
+    <div style="margin: 15px 0; padding: 15px; background: #f8f8f8; border: 1px solid #ddd;">
+        <h4 style="margin-top: 0;">Direct Console Test (No Dependencies)</h4>
+        <p>Click the button below to test if console logging works in your browser.</p>
+        <button type="button" onclick="
+            console.log('💥 ULTRA DIRECT TEST: Button clicked at ' + new Date().toISOString());
+            console.warn('💥 ULTRA DIRECT TEST: Warning message');
+            console.error('💥 ULTRA DIRECT TEST: Error message');
+            console.log('💥 ULTRA DIRECT TEST: Object test:', {test: 'value', number: 123});
+            alert('Direct console log test executed - check your browser console (F12)');
+        " class="button button-primary">Ultra Direct Console Test</button>
+        <p><small>This test uses inline JavaScript that doesn't depend on any external code.</small></p>
+    </div>
+    
+    <!-- Direct AJAX handler test for console logging -->
+    <div style="margin: 15px 0; padding: 15px; background: #f0f9ff; border: 1px solid #c0d8e8;">
+        <h4 style="margin-top: 0;">Direct AJAX Handler Console Test</h4>
+        <p>Click the button below to test the Direct AJAX Handler for console logging.</p>
+        <button type="button" id="mpai-direct-ajax-console-test" class="button button-secondary">Test via Direct AJAX Handler</button>
+        <span id="direct-ajax-test-result" style="margin-left: 10px; font-style: italic;"></span>
+        <p><small>This test uses the Direct AJAX Handler which bypasses WordPress's admin-ajax.php.</small></p>
+        
+        <script>
+            jQuery(document).ready(function($) {
+                $('#mpai-direct-ajax-console-test').on('click', function() {
+                    var $resultSpan = $('#direct-ajax-test-result');
+                    $resultSpan.text('Testing...');
+                    
+                    // Log that we're starting the test
+                    console.group('🌐 Direct AJAX Handler Console Test');
+                    console.log('Starting test at ' + new Date().toISOString());
+                    
+                    // Prepare the form data
+                    var formData = new FormData();
+                    formData.append('action', 'test_console_logging');
+                    formData.append('log_level', $('#mpai_console_log_level').val());
+                    formData.append('enable_logging', $('#mpai_enable_console_logging').is(':checked') ? '1' : '0');
+                    formData.append('log_api_calls', $('#mpai_log_api_calls').is(':checked') ? '1' : '0');
+                    formData.append('log_tool_usage', $('#mpai_log_tool_usage').is(':checked') ? '1' : '0');
+                    formData.append('log_agent_activity', $('#mpai_log_agent_activity').is(':checked') ? '1' : '0');
+                    formData.append('log_timing', $('#mpai_log_timing').is(':checked') ? '1' : '0');
+                    formData.append('save_settings', '1');
+                    
+                    // Get the direct AJAX handler URL
+                    var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . 'includes/direct-ajax-handler.php'; ?>';
+                    
+                    console.log('Sending request to: ' + directHandlerUrl);
+                    console.log('Form data:', {
+                        action: 'test_console_logging',
+                        log_level: $('#mpai_console_log_level').val(),
+                        enable_logging: $('#mpai_enable_console_logging').is(':checked')
+                    });
+                    
+                    // Send the request to the direct AJAX handler
+                    fetch(directHandlerUrl, {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        console.log('Received response:', data);
+                        
+                        if (data.success) {
+                            $resultSpan.html('<span style="color: green;">✓ Test completed successfully!</span>');
+                            
+                            // Log the test results
+                            console.log('Test completed successfully');
+                            console.log('Current settings:', data.current_settings);
+                            console.log('Test result:', data.test_result);
+                            
+                            // Update the UI with the current settings
+                            $('#mpai_enable_console_logging').prop('checked', data.current_settings.enabled === '1');
+                            $('#mpai_console_log_level').val(data.current_settings.log_level);
+                            $('#mpai_log_api_calls').prop('checked', data.current_settings.categories.api_calls === '1');
+                            $('#mpai_log_tool_usage').prop('checked', data.current_settings.categories.tool_usage === '1');
+                            $('#mpai_log_agent_activity').prop('checked', data.current_settings.categories.agent_activity === '1');
+                            $('#mpai_log_timing').prop('checked', data.current_settings.categories.timing === '1');
+                            
+                            // Apply these settings to any existing logger
+                            if (window.mpaiLogger) {
+                                window.mpaiLogger.enabled = data.current_settings.enabled === '1';
+                                window.mpaiLogger.logLevel = data.current_settings.log_level;
+                                window.mpaiLogger.categories = {
+                                    api_calls: data.current_settings.categories.api_calls === '1',
+                                    tool_usage: data.current_settings.categories.tool_usage === '1',
+                                    agent_activity: data.current_settings.categories.agent_activity === '1',
+                                    timing: data.current_settings.categories.timing === '1',
+                                    ui: true // Always enable UI logging
+                                };
+                                
+                                console.log('Updated mpaiLogger with settings from server');
+                            }
+                            
+                            // Save to localStorage as well
+                            try {
+                                localStorage.setItem('mpai_logger_settings', JSON.stringify({
+                                    enabled: data.current_settings.enabled === '1',
+                                    logLevel: data.current_settings.log_level,
+                                    categories: {
+                                        api_calls: data.current_settings.categories.api_calls === '1',
+                                        tool_usage: data.current_settings.categories.tool_usage === '1',
+                                        agent_activity: data.current_settings.categories.agent_activity === '1',
+                                        timing: data.current_settings.categories.timing === '1',
+                                        ui: true
+                                    }
+                                }));
+                                console.log('Saved settings to localStorage');
+                            } catch (e) {
+                                console.error('Error saving to localStorage:', e);
+                            }
+                        } else {
+                            $resultSpan.html('<span style="color: red;">✗ Test failed: ' + data.message + '</span>');
+                            console.error('Test failed:', data.message);
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Error:', error);
+                        $resultSpan.html('<span style="color: red;">✗ Error: ' + error.message + '</span>');
+                    })
+                    .finally(function() {
+                        console.groupEnd();
+                    });
+                });
+            });
+        </script>
+    </div>
 
     <div class="mpai-diagnostic-section">
         <h4><?php _e('Console Logging', 'memberpress-ai-assistant'); ?></h4>
@@ -25,10 +345,15 @@ if (!defined('WPINC')) {
                     <label for="mpai_enable_console_logging"><?php _e('Enable Console Logging', 'memberpress-ai-assistant'); ?></label>
                 </th>
                 <td>
-                    <label>
-                        <input type="checkbox" name="mpai_enable_console_logging" id="mpai_enable_console_logging" value="1" <?php checked(get_option('mpai_enable_console_logging', false)); ?> />
-                        <?php _e('Log detailed information to the browser console', 'memberpress-ai-assistant'); ?>
-                    </label>
+                    <div class="console-logging-control">
+                        <label>
+                            <input type="checkbox" name="mpai_enable_console_logging" id="mpai_enable_console_logging" value="1" <?php checked(get_option('mpai_enable_console_logging', '0'), '1'); ?> />
+                            <?php _e('Log detailed information to the browser console', 'memberpress-ai-assistant'); ?>
+                        </label>
+                        <span id="mpai-console-logging-status" class="logging-status-indicator <?php echo get_option('mpai_enable_console_logging', '0') === '1' ? 'active' : 'inactive'; ?>">
+                            <?php echo get_option('mpai_enable_console_logging', '0') === '1' ? 'ENABLED' : 'DISABLED'; ?>
+                        </span>
+                    </div>
                     <p class="description"><?php _e('Enable this option to log detailed information about AI Assistant operations to your browser console.', 'memberpress-ai-assistant'); ?></p>
                 </td>
             </tr>
@@ -81,75 +406,81 @@ if (!defined('WPINC')) {
                     <button type="button" id="mpai-test-console-logging" class="button"><?php _e('Test Console Logging', 'memberpress-ai-assistant'); ?></button>
                     <span id="mpai-console-test-result" class="mpai-test-result" style="display: none;"></span>
                     <p class="description"><?php _e('Click to test console logging with your current settings. Check your browser\'s developer console (F12) to see the logs.', 'memberpress-ai-assistant'); ?></p>
+                    
+                    <!-- Ultra simple test button that tests the enabled state directly -->
+                    <button type="button" onclick="testEnabledState()" class="button button-secondary" style="margin-top: 10px;">Check Enabled State Only</button>
+                    <button type="button" onclick="testCacheRefresh()" class="button button-secondary" style="margin-top: 10px; margin-left: 5px;">Test Cache Refresh</button>
+                    
                     <script>
-                    jQuery(document).ready(function($) {
-                        $('#mpai-test-console-logging').on('click', function() {
-                            var $resultContainer = $('#mpai-console-test-result');
+                    /* 
+                     * NOTE: The event handler for the test console logging button
+                     * is now defined in admin.js in the initConsoleLoggingSettings() function.
+                     * This ensures better separation of concerns and modular code.
+                     */
+                    
+                    // Simple function to directly test if the logger is enabled
+                    function testEnabledState() {
+                        if (window.mpaiLogger) {
+                            console.log('%c========== ENABLED STATE TEST ==========', 'background: #eee; color: #333; padding: 5px; font-weight: bold;');
+                            console.log('→ The mpaiLogger.enabled value is: ' + window.mpaiLogger.enabled + ' (type: ' + typeof window.mpaiLogger.enabled + ')');
+                            console.log('→ The checkbox is: ' + ($('#mpai_enable_console_logging').is(':checked') ? 'CHECKED' : 'UNCHECKED'));
+                            console.log('→ Status indicator shows: ' + $('#mpai-console-logging-status').text());
+                            console.log('→ Status indicator classes: ' + $('#mpai-console-logging-status').attr('class'));
+                            console.log('→ Logging is: ' + (window.mpaiLogger.enabled ? 'ENABLED' : 'DISABLED'));
+                            console.log('→ Testing a log message (should only appear if enabled):');
                             
-                            // Show loading state
-                            $resultContainer.html('<?php _e('Testing...', 'memberpress-ai-assistant'); ?>');
-                            $resultContainer.show();
+                            // Try to log a message - this should only appear if enabled is true
+                            window.mpaiLogger.info('This is a test message from enabled state test', 'ui');
                             
-                            // Check if window.mpaiLogger exists
-                            if (typeof window.mpaiLogger === 'undefined') {
-                                $resultContainer.html('<?php _e('Error: Logger not initialized. Try reloading the page.', 'memberpress-ai-assistant'); ?>');
-                                return;
-                            }
+                            console.log('→ Settings in localStorage:', localStorage.getItem('mpai_logger_settings'));
                             
-                            // Ensure logger is enabled for testing
-                            if (!window.mpaiLogger.enabled) {
-                                window.mpaiLogger.enabled = true;
-                                console.log('MPAI: Temporarily enabling logger for test');
-                            }
+                            alert('Check your console. The enabled state is: ' + (window.mpaiLogger.enabled ? 'ENABLED' : 'DISABLED'));
+                        } else {
+                            console.log('mpaiLogger not found!');
+                            alert('mpaiLogger not found! Check the console for more details.');
+                        }
+                    }
+                    
+                    // Function to test the cache refresh mechanism
+                    function testCacheRefresh() {
+                        if (!window.mpaiLogger) {
+                            console.log('mpaiLogger not found!');
+                            alert('mpaiLogger not found! Check the console for more details.');
+                            return;
+                        }
+                        
+                        console.log('%c========== CACHE REFRESH TEST ==========', 'background: #eef; color: #336; padding: 5px; font-weight: bold;');
+                        
+                        // Save current state
+                        var currentState = window.mpaiLogger.enabled;
+                        console.log('→ Current logger enabled state: ' + currentState);
+                        
+                        // Toggle the state in localStorage
+                        try {
+                            var settings = JSON.parse(localStorage.getItem('mpai_logger_settings')) || {};
+                            settings.enabled = !currentState;
+                            localStorage.setItem('mpai_logger_settings', JSON.stringify(settings));
+                            console.log('→ Changed localStorage enabled setting to: ' + !currentState);
                             
-                            // Run logger test
-                            var testResult = window.mpaiLogger.testLog();
+                            // Force re-init
+                            localStorage.removeItem('mpai_logger_last_init');
+                            console.log('→ Removed init cache timestamp');
                             
-                            // Show test results
-                            var resultHtml = '<span style="color: ' + (testResult.enabled ? 'green' : 'red') + '; font-weight: bold;">';
-                            resultHtml += testResult.enabled ? '✓ Logger enabled' : '✗ Logger disabled';
-                            resultHtml += '</span><br>';
-                            resultHtml += '<br><strong>Settings:</strong><br>';
-                            resultHtml += 'Log Level: ' + testResult.logLevel + '<br>';
+                            // Reinitialize
+                            window.mpaiLogger.initialize();
+                            console.log('→ Reinitialized logger');
                             
-                            // Show enabled categories
-                            resultHtml += 'Categories: ';
-                            var enabledCategories = [];
-                            for (var cat in testResult.categories) {
-                                if (testResult.categories[cat]) {
-                                    enabledCategories.push(cat);
-                                }
-                            }
+                            // Check if state changed
+                            console.log('→ New logger enabled state: ' + window.mpaiLogger.enabled + ' (should be ' + !currentState + ')');
+                            console.log('→ Checkbox state is now: ' + ($('#mpai_enable_console_logging').is(':checked') ? 'CHECKED' : 'UNCHECKED'));
+                            console.log('→ Status indicator now shows: ' + $('#mpai-console-logging-status').text());
                             
-                            if (enabledCategories.length > 0) {
-                                resultHtml += enabledCategories.join(', ');
-                            } else {
-                                resultHtml += 'None enabled';
-                            }
-                            
-                            resultHtml += '<br><br>';
-                            resultHtml += '<?php _e('Check your browser\'s console (F12) for test log messages.', 'memberpress-ai-assistant'); ?>';
-                            
-                            $resultContainer.html(resultHtml);
-                            
-                            // Save settings to localStorage for persistence
-                            try {
-                                localStorage.setItem('mpai_logger_settings', JSON.stringify({
-                                    enabled: $('#mpai_enable_console_logging').is(':checked'),
-                                    logLevel: $('#mpai_console_log_level').val(),
-                                    categories: {
-                                        api_calls: $('#mpai_log_api_calls').is(':checked'),
-                                        tool_usage: $('#mpai_log_tool_usage').is(':checked'), 
-                                        agent_activity: $('#mpai_log_agent_activity').is(':checked'),
-                                        timing: $('#mpai_log_timing').is(':checked')
-                                    }
-                                }));
-                                console.log('MPAI: Saved logger settings to localStorage');
-                            } catch(e) {
-                                console.error('MPAI: Could not save logger settings to localStorage:', e);
-                            }
-                        });
-                    });
+                            alert('Cache refresh test complete. Check console for results. New enabled state: ' + window.mpaiLogger.enabled);
+                        } catch (e) {
+                            console.error('Error in cache refresh test:', e);
+                            alert('Error in cache refresh test: ' + e.message);
+                        }
+                    }
                     </script>
                 </td>
             </tr>
@@ -233,6 +564,182 @@ if (!defined('WPINC')) {
         <p><?php _e('Run a comprehensive diagnostic to check all systems.', 'memberpress-ai-assistant'); ?></p>
         <button type="button" id="run-all-diagnostics" class="button button-primary" data-test-type="all"><?php _e('Run All Diagnostics', 'memberpress-ai-assistant'); ?></button>
         <div class="mpai-diagnostic-result" id="all-diagnostic-result" style="display: none;"></div>
+    </div>
+    
+    <div class="mpai-diagnostic-section">
+        <h4><?php _e('Agent System - Phase One Test', 'memberpress-ai-assistant'); ?></h4>
+        <p><?php _e('Test the Phase One enhancements to the Agent System including dynamic discovery, lazy loading, and improved communication.', 'memberpress-ai-assistant'); ?></p>
+        <div class="mpai-diagnostic-cards">
+            <div class="mpai-diagnostic-card">
+                <div class="mpai-diagnostic-header">
+                    <h4><?php _e('Agent Discovery', 'memberpress-ai-assistant'); ?></h4>
+                    <div class="mpai-status-indicator" id="agent-discovery-status-indicator">
+                        <span class="mpai-status-dot mpai-status-unknown"></span>
+                        <span class="mpai-status-text"><?php _e('Not Tested', 'memberpress-ai-assistant'); ?></span>
+                    </div>
+                </div>
+                <div class="mpai-diagnostic-actions">
+                    <button type="button" id="run-agent-discovery-test" class="button" data-test-type="agent_discovery"><?php _e('Run Test', 'memberpress-ai-assistant'); ?></button>
+                </div>
+                <div class="mpai-diagnostic-result" id="agent-discovery-result" style="display: none;"></div>
+            </div>
+            
+            <div class="mpai-diagnostic-card">
+                <div class="mpai-diagnostic-header">
+                    <h4><?php _e('Tool Lazy Loading', 'memberpress-ai-assistant'); ?></h4>
+                    <div class="mpai-status-indicator" id="lazy-loading-status-indicator">
+                        <span class="mpai-status-dot mpai-status-unknown"></span>
+                        <span class="mpai-status-text"><?php _e('Not Tested', 'memberpress-ai-assistant'); ?></span>
+                    </div>
+                </div>
+                <div class="mpai-diagnostic-actions">
+                    <button type="button" id="run-lazy-loading-test" class="button" data-test-type="lazy_loading"><?php _e('Run Test', 'memberpress-ai-assistant'); ?></button>
+                </div>
+                <div class="mpai-diagnostic-result" id="lazy-loading-result" style="display: none;"></div>
+            </div>
+            
+            <div class="mpai-diagnostic-card">
+                <div class="mpai-diagnostic-header">
+                    <h4><?php _e('Response Cache', 'memberpress-ai-assistant'); ?></h4>
+                    <div class="mpai-status-indicator" id="response-cache-status-indicator">
+                        <span class="mpai-status-dot mpai-status-unknown"></span>
+                        <span class="mpai-status-text"><?php _e('Not Tested', 'memberpress-ai-assistant'); ?></span>
+                    </div>
+                </div>
+                <div class="mpai-diagnostic-actions">
+                    <button type="button" id="run-response-cache-test" class="button" data-test-type="response_cache"><?php _e('Run Test', 'memberpress-ai-assistant'); ?></button>
+                </div>
+                <div class="mpai-diagnostic-result" id="response-cache-result" style="display: none;"></div>
+            </div>
+            
+            <div class="mpai-diagnostic-card">
+                <div class="mpai-diagnostic-header">
+                    <h4><?php _e('Agent Messaging', 'memberpress-ai-assistant'); ?></h4>
+                    <div class="mpai-status-indicator" id="agent-messaging-status-indicator">
+                        <span class="mpai-status-dot mpai-status-unknown"></span>
+                        <span class="mpai-status-text"><?php _e('Not Tested', 'memberpress-ai-assistant'); ?></span>
+                    </div>
+                </div>
+                <div class="mpai-diagnostic-actions">
+                    <button type="button" id="run-agent-messaging-test" class="button" data-test-type="agent_messaging"><?php _e('Run Test', 'memberpress-ai-assistant'); ?></button>
+                </div>
+                <div class="mpai-diagnostic-result" id="agent-messaging-result" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <div class="mpai-phase-one-actions" style="margin-top: 15px;">
+            <button type="button" id="run-all-phase-one-tests" class="button button-primary"><?php _e('Run All Phase One Tests', 'memberpress-ai-assistant'); ?></button>
+        </div>
+    </div>
+    
+    <div class="mpai-diagnostic-section">
+        <h4><?php _e('Agent System - Phase Two Test', 'memberpress-ai-assistant'); ?></h4>
+        <p><?php _e('Test the Phase Two enhancements to the Agent System including Agent Specialization Scoring.', 'memberpress-ai-assistant'); ?></p>
+        <div class="mpai-diagnostic-cards">
+            <div class="mpai-diagnostic-card">
+                <div class="mpai-diagnostic-header">
+                    <h4><?php _e('Agent Specialization Scoring', 'memberpress-ai-assistant'); ?></h4>
+                    <div class="mpai-status-indicator" id="agent-scoring-status-indicator">
+                        <span class="mpai-status-dot mpai-status-unknown"></span>
+                        <span class="mpai-status-text"><?php _e('Not Tested', 'memberpress-ai-assistant'); ?></span>
+                    </div>
+                </div>
+                <div class="mpai-diagnostic-actions">
+                    <button type="button" id="run-agent-scoring-test" class="button" data-test-type="agent_scoring"><?php _e('Run Test', 'memberpress-ai-assistant'); ?></button>
+                </div>
+                <div class="mpai-diagnostic-result" id="agent-scoring-result" style="display: none;"></div>
+            </div>
+            
+            <div class="mpai-diagnostic-card">
+                <div class="mpai-diagnostic-header">
+                    <h4><?php _e('System Information Caching', 'memberpress-ai-assistant'); ?></h4>
+                    <div class="mpai-status-indicator" id="system-cache-status-indicator">
+                        <span class="mpai-status-dot mpai-status-unknown"></span>
+                        <span class="mpai-status-text"><?php _e('Not Tested', 'memberpress-ai-assistant'); ?></span>
+                    </div>
+                </div>
+                <div class="mpai-diagnostic-actions">
+                    <button type="button" id="run-system-cache-test" class="button" data-test-type="system_cache" 
+                        onclick="(function() {
+                            console.log('MPAI: Ultra-direct onclick handler for System Cache test button');
+                            var $button = jQuery(this);
+                            var $result = jQuery('#system-cache-result');
+                            var $status = jQuery('#system-cache-status-indicator');
+                            
+                            // Show loading state
+                            $result.html('&lt;p&gt;Running test...&lt;/p&gt;').show();
+                            $status.find('.mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success mpai-status-error').addClass('mpai-status-unknown');
+                            $status.find('.mpai-status-text').text('Running...');
+                            
+                            // Make direct fetch request
+                            var formData = new FormData();
+                            formData.append('action', 'test_system_cache');
+                            
+                            var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . 'includes/direct-ajax-handler.php'; ?>';
+                            
+                            fetch(directHandlerUrl, {
+                                method: 'POST',
+                                body: formData,
+                                credentials: 'same-origin'
+                            })
+                            .then(function(response) { return response.json(); })
+                            .then(function(data) {
+                                console.log('MPAI: System Cache test ultra-direct response:', data);
+                                if (data.success) {
+                                    // Show success
+                                    $status.find('.mpai-status-dot').removeClass('mpai-status-unknown mpai-status-error').addClass('mpai-status-success');
+                                    $status.find('.mpai-status-text').text('Success');
+                                    
+                                    // Simple output for the ultra-direct approach
+                                    var output = '';
+                                    output += '&lt;div style=&quot;border: 1px solid #4CAF50; padding: 10px; background-color: #E8F5E9&quot;&gt;';
+                                    output += '&lt;h4&gt;System Information Cache Test Successful&lt;/h4&gt;';
+                                    
+                                    if (data.data && data.data.message) {
+                                        output += '&lt;p&gt;' + data.data.message + '&lt;/p&gt;';
+                                    }
+                                    
+                                    if (data.data && data.data.data && data.data.data.cache_hits) {
+                                        output += '&lt;p&gt;Cache Hits: ' + data.data.data.cache_hits + '&lt;/p&gt;';
+                                    }
+                                    
+                                    output += '&lt;/div&gt;';
+                                    $result.html(output);
+                                } else {
+                                    // Show error
+                                    $status.find('.mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success').addClass('mpai-status-error');
+                                    $status.find('.mpai-status-text').text('Error');
+                                    
+                                    var errorOutput = '';
+                                    errorOutput += '&lt;div style=&quot;border: 1px solid #F44336; padding: 10px; background-color: #FFEBEE&quot;&gt;';
+                                    errorOutput += '&lt;h4&gt;Test Failed&lt;/h4&gt;';
+                                    errorOutput += '&lt;p&gt;' + (data.message || 'Unknown error') + '&lt;/p&gt;';
+                                    errorOutput += '&lt;/div&gt;';
+                                    
+                                    $result.html(errorOutput);
+                                }
+                            })
+                            .catch(function(error) {
+                                console.error('MPAI: Ultra-direct error:', error);
+                                $status.find('.mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success').addClass('mpai-status-error');
+                                $status.find('.mpai-status-text').text('Error');
+                                
+                                var errorOutput = '';
+                                errorOutput += '&lt;div style=&quot;border: 1px solid #F44336; padding: 10px; background-color: #FFEBEE&quot;&gt;';
+                                errorOutput += '&lt;h4&gt;Test Error&lt;/h4&gt;';
+                                errorOutput += '&lt;p&gt;Error: ' + error.message + '&lt;/p&gt;';
+                                errorOutput += '&lt;/div&gt;';
+                                
+                                $result.html(errorOutput);
+                            });
+                            
+                            // Prevent double-handling
+                            return false;
+                        }).call(this);"><?php _e('Run Test', 'memberpress-ai-assistant'); ?></button>
+                </div>
+                <div class="mpai-diagnostic-result" id="system-cache-result" style="display: none;"></div>
+            </div>
+        </div>
     </div>
     
     <div class="mpai-diagnostic-section">
@@ -394,6 +901,13 @@ if (!defined('WPINC')) {
     border-radius: 5px;
     padding: 15px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.mpai-test-passed {
+    background: #f0fff0;
+    border-color: #4CAF50;
+    box-shadow: 0 1px 3px rgba(76,175,80,0.3);
 }
 
 .mpai-diagnostic-header {
@@ -449,6 +963,21 @@ if (!defined('WPINC')) {
     border-radius: 3px;
     max-height: 300px;
     overflow-y: auto;
+    display: none; /* Hide initially */
+}
+
+.mpai-diagnostic-card.mpai-test-passed .mpai-diagnostic-result {
+    background: #f0fff0;
+    border-color: #4CAF50;
+}
+
+/* Style for the toggle button */
+.mpai-toggle-details {
+    margin-left: 10px !important;
+    font-size: 11px !important;
+    padding: 0 8px !important;
+    height: 24px !important;
+    line-height: 22px !important;
 }
 
 .mpai-diagnostic-result pre {
@@ -726,6 +1255,34 @@ if (!defined('WPINC')) {
 .mpai-details-table th {
     background: #f0f0f0;
     font-weight: 600;
+}
+
+/* Console Logging Controls */
+.console-logging-control {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logging-status-indicator {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.logging-status-indicator.active {
+    background-color: #d6f0d6;
+    color: #0a6b0a;
+    border: 1px solid #a3d9a3;
+}
+
+.logging-status-indicator.inactive {
+    background-color: #f2dede;
+    color: #a94442;
+    border: 1px solid #ebccd1;
 }
 
 /* Toggle Switch Styles */
@@ -1126,6 +1683,461 @@ jQuery(document).ready(function($) {
         $('#memberpress-status-indicator .mpai-status-text').text('Running...');
     });
     
+    // General phase test function
+    function runPhaseTest(testType, resultContainer, statusIndicator, phaseLabel = 'Phase One') {
+        console.log(`MPAI: Running ${phaseLabel} test:`, testType);
+        
+        // Show loading state
+        $(resultContainer).html('<p>Running test...</p>');
+        $(resultContainer).show();
+        
+        // Update status indicator
+        if (statusIndicator) {
+            $(statusIndicator + ' .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success mpai-status-error')
+                .addClass('mpai-status-unknown');
+            $(statusIndicator + ' .mpai-status-text').text('Running...');
+        }
+        
+        // Make API request to run diagnostic
+        var formData = new FormData();
+        formData.append('action', testType);
+        
+        // Use direct AJAX handler
+        var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . 'includes/direct-ajax-handler.php'; ?>';
+        
+        console.log(`MPAI: Running ${phaseLabel} test via direct handler:`, testType);
+        fetch(directHandlerUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(function(response) {
+            console.log('MPAI: Phase One test response:', response);
+            
+            if (response.success) {
+                // Format and display the result
+                var result = response.data;
+                var resultHtml = formatPhaseOneResult(result, testType);
+                
+                $(resultContainer).html(resultHtml);
+                
+                // If this is the "all tests" run, update the indicators for all cards
+                if (testType === 'test_all_phase_one' && result.results) {
+                    // Update Agent Discovery card
+                    if (result.results.agent_discovery && result.results.agent_discovery.success) {
+                        // Update status indicators
+                        $('#agent-discovery-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-error')
+                            .addClass('mpai-status-success');
+                        $('#agent-discovery-status-indicator .mpai-status-text').text('Passed');
+                        $('#agent-discovery-status-indicator').closest('.mpai-diagnostic-card').addClass('mpai-test-passed');
+                        
+                        // Format and display individual test result if data is available
+                        if (result.results.agent_discovery.data) {
+                            var agentDiscoveryResultHtml = formatPhaseOneResult(result.results.agent_discovery.data, 'test_agent_discovery');
+                            $('#agent-discovery-result').html(agentDiscoveryResultHtml).show();
+                        }
+                    } else {
+                        $('#agent-discovery-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success')
+                            .addClass('mpai-status-error');
+                        $('#agent-discovery-status-indicator .mpai-status-text').text('Failed');
+                    }
+                    
+                    // Update Lazy Loading card
+                    if (result.results.lazy_loading && result.results.lazy_loading.success) {
+                        // Update status indicators
+                        $('#lazy-loading-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-error')
+                            .addClass('mpai-status-success');
+                        $('#lazy-loading-status-indicator .mpai-status-text').text('Passed');
+                        $('#lazy-loading-status-indicator').closest('.mpai-diagnostic-card').addClass('mpai-test-passed');
+                        
+                        // Format and display individual test result if data is available
+                        if (result.results.lazy_loading.data) {
+                            var lazyLoadingResultHtml = formatPhaseOneResult(result.results.lazy_loading.data, 'test_lazy_loading');
+                            $('#lazy-loading-result').html(lazyLoadingResultHtml).show();
+                        }
+                    } else {
+                        $('#lazy-loading-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success')
+                            .addClass('mpai-status-error');
+                        $('#lazy-loading-status-indicator .mpai-status-text').text('Failed');
+                    }
+                    
+                    // Update Response Cache card
+                    if (result.results.response_cache && result.results.response_cache.success) {
+                        $('#response-cache-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-error')
+                            .addClass('mpai-status-success');
+                        $('#response-cache-status-indicator .mpai-status-text').text('Passed');
+                        $('#response-cache-status-indicator').closest('.mpai-diagnostic-card').addClass('mpai-test-passed');
+                        
+                        // Format and display individual test result if data is available
+                        if (result.results.response_cache.data) {
+                            var responseCacheResultHtml = formatPhaseOneResult(result.results.response_cache.data, 'test_response_cache');
+                            $('#response-cache-result').html(responseCacheResultHtml).show();
+                        }
+                    } else {
+                        $('#response-cache-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success')
+                            .addClass('mpai-status-error');
+                        $('#response-cache-status-indicator .mpai-status-text').text('Failed');
+                    }
+                    
+                    // Update Agent Messaging card
+                    if (result.results.agent_messaging && result.results.agent_messaging.success) {
+                        $('#agent-messaging-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-error')
+                            .addClass('mpai-status-success');
+                        $('#agent-messaging-status-indicator .mpai-status-text').text('Passed');
+                        $('#agent-messaging-status-indicator').closest('.mpai-diagnostic-card').addClass('mpai-test-passed');
+                        
+                        // Format and display individual test result if data is available
+                        if (result.results.agent_messaging.data) {
+                            var agentMessagingResultHtml = formatPhaseOneResult(result.results.agent_messaging.data, 'test_agent_messaging');
+                            $('#agent-messaging-result').html(agentMessagingResultHtml).show();
+                        }
+                    } else {
+                        $('#agent-messaging-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success')
+                            .addClass('mpai-status-error');
+                        $('#agent-messaging-status-indicator .mpai-status-text').text('Failed');
+                    }
+                }
+                
+                // Add a toggle button to show/hide details
+                var $card = $(statusIndicator).closest('.mpai-diagnostic-card');
+                if ($card.find('.mpai-toggle-details').length === 0) {
+                    var $toggleBtn = $('<button>', {
+                        'class': 'button button-small mpai-toggle-details',
+                        'text': 'Show Results',
+                        'style': 'margin-left: 10px;',
+                        'click': function(e) {
+                            e.preventDefault();
+                            $(resultContainer).slideToggle(200);
+                            
+                            // Toggle button text
+                            var $btn = $(this);
+                            if ($btn.text() === 'Show Results') {
+                                $btn.text('Hide Results');
+                            } else {
+                                $btn.text('Show Results');
+                            }
+                        }
+                    });
+                    
+                    // Add the button after the test button
+                    $card.find('.mpai-diagnostic-actions button:first').after($toggleBtn);
+                }
+                
+                // Hide the results container initially (it will be shown via the toggle button)
+                $(resultContainer).hide();
+                
+                // Update status indicator
+                if (statusIndicator) {
+                    if (result.success) {
+                        $(statusIndicator + ' .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-error')
+                            .addClass('mpai-status-success');
+                        $(statusIndicator + ' .mpai-status-text').text('Passed');
+                        
+                        // Highlight the card to make it more visible
+                        $(statusIndicator).closest('.mpai-diagnostic-card').addClass('mpai-test-passed');
+                    } else {
+                        $(statusIndicator + ' .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success')
+                            .addClass('mpai-status-error');
+                        $(statusIndicator + ' .mpai-status-text').text('Failed');
+                    }
+                }
+            } else {
+                // Show error
+                $(resultContainer).html('<p class="error">Error: ' + response.message + '</p>');
+                
+                // Update status indicator
+                if (statusIndicator) {
+                    $(statusIndicator + ' .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success')
+                        .addClass('mpai-status-error');
+                    $(statusIndicator + ' .mpai-status-text').text('Error');
+                }
+            }
+        })
+        .catch(function(error) {
+            console.error('MPAI: Fetch error:', error);
+            
+            // Show error
+            $(resultContainer).html('<p class="error">Error: ' + error.message + '</p>');
+            
+            // Update status indicator
+            if (statusIndicator) {
+                $(statusIndicator + ' .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success')
+                    .addClass('mpai-status-error');
+                $(statusIndicator + ' .mpai-status-text').text('Error');
+            }
+        });
+    }
+    
+    // Function to format Phase One test results
+    function formatPhaseOneResult(result, testType) {
+        if (!result) {
+            return '<p class="error">No result data</p>';
+        }
+        
+        var html = '';
+        
+        switch (testType) {
+            case 'test_agent_discovery':
+                if (result.success) {
+                    html += '<div class="success"><strong>✓ Agent Discovery successful!</strong></div>';
+                    html += '<p><strong>Agents found:</strong> ' + result.agents_count + '</p>';
+                    
+                    if (result.agents && result.agents.length > 0) {
+                        html += '<table>';
+                        html += '<tr><th>ID</th><th>Name</th><th>Description</th></tr>';
+                        result.agents.forEach(function(agent) {
+                            html += '<tr><td>' + agent.id + '</td><td>' + agent.name + '</td><td>' + agent.description + '</td></tr>';
+                        });
+                        html += '</table>';
+                    }
+                } else {
+                    html += '<div class="error"><strong>✗ Agent Discovery failed!</strong></div>';
+                    html += '<p>' + (result.message || 'Unknown error') + '</p>';
+                }
+                break;
+                
+            case 'test_lazy_loading':
+                if (result.success) {
+                    html += '<div class="success"><strong>✓ Tool Lazy Loading successful!</strong></div>';
+                    html += '<p><strong>Tool Definition Registered:</strong> ' + (result.tool_definition_registered ? 'Yes' : 'No') + '</p>';
+                    html += '<p><strong>Tool Loaded On Demand:</strong> ' + (result.tool_loaded_on_demand ? 'Yes' : 'No') + '</p>';
+                    html += '<p><strong>Available Tools Count:</strong> ' + result.available_tools_count + '</p>';
+                    
+                    if (result.available_tools && result.available_tools.length > 0) {
+                        html += '<p><strong>Available Tools:</strong></p>';
+                        html += '<ul>';
+                        result.available_tools.forEach(function(tool) {
+                            html += '<li>' + tool + '</li>';
+                        });
+                        html += '</ul>';
+                    }
+                } else {
+                    html += '<div class="error"><strong>✗ Tool Lazy Loading failed!</strong></div>';
+                    html += '<p>' + (result.message || 'Unknown error') + '</p>';
+                }
+                break;
+                
+            case 'test_response_cache':
+                if (result.success) {
+                    html += '<div class="success"><strong>✓ Response Cache successful!</strong></div>';
+                    html += '<p><strong>Set Operation:</strong> ' + (result.set_success ? 'Success' : 'Failed') + '</p>';
+                    html += '<p><strong>Get Operation:</strong> ' + (result.get_success ? 'Success' : 'Failed') + '</p>';
+                    html += '<p><strong>Delete Operation:</strong> ' + (result.delete_success ? 'Success' : 'Failed') + '</p>';
+                    html += '<p><strong>Data Match:</strong> ' + (result.data_match ? 'Yes' : 'No') + '</p>';
+                    html += '<p><strong>Test Key:</strong> ' + result.test_key + '</p>';
+                } else {
+                    html += '<div class="error"><strong>✗ Response Cache failed!</strong></div>';
+                    html += '<p>' + (result.message || 'Unknown error') + '</p>';
+                }
+                break;
+                
+            case 'test_agent_messaging':
+                if (result.success) {
+                    html += '<div class="success"><strong>✓ Agent Messaging successful!</strong></div>';
+                    html += '<p><strong>Message Created:</strong> ' + (result.message_created ? 'Yes' : 'No') + '</p>';
+                    html += '<p><strong>Properties Match:</strong> ' + (result.properties_match ? 'Yes' : 'No') + '</p>';
+                    html += '<p><strong>Serialization Works:</strong> ' + (result.serialization_works ? 'Yes' : 'No') + '</p>';
+                    
+                    if (result.original_message) {
+                        html += '<p><strong>Original Message:</strong></p>';
+                        html += '<ul>';
+                        html += '<li><strong>Sender:</strong> ' + result.original_message.sender + '</li>';
+                        html += '<li><strong>Receiver:</strong> ' + result.original_message.receiver + '</li>';
+                        html += '<li><strong>Type:</strong> ' + (result.original_message.message_type || result.original_message.type || 'Unknown') + '</li>';
+                        html += '<li><strong>Content:</strong> ' + result.original_message.content + '</li>';
+                        html += '</ul>';
+                    }
+                } else {
+                    html += '<div class="error"><strong>✗ Agent Messaging failed!</strong></div>';
+                    html += '<p>' + (result.message || 'Unknown error') + '</p>';
+                }
+                break;
+                
+            case 'test_agent_scoring':
+                // Handle the agent specialization scoring test
+                if (result.formatted_html) {
+                    // If the test provides its own formatted HTML, use it
+                    html = result.formatted_html;
+                } else if (result.success) {
+                    html += '<div class="success"><strong>✓ Agent Specialization Scoring successful!</strong></div>';
+                    
+                    if (result.tests && result.tests.length > 0) {
+                        html += '<p><strong>Test Results:</strong></p>';
+                        html += '<table>';
+                        html += '<tr><th>Message</th><th>Expected Agent</th><th>Selected Agent</th><th>Pass</th></tr>';
+                        
+                        result.tests.forEach(function(test) {
+                            html += '<tr>';
+                            html += '<td>' + test.message + '</td>';
+                            html += '<td>' + test.expected_agent_type + '</td>';
+                            html += '<td>' + test.actual_agent + '</td>';
+                            html += '<td>' + (test.pass ? '✓' : '✗') + '</td>';
+                            html += '</tr>';
+                        });
+                        
+                        html += '</table>';
+                    }
+                    
+                    if (result.scores) {
+                        html += '<p><strong>Agent Scoring Performance:</strong></p>';
+                        html += '<table>';
+                        html += '<tr><th>Agent</th><th>Average Score</th><th>Max Score</th></tr>';
+                        
+                        for (var agent_id in result.scores) {
+                            var scores = result.scores[agent_id];
+                            html += '<tr>';
+                            html += '<td>' + agent_id + '</td>';
+                            html += '<td>' + (scores.avg ? scores.avg.toFixed(1) : '0.0') + '</td>';
+                            html += '<td>' + (scores.max ? scores.max.toFixed(1) : '0.0') + '</td>';
+                            html += '</tr>';
+                        }
+                        
+                        html += '</table>';
+                    }
+                } else {
+                    html += '<div class="error"><strong>✗ Agent Specialization Scoring failed!</strong></div>';
+                    html += '<p>' + (result.message || 'Unknown error') + '</p>';
+                }
+                break;
+                
+            case 'test_all_phase_one':
+                html += '<h3>Phase One Test Results</h3>';
+                var allPassed = result.overall_success;
+                
+                html += '<div class="' + (allPassed ? 'success' : 'error') + '">';
+                html += '<strong>' + (allPassed ? '✓ All tests passed!' : '✗ Some tests failed!') + '</strong>';
+                html += '</div>';
+                
+                // Agent Discovery section
+                html += '<div class="mpai-diagnostic-result-section">';
+                html += '<h4>Agent Discovery</h4>';
+                if (result.results.agent_discovery && result.results.agent_discovery.success) {
+                    if (result.results.agent_discovery.data) {
+                        html += formatPhaseOneResult(result.results.agent_discovery.data, 'test_agent_discovery');
+                    } else {
+                        html += '<div class="success"><strong>✓ Agent Discovery test passed</strong></div>';
+                    }
+                } else {
+                    html += '<div class="error"><strong>✗ Test failed to execute</strong></div>';
+                    if (result.results.agent_discovery && result.results.agent_discovery.message) {
+                        html += '<p>' + result.results.agent_discovery.message + '</p>';
+                    }
+                }
+                html += '</div>';
+                
+                // Lazy Loading section
+                html += '<div class="mpai-diagnostic-result-section">';
+                html += '<h4>Tool Lazy Loading</h4>';
+                if (result.results.lazy_loading && result.results.lazy_loading.success) {
+                    if (result.results.lazy_loading.data) {
+                        html += formatPhaseOneResult(result.results.lazy_loading.data, 'test_lazy_loading');
+                    } else {
+                        html += '<div class="success"><strong>✓ Tool Lazy Loading test passed</strong></div>';
+                    }
+                } else {
+                    html += '<div class="error"><strong>✗ Test failed to execute</strong></div>';
+                    if (result.results.lazy_loading && result.results.lazy_loading.message) {
+                        html += '<p>' + result.results.lazy_loading.message + '</p>';
+                    }
+                }
+                html += '</div>';
+                
+                // Response Cache section
+                html += '<div class="mpai-diagnostic-result-section">';
+                html += '<h4>Response Cache</h4>';
+                if (result.results.response_cache && result.results.response_cache.success) {
+                    if (result.results.response_cache.data) {
+                        html += formatPhaseOneResult(result.results.response_cache.data, 'test_response_cache');
+                    } else {
+                        html += '<div class="success"><strong>✓ Response Cache test passed</strong></div>';
+                    }
+                } else {
+                    html += '<div class="error"><strong>✗ Test failed to execute</strong></div>';
+                    if (result.results.response_cache && result.results.response_cache.message) {
+                        html += '<p>' + result.results.response_cache.message + '</p>';
+                    }
+                }
+                html += '</div>';
+                
+                // Agent Messaging section
+                html += '<div class="mpai-diagnostic-result-section">';
+                html += '<h4>Agent Messaging</h4>';
+                if (result.results.agent_messaging && result.results.agent_messaging.success) {
+                    if (result.results.agent_messaging.data) {
+                        html += formatPhaseOneResult(result.results.agent_messaging.data, 'test_agent_messaging');
+                    } else {
+                        html += '<div class="success"><strong>✓ Agent Messaging test passed</strong></div>';
+                    }
+                } else {
+                    html += '<div class="error"><strong>✗ Test failed to execute</strong></div>';
+                    if (result.results.agent_messaging && result.results.agent_messaging.message) {
+                        html += '<p>' + result.results.agent_messaging.message + '</p>';
+                    }
+                }
+                html += '</div>';
+                break;
+                
+            default:
+                html += '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+        }
+        
+        return html;
+    }
+    
+    // Bind Phase One test buttons
+    $('#run-agent-discovery-test').on('click', function() {
+        runPhaseTest('test_agent_discovery', '#agent-discovery-result', '#agent-discovery-status-indicator');
+    });
+    
+    $('#run-lazy-loading-test').on('click', function() {
+        runPhaseTest('test_lazy_loading', '#lazy-loading-result', '#lazy-loading-status-indicator');
+    });
+    
+    $('#run-response-cache-test').on('click', function() {
+        runPhaseTest('test_response_cache', '#response-cache-result', '#response-cache-status-indicator');
+    });
+    
+    $('#run-agent-messaging-test').on('click', function() {
+        runPhaseTest('test_agent_messaging', '#agent-messaging-result', '#agent-messaging-status-indicator');
+    });
+    
+    $('#run-all-phase-one-tests').on('click', function() {
+        runPhaseTest('test_all_phase_one', '#all-phase-one-result', null);
+        
+        // Also update individual status indicators
+        $('#agent-discovery-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success mpai-status-error')
+            .addClass('mpai-status-unknown');
+        $('#agent-discovery-status-indicator .mpai-status-text').text('Running...');
+        
+        $('#lazy-loading-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success mpai-status-error')
+            .addClass('mpai-status-unknown');
+        $('#lazy-loading-status-indicator .mpai-status-text').text('Running...');
+        
+        $('#response-cache-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success mpai-status-error')
+            .addClass('mpai-status-unknown');
+        $('#response-cache-status-indicator .mpai-status-text').text('Running...');
+        
+        $('#agent-messaging-status-indicator .mpai-status-dot').removeClass('mpai-status-unknown mpai-status-success mpai-status-error')
+            .addClass('mpai-status-unknown');
+        $('#agent-messaging-status-indicator .mpai-status-text').text('Running...');
+        
+        // Create a result container if it doesn't exist
+        if ($('#all-phase-one-result').length === 0) {
+            $('.mpai-phase-one-actions').after('<div class="mpai-diagnostic-result" id="all-phase-one-result" style="display: none;"></div>');
+        }
+    });
+    
+    // Bind Phase Two test buttons
+    $('#run-agent-scoring-test').on('click', function() {
+        runPhaseTest('test_agent_scoring', '#agent-scoring-result', '#agent-scoring-status-indicator', 'Phase Two');
+    });
+    
     // Plugin Logs Functionality
     let pluginLogsPage = 1;
     let pluginLogsTotalPages = 1;
@@ -1467,6 +2479,146 @@ jQuery(document).ready(function($) {
     if ($('#tab-diagnostic').is(':visible')) {
         console.log('MPAI: Initial plugin logs load (immediate - tab visible)');
         loadPluginLogs();
+    }
+    
+    // DIRECT INLINE HANDLER FOR SYSTEM CACHE TEST BUTTON
+    // This is a direct workaround for the system-cache-test.js script not working
+    console.log('MPAI INLINE: Adding direct System Cache test button handler');
+    
+    $('#run-system-cache-test').on('click', function(e) {
+        e.preventDefault();
+        console.log('MPAI INLINE: System Cache test button clicked');
+        
+        // Get the result container and status indicator
+        var $resultContainer = $('#system-cache-result');
+        var $statusIndicator = $('#system-cache-status-indicator');
+        
+        // Show loading state
+        $resultContainer.html('<p>Running test...</p>');
+        $resultContainer.show();
+        
+        // Update status indicator
+        $statusIndicator.find('.mpai-status-dot')
+            .removeClass('mpai-status-unknown mpai-status-success mpai-status-error')
+            .addClass('mpai-status-unknown');
+        $statusIndicator.find('.mpai-status-text').text('Running...');
+        
+        // Create form data for request
+        var formData = new FormData();
+        formData.append('action', 'test_system_cache');
+        
+        // Use direct AJAX handler - get URL directly from the page
+        var directHandlerUrl = '<?php echo plugin_dir_url(dirname(__FILE__)) . "includes/direct-ajax-handler.php"; ?>';
+        
+        console.log('MPAI INLINE: Running System Cache test via direct handler URL:', directHandlerUrl);
+        
+        // Make the request
+        fetch(directHandlerUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            console.log('MPAI INLINE: System Cache test response received');
+            return response.json();
+        })
+        .then(function(data) {
+            console.log('MPAI INLINE: System Cache test data:', data);
+            
+            if (data.success) {
+                // Update status indicator for success
+                $statusIndicator.find('.mpai-status-dot')
+                    .removeClass('mpai-status-unknown mpai-status-error')
+                    .addClass('mpai-status-success');
+                $statusIndicator.find('.mpai-status-text').text('Success');
+                
+                // Format and display the result
+                var formattedResult = formatSystemCacheResult(data.data);
+                $resultContainer.html(formattedResult);
+            } else {
+                // Update status indicator for failure
+                $statusIndicator.find('.mpai-status-dot')
+                    .removeClass('mpai-status-unknown mpai-status-success')
+                    .addClass('mpai-status-error');
+                $statusIndicator.find('.mpai-status-text').text('Failed');
+                
+                // Display error message
+                var errorMessage = data.message || 'Unknown error occurred';
+                var formattedError = '<div class="mpai-system-test-result mpai-test-error">';
+                formattedError += '<h4>Test Failed</h4>';
+                formattedError += '<p>' + errorMessage + '</p>';
+                formattedError += '</div>';
+                
+                $resultContainer.html(formattedError);
+            }
+        })
+        .catch(function(error) {
+            console.error('MPAI INLINE: Error in System Cache test:', error);
+            
+            // Update status indicator for error
+            $statusIndicator.find('.mpai-status-dot')
+                .removeClass('mpai-status-unknown mpai-status-success')
+                .addClass('mpai-status-error');
+            $statusIndicator.find('.mpai-status-text').text('Error');
+            
+            // Display error message
+            var formattedError = '<div class="mpai-system-test-result mpai-test-error">';
+            formattedError += '<h4>Test Error</h4>';
+            formattedError += '<p>Error executing test: ' + error.message + '</p>';
+            formattedError += '</div>';
+            
+            $resultContainer.html(formattedError);
+        });
+    });
+    
+    /**
+     * Format the system cache test results
+     * Added as inline function to handle system cache test without external JS
+     */
+    function formatSystemCacheResult(data) {
+        var output = '<div class="mpai-system-test-result mpai-test-success">';
+        output += '<h4>System Information Cache Test Results</h4>';
+        
+        if (data.success) {
+            output += '<p class="mpai-test-success-message">' + data.message + '</p>';
+            
+            // Add test details
+            output += '<h5>Test Details:</h5>';
+            output += '<table class="mpai-test-results-table">';
+            output += '<tr><th>Test</th><th>Result</th><th>Timing</th></tr>';
+            
+            data.data.tests.forEach(function(test) {
+                var resultClass = test.success ? 'mpai-test-success' : 'mpai-test-error';
+                var resultText = test.success ? 'PASSED' : 'FAILED';
+                
+                output += '<tr>';
+                output += '<td>' + test.name + '</td>';
+                output += '<td class="' + resultClass + '">' + resultText + '</td>';
+                
+                // Format timing information
+                var timing = '';
+                if (typeof test.timing === 'object') {
+                    timing = 'First Request: ' + test.timing.first_request + '<br>';
+                    timing += 'Second Request: ' + test.timing.second_request + '<br>';
+                    timing += 'Improvement: ' + test.timing.improvement;
+                } else {
+                    timing = test.timing;
+                }
+                
+                output += '<td>' + timing + '</td>';
+                output += '</tr>';
+            });
+            
+            output += '</table>';
+            
+            // Add cache hits
+            output += '<p>Cache Hits: ' + data.data.cache_hits + '</p>';
+        } else {
+            output += '<p class="mpai-test-error-message">' + data.message + '</p>';
+        }
+        
+        output += '</div>';
+        return output;
     }
 });
 </script>

@@ -40,6 +40,13 @@ class MPAI_Anthropic {
     private $max_tokens;
 
     /**
+     * Response cache instance
+     *
+     * @var MPAI_Response_Cache
+     */
+    private $cache;
+    
+    /**
      * Constructor
      */
     public function __construct() {
@@ -47,6 +54,17 @@ class MPAI_Anthropic {
         $this->model = get_option('mpai_anthropic_model', 'claude-3-opus-20240229');
         $this->temperature = (float) get_option('mpai_anthropic_temperature', 0.7);
         $this->max_tokens = (int) get_option('mpai_anthropic_max_tokens', 2048);
+        
+        // Initialize cache
+        $cache_config = [
+            'filesystem_cache' => true,
+            'db_cache' => false,
+            'cache_ttl' => 3600 // 1 hour
+        ];
+        
+        if (class_exists('MPAI_Response_Cache')) {
+            $this->cache = new MPAI_Response_Cache($cache_config);
+        }
     }
 
     /**
@@ -73,15 +91,21 @@ class MPAI_Anthropic {
         // Format messages from OpenAI format to Anthropic format if needed
         $formatted_messages = $this->format_messages_for_anthropic($messages);
 
-        $body = array_merge(
-            array(
-                'model' => $this->model,
-                'messages' => $formatted_messages,
-                'temperature' => $this->temperature,
-                'max_tokens' => $this->max_tokens,
-            ),
-            $additional_params
+        $body = array(
+            'model' => $this->model,
+            'messages' => $formatted_messages,
+            'temperature' => $this->temperature,
+            'max_tokens' => $this->max_tokens,
         );
+        
+        // Add system parameter if we have a system prompt
+        if (isset($GLOBALS['anthropic_system_prompt'])) {
+            $body['system'] = $GLOBALS['anthropic_system_prompt'];
+            unset($GLOBALS['anthropic_system_prompt']);
+        }
+        
+        // Add any additional parameters
+        $body = array_merge($body, $additional_params);
 
         // Add tools if provided
         if (!empty($tools)) {
@@ -127,21 +151,9 @@ class MPAI_Anthropic {
      */
     private function format_messages_for_anthropic($messages) {
         $formatted_messages = array();
+        $system_message = null;
         
-        foreach ($messages as $message) {
-            // Skip 'system' messages initially
-            if ($message['role'] === 'system') {
-                continue;
-            }
-            
-            $formatted_messages[] = array(
-                'role' => $message['role'],
-                'content' => $message['content']
-            );
-        }
-        
-        // If there's a system message, add it to the first user message
-        $system_message = '';
+        // First extract the system message if available
         foreach ($messages as $message) {
             if ($message['role'] === 'system') {
                 $system_message = $message['content'];
@@ -149,14 +161,23 @@ class MPAI_Anthropic {
             }
         }
         
-        // If we have a system message and at least one user message
-        if (!empty($system_message) && !empty($formatted_messages)) {
-            foreach ($formatted_messages as &$message) {
-                if ($message['role'] === 'user') {
-                    $message['system'] = $system_message;
-                    break;
-                }
+        // Now process all non-system messages
+        foreach ($messages as $message) {
+            if ($message['role'] !== 'system') {
+                $formatted_message = array(
+                    'role' => $message['role'],
+                    'content' => $message['content']
+                );
+                
+                $formatted_messages[] = $formatted_message;
             }
+        }
+        
+        // If we have a system message and formatted messages
+        if ($system_message && !empty($formatted_messages)) {
+            // Instead of adding system to each user message, we'll add it to the API request
+            // as a separate parameter rather than inside a message
+            $GLOBALS['anthropic_system_prompt'] = $system_message;
         }
         
         return $formatted_messages;
@@ -167,17 +188,37 @@ class MPAI_Anthropic {
      *
      * @param array $messages The conversation history
      * @param array $tools Available tools for function calling
+     * @param array $options Additional options
      * @return string|WP_Error The generated text or error
      */
-    public function generate_completion($messages, $tools = array()) {
+    public function generate_completion($messages, $tools = array(), $options = []) {
         // If no API key is set, return a dummy response for testing
         if (empty($this->api_key)) {
             error_log('MPAI: No Anthropic API key configured, returning dummy response');
             return "I'm sorry, but the Anthropic API key is not configured. Please add your API key in the settings page to use the Claude AI assistant.";
         }
         
-        // Let's log the messages for debugging
-        error_log('MPAI: Sending messages to Anthropic: ' . json_encode($messages));
+        // Determine if caching should be skipped for this request
+        $skip_cache = false;
+        if (isset($options['type']) && $options['type'] === 'content_creation') {
+            $skip_cache = true;
+            error_log('MPAI: Skipping cache for content creation request');
+        }
+        
+        if (!$skip_cache && isset($this->cache)) {
+            // Generate cache key
+            $cache_key = 'anthropic_' . md5(json_encode($messages) . json_encode($tools) . json_encode($options));
+            
+            // Check cache
+            $cached_response = $this->cache->get($cache_key);
+            if ($cached_response !== null) {
+                error_log('MPAI: Using cached response for request');
+                return $cached_response;
+            }
+        }
+        
+        // Only log a summary of the request, not the entire content
+        error_log('MPAI: Sending request to Anthropic API - ' . count($messages) . ' messages');
         
         try {
             $response = $this->send_request($messages, $tools);
@@ -194,15 +235,24 @@ class MPAI_Anthropic {
             
             // Extract tool calls if present
             if (!empty($response['tool_outputs'])) {
-                // Process tool calls
+                // Process tool calls - don't cache tool call responses
                 error_log('MPAI: Tool outputs found in Anthropic response');
-                return array(
+                $result = array(
                     'message' => $response['content'][0]['text'],
                     'tool_outputs' => $response['tool_outputs']
                 );
+                return $result;
+            }
+            
+            $result = $response['content'][0]['text'];
+            
+            // Cache the successful response if not skipped
+            if (!$skip_cache && isset($this->cache)) {
+                $this->cache->set($cache_key, $result);
+                error_log('MPAI: Cached response for future use');
             }
     
-            return $response['content'][0]['text'];
+            return $result;
         } catch (Exception $e) {
             error_log('MPAI: Error in generate_completion: ' . $e->getMessage());
             return new WP_Error('anthropic_error', 'Error generating completion: ' . $e->getMessage());

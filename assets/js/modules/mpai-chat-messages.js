@@ -41,7 +41,7 @@ var MPAI_Messages = (function($) {
         // Create message container
         const messageId = 'mpai-message-' + Date.now();
         const $message = $('<div>', {
-            'class': 'mpai-message mpai-message-' + role,
+            'class': 'mpai-chat-message mpai-chat-message-' + role,
             'id': messageId,
             'data-role': role,
             'data-timestamp': timestamp
@@ -49,7 +49,7 @@ var MPAI_Messages = (function($) {
         
         // Create message content container
         const $content = $('<div>', {
-            'class': 'mpai-message-content'
+            'class': 'mpai-chat-message-content'
         });
         
         // Format the message content
@@ -122,6 +122,16 @@ var MPAI_Messages = (function($) {
             return content;
         }
         
+        // Use the comprehensive formatter from MPAI_Formatters module if available
+        if (window.MPAI_Formatters && typeof window.MPAI_Formatters.formatMessage === 'function') {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.debug('Using comprehensive formatter from MPAI_Formatters', 'ui');
+            }
+            return window.MPAI_Formatters.formatMessage(content);
+        }
+        
+        // Fallback to basic formatting if the formatter module isn't available
+        
         // Convert markdown-style code blocks to HTML
         content = content.replace(/```(\w+)?\n([\s\S]*?)\n```/g, function(match, language, code) {
             language = language || '';
@@ -150,8 +160,8 @@ var MPAI_Messages = (function($) {
         
         if ($typingIndicator.length === 0) {
             const $indicator = $('<div>', {
-                'class': 'mpai-message mpai-message-assistant mpai-typing-indicator'
-            }).html('<div class="mpai-message-content">' + 
+                'class': 'mpai-chat-message mpai-chat-message-assistant mpai-typing-indicator'
+            }).html('<div class="mpai-chat-message-content">' + 
                    mpai_chat_data.strings.typing + 
                    '<span class="mpai-typing-dots"><span>.</span><span>.</span><span>.</span></span>' + 
                    '</div>');
@@ -180,13 +190,59 @@ var MPAI_Messages = (function($) {
      */
     function sendMessage(message) {
         if (!message.trim()) {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.warn('Attempted to send empty message', 'api_calls');
+            }
             return;
         }
         
-        // Log the message being sent
+        // Check if the message is requesting to write a blog post or page
+        // and enhance it with XML formatting if MPAI_BlogFormatter is available
+        let enhancedMessage = message;
+        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.enhanceUserPrompt === 'function') {
+            // Check for blog post creation requests
+            if (/write(\s+a)?\s+blog(\s+post)?|create(\s+a)?\s+blog(\s+post)?/i.test(message) && 
+                !message.includes('<wp-post>')) {
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info('Detected blog post creation request, enhancing with XML format', 'ui');
+                }
+                
+                // Use the blog formatter to enhance the prompt, but don't send it directly
+                window.MPAI_BlogFormatter.enhanceUserPrompt(message, 'blog-post');
+                return; // The enhanceUserPrompt function will send the message
+            }
+            
+            // Check for page creation requests
+            if (/write(\s+a)?\s+page|create(\s+a)?\s+page/i.test(message) && 
+                !message.includes('<wp-post>')) {
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info('Detected page creation request, enhancing with XML format', 'ui');
+                }
+                
+                // Use the blog formatter to enhance the prompt, but don't send it directly
+                window.MPAI_BlogFormatter.enhanceUserPrompt(message, 'page');
+                return; // The enhanceUserPrompt function will send the message
+            }
+        }
+        
+        // Log the message being sent with comprehensive details
         if (window.mpaiLogger) {
             window.mpaiLogger.info('Sending user message: ' + message.substring(0, 50) + (message.length > 50 ? '...' : ''), 'api_calls');
             window.mpaiLogger.startTimer('message_processing');
+            window.mpaiLogger.logApiCall('OpenAI/Anthropic', 'chat completions', {
+                message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
+                messageLength: message.length,
+                timestamp: new Date().toISOString(),
+                messageId: 'msg_' + Date.now()
+            });
+            window.mpaiLogger.debug('Message details', 'api_calls', {
+                wordCount: message.split(/\s+/).length,
+                containsCode: message.includes('```'),
+                containsQuestion: message.includes('?'),
+                containsURL: /https?:\/\/[^\s]+/.test(message)
+            });
         }
         
         // Add the user message to the chat
@@ -261,19 +317,53 @@ var MPAI_Messages = (function($) {
      * @param {string} response - The response from the AI
      */
     function processResponse(response) {
+        // Start processing timing
+        if (window.mpaiLogger) {
+            window.mpaiLogger.startTimer('process_response');
+            window.mpaiLogger.debug('Processing AI response', 'api_calls', {
+                responseLength: response ? response.length : 0,
+                responseType: typeof response
+            });
+        }
+        
         // Check if the response contains tool calls
         if (window.MPAI_Tools && typeof window.MPAI_Tools.processToolCalls === 'function') {
+            if (window.mpaiLogger) {
+                window.mpaiLogger.debug('Checking for tool calls in response', 'tool_usage');
+            }
+            
             const hasToolCalls = window.MPAI_Tools.processToolCalls(response);
             pendingToolCalls = hasToolCalls;
             
             // If there are tool calls, don't add the response message yet
             if (hasToolCalls) {
+                if (window.mpaiLogger) {
+                    const elapsed = window.mpaiLogger.endTimer('process_response');
+                    window.mpaiLogger.info('Response contains tool calls - deferring message display', 'tool_usage', {
+                        processingTimeMs: elapsed
+                    });
+                }
                 return;
             }
         }
         
         // Add the assistant message to the chat
-        addMessage('assistant', response);
+        if (window.mpaiLogger) {
+            const elapsed = window.mpaiLogger.endTimer('process_response');
+            window.mpaiLogger.info('Adding assistant response to chat', 'ui', {
+                processingTimeMs: elapsed,
+                responseLength: response ? response.length : 0,
+                hasHtml: response && (response.includes('<') && response.includes('>')),
+                hasCodeBlocks: response && response.includes('```')
+            });
+        }
+        
+        const $message = addMessage('assistant', response);
+        
+        // Process the message with blog formatter if available
+        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function') {
+            window.MPAI_BlogFormatter.processAssistantMessage($message, response);
+        }
     }
     
     /**
@@ -295,12 +385,47 @@ var MPAI_Messages = (function($) {
      */
     function copyMessageToClipboard(messageId) {
         const $message = $('#' + messageId);
-        const content = $message.find('.mpai-message-content').text();
+        const content = $message.find('.mpai-chat-message-content').text();
         
+        if (window.mpaiLogger) {
+            window.mpaiLogger.info('Copying message content to clipboard: ' + messageId, 'ui');
+        }
+        
+        // Use the modern clipboard API if available
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(content)
+                .then(() => {
+                    // Show success confirmation
+                    const $copyBtn = $message.find('.mpai-copy-message');
+                    const $originalIcon = $copyBtn.html();
+                    
+                    $copyBtn.html('<span class="dashicons dashicons-yes"></span>');
+                    
+                    setTimeout(function() {
+                        $copyBtn.html($originalIcon);
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    fallbackCopyToClipboard(content);
+                });
+        } else {
+            // Fallback to older execCommand method
+            fallbackCopyToClipboard(content, $message);
+        }
+    }
+    
+    /**
+     * Fallback copy method using execCommand
+     * 
+     * @param {string} text - Text to copy
+     * @param {jQuery} $message - Message element (optional)
+     */
+    function fallbackCopyToClipboard(text, $message) {
         // Create a temporary textarea to copy from
         const $temp = $('<textarea>');
         $('body').append($temp);
-        $temp.val(content).select();
+        $temp.val(text).select();
         
         // Copy the text
         document.execCommand('copy');
@@ -308,15 +433,17 @@ var MPAI_Messages = (function($) {
         // Remove the temporary element
         $temp.remove();
         
-        // Show a confirmation
-        const $copyBtn = $message.find('.mpai-copy-message');
-        const $originalIcon = $copyBtn.html();
-        
-        $copyBtn.html('<span class="dashicons dashicons-yes"></span>');
-        
-        setTimeout(function() {
-            $copyBtn.html($originalIcon);
-        }, 2000);
+        // Show a confirmation if we have the message element
+        if ($message) {
+            const $copyBtn = $message.find('.mpai-copy-message');
+            const $originalIcon = $copyBtn.html();
+            
+            $copyBtn.html('<span class="dashicons dashicons-yes"></span>');
+            
+            setTimeout(function() {
+                $copyBtn.html($originalIcon);
+            }, 2000);
+        }
     }
     
     /**
@@ -327,7 +454,12 @@ var MPAI_Messages = (function($) {
     function completeToolCalls(finalResponse) {
         if (pendingToolCalls) {
             pendingToolCalls = false;
-            addMessage('assistant', finalResponse);
+            const $message = addMessage('assistant', finalResponse);
+            
+            // Process the message with blog formatter if available
+            if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function') {
+                window.MPAI_BlogFormatter.processAssistantMessage($message, finalResponse);
+            }
         }
     }
     
@@ -339,7 +471,8 @@ var MPAI_Messages = (function($) {
         showTypingIndicator: showTypingIndicator,
         hideTypingIndicator: hideTypingIndicator,
         sendMessage: sendMessage,
-        completeToolCalls: completeToolCalls
+        completeToolCalls: completeToolCalls,
+        copyMessageToClipboard: copyMessageToClipboard
     };
 })(jQuery);
 

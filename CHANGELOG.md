@@ -5,7 +5,148 @@ All notable changes to the MemberPress AI Assistant plugin will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2025-04-05
+
+### Fixed
+- WordPress API Tool parameter validation to handle missing or empty plugin parameters 🦴
+  - Added enhanced error handling with debug backtracing for troubleshooting
+  - Improved integration test for plugin activation/deactivation with better fallbacks
+  - Implemented validation for empty parameters, not just undefined ones
+  - Created comprehensive documentation in docs/SCOOBY_SNACK_WP_API_TOOL_FIX.md
+- Fixed clickable WordPress command links in chat interface 🦴
+  - Enhanced the runnable command CSS styling for better visibility
+  - Improved click handler with visual feedback and delay
+  - Added distinct styling to make commands appear as clickable buttons
+  - Made the 'run' indicator more visible with blue color
+- Fixed missing clickable suggestion links in dashboard 🦴
+  - Changed plain text suggestions to clickable links with mpai-suggestion class
+  - Added styling to make the suggestions appear as clickable links
+  - Implemented JavaScript to handle clicks on suggestions and send to chat
+  - Ensured the chat opens when clicking on a suggestion if it's not already open
+
+### Added
+- Completed Phase Three: Stability & Testing Enhancement with comprehensive improvements:
+  - Implemented comprehensive Error Recovery System for improved robustness:
+    - Standardized error types and severity levels for consistent handling
+    - Added rich error context with enhanced debug information 
+    - Implemented recovery strategies with retry and fallback capabilities
+    - Added circuit breaker pattern to prevent repeated failures
+    - Created user-friendly error message formatting for end users
+    - Component-specific error creation for APIs, tools, and agents
+    - Integrated with API Router for robust API fallback between providers
+    - Enhanced Context Manager with error recovery for tool execution
+    - Added Agent Orchestrator integration for agent-related errors
+    - Created test suite for Error Recovery System validation
+    - Added detailed documentation in error-recovery-system.md
+  - Implemented State Validation System for system state consistency:
+    - Created system invariant verification for core components
+    - Added pre/post condition framework for operation validation
+    - Implemented component state monitoring with consistency checks
+    - Added validation rules for API clients, routers, and tool registry
+    - Created assertion framework for state verification
+    - Added integration with Error Recovery System for validation failures
+    - Created comprehensive test suite with 15 validation tests
+    - Added detailed documentation in state-validation-system.md
+  - Implemented Tool Execution Integration Tests for Phase Three: ✅
+    - Created end-to-end test suite for WP-CLI Tool, WordPress API Tool, and Plugin Logs Tool
+    - Added parameterized test framework with 30+ tests across all tools
+    - Implemented comprehensive error handling and recovery testing
+    - Added integration with System Diagnostics page for admin visibility
+    - Created dedicated integration tests admin page
+    - Added detailed documentation in tool-execution-integration-tests.md
+    - Added extension hook (mpai_run_diagnostics) to System Diagnostics page
+    - Created complete test-system documentation structure
+  - Implemented Error Catalog System for standardized error management:
+    - Created comprehensive error categorization system
+    - Added detailed error codes with contextual information
+    - Implemented error catalog lookup for consistent messaging
+    - Added debug mode with enhanced error details
+    - Created fallback error handling for unknown error types
+    - Added integration with logging system for better error tracking
+    - Created detailed documentation in error-catalog-system.md
+  - Implemented Input Sanitization Improvements for enhanced security and reliability:
+    - Created centralized MPAI_Input_Validator class for consistent validation and sanitization
+    - Integrated validator with base tool class for automatic parameter validation
+    - Implemented schema-based validation compatible with OpenAI/Anthropic function calling
+    - Added comprehensive validation rules for all data types (string, number, boolean, array, object)
+    - Enhanced error reporting with detailed validation failure messages
+    - Created sanitization methods for all data types with security-focused cleaning
+    - Added default value support for optional parameters
+    - Integrated with Tool Registry for consistent parameter validation across all tools
+    - Implemented comprehensive test suite for validation and sanitization
+    - Created detailed documentation in input-sanitization-improvements.md
+  - Implemented Edge Case Test Suite for boundary condition testing:
+    - Created comprehensive test suite for extreme input values
+    - Added tests for resource limit conditions
+    - Implemented validation failure testing
+    - Created defensive programming validation tests
+    - Added detailed documentation with test cases and expected results
+    - Integrated with System Diagnostics page for admin visibility
+    - Created detailed documentation in edge-case-test-suite.md
+
+## [Unreleased]
+
+### Fixed
+- Fixed Error Recovery System test 500 error by correcting dependency loading and initialization 🦴
+  - Added explicit dependency management for Plugin Logger and Error Recovery System
+  - Provided fallback function definitions for `mpai_init_plugin_logger()` and `mpai_init_error_recovery()`
+  - Enhanced error reporting and exception handling in test scripts
+  - Created alternative testing paths including direct-access test script
+  - Added comprehensive debugging information to test results
+  - Created detailed documentation in error-recovery-system-fix.md
+- Fixed System Information Caching test failure by correcting method name discrepancies between test and implementation 🦴
+  - Changed `persist_to_filesystem()` call to use the existing `set()` method which handles filesystem persistence internally
+  - Replaced `load_from_filesystem()` with the correct `maybe_load_filesystem_cache()` method
+  - Documented remaining issues with cache expiration and invalidation tests
+  - Created comprehensive investigation document in Scooby Snacks system
+
+### Added
+- Scooby Mode investigation protocol for systematic troubleshooting: 🦴
+  - Added triggers to activate dedicated investigation mode
+  - Created comprehensive documentation with templates
+  - Implemented dedicated investigations directory in Scooby Snacks
+  - Enhanced documentation structure for investigation results
+  - Added Investigation section to Scooby Snacks index
+- Phase Two Agent System and Performance Enhancements: 🦴
+  - Agent Specialization Scoring system with weighted confidence scoring for improved request routing
+  - System Information Caching for PHP, WordPress, and plugin information with 70-80% performance improvement
+  - Enhanced diagnostic panel with Phase Two test framework
+  - Comprehensive documentation for all Phase Two features
+- XML Content System with structured documentation:
+  - Created comprehensive index for XML Content System documentation
+  - Added code examples for XML content creation
+  - Organized example XML files with clear categorization
+- Testing System Organization:
+  - Comprehensive documentation structure for all test files
+  - Categorized index of test files by feature and purpose
+  - Detailed guides for running and creating tests
+- Documentation System Enhancements:
+  - Comprehensive developer onboarding system with _0_START_HERE_.md and tool implementation map
+  - Detailed documentation of tool development workflow and integration points
+  - Documentation consolidation and navigation improvements:
+    - Added implementation status tracking with consistent indicators
+    - Created documentation map for better navigation
+    - Added agent system reference pointing to comprehensive documentation
+    - Archived superseded documentation with clear notices
+    - Organized Scooby Snacks by category with improved indexing
+
+### Changed
+- Enhanced documentation structure with new tool implementation guide
+- Improved developer experience with centralized entry point documentation
+- Reorganized agent system documentation with root-level comprehensive guide
+- Optimized WP-CLI Tool with caching integration
+- Enhanced diagnostic panel with more comprehensive testing capabilities
+
 ## [1.5.8] - 2025-04-02
+
+### Added
+- Independent operation mode allowing the plugin to work without MemberPress:
+  - Smart menu placement: top-level when MemberPress is absent, submenu when present
+  - Graceful degradation of MemberPress-specific API features with informative messages
+  - MemberPress upsell integration with strategically placed promotional elements
+  - Enhanced API class with comprehensive availability checks 
+  - Added fallback responses for all MemberPress-specific features
+  - Detailed implementation documentation in MEMBERPRESS_INDEPENDENT_OPERATION.md
 
 ### Fixed
 - Fixed "wp plugin list" command functionality with proper error handling:
@@ -18,6 +159,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced JavaScript response format parsing to handle multiple formats
   - Fixed code block detection and tabular data extraction in chat interface
   - Added extensive logging for better troubleshooting
+- Copy icon functionality in chat interface now correctly copies message content to clipboard
+- Enhanced clipboard operations with modern Clipboard API and fallback for older browsers
+- Fixed JavaScript modularization issues with chat interface functionality
+- Fixed console logging in browser console with comprehensive solution: 🦴 Scooby Snack
+  - Fixed bug where "Enable Console Logging" checkbox wasn't stopping console logs
+  - Removed interval timer that was continuously logging regardless of settings
+  - Fixed console logger initialization to properly handle settings
+  - Properly initialized logger with user settings instead of forced debug settings
+  - Implemented proper type conversion between string and boolean values for settings
+  - Added direct checkbox handler to update logger state immediately when changed
+  - Created comprehensive documentation of the solution in docs/console-logging-issues-fix.md
 
 ## [1.5.7] - 2025-04-02
 

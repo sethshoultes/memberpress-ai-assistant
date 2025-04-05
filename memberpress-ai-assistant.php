@@ -137,23 +137,42 @@ class MemberPress_AI_Assistant {
      * @var object
      */
     protected static $instance = null;
+    
+    /**
+     * Whether MemberPress is available
+     *
+     * @var bool
+     */
+    private $has_memberpress = false;
 
     /**
      * Initialize the plugin.
      */
     private function __construct() {
-        // Check if MemberPress is active
-        add_action('admin_init', array($this, 'check_memberpress'));
-        
         // Load required files
         $this->load_dependencies();
         
         // Initialize plugin components
         add_action('init', array($this, 'init_plugin_components'));
         
-        // Initialize admin section
-        add_action('admin_menu', array($this, 'add_admin_menu'));
+        // Check if MemberPress is active - now we run this at a later priority to ensure MemberPress is loaded
+        add_action('plugins_loaded', array($this, 'check_memberpress'), 15);
+        
+        // Initialize admin section - use a higher priority to ensure it runs after MemberPress registers its menu
+        add_action('admin_menu', array($this, 'add_admin_menu'), 20);
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+        
+        // Enqueue admin menu icon styles on all admin pages
+        add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_menu_styles'));
+        
+        // Fix menu highlighting for settings page
+        add_action('admin_head', array($this, 'fix_global_menu_highlighting'));
+        
+        // Process consent form submissions
+        add_action('admin_init', array($this, 'process_consent_form'));
+        
+        // Handle redirection after plugin activation
+        add_action('admin_init', array($this, 'maybe_redirect_after_activation'));
         
         // Add chat interface to admin footer
         add_action('admin_footer', array($this, 'render_chat_interface'));
@@ -165,6 +184,7 @@ class MemberPress_AI_Assistant {
         add_action('wp_ajax_mpai_process_chat', array($this, 'process_chat_ajax'));
         add_action('wp_ajax_mpai_clear_chat_history', array($this, 'clear_chat_history_ajax'));
         add_action('wp_ajax_mpai_get_chat_history', array($this, 'get_chat_history_ajax'));
+        add_action('wp_ajax_mpai_save_consent', array($this, 'save_consent_ajax'));
         
         // Plugin Logger AJAX handlers
         add_action('wp_ajax_mpai_get_plugin_logs', array($this, 'get_plugin_logs_ajax'));
@@ -174,6 +194,9 @@ class MemberPress_AI_Assistant {
         
         // Special AI assistant plugin logs handler with no nonce check
         add_action('wp_ajax_mpai_ai_plugin_logs', array($this, 'get_ai_plugin_logs_ajax'));
+        
+        // Error Recovery System test handler
+        add_action('wp_ajax_mpai_test_error_recovery', array($this, 'test_error_recovery_ajax'));
         
         // Register activation and deactivation hooks
         register_activation_hook(__FILE__, array($this, 'activate'));
@@ -194,29 +217,130 @@ class MemberPress_AI_Assistant {
     }
 
     /**
-     * Check if MemberPress is active, if not, display notice
+     * Check if MemberPress is active, store status and display upsell notice if needed
      */
     public function check_memberpress() {
-        if (!class_exists('MeprAppCtrl')) {
-            add_action('admin_notices', array($this, 'memberpress_missing_notice'));
+        // Start with the assumption that MemberPress is not active
+        $has_memberpress = false;
+        
+        // Check for MemberPress class definitions
+        $classes_to_check = [
+            'MeprAppCtrl',
+            'MeprOptions',
+            'MeprUser',
+            'MeprProduct',
+            'MeprTransaction',
+            'MeprSubscription'
+        ];
+        
+        foreach ($classes_to_check as $class) {
+            if (class_exists($class)) {
+                $has_memberpress = true;
+                break;
+            }
+        }
+        
+        // Check for MemberPress constants
+        $constants_to_check = [
+            'MEPR_VERSION',
+            'MEPR_PLUGIN_NAME',
+            'MEPR_PATH',
+            'MEPR_URL'
+        ];
+        
+        foreach ($constants_to_check as $constant) {
+            if (defined($constant)) {
+                $has_memberpress = true;
+                break;
+            }
+        }
+        
+        // Check if the MemberPress plugin is active (the most reliable method)
+        if (function_exists('is_plugin_active') && is_plugin_active('memberpress/memberpress.php')) {
+            $has_memberpress = true;
+        }
+        
+        // Check if MemberPress API exists
+        if (class_exists('MeprApi') || class_exists('MeprRestApi')) {
+            $has_memberpress = true;
+        }
+        
+        // Also check if the 'memberpress' admin menu exists as a last resort
+        global $menu;
+        if (is_array($menu)) {
+            foreach ($menu as $item) {
+                if (isset($item[2]) && $item[2] === 'memberpress') {
+                    $has_memberpress = true;
+                    break;
+                }
+            }
+        }
+        
+        // Special case for settings page - Always force MemberPress detection on settings page
+        // This ensures the MemberPress menu is highlighted and visible
+        global $pagenow;
+        if (($pagenow === 'admin.php' && isset($_GET['page']) && $_GET['page'] === 'memberpress-ai-assistant-settings') ||
+            (isset($plugin_page) && $plugin_page === 'memberpress-ai-assistant-settings')) {
+            $has_memberpress = true;
+            error_log('MPAI DEBUG: Force-enabling MemberPress detection on settings page for menu highlight');
+        }
+        
+        // Store the result
+        $this->has_memberpress = $has_memberpress;
+        
+        // Display upsell notice if MemberPress is not active
+        if (!$this->has_memberpress) {
+            add_action('admin_notices', array($this, 'memberpress_upsell_notice'));
         }
     }
 
     /**
-     * Display MemberPress missing notice
+     * Display MemberPress upsell notice
      */
-    public function memberpress_missing_notice() {
-        ?>
-        <div class="error">
-            <p><?php _e('MemberPress AI Assistant requires MemberPress to be installed and activated.', 'memberpress-ai-assistant'); ?></p>
-        </div>
-        <?php
+    public function memberpress_upsell_notice() {
+        if (isset($_GET['page']) && (strpos($_GET['page'], 'memberpress-ai-assistant') === 0)) {
+            ?>
+            <div class="notice notice-info is-dismissible mpai-upsell-notice">
+                <h3><?php _e('Enhance Your AI Assistant with MemberPress', 'memberpress-ai-assistant'); ?></h3>
+                <p><?php _e('You\'re currently using the standalone version of MemberPress AI Assistant. Upgrade to the full MemberPress platform to unlock advanced membership management features including:', 'memberpress-ai-assistant'); ?></p>
+                <ul class="mpai-upsell-features">
+                    <li><?php _e('Create and sell membership levels', 'memberpress-ai-assistant'); ?></li>
+                    <li><?php _e('Protect content with flexible rules', 'memberpress-ai-assistant'); ?></li>
+                    <li><?php _e('Process payments and subscriptions', 'memberpress-ai-assistant'); ?></li>
+                    <li><?php _e('Access detailed reporting', 'memberpress-ai-assistant'); ?></li>
+                    <li><?php _e('Unlock all AI Assistant features', 'memberpress-ai-assistant'); ?></li>
+                </ul>
+                <p><a href="https://memberpress.com/plans/?utm_source=ai_assistant&utm_medium=plugin&utm_campaign=upsell" class="button button-primary" target="_blank"><?php _e('Learn More About MemberPress', 'memberpress-ai-assistant'); ?></a></p>
+            </div>
+            <style>
+                .mpai-upsell-notice {
+                    border-left-color: #2271b1;
+                    padding: 10px 15px;
+                }
+                .mpai-upsell-notice h3 {
+                    margin-top: 0.5em;
+                    margin-bottom: 0.5em;
+                }
+                .mpai-upsell-features {
+                    list-style-type: disc;
+                    padding-left: 20px;
+                    margin-bottom: 15px;
+                }
+            </style>
+            <?php
+        }
     }
 
     /**
      * Load required dependencies
      */
     private function load_dependencies() {
+        // Load Error Recovery System first for exception handling
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-error-recovery.php';
+        
+        // Load State Validation System for state consistency
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-state-validator.php';
+        
         // API Integration Classes
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-openai.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-anthropic.php';
@@ -227,6 +351,7 @@ class MemberPress_AI_Assistant {
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-chat.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-context-manager.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-xml-content-parser.php';
         
         // Admin and Settings
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-admin.php';
@@ -238,10 +363,24 @@ class MemberPress_AI_Assistant {
         // Agent System
         $this->load_agent_system();
         
-        // CLI Commands
-        if (defined('WP_CLI') && WP_CLI) {
-            require_once MPAI_PLUGIN_DIR . 'includes/cli/class-mpai-cli-commands.php';
+        // Integration Tests
+        if (is_admin() && file_exists(MPAI_PLUGIN_DIR . 'test/integration/register-integration-tests.php')) {
+            require_once MPAI_PLUGIN_DIR . 'test/integration/register-integration-tests.php';
         }
+        
+        // Load the new diagnostics system
+        if (is_admin() && file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics.php')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics.php';
+            
+            // Load test files
+            if (file_exists(MPAI_PLUGIN_DIR . 'includes/tests/load-tests.php')) {
+                require_once MPAI_PLUGIN_DIR . 'includes/tests/load-tests.php';
+            }
+        }
+        
+        // CLI Commands - always load to ensure early initialization
+        // The CLI commands file itself handles WP-CLI availability checks
+        require_once MPAI_PLUGIN_DIR . 'includes/cli/class-mpai-cli-commands.php';
     }
     
     /**
@@ -294,18 +433,58 @@ class MemberPress_AI_Assistant {
      * Add admin menu items
      */
     public function add_admin_menu() {
-        add_submenu_page(
-            'memberpress',
-            __('AI Assistant', 'memberpress-ai-assistant'),
-            __('AI Assistant', 'memberpress-ai-assistant'),
-            'manage_options',
-            'memberpress-ai-assistant',
-            array($this, 'display_admin_page')
-        );
+        // Force a memberpress check right before creating menus
+        $this->check_memberpress();
         
-        // Register the settings page and handle options registration
+        // Log the status for debugging
+        // Adding admin menu
+        
+        // Main menu page slug - pointing to dashboard page
+        $main_page_slug = 'memberpress-ai-assistant';
+        
+        // Log what we're doing
+        error_log('MPAI DEBUG: Setting up admin menu with main slug: ' . $main_page_slug);
+        
+        if ($this->has_memberpress) {
+            // If MemberPress is active, add as a submenu to MemberPress
+            // Add menu as submenu of MemberPress that goes directly to dashboard
+            
+            $main_page = add_submenu_page(
+                'memberpress', // Parent menu slug
+                __('AI Assistant', 'memberpress-ai-assistant'), // Page title
+                __('AI Assistant', 'memberpress-ai-assistant'), // Menu title
+                'manage_options', // Capability
+                $main_page_slug, // Menu slug points to dashboard
+                array($this, 'display_admin_page') // Use dashboard page as the main page
+            );
+        } else {
+            // If MemberPress is not active, add as a top-level menu
+            // Add menu as top-level menu - pointing directly to dashboard
+            
+            $main_page = add_menu_page(
+                __('MemberPress AI', 'memberpress-ai-assistant'), // Page title
+                __('MemberPress AI', 'memberpress-ai-assistant'), // Menu title
+                'manage_options', // Capability
+                $main_page_slug, // Menu slug points to dashboard
+                array($this, 'display_admin_page'), // Use dashboard page as the main page
+                MPAI_PLUGIN_URL . 'assets/images/memberpress-logo.svg', // Icon
+                30 // Position
+            );
+            
+            // Add a submenu item for the dashboard to match parent
+            add_submenu_page(
+                $main_page_slug, 
+                __('Dashboard', 'memberpress-ai-assistant'),
+                __('Dashboard', 'memberpress-ai-assistant'),
+                'manage_options',
+                $main_page_slug, 
+                array($this, 'display_admin_page')
+            );
+        }
+        
+        // Add the settings page as a submenu
         $settings_page = add_submenu_page(
-            'memberpress-ai-assistant',
+            $main_page_slug, // Add under our main dashboard page
             __('Settings', 'memberpress-ai-assistant'),
             __('Settings', 'memberpress-ai-assistant'),
             'manage_options',
@@ -313,7 +492,7 @@ class MemberPress_AI_Assistant {
             array($this, 'display_settings_page')
         );
         
-        // Make sure settings are properly registered for this page
+        // Add hook for settings page load
         add_action('load-' . $settings_page, array($this, 'settings_page_load'));
     }
     
@@ -321,6 +500,9 @@ class MemberPress_AI_Assistant {
      * Settings page load hook
      */
     public function settings_page_load() {
+        // Register a late-running action to fix menu highlighting
+        add_action('admin_head', array($this, 'fix_settings_page_menu_highlight'), 9999);
+        
         // Register settings
         register_setting('mpai_options', 'mpai_api_key');
         register_setting('mpai_options', 'mpai_model');
@@ -354,13 +536,87 @@ class MemberPress_AI_Assistant {
      * Display main admin page
      */
     public function display_admin_page() {
-        require_once MPAI_PLUGIN_DIR . 'includes/admin-page.php';
+        error_log('MPAI DEBUG: Displaying main admin dashboard page');
+        require_once MPAI_PLUGIN_DIR . 'includes/dashboard-page.php';
+    }
+    
+    /**
+     * Process consent form submission from dashboard page
+     */
+    public function process_consent_form() {
+        error_log('MPAI DEBUG: Checking for consent form submission');
+        
+        // Check if the consent form was submitted
+        if (isset($_POST['mpai_save_consent']) && isset($_POST['mpai_consent'])) {
+            // Verify nonce
+            if (!isset($_POST['mpai_consent_nonce']) || !wp_verify_nonce($_POST['mpai_consent_nonce'], 'mpai_consent_nonce')) {
+                error_log('MPAI ERROR: Consent form nonce verification failed');
+                add_settings_error('mpai_messages', 'mpai_consent_error', __('Security check failed.', 'memberpress-ai-assistant'), 'error');
+                return;
+            }
+            
+            // Save consent to options
+            update_option('mpai_consent_given', true);
+            error_log('MPAI DEBUG: User consent saved successfully');
+            
+            // Add a transient message
+            add_settings_error(
+                'mpai_messages', 
+                'mpai_consent_success', 
+                __('Thank you for agreeing to the terms. You can now use the MemberPress AI Assistant.', 'memberpress-ai-assistant'), 
+                'updated'
+            );
+            
+            // Redirect to remove POST data and show the dashboard (which is now our main page)
+            wp_redirect(admin_url('admin.php?page=memberpress-ai-assistant&consent=given'));
+            exit;
+        }
     }
 
+    /**
+     * Fix menu highlighting for settings page
+     * This function runs in admin_head to directly manipulate the global variables
+     * responsible for menu highlighting
+     */
+    public function fix_settings_page_menu_highlight() {
+        global $parent_file, $submenu_file, $plugin_page;
+        
+        // Only run on our settings page
+        if ($plugin_page !== 'memberpress-ai-assistant-settings') {
+            return;
+        }
+        
+        // Force MemberPress detection
+        $this->check_memberpress();
+        
+        if ($this->has_memberpress) {
+            // Set the global variables directly
+            $parent_file = 'memberpress';
+            $submenu_file = 'memberpress-ai-assistant-settings';
+            
+            // Add JavaScript to ensure menu is visible
+            echo "<script>
+                jQuery(document).ready(function($) {
+                    // Highlight the MemberPress menu
+                    $('#toplevel_page_memberpress').addClass('wp-has-current-submenu wp-menu-open').removeClass('wp-not-current-submenu');
+                    $('#toplevel_page_memberpress > a').addClass('wp-has-current-submenu wp-menu-open').removeClass('wp-not-current-submenu');
+                    
+                    // Find and highlight our submenu item
+                    $('#toplevel_page_memberpress .wp-submenu li a[href*=\"memberpress-ai-assistant-settings\"]').parent().addClass('current');
+                });
+            </script>";
+            
+            error_log('MPAI DEBUG: Fixed menu highlighting in admin_head with JS');
+        }
+    }
+    
     /**
      * Display settings page
      */
     public function display_settings_page() {
+        // Make sure MemberPress status is checked
+        $this->check_memberpress();
+        
         require_once MPAI_PLUGIN_DIR . 'includes/settings-page.php';
     }
 
@@ -498,11 +754,19 @@ class MemberPress_AI_Assistant {
             MPAI_VERSION,
             true
         );
+        
+        wp_enqueue_script(
+            'mpai-blog-formatter',
+            MPAI_PLUGIN_URL . 'assets/js/modules/mpai-blog-formatter.js',
+            array('jquery', 'mpai-logger-js', 'mpai-chat-messages', 'mpai-chat-tools'),
+            MPAI_VERSION,
+            true
+        );
 
-        // Load the main chat interface script
+        // Load the main chat interface loader script
         wp_enqueue_script(
             'mpai-chat-js',
-            MPAI_PLUGIN_URL . 'assets/js/chat-interface.js',
+            MPAI_PLUGIN_URL . 'assets/js/modules/chat-interface-loader.js',
             array(
                 'jquery', 
                 'mpai-logger-js', 
@@ -510,7 +774,8 @@ class MemberPress_AI_Assistant {
                 'mpai-chat-ui-utils', 
                 'mpai-chat-messages', 
                 'mpai-chat-tools', 
-                'mpai-chat-history'
+                'mpai-chat-history',
+                'mpai-blog-formatter'
             ),
             MPAI_VERSION,
             true
@@ -521,17 +786,21 @@ class MemberPress_AI_Assistant {
         $chat_nonce = wp_create_nonce('mpai_chat_nonce');
         
         // Log the nonces we're passing to JS (first few chars only for security)
-        error_log('MPAI: Generated nonces for JS - mpai_nonce: ' . substr($mpai_nonce, 0, 6) . '..., chat_nonce: ' . substr($chat_nonce, 0, 6) . '...');
+        // Generated nonces for JS
 
-        // Get logger settings
+        // Get logger settings - ensure we're passing consistent types
+        $log_enabled = get_option('mpai_enable_console_logging', '0');
+        // Console logging setting
+        
         $logger_settings = array(
-            'enabled' => get_option('mpai_enable_console_logging', '0'),
-            'log_level' => get_option('mpai_console_log_level', 'info'),
+            'enabled' => ($log_enabled === '1') ? true : false, // Convert to boolean
+            'log_level' => get_option('mpai_console_log_level', 'info'), // Default to info level
             'categories' => array(
-                'api_calls' => get_option('mpai_log_api_calls', '1'),
-                'tool_usage' => get_option('mpai_log_tool_usage', '1'),
-                'agent_activity' => get_option('mpai_log_agent_activity', '1'),
-                'timing' => get_option('mpai_log_timing', '1')
+                'api_calls' => get_option('mpai_log_api_calls', '0') === '1',
+                'tool_usage' => get_option('mpai_log_tool_usage', '0') === '1',
+                'agent_activity' => get_option('mpai_log_agent_activity', '0') === '1',
+                'timing' => get_option('mpai_log_timing', '0') === '1',
+                'ui' => true // Always enable UI logging
             )
         );
         
@@ -602,6 +871,63 @@ class MemberPress_AI_Assistant {
                 'mpai_data',
                 $admin_data
             );
+        }
+    }
+    
+    /**
+     * Enqueue admin menu styles - handles the icon size in admin menu
+     */
+    public function enqueue_admin_menu_styles() {
+        // Load the admin menu styles on all admin pages
+        wp_enqueue_style(
+            'mpai-admin-menu-css',
+            MPAI_PLUGIN_URL . 'assets/css/admin-menu.css',
+            array(),
+            MPAI_VERSION
+        );
+    }
+    
+    /**
+     * Fix menu highlighting globally by using JavaScript
+     * This runs on all admin pages but only applies fixes when needed
+     */
+    public function fix_global_menu_highlighting() {
+        // Only run in admin
+        if (!is_admin()) {
+            return;
+        }
+        
+        // Get the current page from URL
+        $current_page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : '';
+        
+        // Special handling for our settings page
+        if ($current_page === 'memberpress-ai-assistant-settings') {
+            // Force check MemberPress status
+            $this->check_memberpress();
+            
+            if ($this->has_memberpress) {
+                // Add JavaScript to fix menu highlighting
+                ?>
+                <script type="text/javascript">
+                jQuery(document).ready(function($) {
+                    // Ensure MemberPress menu is highlighted and expanded
+                    $('#toplevel_page_memberpress')
+                        .addClass('wp-has-current-submenu wp-menu-open')
+                        .removeClass('wp-not-current-submenu');
+                    
+                    $('#toplevel_page_memberpress > a')
+                        .addClass('wp-has-current-submenu wp-menu-open')
+                        .removeClass('wp-not-current-submenu');
+                    
+                    // Highlight our AI Assistant submenu item
+                    $('#toplevel_page_memberpress .wp-submenu li a[href*="memberpress-ai-assistant-settings"]')
+                        .parent().addClass('current');
+                    
+                    console.log('MemberPress AI: Fixed menu highlighting for settings page');
+                });
+                </script>
+                <?php
+            }
         }
     }
 
@@ -985,11 +1311,88 @@ class MemberPress_AI_Assistant {
             wp_send_json_error('Error updating setting: ' . $e->getMessage());
         }
     }
+    
+    /**
+     * AJAX handler for testing the Error Recovery System
+     */
+    public function test_error_recovery_ajax() {
+        // Check nonce for security
+        check_ajax_referer('mpai_nonce', 'nonce');
+        
+        // Only allow logged-in users with appropriate capabilities
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+        
+        try {
+            // Include the test script
+            $test_file = MPAI_PLUGIN_DIR . 'test/test-error-recovery.php';
+            if (file_exists($test_file)) {
+                require_once($test_file);
+                
+                if (function_exists('mpai_test_error_recovery')) {
+                    $results = mpai_test_error_recovery();
+                    wp_send_json($results);
+                } else {
+                    wp_send_json_error(array(
+                        'message' => 'Error recovery test function not found',
+                        'success' => false
+                    ));
+                }
+            } else {
+                wp_send_json_error(array(
+                    'message' => 'Error recovery test file not found at: ' . $test_file,
+                    'success' => false
+                ));
+            }
+        } catch (Exception $e) {
+            wp_send_json_error(array(
+                'message' => 'Error running tests: ' . $e->getMessage(),
+                'success' => false
+            ));
+        }
+    }
+    
+    /**
+     * AJAX handler for running edge case tests
+     */
+    public function run_edge_case_tests_ajax() {
+        // Check nonce for security
+        check_ajax_referer('mpai_nonce', 'nonce');
+        
+        // Only allow logged-in users with appropriate capabilities
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+        
+        try {
+            // Ensure the Edge Case Test Suite file is included
+            if (!function_exists('mpai_display_all_edge_case_tests')) {
+                require_once MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php';
+            }
+            
+            if (function_exists('mpai_display_all_edge_case_tests')) {
+                ob_start();
+                mpai_display_all_edge_case_tests();
+                $output = ob_get_clean();
+                
+                wp_send_json_success($output);
+            } else {
+                wp_send_json_error('Edge Case Test Suite functions not found');
+            }
+        } catch (Exception $e) {
+            wp_send_json_error('Error running edge case tests: ' . $e->getMessage());
+        }
+    }
 
     /**
      * Clear chat history via AJAX
      */
     public function clear_chat_history_ajax() {
+        global $wpdb;
+        
         // Check nonce for security
         check_ajax_referer('mpai_chat_nonce', 'nonce');
 
@@ -998,13 +1401,60 @@ class MemberPress_AI_Assistant {
             wp_send_json_error('Unauthorized access');
         }
 
-        // Clear the conversation history
-        $user_id = get_current_user_id();
-        delete_user_meta($user_id, 'mpai_conversation_history');
-
-        wp_send_json_success(array(
-            'message' => __('Chat history cleared', 'memberpress-ai-assistant'),
-        ));
+        try {
+            // 1. Clear the user meta conversation history (legacy storage)
+            $user_id = get_current_user_id();
+            delete_user_meta($user_id, 'mpai_conversation_history');
+            
+            // 2. Clear the database table messages
+            $table_conversations = $wpdb->prefix . 'mpai_conversations';
+            $table_messages = $wpdb->prefix . 'mpai_messages';
+            
+            // First check if tables exist
+            $conversations_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_conversations}'") === $table_conversations;
+            $messages_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_messages}'") === $table_messages;
+            
+            if ($conversations_exists && $messages_exists) {
+                // Get the user's conversations
+                $conversations = $wpdb->get_col(
+                    $wpdb->prepare(
+                        "SELECT conversation_id FROM $table_conversations WHERE user_id = %d",
+                        $user_id
+                    )
+                );
+                
+                // Delete all messages for these conversations
+                if (!empty($conversations)) {
+                    foreach ($conversations as $conversation_id) {
+                        $wpdb->delete(
+                            $table_messages,
+                            array('conversation_id' => $conversation_id)
+                        );
+                    }
+                    
+                    error_log('MPAI: Cleared database messages for user ' . $user_id);
+                }
+            }
+            
+            // 3. Force chat class to reset if it exists
+            if (class_exists('MPAI_Chat')) {
+                $chat = new MPAI_Chat();
+                if (method_exists($chat, 'reset_conversation')) {
+                    $chat->reset_conversation();
+                    error_log('MPAI: Reset conversation in chat class');
+                }
+            }
+            
+            error_log('MPAI: Chat history fully cleared from all storage locations');
+            
+            wp_send_json_success(array(
+                'message' => __('Chat history cleared', 'memberpress-ai-assistant'),
+            ));
+            
+        } catch (Exception $e) {
+            error_log('MPAI: Error clearing chat history: ' . $e->getMessage());
+            wp_send_json_error('Error clearing chat history: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -1031,6 +1481,47 @@ class MemberPress_AI_Assistant {
         wp_send_json_success(array(
             'history' => $history,
         ));
+    }
+
+    /**
+     * Save user consent via AJAX
+     */
+    public function save_consent_ajax() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_chat_nonce')) {
+            wp_send_json_error('Invalid nonce');
+            return;
+        }
+        
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error('User not logged in');
+            return;
+        }
+        
+        // Get current user ID
+        $user_id = get_current_user_id();
+        
+        // Check if user has already consented
+        $has_consented = get_user_meta($user_id, 'mpai_has_consented', true);
+        
+        // Only allow setting consent to true, not revoking it
+        if (!$has_consented) {
+            // Update user meta - only allow setting to true
+            update_user_meta($user_id, 'mpai_has_consented', true);
+            
+            // Return success
+            wp_send_json_success(array(
+                'message' => 'Consent saved',
+                'consent' => true
+            ));
+        } else {
+            // User has already consented, cannot change
+            wp_send_json_success(array(
+                'message' => 'User has already consented',
+                'consent' => true
+            ));
+        }
     }
 
     /**
@@ -1164,6 +1655,27 @@ class MemberPress_AI_Assistant {
         
         // Clear rewrite rules
         flush_rewrite_rules();
+        
+        // Set a transient to redirect after activation
+        set_transient('mpai_activation_redirect', true, 30);
+    }
+    
+    /**
+     * Redirect after plugin activation
+     */
+    public function maybe_redirect_after_activation() {
+        // Check if we should redirect after activation
+        if (get_transient('mpai_activation_redirect')) {
+            // Delete the transient
+            delete_transient('mpai_activation_redirect');
+            
+            // Make sure this is not an AJAX, cron, or other system request
+            if (!wp_doing_ajax() && !wp_doing_cron() && !defined('DOING_AUTOSAVE') && !defined('WP_INSTALLING')) {
+                // Redirect to the dashboard page
+                wp_safe_redirect(admin_url('admin.php?page=memberpress-ai-assistant'));
+                exit;
+            }
+        }
     }
     
     /**
@@ -1186,12 +1698,12 @@ class MemberPress_AI_Assistant {
             update_option('mpai_agent_system_version', MPAI_VERSION);
             update_option('mpai_agent_system_initialized', true);
             
-            // Create an instance of the agent orchestrator
+            // Get an instance of the agent orchestrator (singleton)
             // This will trigger agent registration and SDK initialization
-            $orchestrator = new MPAI_Agent_Orchestrator();
+            $orchestrator = MPAI_Agent_Orchestrator::get_instance();
             
             // Log success
-            error_log('MPAI: Agent system initialized successfully');
+            // Agent system initialized
             return true;
         } catch (Exception $e) {
             error_log('MPAI: Error initializing agent system: ' . $e->getMessage());
@@ -1269,6 +1781,17 @@ class MemberPress_AI_Assistant {
     public function deactivate() {
         // Clear rewrite rules
         flush_rewrite_rules();
+        
+        // Reset all user consents upon deactivation
+        global $wpdb;
+        
+        // Delete consent meta for all users
+        $wpdb->delete(
+            $wpdb->usermeta,
+            array('meta_key' => 'mpai_has_consented')
+        );
+        
+        error_log('MPAI: All user consents have been reset upon plugin deactivation');
     }
 
     /**
@@ -1278,14 +1801,32 @@ class MemberPress_AI_Assistant {
         // Initialize plugin logger
         mpai_init_plugin_logger();
         
-        // Force refresh of agent system and tools on every page load
-        // This ensures the AI system picks up new tools like our plugin logger
-        // In production, you'd want to be more selective with this
+        // Initialize error recovery system
+        if (function_exists('mpai_init_error_recovery')) {
+            mpai_init_error_recovery();
+        }
+        
+        // Initialize state validator
+        if (function_exists('mpai_init_state_validator')) {
+            mpai_init_state_validator();
+        }
+        
+        // Only initialize agent system once per page load
+        // Use singleton pattern to avoid duplicate initializations
         if (class_exists('MPAI_Agent_Orchestrator')) {
-            $orchestrator = new MPAI_Agent_Orchestrator();
+            // Get the singleton instance instead of creating a new one
+            $orchestrator = MPAI_Agent_Orchestrator::get_instance();
             if (method_exists($orchestrator, 'get_available_agents')) {
                 $orchestrator->get_available_agents();
             }
+        }
+        
+        // Load Edge Case Test Suite in admin
+        if (is_admin() && file_exists(MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php')) {
+            require_once MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php';
+            
+            // Register AJAX handler for running edge case tests
+            add_action('wp_ajax_mpai_run_edge_case_tests', array($this, 'run_edge_case_tests_ajax'));
         }
     }
     

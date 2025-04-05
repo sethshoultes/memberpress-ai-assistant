@@ -1,7 +1,8 @@
 # MemberPress AI Assistant System Map
 
-**Version:** 1.5.7  
-**Last Updated:** 2025-04-02
+**Version:** 1.5.8  
+**Last Updated:** 2025-04-03  
+**Status:** ✅ Maintained
 
 This document provides a comprehensive system map of the MemberPress AI Assistant plugin, detailing the purpose and interactions of each file in the system.
 
@@ -169,6 +170,8 @@ MemberPress AI Assistant is structured with the following main components:
 `/includes/tools/implementations/class-mpai-wpcli-tool.php`:
 - Tool for WP-CLI command execution
 - Manages command validation and execution
+- Integrates with System Information Caching for improved performance
+- Caches expensive system queries like plugin lists and PHP information
 
 ### CLI Integration
 
@@ -184,6 +187,12 @@ MemberPress AI Assistant is structured with the following main components:
 - Provides enhanced diagnostics for MemberPress
 
 ### Feature-Specific Files
+
+`/includes/class-mpai-system-cache.php`:
+- Implements system information caching
+- Provides multi-tiered caching with in-memory and filesystem storage
+- Manages automatic invalidation and TTL-based expiration
+- Significantly improves performance for repeated system queries
 
 `/includes/best-selling-membership.php`:
 - Implementation guidance for best-selling membership feature
@@ -278,6 +287,10 @@ MemberPress AI Assistant is structured with the following main components:
 - Tests command validation functionality
 - Verifies CLI command validation
 
+`/test/test-system-cache.php`:
+- Tests System Information Caching functionality
+- Verifies cache operations, TTL settings, and performance improvements
+
 `/test/test-validate-theme-block.php`:
 - Tests theme and block validation
 - Verifies validation for themes and blocks
@@ -312,6 +325,16 @@ MemberPress AI Assistant is structured with the following main components:
 5. Tool executes and returns formatted data
 6. Response is incorporated into AI's message
 
+## Root Documentation Files
+
+The project root contains two key documentation files that serve as primary entry points for developers:
+
+1. **`_0_START_HERE_.md`**: Primary entry point for new developers with pathways to different types of development tasks
+
+2. **`_1_AGENTIC_SYSTEMS_.md`**: Comprehensive guide to the agent system with detailed implementation information
+
+These files should be the starting point for new developers working with the codebase.
+
 ## Files That Could Be Removed/Consolidated
 
 1. `/includes/agents/sdk/`: The SDK integration files appear to be placeholders and not actively used in the current implementation. The three files in this directory could potentially be removed or consolidated if the SDK functionality is not currently being used.
@@ -319,6 +342,26 @@ MemberPress AI Assistant is structured with the following main components:
 2. `/test/direct-ajax-handler-fix.php`: This appears to be a temporary test file that has likely served its purpose now that the fixes are implemented.
 
 3. Several test files could be consolidated or moved to a more organized structure, particularly those that test similar functionality.
+
+## Documentation Structure
+
+The documentation is organized into several key areas:
+
+1. **Root Documentation**: Primary entry points for developers
+   - `_0_START_HERE_.md`
+   - `_1_AGENTIC_SYSTEMS_.md`
+
+2. **Feature Documentation**: Details on specific features
+   - `/docs/current/`: Documentation for implemented features
+   - `/docs/roadmap/`: Documentation for planned features
+   - `/docs/archive/`: Historical documentation that has been superseded
+
+3. **Reference Documentation**:
+   - `/docs/current/system-map.md`: This file
+   - `/docs/current/tool-implementation-map.md`: Guide for implementing tools
+   - `/docs/current/implementation-status.md`: Status of all features
+
+For a visual guide to documentation, see [documentation-map.md](documentation-map.md).
 
 ## Recommendations for Improvement
 
@@ -337,3 +380,5 @@ MemberPress AI Assistant is structured with the following main components:
 The MemberPress AI Assistant is a well-structured plugin with clear separation of concerns. The main components (API integration, chat processing, agent system, and tools) are organized logically. Some improvements could be made in standardizing naming conventions and consolidating duplicate functionality, but overall the structure supports the plugin's functionality effectively.
 
 Most files serve a clear purpose in the system and are actively used. The few files that could be removed or consolidated are primarily related to the SDK integration which appears to be a future expansion point rather than currently active functionality.
+
+For developers working with this codebase, please refer to the root documentation files (`_0_START_HERE_.md` and `_1_AGENTIC_SYSTEMS_.md`) for the most up-to-date guidance on development approaches and best practices.

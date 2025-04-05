@@ -43,4 +43,13 @@ interface MPAI_Agent {
 	 * @return array List of capabilities
 	 */
 	public function get_capabilities();
+	
+	/**
+	 * Evaluate ability to handle this request
+	 *
+	 * @param string $message User message
+	 * @param array $context Additional context
+	 * @return int Score from 0-100
+	 */
+	public function evaluate_request($message, $context = []);
 }

@@ -1,0 +1,57 @@
+<wp-post>
+  <post-title>Advanced Content Creation with XML Formatting</post-title>
+  <post-content>
+    <block type="paragraph">This example demonstrates all the supported block types in the XML Content System. Use this as a reference when creating complex content structures.</block>
+    
+    <block type="heading" level="1">Heading Level 1</block>
+    <block type="heading" level="2">Heading Level 2</block>
+    <block type="heading" level="3">Heading Level 3</block>
+    <block type="heading" level="4">Heading Level 4</block>
+    <block type="heading" level="5">Heading Level 5</block>
+    <block type="heading" level="6">Heading Level 6</block>
+    
+    <block type="paragraph">This is a standard paragraph block. You can include basic formatting like <strong>bold text</strong> and <em>italic text</em>, although some formatting may require additional processing.</block>
+    
+    <block type="list">
+      <item>Unordered list item 1</item>
+      <item>Unordered list item 2</item>
+      <item>Unordered list item 3</item>
+    </block>
+    
+    <block type="ordered-list">
+      <item>Ordered list item 1</item>
+      <item>Ordered list item 2</item>
+      <item>Ordered list item 3</item>
+    </block>
+    
+    <block type="quote">This is a blockquote. It's perfect for highlighting important quotes or statements within your content.</block>
+    
+    <block type="code">
+function exampleFunction() {
+  console.log("This is a code block example");
+  return true;
+}
+    </block>
+    
+    <block type="image">https://example.com/sample-image.jpg</block>
+    
+    <block type="paragraph">The image block can reference a URL directly as shown above, or you can include HTML with a src attribute:</block>
+    
+    <block type="image"><img src="https://example.com/another-image.jpg" alt="Example image" /></block>
+    
+    <block type="heading" level="2">Nested Structures</block>
+    <block type="paragraph">The system also handles nested structures, though these require special handling:</block>
+    
+    <block type="list">
+      <item>Parent item 1
+        <block type="list">
+          <item>Child item 1.1</item>
+          <item>Child item 1.2</item>
+        </block>
+      </item>
+      <item>Parent item 2</item>
+    </block>
+  </post-content>
+  <post-excerpt>A comprehensive example demonstrating all supported block types in the XML Content System for advanced content creation.</post-excerpt>
+  <post-status>draft</post-status>
+</wp-post>

@@ -108,6 +108,8 @@ class MPAI_Plugin_Logger {
             $wpdb->query("SELECT 1");
         } catch (Exception $e) {
             error_log('MPAI: Database connection error in plugin logger: ' . $e->getMessage());
+            // Create a recovery file to indicate tables need creation
+            $this->create_recovery_file('database_connection_error');
             return false;
         }
         
@@ -115,24 +117,44 @@ class MPAI_Plugin_Logger {
         
         try {
             $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
+            
+            // If the query returned null but no error was thrown, that means the table doesn't exist
+            if ($table_exists === null) {
+                $table_exists = false;
+            }
         } catch (Exception $e) {
             error_log('MPAI: Error checking if table exists: ' . $e->getMessage());
+            // Create a recovery file to indicate tables need checking
+            $this->create_recovery_file('table_check_error');
             // Continue with table creation attempt
+            $table_exists = false;
         }
         
         if ($table_exists && !$force) {
+            // Table exists and no force flag, so return early
             error_log('MPAI: Plugin logger table already exists');
             return true;
         }
         
         if ($table_exists && $force) {
-            error_log('MPAI: Force flag set, dropping existing plugin logger table');
+            // Force flag set, drop existing table
             try {
                 $wpdb->query("DROP TABLE IF EXISTS {$this->table_name}");
+                error_log('MPAI: Dropped existing plugin logger table');
             } catch (Exception $e) {
                 error_log('MPAI: Error dropping table: ' . $e->getMessage());
                 return false;
             }
+        }
+        
+        // Double check table status after potential drop
+        try {
+            $check_drop = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
+            if ($check_drop && $force) {
+                error_log('MPAI: Failed to drop table even though drop query executed');
+            }
+        } catch (Exception $e) {
+            error_log('MPAI: Error checking table status after drop: ' . $e->getMessage());
         }
         
         $charset_collate = $wpdb->get_charset_collate();
@@ -160,6 +182,7 @@ class MPAI_Plugin_Logger {
         try {
             // Execute the SQL with dbDelta
             $result = dbDelta($sql);
+            error_log('MPAI: dbDelta executed for plugin logger table: ' . json_encode($result));
             
             // Check if table was created successfully
             $table_created = false;
@@ -168,11 +191,15 @@ class MPAI_Plugin_Logger {
                 $table_created = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
             } catch (Exception $e) {
                 error_log('MPAI: Error checking if table was created: ' . $e->getMessage());
+                // Create a recovery file
+                $this->create_recovery_file('table_creation_check_error');
                 return false;
             }
             
             if ($table_created) {
                 error_log('MPAI: Plugin logger table created successfully');
+                // Remove any recovery files since we succeeded
+                $this->clear_recovery_file();
                 
                 // Seed with some initial data to ensure it works
                 if ($force) {
@@ -182,11 +209,137 @@ class MPAI_Plugin_Logger {
                 return true;
             } else {
                 error_log('MPAI: Error creating plugin logger table: ' . json_encode($result));
+                // Try more direct method as a fallback
+                $this->create_recovery_file('dbdelta_failed');
+                $this->try_direct_table_creation();
                 return false;
             }
         } catch (Exception $e) {
             error_log('MPAI: Exception creating plugin logger table: ' . $e->getMessage());
+            $this->create_recovery_file('table_creation_exception');
             return false;
+        }
+    }
+    
+    /**
+     * Try to create the table using direct SQL query (fallback method)
+     * 
+     * @return bool Success status
+     */
+    private function try_direct_table_creation() {
+        global $wpdb;
+        
+        try {
+            error_log('MPAI: Attempting direct table creation as fallback');
+            
+            $charset_collate = $wpdb->get_charset_collate();
+            
+            $sql = "CREATE TABLE IF NOT EXISTS {$this->table_name} (
+                id bigint(20) NOT NULL AUTO_INCREMENT,
+                plugin_slug varchar(255) NOT NULL,
+                plugin_name varchar(255) NOT NULL,
+                plugin_version varchar(100),
+                plugin_prev_version varchar(100),
+                action varchar(20) NOT NULL,
+                user_id bigint(20) NOT NULL,
+                user_login varchar(60),
+                date_time datetime NOT NULL,
+                additional_data longtext,
+                PRIMARY KEY (id)
+            ) $charset_collate";
+            
+            // Execute direct query
+            $result = $wpdb->query($sql);
+            
+            if ($result === false) {
+                error_log('MPAI: Direct table creation failed: ' . $wpdb->last_error);
+                return false;
+            }
+            
+            // Check if table exists now
+            $table_created = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
+            
+            if ($table_created) {
+                error_log('MPAI: Direct table creation successful');
+                // Add indexes separately
+                $this->add_table_indexes();
+                return true;
+            } else {
+                error_log('MPAI: Direct table creation failed - table still does not exist');
+                return false;
+            }
+        } catch (Exception $e) {
+            error_log('MPAI: Exception in direct table creation: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Add indexes to the table (used after direct creation)
+     */
+    private function add_table_indexes() {
+        global $wpdb;
+        
+        try {
+            // Add indexes one by one
+            $indexes = [
+                "ADD INDEX plugin_slug (plugin_slug)",
+                "ADD INDEX action (action)",
+                "ADD INDEX user_id (user_id)",
+                "ADD INDEX date_time (date_time)"
+            ];
+            
+            foreach ($indexes as $index) {
+                $sql = "ALTER TABLE {$this->table_name} $index";
+                $result = $wpdb->query($sql);
+                
+                if ($result === false) {
+                    error_log('MPAI: Failed to add index: ' . $index . ' - ' . $wpdb->last_error);
+                } else {
+                    error_log('MPAI: Successfully added index: ' . $index);
+                }
+            }
+        } catch (Exception $e) {
+            error_log('MPAI: Exception adding indexes: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Create a recovery file to indicate database issues
+     * 
+     * @param string $error_type Type of error encountered
+     */
+    private function create_recovery_file($error_type) {
+        $recovery_file = WP_CONTENT_DIR . '/mpai_db_recovery.txt';
+        
+        try {
+            $data = [
+                'error_type' => $error_type,
+                'table_name' => $this->table_name,
+                'timestamp' => current_time('mysql'),
+                'needs_recovery' => true
+            ];
+            
+            file_put_contents($recovery_file, json_encode($data));
+            error_log('MPAI: Created database recovery file: ' . $recovery_file);
+        } catch (Exception $e) {
+            error_log('MPAI: Failed to create recovery file: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Clear the recovery file after successful operations
+     */
+    private function clear_recovery_file() {
+        $recovery_file = WP_CONTENT_DIR . '/mpai_db_recovery.txt';
+        
+        if (file_exists($recovery_file)) {
+            try {
+                unlink($recovery_file);
+                error_log('MPAI: Removed database recovery file');
+            } catch (Exception $e) {
+                error_log('MPAI: Failed to remove recovery file: ' . $e->getMessage());
+            }
         }
     }
     

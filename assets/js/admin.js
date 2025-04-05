@@ -5,18 +5,52 @@
 (function($) {
     'use strict';
     
-    // Check if mpai_data is available
+    // Output debug information about when admin.js is being loaded
+    console.log('MPAI DEBUG: admin.js file is being executed');
+    console.log('MPAI DEBUG: jQuery version:', typeof $ !== 'undefined' ? $.fn.jquery : 'jQuery not available');
+    console.log('MPAI DEBUG: mpai_data:', typeof mpai_data !== 'undefined' ? 'Available' : 'NOT AVAILABLE');
+    
+    // If mpai_data is defined, show its keys
+    if (typeof mpai_data !== 'undefined') {
+        console.log('MPAI DEBUG: mpai_data keys:', Object.keys(mpai_data));
+        console.log('MPAI DEBUG: mpai_data.ajax_url:', mpai_data.ajax_url);
+        console.log('MPAI DEBUG: mpai_data.nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
+        console.log('MPAI DEBUG: mpai_data.plugin_url:', mpai_data.plugin_url);
+    }
+    
+    // Add a direct event listener to window load to make sure we see any errors
+    window.addEventListener('load', function() {
+        console.log('MPAI DEBUG: Window load event fired');
+        console.log('MPAI DEBUG: mpai_data on window load:', typeof mpai_data !== 'undefined' ? 'Available' : 'NOT AVAILABLE');
+    });
+    
+    // Check if mpai_data is available - with minimal logging
     if (typeof mpai_data === 'undefined') {
-        console.error('MPAI: mpai_data is not available in admin.js');
+        console.error('MPAI ERROR: mpai_data is not available in admin.js - THIS WILL CAUSE UI FAILURES');
+        
+        // Try to recover by creating a dummy mpai_data object if it doesn't exist
+        console.log('MPAI DEBUG: Attempting to create a fallback mpai_data object');
+        window.mpai_data = window.mpai_data || {
+            ajax_url: '/wp-admin/admin-ajax.php',
+            plugin_url: window.location.pathname.split('/wp-admin/')[0] + '/wp-content/plugins/memberpress-ai-assistant/',
+            nonce: '',
+            logger: {
+                enabled: true,
+                log_level: 'debug',
+                categories: {
+                    api_calls: true,
+                    tool_usage: true,
+                    agent_activity: true,
+                    timing: true,
+                    ui: true
+                }
+            }
+        };
+        console.log('MPAI DEBUG: Created fallback mpai_data:', window.mpai_data);
     } else {
-        // Use the logger if available, otherwise fall back to console
-        if (window.mpaiLogger) {
+        // Use the logger if available, but only if explicitly enabled
+        if (window.mpaiLogger && window.mpaiLogger.enabled === true) {
             window.mpaiLogger.info('Admin script loaded', 'ui');
-            window.mpaiLogger.debug('Admin script loaded with mpai_data nonce: ' + 
-                (mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined'), 'ui');
-        } else {
-            console.log('MPAI: Admin script loaded with mpai_data nonce:', 
-                mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
         }
     }
 
@@ -633,8 +667,512 @@
         // MemberPress API test handler removed - not needed
     }
 
+    /**
+     * Initialize the console logging settings functionality
+     */
+    function initConsoleLoggingSettings() {
+        // Check if console logging UI elements exist
+        const $testConsoleLoggingButton = $('#mpai-test-console-logging');
+        const $enableLoggingCheckbox = $('#mpai_enable_console_logging');
+        
+        if (!$testConsoleLoggingButton.length) {
+            console.log('MPAI: Console logging UI not found on page');
+            return;
+        }
+        
+        console.log('MPAI: Initializing console logging settings');
+        
+        // Add direct handler for the checkbox to immediately update logger
+        if ($enableLoggingCheckbox.length) {
+            $enableLoggingCheckbox.on('change', function() {
+                const isChecked = $(this).is(':checked');
+                
+                // Extra logging to debug the issue
+                console.log('MPAI DEBUG: Checkbox changed - isChecked =', isChecked);
+                console.log('MPAI DEBUG: Checkbox value =', $(this).val());
+                console.log('MPAI DEBUG: Current logger enabled state =', 
+                    window.mpaiLogger ? window.mpaiLogger.enabled : 'mpaiLogger not available');
+                
+                // Update visual indicator
+                const $statusIndicator = $('#mpai-console-logging-status');
+                if ($statusIndicator.length) {
+                    if (isChecked) {
+                        $statusIndicator.removeClass('inactive').addClass('active').text('ENABLED');
+                    } else {
+                        $statusIndicator.removeClass('active').addClass('inactive').text('DISABLED');
+                    }
+                }
+                
+                // Update mpaiLogger immediately when checkbox changes with a strict value
+                if (window.mpaiLogger) {
+                    // Set to exactly true or false for strict type checking
+                    window.mpaiLogger.enabled = isChecked === true;
+                    console.log('MPAI: Console logging ' + (isChecked ? 'ENABLED' : 'DISABLED') + ' via checkbox');
+                    console.log('MPAI: New logger.enabled value (type: ' + typeof window.mpaiLogger.enabled + '): ' + window.mpaiLogger.enabled);
+                    
+                    // Run a test log to verify
+                    if (isChecked) {
+                        console.log('MPAI: Testing enabled logger...');
+                        window.mpaiLogger.info('Console logging enabled via checkbox', 'ui');
+                    } else {
+                        console.log('MPAI: Testing disabled logger...');
+                        console.log('MPAI: This direct console.log should appear, but no mpaiLogger messages should appear');
+                        window.mpaiLogger.info('This message should NOT appear in console', 'ui');
+                    }
+                    
+                    // Save to localStorage to persist setting
+                    try {
+                        localStorage.setItem('mpai_logger_settings', JSON.stringify({
+                            enabled: isChecked === true, // Ensure boolean
+                            logLevel: window.mpaiLogger.logLevel,
+                            categories: window.mpaiLogger.categories
+                        }));
+                        console.log('MPAI: Saved enabled state to localStorage:', isChecked === true);
+                        
+                        // Also send to server for persistence across sessions
+                        saveSyncConsoleSettings();
+                    } catch(e) {
+                        console.error('MPAI: Error saving to localStorage:', e);
+                    }
+                }
+                
+                // Function to synchronize settings with server
+                function saveSyncConsoleSettings() {
+                    // Only run if we have mpai_data with the direct handler URL
+                    if (typeof mpai_data === 'undefined' || !mpai_data.plugin_url) {
+                        console.log('MPAI: Cannot sync console settings - missing mpai_data');
+                        return;
+                    }
+                    
+                    // Prepare form data for server sync
+                    var formData = new FormData();
+                    formData.append('action', 'test_console_logging');
+                    formData.append('enable_logging', isChecked ? '1' : '0');
+                    formData.append('save_settings', '1');
+                    
+                    // Use the direct AJAX handler to avoid admin-ajax issues
+                    var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
+                    
+                    // Send the sync request silently
+                    fetch(directHandlerUrl, {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            console.error('MPAI: Error syncing console settings: Network error', response.status);
+                            return;
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (data && data.success) {
+                            console.log('MPAI: Console settings synced successfully with server');
+                        } else {
+                            console.error('MPAI: Error syncing console settings:', data);
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('MPAI: Error syncing console settings:', error);
+                    });
+                }
+            });
+        }
+        
+        // Handle the Test Console Logging button
+        $testConsoleLoggingButton.on('click', function() {
+            var $resultContainer = $('#mpai-console-test-result');
+            
+            // Show loading state
+            $resultContainer.html('Testing...');
+            $resultContainer.show();
+            
+            // Log messages directly to console for testing
+            console.log('MPAI: Running console logging test');
+            
+            // Get current settings from form
+            var settings = {
+                enabled: $('#mpai_enable_console_logging').is(':checked'),
+                logLevel: $('#mpai_console_log_level').val(),
+                categories: {
+                    api_calls: $('#mpai_log_api_calls').is(':checked'),
+                    tool_usage: $('#mpai_log_tool_usage').is(':checked'),
+                    agent_activity: $('#mpai_log_agent_activity').is(':checked'),
+                    timing: $('#mpai_log_timing').is(':checked'),
+                    ui: true // Always enable UI logging for tests
+                }
+            };
+            
+            // Debug info to ensure correct values are being used
+            console.log('MPAI DEBUG: Settings from form:', {
+                enabled: settings.enabled,
+                logLevel: settings.logLevel,
+                categories: settings.categories
+            });
+            
+            // Create form data for AJAX request
+            var formData = new FormData();
+            formData.append('action', 'test_console_logging');
+            
+            // Ensure we're sending a string '0' when disabled, not boolean false
+            var enabledValue = settings.enabled ? '1' : '0';
+            console.log('MPAI DEBUG: enable_logging value being sent:', enabledValue);
+            formData.append('enable_logging', enabledValue);
+            
+            formData.append('log_level', settings.logLevel);
+            formData.append('log_api_calls', settings.categories.api_calls ? '1' : '0');
+            formData.append('log_tool_usage', settings.categories.tool_usage ? '1' : '0');
+            formData.append('log_agent_activity', settings.categories.agent_activity ? '1' : '0');
+            formData.append('log_timing', settings.categories.timing ? '1' : '0');
+            formData.append('save_settings', '1');
+            
+            // Use the direct AJAX handler
+            var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
+            
+            // Send the request
+            fetch(directHandlerUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                console.log('MPAI: Console test response:', data);
+                
+                if (data.success) {
+                    // Run direct console test
+                    runConsoleTest(settings);
+                    
+                    // Show test results with clear indication of enabled/disabled state
+                    var resultHtml = '<span style="color: green; font-weight: bold;">✓ Console Log Test Completed</span><br>';
+                    resultHtml += '<br><strong>Settings:</strong><br>';
+                    
+                    // Show enabled/disabled status very clearly 
+                    resultHtml += 'Console Logging: <span style="font-weight:bold; color:' + 
+                        (settings.enabled ? 'green' : 'red') + '">' + 
+                        (settings.enabled ? 'ENABLED' : 'DISABLED') + '</span><br>';
+                        
+                    resultHtml += 'Log Level: ' + settings.logLevel + '<br>';
+                    
+                    // Show enabled categories
+                    resultHtml += 'Categories: ';
+                    var enabledCategories = [];
+                    for (var cat in settings.categories) {
+                        if (settings.categories[cat]) {
+                            enabledCategories.push(cat);
+                        }
+                    }
+                    
+                    if (enabledCategories.length > 0) {
+                        resultHtml += enabledCategories.join(', ');
+                    } else {
+                        resultHtml += 'None enabled';
+                    }
+                    
+                    resultHtml += '<br><br>';
+                    
+                    // Special note when logging is disabled
+                    if (!settings.enabled) {
+                        resultHtml += '<div style="padding: 10px; background-color: #fff8e5; border-left: 4px solid #ffb900; margin-bottom: 10px;">' +
+                            '<strong>Note:</strong> Console logging is currently <strong>DISABLED</strong>. ' +
+                            'Only direct console messages will appear in your browser console. ' +
+                            'The logger system will not log any messages.' +
+                            '</div>';
+                    }
+                    
+                    resultHtml += 'Check your browser\'s console (F12) for test log messages.';
+                    
+                    $resultContainer.html(resultHtml);
+                    
+                    // Update any active logger with new settings
+                    if (window.mpaiLogger) {
+                        console.log('MPAI: Applying new settings to active logger');
+                        
+                        // Strict set to boolean true or false
+                        window.mpaiLogger.enabled = settings.enabled === true;
+                        window.mpaiLogger.logLevel = settings.logLevel;
+                        window.mpaiLogger.categories = settings.categories;
+                        
+                        // Log the new state to verify it changed
+                        console.log('MPAI: Updated logger enabled state to', window.mpaiLogger.enabled);
+                    }
+                    
+                    // Save settings to localStorage
+                    try {
+                        localStorage.setItem('mpai_logger_settings', JSON.stringify({
+                            enabled: settings.enabled,
+                            logLevel: settings.logLevel,
+                            categories: settings.categories
+                        }));
+                        console.log('MPAI: Saved console settings to localStorage');
+                    } catch(e) {
+                        console.error('MPAI: Error saving to localStorage:', e);
+                    }
+                } else {
+                    $resultContainer.html('<span style="color: red;">Error: ' + data.message + '</span>');
+                }
+            })
+            .catch(function(error) {
+                console.error('MPAI: Error in console test:', error);
+                $resultContainer.html('<span style="color: red;">Error: ' + error.message + '</span>');
+            });
+        });
+        
+        // Function to run console test
+        function runConsoleTest(settings) {
+            console.group('MPAI Console Test');
+            
+            console.log('Logger Raw Settings:', settings);
+            console.log('Enabled Value Type:', typeof settings.enabled);
+            console.log('Logger Status: ' + (settings.enabled ? 'Enabled' : 'Disabled'));
+            console.log('Log Level: ' + settings.logLevel);
+            console.log('Categories:', settings.categories);
+            
+            // Test direct console logging (without mpaiLogger)
+            console.log('=== Direct Console Logging Test (No Logger) ===');
+            
+            // These messages will always appear, as they don't use the logger
+            console.error('🔴 DIRECT TEST: This is an ERROR test message');
+            console.warn('🟡 DIRECT TEST: This is a WARNING test message');
+            console.info('🔵 DIRECT TEST: This is an INFO test message');
+            console.log('⚪ DIRECT TEST: This is a regular LOG test message');
+            
+            // Test logger-based console logging (these should respect settings)
+            console.log('=== Logger-Based Test (Should respect settings) ===');
+            
+            // Test API calls category
+            console.log('MPAI TEST: API Call Test', {
+                'endpoint': '/api/test',
+                'method': 'POST',
+                'status': 200
+            });
+            
+            // Test tool usage category
+            console.log('MPAI TEST: Tool Usage Test', {
+                'tool': 'test_tool',
+                'parameters': {'param1': 'value1'},
+                'result': 'success'
+            });
+            
+            // Test agent activity category
+            console.log('MPAI TEST: Agent Activity Test', {
+                'agent': 'test_agent',
+                'action': 'process',
+                'status': 'completed'
+            });
+            
+            // Test timing category
+            console.time('MPAI TEST: Timer Test');
+            setTimeout(function() {
+                console.timeEnd('MPAI TEST: Timer Test');
+            }, 50);
+            
+            console.groupEnd();
+        }
+    }
+
+    /**
+     * Initialize the consent mechanism
+     */
+    function initConsent() {
+        const $consentCheckbox = $('#mpai-consent-checkbox');
+        const $openChatButton = $('#mpai-open-chat');
+        const $welcomeButtons = $('#mpai-welcome-buttons');
+        const $termsLink = $('#mpai-terms-link');
+        
+        // Skip if no consent UI on page
+        if (!$consentCheckbox.length) {
+            console.log('MPAI: Consent UI not found on page');
+            return;
+        }
+        
+        // If already checked, make it read-only
+        if ($consentCheckbox.prop('checked')) {
+            $consentCheckbox.prop('disabled', true);
+            $welcomeButtons.removeClass('consent-required');
+            $openChatButton.prop('disabled', false);
+            
+            // Add info text about the permanent nature of the consent
+            const $consentInfo = $('<p>', {
+                class: 'mpai-consent-info',
+                html: 'You have agreed to the terms. This agreement can only be revoked by deactivating and reactivating the plugin.'
+            });
+            
+            $consentCheckbox.closest('label').after($consentInfo);
+        }
+        
+        // Handle checkbox change - only allow checking, not unchecking
+        $consentCheckbox.on('change', function() {
+            const isChecked = $(this).prop('checked');
+            
+            // Only proceed if they are checking the box
+            if (isChecked) {
+                // Update UI
+                $welcomeButtons.removeClass('consent-required');
+                $openChatButton.prop('disabled', false);
+                
+                // Make the checkbox read-only once checked
+                $consentCheckbox.prop('disabled', true);
+                
+                // Add info text
+                const $consentInfo = $('<p>', {
+                    class: 'mpai-consent-info',
+                    html: 'You have agreed to the terms. This agreement can only be revoked by deactivating and reactivating the plugin.'
+                });
+                
+                $consentCheckbox.closest('label').after($consentInfo);
+                
+                // Save consent to server and initialize chat interface
+                $.ajax({
+                    url: mpai_data.ajax_url,
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'mpai_save_consent',
+                        nonce: mpai_chat_data.nonce, // Use the chat nonce
+                        consent: true // Always save as true
+                    },
+                    success: function(response) {
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.info('Consent saved successfully', 'ui');
+                        } else {
+                            console.log('MPAI: Consent saved successfully');
+                        }
+                        
+                        // Dynamically load the chat interface if it's not already there
+                        if (!$('#mpai-chat-container').length) {
+                            // Reload the page to ensure the chat interface is properly loaded
+                            window.location.reload();
+                        } else {
+                            // If chat interface exists but is not visible, make it visible
+                            $('#mpai-chat-container').show();
+                            $('#mpai-chat-toggle').show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.error('Error saving consent: ' + error, 'ui');
+                        } else {
+                            console.error('MPAI: Error saving consent:', error);
+                        }
+                    }
+                });
+            } else {
+                // If they somehow try to uncheck, prevent it
+                $consentCheckbox.prop('checked', true);
+            }
+        });
+        
+        // Handle terms link click (show terms modal)
+        $termsLink.on('click', function(e) {
+            e.preventDefault();
+            
+            // Create and show modal if it doesn't exist
+            if (!$('#mpai-terms-modal').length) {
+                const $modal = $('<div>', {
+                    id: 'mpai-terms-modal',
+                    class: 'mpai-terms-modal'
+                }).appendTo('body');
+                
+                const $modalContent = $('<div>', {
+                    class: 'mpai-terms-modal-content'
+                }).appendTo($modal);
+                
+                $('<h2>').text('MemberPress AI Terms & Conditions').appendTo($modalContent);
+                
+                $('<div>', {
+                    class: 'mpai-terms-content'
+                }).html(`
+                    <p>By using the MemberPress AI Assistant, you agree to the following terms:</p>
+                    <ol>
+                        <li>The AI Assistant is provided "as is" without warranties of any kind.</li>
+                        <li>The AI may occasionally provide incorrect or incomplete information.</li>
+                        <li>You are responsible for verifying any information provided by the AI.</li>
+                        <li>MemberPress is not liable for any actions taken based on AI recommendations.</li>
+                        <li>Your interactions with the AI Assistant may be logged for training and improvement purposes.</li>
+                    </ol>
+                    <p>For complete terms, please refer to the MemberPress Terms of Service.</p>
+                `).appendTo($modalContent);
+                
+                $('<button>', {
+                    class: 'button button-primary',
+                    text: 'Close'
+                }).on('click', function() {
+                    $modal.hide();
+                }).appendTo($modalContent);
+            }
+            
+            $('#mpai-terms-modal').show();
+        });
+    }
+
     $(document).ready(function() {
-        console.log('MPAI: Admin script ready');
+        console.log('MPAI DEBUG: Document ready fired in admin.js');
+        
+        // First fix tab navigation immediately since that's critical
+        console.log('MPAI DEBUG: Setting up tab navigation...');
+        
+        // Setup the tab navigation directly without waiting for mpai_data
+        try {
+            // Hide all tabs first except the first one
+            $('.mpai-settings-tab').hide();
+            $('.mpai-settings-tab:first').show();
+            
+            // Make sure the first tab is active
+            $('.nav-tab-wrapper a.nav-tab:first').addClass('nav-tab-active');
+            
+            // Setup tab click handler
+            $('.nav-tab-wrapper a.nav-tab').on('click', function(e) {
+                e.preventDefault();
+                console.log('MPAI DEBUG: Tab clicked:', $(this).attr('href'));
+                
+                // Hide all tabs
+                $('.mpai-settings-tab').hide();
+                
+                // Remove active class from all tabs
+                $('.nav-tab').removeClass('nav-tab-active');
+                
+                // Show the selected tab
+                $($(this).attr('href')).show();
+                
+                // Add active class to clicked tab
+                $(this).addClass('nav-tab-active');
+                
+                // Dispatch a custom event that other parts of the code can listen for
+                $(document).trigger('mpai-tab-shown', [$(this).attr('href')]);
+                
+                // For diagnostic tab specifically, trigger plugin logs loading
+                if ($(this).attr('href') === '#tab-diagnostic') {
+                    console.log('MPAI DEBUG: Diagnostic tab clicked, triggering plugin logs load');
+                    // Trigger a custom event that the logs section can listen for
+                    $(document).trigger('mpai-load-plugin-logs');
+                }
+            });
+            
+            console.log('MPAI DEBUG: Tab navigation setup successfully');
+        } catch (e) {
+            console.error('MPAI ERROR: Failed to set up tab navigation:', e);
+        }
+        
+        // Verify direct-ajax-handler.php URL (for debugging)
+        if (typeof mpai_data !== 'undefined' && mpai_data.plugin_url) {
+            var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
+            console.log('MPAI: Direct AJAX handler URL:', directHandlerUrl);
+        } else {
+            console.error('MPAI: mpai_data is not defined or missing plugin_url');
+        }
+        
+        // Initialize consent mechanism
+        initConsent();
+        
+        // Initialize console logging settings
+        initConsoleLoggingSettings();
 
         // Check if mpai_data includes plugin_url, add it if missing
         if (typeof mpai_data !== 'undefined' && !mpai_data.plugin_url) {
@@ -679,24 +1217,6 @@
                 $(document).trigger('mpai-load-plugin-logs');
             }, 100);
         }
-        
-        // Handle tab navigation for the settings page
-        // This ensures that content is properly loaded when tabs are clicked
-        $('.nav-tab-wrapper a.nav-tab').on('click', function(e) {
-            e.preventDefault();
-            
-            const tabId = $(this).attr('href');
-            
-            // Dispatch a custom event that other parts of the code can listen for
-            $(document).trigger('mpai-tab-shown', [tabId]);
-            
-            // For diagnostic tab specifically, trigger plugin logs loading
-            if (tabId === '#tab-diagnostic') {
-                console.log('MPAI: Diagnostic tab clicked, triggering plugin logs load');
-                // Trigger a custom event that the logs section can listen for
-                $(document).trigger('mpai-load-plugin-logs');
-            }
-        });
         
         console.log('MPAI: Admin script initialization complete');
     });
