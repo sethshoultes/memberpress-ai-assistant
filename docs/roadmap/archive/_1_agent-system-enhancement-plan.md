@@ -1,5 +1,11 @@
 # Agent System Enhancement & Performance Optimization Plan
 
+**VERSION: 2.0.0 (ARCHIVED)**  
+**LAST UPDATED: 2025-04-06**  
+**STATUS: 🗄️ ARCHIVED**
+
+> **ARCHIVE NOTICE**: This document has been archived and superseded by the [Master Roadmap Plan](../masterplan.md). It is preserved for historical reference only.
+
 ## Overview
 
 This document outlines the plan to enhance the MemberPress AI Assistant's agent system capabilities while also improving performance and ensuring stability through better testing.

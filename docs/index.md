@@ -144,19 +144,22 @@ This document serves as the master index for the MemberPress AI Assistant docume
 │   │           └── page-example.xml     # Page example
 │   ├── roadmap/                        # Planned features
 │   │   ├── README.md                   # Roadmap overview
-│   │   ├── index.md                    # Comprehensive roadmap index
-│   │   ├── _0_implementation-guide.md  # Implementation guide
-│   │   ├── _1_agent-system-enhancement-plan.md # Agent enhancement plan
-│   │   ├── _2_performance-optimization-plan.md # Performance plan
-│   │   ├── _3_testing-stability-plan.md # Testing stability plan
-│   │   ├── admin-ui-overhaul-plan.md   # Admin UI plan
+│   │   ├── masterplan.md               # Master roadmap plan (consolidated)
+│   │   ├── index.md                    # Quick reference to roadmap
+│   │   ├── admin-ui-overhaul-plan.md   # Admin UI plan (current priority)
 │   │   ├── agent-system-spec.md        # Agent system specification
 │   │   ├── agentic-security-framework.md # Security framework plan
 │   │   ├── content-tools-specification.md # Content tools specification
 │   │   ├── integrated-security-implementation-plan.md # Security plan
 │   │   ├── new-tools-enhancement-plan.md # Tools enhancement plan
 │   │   ├── system-diagnostics-optimization.md # Diagnostics optimization
-│   │   └── wp-security-integration-plan.md # WP security integration
+│   │   ├── wp-security-integration-plan.md # WP security integration
+│   │   └── archive/                    # Archived roadmap documents
+│   │       ├── README.md               # Archive explanation
+│   │       ├── _0_implementation-guide.md # Implementation guide (archived)
+│   │       ├── _1_agent-system-enhancement-plan.md # Agent enhancement plan (archived)
+│   │       ├── _2_performance-optimization-plan.md # Performance plan (archived)
+│   │       └── _3_testing-stability-plan.md # Testing stability plan (archived)
 │   ├── templates/                      # Documentation templates
 │   │   ├── README.md                   # Templates overview
 │   │   ├── admin-guide-template.md     # Admin guide template
@@ -269,7 +272,7 @@ To maintain documentation quality:
 
 1. Continue to update implementation status as features are completed
 2. Place new documentation in appropriate system directory
-3. Regularly update the roadmap/index.md file with priority changes
+3. Regularly update the roadmap/masterplan.md file with priority changes
 4. Use documentation-map.md as a guide for navigation between documents
 5. Follow established status indicator conventions (✅, 🚧, 🔮, 🗄️)
 6. Archive obsolete documentation rather than deleting it
@@ -300,7 +303,7 @@ To maintain documentation quality:
 - **April 5, 2025**
   - **System-Based Directory Organization**:
     - Added system-based directory organization
-    - Created comprehensive roadmap index with Phase 3.5 tasks
+    - Created master roadmap plan consolidating all development phases
     - Updated implementation status for all features
     - Added documentation consolidation results
     - Moved blog-post-formatting-plan.md to archive

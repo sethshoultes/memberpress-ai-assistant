@@ -1,5 +1,11 @@
 # MemberPress AI Assistant Enhancement Implementation Guide
 
+**VERSION: 2.0.0 (ARCHIVED)**  
+**LAST UPDATED: 2025-04-06**  
+**STATUS: 🗄️ ARCHIVED**
+
+> **ARCHIVE NOTICE**: This document has been archived and superseded by the [Master Roadmap Plan](../masterplan.md). It is preserved for historical reference only.
+
 This document provides a step-by-step guide for implementing the enhancements outlined in the roadmap documents. Each section references the corresponding plan document and includes specific implementation steps.
 
 ## Overview of Implementation Order
@@ -12,12 +18,12 @@ This document provides a step-by-step guide for implementing the enhancements ou
 
 When implementing these enhancements, consider the following related roadmap documents:
 
-1. **[agent-system-spec.md](./agent-system-spec.md)** - Original detailed specification for the agent system architecture
-2. **[agentic-security-framework.md](./agentic-security-framework.md)** - Security considerations that must be incorporated
-3. **[new-tools-enhancement-plan.md](./new-tools-enhancement-plan.md)** - New tools that will leverage the enhanced agent system
-4. **[content-tools-specification.md](./content-tools-specification.md)** - Content-specific tools requiring agent system support
-5. **[integrated-security-implementation-plan.md](./integrated-security-implementation-plan.md)** - Combined security approach
-6. **[wp-security-integration-plan.md](./wp-security-integration-plan.md)** - WordPress security features to incorporate
+1. **[agent-system-spec.md](../agent-system-spec.md)** - Original detailed specification for the agent system architecture
+2. **[agentic-security-framework.md](../agentic-security-framework.md)** - Security considerations that must be incorporated
+3. **[new-tools-enhancement-plan.md](../new-tools-enhancement-plan.md)** - New tools that will leverage the enhanced agent system
+4. **[content-tools-specification.md](../content-tools-specification.md)** - Content-specific tools requiring agent system support
+5. **[integrated-security-implementation-plan.md](../integrated-security-implementation-plan.md)** - Combined security approach
+6. **[wp-security-integration-plan.md](../wp-security-integration-plan.md)** - WordPress security features to incorporate
 
 Key considerations from these documents:
 

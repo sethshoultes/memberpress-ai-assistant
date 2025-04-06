@@ -28,7 +28,7 @@ The documentation is organized into the following system-based categories:
   - [**Error Systems**](current/error-system/) - Error handling and recovery
   - [**Test Systems**](current/test-system/) - Testing frameworks and procedures
 - [**Feature Roadmap**](roadmap/) - Features in planning or development
-  - [**Roadmap Index**](roadmap/index.md) - Prioritized roadmap with Phase 3.5 tasks
+  - [**Master Roadmap Plan**](roadmap/masterplan.md) - Comprehensive roadmap with all phases and priorities
 - [**Archive**](archive/) - Historical documentation that has been superseded
   - [**XML Content System**](archive/xml-content-system/) - Archived XML-based content formatting
   - [**Scooby Snacks**](archive/_snacks/) - Archived investigation results and technical insights
