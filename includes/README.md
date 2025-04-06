@@ -31,6 +31,104 @@ The plugin uses a layered architecture:
 2. **Business Logic Layer**: Agents, context management, tools
 3. **Data Layer**: MemberPress API, system cache, response cache
 
+### Visual Architecture Overview
+
+```
+┌───────────────────────────────────────────────────────┐
+│                      UI LAYER                         │
+├───────────┬───────────────┬───────────┬──────────────┤
+│ Admin UI  │ Chat Interface│ Settings  │ Dashboard    │
+└─────┬─────┴───────┬───────┴─────┬─────┴──────┬───────┘
+      │             │             │            │        
+┌─────▼─────────────▼─────────────▼────────────▼───────┐
+│                 BUSINESS LOGIC LAYER                  │
+├───────────┬───────────────┬───────────┬──────────────┤
+│           │               │           │              │
+│  Agent    │  Context      │  Tool     │  Command     │
+│  System   │  Management   │  System   │  System      │
+│           │               │           │              │
+└─────┬─────┴───────┬───────┴─────┬─────┴──────┬───────┘
+      │             │             │            │        
+┌─────▼─────────────▼─────────────▼────────────▼───────┐
+│                     DATA LAYER                        │
+├───────────┬───────────────┬───────────┬──────────────┤
+│MemberPress│  System       │ Response  │ WordPress    │
+│   API     │  Cache        │  Cache    │    API       │
+└───────────┴───────────────┴───────────┴──────────────┘
+```
+
+### Component Relationships
+
+```
+                 ┌───────────────┐
+                 │    MPAI_Chat  │
+                 └───────┬───────┘
+                         │
+                         ▼
+┌────────────────────────────────────────────────────────┐
+│                 MPAI_Context_Manager                    │
+└───┬────────────────┬────────────────┬──────────────────┘
+    │                │                │
+    ▼                ▼                ▼
+┌─────────┐   ┌────────────┐   ┌─────────────┐
+│MPAI_API_│   │MPAI_Agent_ │   │MPAI_Tool_   │
+│Router   │   │Orchestrator│   │Registry     │
+└────┬────┘   └─────┬──────┘   └──────┬──────┘
+     │              │                 │
+     ▼              ▼                 ▼
+┌─────────┐   ┌────────────┐   ┌─────────────┐
+│API      │   │Specialized │   │Tool         │
+│Providers│   │Agents      │   │Implementations
+└─────────┘   └────────────┘   └─────────────┘
+```
+
+### Data Flow Architecture
+
+```
+┌──────────┐    ┌─────────────┐    ┌────────────────┐
+│  User    │───▶│ Chat        │───▶│ Context        │
+│ Interface│    │ Interface   │    │ Manager        │
+└──────────┘    └─────────────┘    └───────┬────────┘
+                                           │
+                       ┌───────────────────┼───────────────────┐
+                       │                   │                   │
+                       ▼                   ▼                   ▼
+               ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+               │ Agent       │    │ Tool        │    │ API         │
+               │ System      │    │ System      │    │ Router      │
+               └──────┬──────┘    └──────┬──────┘    └──────┬──────┘
+                      │                  │                  │
+                      ▼                  ▼                  ▼
+               ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+               │ Agent       │    │ WordPress   │    │ AI Provider │
+               │ Response    │───▶│ Action      │───▶│ Response    │
+               └─────────────┘    └─────────────┘    └─────────────┘
+                                                            │
+                                                            ▼
+                                                     ┌─────────────┐
+                                                     │ User        │
+                                                     │ Response    │
+                                                     └─────────────┘
+```
+
+### Error Recovery System
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ API Call or │    │ Exception   │    │ Error       │
+│ Operation   │───▶│ or Error    │───▶│ Recovery    │
+└─────────────┘    └─────────────┘    │ System      │
+                                      └──────┬──────┘
+                                             │
+              ┌────────────────────┬────────┴────────┬────────────────────┐
+              │                    │                 │                    │
+              ▼                    ▼                 ▼                    ▼
+      ┌─────────────┐      ┌─────────────┐   ┌─────────────┐      ┌─────────────┐
+      │ Retry       │      │ Fallback    │   │ Graceful    │      │ Error       │
+      │ Mechanism   │      │ Strategy    │   │ Degradation │      │ Reporting   │
+      └─────────────┘      └─────────────┘   └─────────────┘      └─────────────┘
+```
+
 ### Adding New Functionality
 
 When adding new functionality, follow these guidelines:

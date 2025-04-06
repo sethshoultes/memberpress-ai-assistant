@@ -1,49 +1,56 @@
 # MemberPress AI Assistant: Includes Directory
 
+**Version:** 2.5.0  
+**Last Updated:** 2025-04-06  
+**Status:** ✅ Active Development  
+**Owner:** MemberPress AI Team
+
 This directory contains the core functionality of the MemberPress AI Assistant plugin. It's organized into several key components and subsystems that work together to provide AI-powered features for MemberPress.
 
 ## Directory Structure
 
-- **Root Files**: Core classes for the plugin's main functionality
-- **[agents/](#agent-system)**: Agent system architecture for specialized AI behaviors
-- **[cli/](#cli-system)**: WordPress CLI integration
-- **[commands/](#command-system)**: Command processing and execution system
-- **[tools/](#tool-system)**: Tool implementations for AI to interact with WordPress
-- **[templates/](#templates)**: UI templates for the plugin
-- **[tests/](#tests)**: Internal test implementations
+| Directory | Purpose | Status |
+|-----------|---------|--------|
+| **Root Files** | Core classes for the plugin's main functionality | ✅ Stable |
+| **[agents/](#agent-system)** | Agent system architecture for specialized AI behaviors | ✅ Stable |
+| **[cli/](#cli-system)** | WordPress CLI integration | ✅ Stable |
+| **[commands/](#command-system)** | Command processing and execution system | ✅ Stable |
+| **[tools/](#tool-system)** | Tool implementations for AI to interact with WordPress | 🚧 Active Development |
+| **[templates/](#templates)** | UI templates for the plugin | ✅ Stable |
+| **[tests/](#tests)** | Internal test implementations | 🔄 Regular Updates |
 
 ## Key Components
 
 ### Core Files
 
-| File | Purpose |
-|------|---------|
-| `class-mpai-chat.php` | Core chat processing and AI interaction |
-| `class-mpai-context-manager.php` | Manages conversation context and tool execution |
-| `class-mpai-api-router.php` | Routes requests to appropriate AI provider (OpenAI/Anthropic) |
-| `class-mpai-openai.php` | OpenAI API integration |
-| `class-mpai-anthropic.php` | Anthropic Claude API integration |
-| `class-mpai-memberpress-api.php` | Interface to MemberPress functionality |
-| `class-mpai-system-cache.php` | Performance optimization through system information caching |
-| `class-mpai-error-recovery.php` | Error handling and recovery system |
-| `class-mpai-plugin-logger.php` | Logging system for plugin activities |
-| `class-mpai-state-validator.php` | Validation system for maintaining system state consistency |
-| `class-mpai-input-validator.php` | Input validation and sanitization |
-| `class-mpai-site-health.php` | WordPress Site Health integration |
-| `class-mpai-xml-content-parser.php` | XML content system for structured content |
+| File | Purpose | Status | Last Updated |
+|------|---------|--------|-------------|
+| `class-mpai-chat.php` | Core chat processing and AI interaction | ✅ Stable | 2025-03-15 |
+| `class-mpai-context-manager.php` | Manages conversation context and tool execution | ✅ Stable | 2025-03-20 |
+| `class-mpai-api-router.php` | Routes requests to appropriate AI provider (OpenAI/Anthropic) | ✅ Stable | 2025-02-28 |
+| `class-mpai-openai.php` | OpenAI API integration | ✅ Stable | 2025-03-10 |
+| `class-mpai-anthropic.php` | Anthropic Claude API integration | 🚧 Active Development | 2025-04-05 |
+| `class-mpai-memberpress-api.php` | Interface to MemberPress functionality | ✅ Stable | 2025-03-01 |
+| `class-mpai-system-cache.php` | Performance optimization through system information caching | ✅ Stable | 2025-02-15 |
+| `class-mpai-error-recovery.php` | Error handling and recovery system | ✅ Stable | 2025-03-05 |
+| `class-mpai-plugin-logger.php` | Logging system for plugin activities | ✅ Stable | 2025-02-20 |
+| `class-mpai-state-validator.php` | Validation system for maintaining system state consistency | 🚧 Active Development | 2025-04-02 |
+| `class-mpai-input-validator.php` | Input validation and sanitization | ✅ Stable | 2025-03-08 |
+| `class-mpai-site-health.php` | WordPress Site Health integration | 🚧 Active Development | 2025-04-04 |
+| `class-mpai-xml-content-parser.php` | XML content system for structured content | ✅ Stable | 2025-03-12 |
 
 ### Admin & UI
 
-| File | Purpose |
-|------|---------|
-| `class-mpai-admin.php` | Admin functionality and hooks |
-| `class-mpai-settings.php` | Plugin settings management |
-| `class-mpai-chat-interface.php` | Chat UI implementation |
-| `settings-page.php` | Settings page UI |
-| `settings-diagnostic.php` | Diagnostic panel implementation |
-| `admin-page.php` | Admin page implementation |
-| `dashboard-page.php` | Dashboard UI implementation |
-| `chat-interface.php` | Chat interface implementation |
+| File | Purpose | Status | Last Updated |
+|------|---------|--------|-------------|
+| `class-mpai-admin.php` | Admin functionality and hooks | ✅ Stable | 2025-03-10 |
+| `class-mpai-settings.php` | Plugin settings management | ✅ Stable | 2025-03-15 |
+| `class-mpai-chat-interface.php` | Chat UI implementation | 🚧 Active Development | 2025-04-03 |
+| `settings-page.php` | Settings page UI | ✅ Stable | 2025-02-28 |
+| `settings-diagnostic.php` | Diagnostic panel implementation | ✅ Stable | 2025-03-05 |
+| `admin-page.php` | Admin page implementation | ✅ Stable | 2025-02-20 |
+| `dashboard-page.php` | Dashboard UI implementation | 🚧 Active Development | 2025-04-01 |
+| `chat-interface.php` | Chat interface implementation | 🚧 Active Development | 2025-04-04 |
 
 ### Agent System
 
