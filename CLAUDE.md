@@ -62,7 +62,7 @@ For historical reference on the Scooby Snack system, see `/docs/archive/_snacks/
     - `content-system/` - Content system documentation
     - `js-system/` - JavaScript system documentation
     - `feature-plans/` - Feature planning documentation
-  - `docs/_snacks/` - Investigation results and solutions ("Scooby Snacks")
+  - `docs/archive/_snacks` - Investigation results and solutions ("Scooby Snacks")
   - `docs/roadmap/` - Planned feature documentation
   - `docs/archive/` - Archived documentation
 - WP-CLI commands in `includes/cli/` directory
