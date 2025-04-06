@@ -22,6 +22,10 @@ memberpress-ai-assistant/
 │   │   │   ├── features-index.md # Feature index
 │   │   │   ├── documentation-categories.md # Documentation categories
 │   │   │   ├── documentation-improvement-plan.md # Documentation enhancement plan
+│   │   │   ├── documentation-style-guide.md # Documentation standards and formatting
+│   │   │   ├── documentation-audit-template.md # Template for auditing docs
+│   │   │   ├── documentation-glossary.md # Terminology definitions
+│   │   │   ├── searchable-documentation-index.md # Comprehensive document index
 │   │   │   ├── system-information-caching.md # System Information Caching feature
 │   │   │   ├── documentation-consolidation-results.md # Phase 1 results
 │   │   │   └── phase-2/3/4-documentation-consolidation-results.md # Phase results
@@ -75,7 +79,10 @@ memberpress-ai-assistant/
 1. Start with [_0_START_HERE_.md](../../../_0_START_HERE_.md) - Primary entry point
 2. Review [system-map.md](system-map.md) - System architecture overview
 3. Explore [implementation-status.md](implementation-status.md) - Feature status
-4. Check [documentation-improvement-plan.md](documentation-improvement-plan.md) - Documentation roadmap
+4. Use [searchable-documentation-index.md](searchable-documentation-index.md) - Find specific information
+5. Refer to [documentation-glossary.md](documentation-glossary.md) - Learn terminology
+6. Follow [documentation-style-guide.md](documentation-style-guide.md) - Documentation standards
+7. Check [documentation-improvement-plan.md](documentation-improvement-plan.md) - Documentation roadmap
 
 ### For Agent System Development
 
@@ -118,6 +125,14 @@ memberpress-ai-assistant/
 1. Browse the [Scooby Snacks Index](../../_snacks/index.md) for similar issues
 2. Check category-specific folders in [_snacks](../../_snacks/) directory
 3. Study the investigation processes in Scooby Snack documents
+
+### For Documentation Contributors
+
+1. Follow the [documentation-style-guide.md](documentation-style-guide.md) - Documentation standards
+2. Use the [documentation-audit-template.md](documentation-audit-template.md) - Evaluation framework
+3. Maintain the [documentation-glossary.md](documentation-glossary.md) - Terminology reference
+4. Update the [searchable-documentation-index.md](searchable-documentation-index.md) - Master index
+5. Refer to [documentation-improvement-plan.md](documentation-improvement-plan.md) - Enhancement roadmap
 
 ## Visual Documentation Map
 
