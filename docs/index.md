@@ -13,7 +13,6 @@ This document serves as the master index for the MemberPress AI Assistant docume
 ```
 /                                       # Root directory
 ├── _0_START_HERE_.md                   # Primary entry point for developers
-├── _1_AGENTIC_SYSTEMS_.md              # MOVED - Redirect to comprehensive agent system guide
 ├── docs/                               # Documentation root
 │   ├── README.md                       # Main documentation overview
 │   ├── index.md                        # This file - documentation master index
@@ -32,6 +31,10 @@ This document serves as the master index for the MemberPress AI Assistant docume
 │   │   │   ├── task-based-workflows.md # Common user workflows
 │   │   │   ├── troubleshooting-faq.md # User troubleshooting
 │   │   │   └── screenshot-walkthroughs/ # Visual guides with screenshots
+│   │   │       ├── index.md            # Screenshot walkthroughs index
+│   │   │       ├── ai-assistant-setup-walkthrough.md # Setup walkthrough
+│   │   │       ├── ai-assistant-content-recommendations-walkthrough.md # Content recommendations
+│   │   │       └── ai-assistant-member-analysis-walkthrough.md # Member analysis
 │   │   ├── developer/                  # Developer documentation
 │   │   │   ├── code-snippets-repository.md # Code examples
 │   │   │   ├── common-development-workflows.md # Development workflows
@@ -44,17 +47,30 @@ This document serves as the master index for the MemberPress AI Assistant docume
 │   │   │   └── testing-guide.md # Testing guide
 │   │   ├── core/                       # Core system documentation
 │   │   │   ├── documentation-map.md    # Visual documentation map
+│   │   │   ├── documentation-categories.md # Documentation categories
+│   │   │   ├── documentation-glossary.md # Technical terms glossary
+│   │   │   ├── documentation-improvement-plan.md # Documentation plan
+│   │   │   ├── documentation-style-guide.md # Style guidelines
+│   │   │   ├── features-index.md       # Features index
 │   │   │   ├── implementation-status.md # Status of all features
-│   │   │   ├── system-map.md          # System architecture map
-│   │   │   ├── user-guide.md          # End-user guide
+│   │   │   ├── phase1-documentation-results.md # Phase 1 results
+│   │   │   ├── phase2-documentation-plan.md # Phase 2 plan
+│   │   │   ├── phase2-progress-report.md # Phase 2 progress
+│   │   │   ├── phase3-documentation-plan.md # Phase 3 plan
 │   │   │   ├── developer-guide.md     # Developer guide
+│   │   │   ├── developer-onboarding-system.md # Developer onboarding
+│   │   │   ├── developer-quick-reference.md # Developer reference
 │   │   │   ├── project-specification.md # Project specification
+│   │   │   ├── system-map.md          # System architecture map
+│   │   │   ├── searchable-documentation-index.md # Searchable index
+│   │   │   ├── user-guide.md          # End-user guide
 │   │   │   ├── archive/               # Archive of documentation results
 │   │   │   │   ├── documentation-consolidation-results.md # Phase 1 results
 │   │   │   │   ├── phase-2-documentation-consolidation-results.md # Phase 2 results
 │   │   │   │   ├── phase-3-documentation-consolidation-results.md # Phase 3 results
 │   │   │   │   └── phase-4-documentation-consolidation-results.md # Phase 4 results
-│   │   │   └── visual-documentation-style-guide.md # Visual style guide
+│   │   │   ├── visual-documentation-style-guide.md # Visual style guide
+│   │   │   └── screenshot-standards-guide.md # Screenshot standards
 │   │   ├── agent-system/               # Agent system documentation
 │   │   │   ├── comprehensive-agent-system-guide.md # Complete agent system guide
 │   │   │   ├── agent-system-reference.md # Reference to comprehensive guide
@@ -85,27 +101,77 @@ This document serves as the master index for the MemberPress AI Assistant docume
 │   │       │   └── diagrams/           # System diagrams
 │   │       └── templates/              # Asset templates
 │   ├── archive/                        # Archived documentation
-│   │   ├── README.md                   # Archive index
-│   │   ├── index.md                    # Archive index
+│   │   ├── README.md                   # Archive index and overview
+│   │   ├── index.md                    # Archive categorized index
+│   │   ├── _1_AGENTIC_SYSTEMS_.md      # Archived agent systems redirector
+│   │   ├── BLOG_POST_FIX_SUMMARY.md    # Archived blog post fix
+│   │   ├── CHAT_INTERFACE_COPY_ICON_FIX.md # Archived interface fix
+│   │   ├── DIAGNOSTIC_TAB_DUPLICATE_FIX.md # Archived diagnostic tab fix
+│   │   ├── DOCUMENTATION_PLAN.md       # Archived documentation plan
+│   │   ├── MEMBERPRESS_INDEPENDENT_OPERATION.md # Archived operation mode
+│   │   ├── SCOOBY_SNACK_DUPLICATE_TOOL_EXECUTION.md # Archived tool execution fix
+│   │   ├── agent-system-implementation.md # Archived agent system implementation
+│   │   ├── agent-system-quickstart.md  # Archived agent system quickstart
+│   │   ├── agent-system-user-guide.md  # Archived agent system user guide
+│   │   ├── best-selling-membership.md  # Archived membership implementation
+│   │   ├── blog-post-formatting-plan.md # Archived formatting plan
+│   │   ├── site-health-ai-agent-prompts.md # Archived site health prompts
+│   │   ├── site-health-implementation-example.md # Archived implementation example
+│   │   ├── site-health-integration-plan.md # Archived integration plan
+│   │   ├── site-health-migration-guide.md # Archived migration guide
 │   │   ├── _snacks/                    # Archived Scooby Snacks (investigation docs)
 │   │   │   ├── README.md               # Scooby Snacks explanation
 │   │   │   ├── index.md                # Categorized index of snacks
-│   │   │   └── [categorized snack folders] # Organized by system
-│   │   ├── xml-content-system/         # Archived XML content system
-│   │   │   ├── README.md               # XML system overview
-│   │   │   ├── index.md                # XML system index
-│   │   │   └── examples/               # XML examples directory
-│   │   ├── DIAGNOSTIC_TAB_DUPLICATE_FIX.md # Archived diagnostic tab fix
-│   │   ├── agent-system-implementation.md # Archived agent system implementation
-│   │   ├── agent-system-quickstart.md  # Archived agent system quickstart
-│   │   ├── site-health-ai-agent-prompts.md # Archived site health prompts
-│   │   └── [other archived docs]       # Other standalone archived documents
+│   │   │   ├── agents/                 # Agent system snacks
+│   │   │   ├── architecture/           # Architecture snacks
+│   │   │   ├── chat-interface/         # Chat interface snacks
+│   │   │   ├── content-system/         # Content system snacks
+│   │   │   ├── error-system/           # Error system snacks
+│   │   │   ├── examples/               # Example snacks
+│   │   │   ├── interface/              # Interface snacks
+│   │   │   ├── investigations/         # Investigation snacks
+│   │   │   ├── membership/             # Membership snacks
+│   │   │   ├── performance/            # Performance snacks
+│   │   │   ├── phase/                  # Phase snacks
+│   │   │   └── tool-system/            # Tool system snacks
+│   │   └── xml-content-system/         # Archived XML content system
+│   │       ├── README.md               # XML system overview
+│   │       ├── index.md                # XML system index
+│   │       └── examples/               # XML examples directory
+│   │           ├── blog-post-example.xml # Blog post example
+│   │           ├── complex-post-example.xml # Complex post example
+│   │           ├── membership-post-example.xml # Membership example
+│   │           └── page-example.xml     # Page example
 │   ├── roadmap/                        # Planned features
-│   │   ├── README.md                   # Updated roadmap with accurate status
+│   │   ├── README.md                   # Roadmap overview
 │   │   ├── index.md                    # Comprehensive roadmap index
-│   │   └── [phase-specific roadmap docs] # Organized by implementation phase
+│   │   ├── _0_implementation-guide.md  # Implementation guide
+│   │   ├── _1_agent-system-enhancement-plan.md # Agent enhancement plan
+│   │   ├── _2_performance-optimization-plan.md # Performance plan
+│   │   ├── _3_testing-stability-plan.md # Testing stability plan
+│   │   ├── admin-ui-overhaul-plan.md   # Admin UI plan
+│   │   ├── agent-system-spec.md        # Agent system specification
+│   │   ├── agentic-security-framework.md # Security framework plan
+│   │   ├── content-tools-specification.md # Content tools specification
+│   │   ├── integrated-security-implementation-plan.md # Security plan
+│   │   ├── new-tools-enhancement-plan.md # Tools enhancement plan
+│   │   ├── system-diagnostics-optimization.md # Diagnostics optimization
+│   │   └── wp-security-integration-plan.md # WP security integration
 │   ├── templates/                      # Documentation templates
+│   │   ├── README.md                   # Templates overview
+│   │   ├── admin-guide-template.md     # Admin guide template
+│   │   ├── developer-reference-template.md # Developer reference template
+│   │   ├── feature-documentation-template.md # Feature documentation template
+│   │   ├── guide-template.md           # General guide template
+│   │   ├── reference-template.md       # Reference template
+│   │   ├── scooby-snack-template.md    # Scooby snack template
+│   │   ├── troubleshooting-guide-template.md # Troubleshooting template
+│   │   ├── tutorial-template.md        # Tutorial template
+│   │   └── user-guide-template.md      # User guide template
 │   └── images/                         # Documentation images
+│       ├── README.md                   # Images overview
+│       ├── scooby-doo-investigation-mode.png # Investigation mode image
+│       └── scooby-doo-mode.png         # Scooby mode image
 ```
 
 ## Primary Entry Points
