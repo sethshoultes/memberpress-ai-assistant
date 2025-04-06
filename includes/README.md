@@ -190,8 +190,9 @@ For more detailed information, refer to:
 
 If you encounter issues or need assistance:
 
-1. Check the Scooby Snacks documentation in `/docs/_snacks/` for solutions to common problems
-2. Review the Error Catalog System in `/docs/current/MPAI_Error_Catalog_System.md`
-3. Follow the Scooby Mode investigation protocol for systematic troubleshooting
+1. Check the archived Scooby Snacks documentation in `/docs/archive/_snacks/` for historical solutions
+2. Review the Error Catalog System in `/docs/current/error-system/error-catalog-system.md`
+3. Consult the debugging strategies in `/docs/current/developer/debugging-strategies.md`
+4. Use `/docs/current/developer/testing-guide.md` for testing procedures and best practices
 
-Remember to add "🦴 Scooby Snack" to commit messages when solving documented issues!
+When solving issues, document them according to the new documentation system in the appropriate system directory.

@@ -1,8 +1,8 @@
 # MemberPress AI Assistant Testing System
 
 **Status:** ✅ Maintained  
-**Version:** 1.0.0  
-**Last Updated:** April 3, 2025
+**Version:** 1.1.0  
+**Last Updated:** April 6, 2025
 
 ## Overview
 
@@ -159,3 +159,6 @@ When contributing new tests:
 - [System Map](../docs/current/core/system-map.md)
 - [Plugin Specification](../docs/current/core/project-specification.md)
 - [Implementation Status](../docs/current/core/implementation-status.md)
+- [Testing Guide](../docs/current/developer/testing-guide.md)
+- [Performance Optimization](../docs/current/developer/performance-optimization.md)
+- [Debugging Strategies](../docs/current/developer/debugging-strategies.md)
