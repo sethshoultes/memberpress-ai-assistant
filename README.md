@@ -143,7 +143,7 @@ The plugin is organized into the following structure:
     - `/docs/current/content-system/` - Content system documentation
     - `/docs/current/js-system/` - JavaScript system documentation
     - `/docs/current/feature-plans/` - Feature planning documentation
-  - `/docs/_snacks/` - Investigation results and solutions ("Scooby Snacks")
+  - `/docs/archive/_snacks/` - Archived investigation results and solutions ("Scooby Snacks")
   - `/docs/roadmap/` - Planned feature documentation
   - `/docs/archive/` - Archived and deprecated files
 - `/includes/` - PHP class files

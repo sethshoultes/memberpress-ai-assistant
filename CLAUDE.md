@@ -16,9 +16,10 @@
     - `/docs/current/content-system/` - Content system documentation
     - `/docs/current/js-system/` - JavaScript system documentation
     - `/docs/current/feature-plans/` - Feature planning documentation
-  - `/docs/_snacks/` - Investigation results and solutions ("Scooby Snacks")
   - `/docs/roadmap/` - Planned features
-  - `/docs/archive/` - Outdated documentation
+  - `/docs/archive/` - Archived documentation:
+    - `/docs/archive/_snacks/` - Investigation results and solutions ("Scooby Snacks")
+    - `/docs/archive/xml-content-system/` - XML content system documentation
 
 ## Build & Development Commands
 - Build JS/CSS: `npm run build` (in individual plugin folders)
@@ -29,42 +30,14 @@
 - Manual testing required following the procedures in `/tests/test-procedures.md`
 - Run tests for specific features according to test checklist
 
-## Scooby Snack Protocol
+## Scooby Snack Protocol (Historical - Documentation Archived)
 
-### Reward Protocol - "You get a Scooby Snack"
-- When given a "Scooby Snack" for a successful solution or implementation:
-  1. Create a detailed document following the Scooby Snack template in `/docs/_snacks/`
-  2. Place it in the appropriate category folder (e.g., `tool-system`, `content-system`, etc.)
-  3. Update the Scooby Snack index at `/docs/_snacks/index.md` with the new entry
-  4. Update any existing documentation that relates to the solution
-  5. Add an entry to the CHANGELOG.md file if it's a significant fix or feature
-  6. Create a git commit with the documentation and implementation changes
-  7. Include "🦴 Scooby Snack" in the commit message to track successful solutions
-  8. The commit should summarize what worked, why it worked, and any lessons learned
+The Scooby Snack Protocol has been archived. All Scooby Snack documents are now located in the archive directory at `/docs/archive/_snacks/`. 
 
-### Investigation Protocol - "Scooby Mode", "Scooby Doo", "Scooby", or "Jinkies"
-- When one of these trigger phrases is used, activate investigation mode:
-  1. Stop active coding and shift to diagnostic/investigative approach
-  2. Ask detailed information to help diagnose the issue:
-     - What specific error messages are shown?
-     - What expected vs. actual behavior is observed?
-     - What files and code paths are involved?
-     - What recent changes might have affected this functionality?
-  3. Conduct a methodical investigation:
-     - Examine relevant code, logs, and test results
-     - Look for patterns in failures
-     - Identify potential root causes
-     - Consider multiple failure scenarios
-  4. Document findings in Scooby Snack format:
-     - Problem statement
-     - Root cause analysis
-     - Solution or recommended approach
-     - Lessons learned
-  5. If a solution is implemented, include "🦴 Scooby Snack" in the commit message
-  6. If only investigation is completed without fixes, document findings in `_snacks/` directory
-     with "Investigation:" prefix in filename
+New investigation results should be documented using the standard documentation format in the appropriate system directory under `/docs/current/`.
 
-For complete details on the Scooby Snack documentation system, see `/docs/_snacks/README.md`
+For historical reference on the Scooby Snack system, see `/docs/archive/_snacks/README.md`
+
 
 ## Code Style
 - Follow WordPress PHP Coding Standards
@@ -89,7 +62,7 @@ For complete details on the Scooby Snack documentation system, see `/docs/_snack
     - `content-system/` - Content system documentation
     - `js-system/` - JavaScript system documentation
     - `feature-plans/` - Feature planning documentation
-  - `docs/_snacks/` - Investigation results and solutions ("Scooby Snacks")
+  - `docs/archive/_snacks` - Investigation results and solutions ("Scooby Snacks")
   - `docs/roadmap/` - Planned feature documentation
   - `docs/archive/` - Archived documentation
 - WP-CLI commands in `includes/cli/` directory
@@ -126,7 +99,7 @@ For complete details on the Scooby Snack documentation system, see `/docs/_snack
     - `content-system/` - Content system documentation
     - `js-system/` - JavaScript system documentation
     - `feature-plans/` - Feature planning documentation
-  - `/docs/_snacks/` - For investigation results and solutions, place in appropriate category
+  - `/docs/archive/_snacks/` - For investigation results and solutions, place in appropriate category
   - `/docs/roadmap/` - For planned features
   - `/docs/archive/` - For outdated documentation
 - When working on existing features, first check the system map at `/docs/current/core/system-map.md`
@@ -251,7 +224,7 @@ For complete details on the Scooby Snack documentation system, see `/docs/_snack
   - `tool-system/` - For tool system features
   - `content-system/` - For content-related features
   - `js-system/` - For JavaScript features
-- If solving a complex issue, create a Scooby Snack in the `_snacks/` directory
+- Document any complex solutions in the appropriate system documentation directory
 - Update main documentation and changelog
 
 ## AI Integration Guidelines
