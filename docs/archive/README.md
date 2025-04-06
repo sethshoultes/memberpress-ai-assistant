@@ -1,40 +1,44 @@
-# Archived Documentation
+# MemberPress AI Assistant Documentation Archive
 
-This directory contains documentation that is no longer current or has been superseded by newer documents. These files are preserved for historical reference but should not be used for current development or implementation.
+**Version:** 1.0.0  
+**Last Updated:** 2025-04-06  
+**Status:** 🗄️ Archived  
+**Owner:** Documentation Team
 
-## Archived Documents
+## Overview
 
-| Document | Replaced By | Archival Date | Reason for Archival |
-|----------|------------|--------------|---------------------|
-| best-selling-membership.md | N/A | 2025-04-02 | Feature fully implemented in version 1.5.8 |
-| MEMBERPRESS_INDEPENDENT_OPERATION.md | N/A | 2025-04-02 | Feature fully implemented in version 1.5.8 |
-| CHAT_INTERFACE_COPY_ICON_FIX.md | N/A | 2025-04-02 | Fix implemented in version 1.5.8 |
-| site-health-integration-plan.md | site-health-implementation-example.md | 2025-04-02 | Plan implemented in version 1.5.5 |
-| agent-system-spec.md | agent-system-implementation.md | 2025-04-02 | Initial spec replaced by actual implementation |
-| site-health-migration-guide.md | N/A | 2025-04-02 | Migration complete, no longer needed |
-| agent-system-implementation.md | comprehensive-agent-system-guide.md | 2025-04-03 | Superseded by comprehensive agent system guide |
-| agent-system-quickstart.md | comprehensive-agent-system-guide.md | 2025-04-03 | Superseded by comprehensive agent system guide |
-| agent-system-user-guide.md | comprehensive-agent-system-guide.md | 2025-04-03 | Superseded by comprehensive agent system guide |
-| _1_AGENTIC_SYSTEMS_.md | comprehensive-agent-system-guide.md | 2025-04-05 | Moved to docs/current/agent-system for better organization |
-| blog-post-formatting-plan.md | blog-xml-formatting-implementation.md | 2025-04-03 | Plan implemented with working XML content system |
+This directory contains archived documentation from previous versions of the MemberPress AI Assistant plugin. These documents have been superseded by the new documentation structure in the `/docs/current/` directory.
 
-## Archival Process
+## Archive Contents
 
-When a document needs to be archived:
+This archive includes:
 
-1. Move the document to this directory
-2. Add an entry to this index with the reason for archival
-3. Update any references in other documents to point to the replacement document
-4. Add a note at the top of the archived document indicating its status and replacement
+1. **Scooby Snacks** - Investigation results and solutions from the `_snacks` directory
+2. **XML Content System** - The old XML content system documentation
+3. **Miscellaneous Documentation** - Various standalone documentation files
 
-## Accessing Archived Information
+## Archive Organization
 
-While these documents are no longer current, they may contain valuable historical context or implementation details that are useful for understanding the evolution of the project. When referencing archived documents, always verify information against current implementation.
+The archive follows the original directory structure of the deprecated files:
 
-## Restoration Process
+- `_snacks/` - All investigation results and solutions
+- `xml-content-system/` - XML content system documentation
+- Root files - Various documentation that existed at the root level
 
-If information from an archived document becomes relevant again:
+## Finding Current Documentation
 
-1. Create a new document in the appropriate directory with the current information
-2. Reference the archived document as a source if applicable
-3. Update this index to indicate which parts have been restored
+The current, up-to-date documentation can be found in the following locations:
+
+- `/docs/current/` - All current documentation
+- `/docs/roadmap/` - Future feature plans
+- `/docs/templates/` - Documentation templates
+
+## Note on Archive Status
+
+Documents in this archive should be considered historical artifacts. They are kept for reference purposes but are no longer maintained or updated. Please refer to the current documentation for the most accurate and up-to-date information.
+
+## Document Revision History
+
+| Date | Version | Changes |
+|------|---------|---------|
+| 2025-04-06 | 1.0.0 | Initial archive creation |

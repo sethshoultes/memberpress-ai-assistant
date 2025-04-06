@@ -1,7 +1,7 @@
 # MemberPress AI Assistant Documentation Index
 
-**Version:** 2.1.0  
-**Last Updated:** 2025-04-06  
+**Version:** 2.0.0  
+**Last Updated:** 2025-04-05  
 **Status:** ✅ Completed
 
 ## Overview
@@ -45,22 +45,16 @@ This document serves as the master index for the MemberPress AI Assistant docume
 │   │   │   └── error-catalog-system.md # Error catalog system
 │   │   └── test-system/                # Testing frameworks
 │   │       └── edge-case-test-suite.md # Test framework docs
-│   ├── archive/                        # Archived documentation
-│   │   ├── README.md                   # Archive index
-│   │   ├── _snacks/                    # Archived Scooby Snacks (investigation docs)
-│   │   │   ├── README.md               # Scooby Snacks explanation
-│   │   │   ├── index.md                # Categorized index of snacks
-│   │   │   └── [categorized snack folders] # Organized by system
-│   │   ├── xml-content-system/         # Archived XML content system
-│   │   │   ├── README.md               # XML system overview
-│   │   │   ├── index.md                # XML system index
-│   │   │   └── examples/               # XML examples directory
+│   ├── _snacks/                        # Scooby Snacks (investigation docs)
+│   │   ├── README.md                   # Scooby Snacks explanation
+│   │   ├── index.md                    # Categorized index of snacks
+│   │   └── [categorized snack folders] # Organized by system
 │   ├── roadmap/                        # Planned features
 │   │   ├── README.md                   # Updated roadmap with accurate status
 │   │   ├── index.md                    # Comprehensive roadmap index
 │   │   └── [phase-specific roadmap docs] # Organized by implementation phase
-│   │   
-│   ├── archive/ (continued)
+│   ├── archive/                        # Superseded or historical docs
+│   │   ├── README.md                   # Archive index
 │   │   ├── agent-system-implementation.md
 │   │   ├── agent-system-quickstart.md
 │   │   └── [other archived docs]
@@ -87,7 +81,7 @@ This document serves as the master index for the MemberPress AI Assistant docume
 
 ### For Content Systems
 1. [Unified XML Content System](current/content-system/unified-xml-content-system.md) - Consolidated reference
-2. [XML Content System Guide](archive/xml-content-system/README.md) - Archived comprehensive documentation
+2. [XML Content System Guide](xml-content-system/README.md) - Comprehensive documentation
 3. [Content Marker System](current/content-system/CONTENT_MARKER_SYSTEM.md) - Content identification
 
 ### For JavaScript Development
@@ -139,22 +133,14 @@ To maintain documentation quality:
 3. Regularly update the roadmap/index.md file with priority changes
 4. Use documentation-map.md as a guide for navigation between documents
 5. Follow established status indicator conventions (✅, 🚧, 🔮, 🗄️)
-6. Archive obsolete documentation rather than deleting it
+6. Create Scooby Snack documents for investigation results and fixes
 
 ## Recent Major Documentation Updates
 
-- **April 6, 2025**
-  - Archived all old documentation
-  - Moved Scooby Snacks to archive directory
-  - Moved XML Content System to archive directory
-  - Updated all references to archived documentation
-  - Created Archive README with archive explanation
-
-- **April 5, 2025**
-  - Added system-based directory organization
-  - Created comprehensive roadmap index with Phase 3.5 tasks
-  - Updated implementation status for all features
-  - Added documentation consolidation results
-  - Moved blog-post-formatting-plan.md to archive
-  - Added Error System documentation section
-  - Added Test System documentation section
+- Added system-based directory organization
+- Created comprehensive roadmap index with Phase 3.5 tasks
+- Updated implementation status for all features
+- Added documentation consolidation results
+- Moved blog-post-formatting-plan.md to archive
+- Added Error System documentation section
+- Added Test System documentation section

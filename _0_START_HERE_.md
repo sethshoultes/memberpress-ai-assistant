@@ -99,7 +99,7 @@ If you're working on AI chat capabilities (new tools, improved responses, etc.):
 4. **Example implementation**: XML Content System
    - `/includes/class-mpai-xml-content-parser.php` - Backend parser
    - `/assets/js/modules/mpai-blog-formatter.js` - Frontend formatter
-   - `/docs/xml-content-system/README.md` - Comprehensive documentation
+   - `/docs/archive/xml-content-system/README.md` - Comprehensive documentation (archived)
 5. **Testing**:
    - Create a specific test script in `/test/`
    - Follow procedures in `/test/test-procedures.md`

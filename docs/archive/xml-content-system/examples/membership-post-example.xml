@@ -1,0 +1,55 @@
+<wp-post>
+  <post-title>Pro Membership: Monthly Coaching Access</post-title>
+  <post-content>
+    <block type="paragraph">Take your business to the next level with our Pro Membership coaching program. This membership provides monthly access to expert coaching, premium resources, and a supportive community of like-minded entrepreneurs.</block>
+
+    <block type="heading" level="2">What's Included</block>
+    <block type="list">
+      <item>Monthly 1-hour group coaching call with industry experts</item>
+      <item>Private Slack community for networking and support</item>
+      <item>Unlimited access to our premium course library</item>
+      <item>Monthly Q&A sessions to address your specific challenges</item>
+      <item>Priority email support with 24-hour response time</item>
+      <item>Downloadable resources including templates and scripts</item>
+    </block>
+
+    <block type="heading" level="2">How It Works</block>
+    <block type="paragraph">After joining, you'll receive immediate access to our member portal where you can schedule your first coaching session, access the resource library, and join our private community. Coaching calls are held on the first Tuesday of each month, with recordings available if you can't attend live.</block>
+
+    <block type="heading" level="2">Who Is This For?</block>
+    <block type="paragraph">The Pro Membership is perfect for established entrepreneurs who are looking to scale their business with expert guidance. If you're seeking accountability, strategic advice, and a supportive community, this membership is designed for you.</block>
+
+    <block type="quote">The Pro Membership has been instrumental in helping me grow my business by 47% in just six months. The coaching alone is worth the investment. - Sarah T., Member since 2023</block>
+
+    <block type="heading" level="2">Pricing Options</block>
+    <block type="paragraph">Choose the option that works best for you:</block>
+
+    <block type="ordered-list">
+      <item>Monthly: $97/month (cancel anytime)</item>
+      <item>Annual: $970/year (save 20%)</item>
+      <item>Lifetime: $2,497 (one-time payment)</item>
+    </block>
+
+    <block type="heading" level="2">Satisfaction Guarantee</block>
+    <block type="paragraph">We're confident you'll find tremendous value in the Pro Membership. If you're not completely satisfied within your first 30 days, simply let us know and we'll provide a full refund - no questions asked.</block>
+
+    <block type="heading" level="2">Frequently Asked Questions</block>
+    
+    <block type="heading" level="3">How many coaching calls can I attend?</block>
+    <block type="paragraph">Your membership includes access to all monthly group coaching calls. You can attend every session if you wish.</block>
+    
+    <block type="heading" level="3">Can I upgrade from monthly to annual later?</block>
+    <block type="paragraph">Yes, you can upgrade to the annual plan at any time. We'll prorate the remaining amount from your monthly subscription.</block>
+    
+    <block type="heading" level="3">Do I lose access if I cancel?</block>
+    <block type="paragraph">If you cancel a monthly membership, you'll retain access until the end of your billing period. Annual memberships provide access for the full year, regardless of cancellation.</block>
+    
+    <block type="heading" level="3">How does the Slack community work?</block>
+    <block type="paragraph">Upon joining, you'll receive an invitation to our private Slack workspace where you can connect with other members, share resources, and get quick feedback on ideas.</block>
+
+    <block type="heading" level="2">Ready to Join?</block>
+    <block type="paragraph">Click the button below to select your preferred membership option and gain immediate access to all Pro Membership benefits.</block>
+  </post-content>
+  <post-excerpt>Elevate your business with our Pro Membership, offering monthly expert coaching, a supportive community, and premium resources. Choose from flexible pricing options with a 30-day satisfaction guarantee.</post-excerpt>
+  <post-status>draft</post-status>
+</wp-post>
