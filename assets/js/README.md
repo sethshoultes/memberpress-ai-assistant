@@ -13,7 +13,6 @@ This directory contains all the JavaScript code for the MemberPress AI Assistant
 ```
 assets/js/
 ├── admin.js              # Admin page functionality
-├── chat-interface.js     # Legacy file (placeholder)
 ├── mpai-logger.js        # Logging system
 ├── README.md             # This documentation
 └── modules/              # Modular components
