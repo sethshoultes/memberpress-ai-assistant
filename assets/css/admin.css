@@ -415,16 +415,17 @@
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
 }
 
-/* Settings Groups */
-.mpai-settings-group {
-    margin-bottom: 30px;
-    border-bottom: 1px solid #f1f1f1;
-    padding-bottom: 20px;
+/* Settings Sections (Groups) */
+.mpai-settings-form h2 {
+    font-size: 1.3em;
+    margin-top: 2em;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
 }
 
-.mpai-settings-group:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
+.mpai-settings-form h2:first-of-type {
+    margin-top: 0;
 }
 
 .mpai-settings-group h2 {

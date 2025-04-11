@@ -133,7 +133,51 @@ class MPAI_Settings_Registry {
         foreach ($this->settings as $tab_id => $fields) {
             // Register the option group
             $option_group = 'mpai_' . $tab_id . '_options';
+            $page_slug = 'mpai_' . $tab_id . '_page';
             
+            // Register sections for each group
+            if (isset($this->settings_groups[$tab_id])) {
+                foreach ($this->settings_groups[$tab_id] as $group_id => $group) {
+                    $section_id = 'mpai_' . $tab_id . '_' . $group_id . '_section';
+                    
+                    // Add the settings section
+                    add_settings_section(
+                        $section_id,
+                        $group['title'],
+                        function() use ($group) {
+                            // Optional section description
+                            if (isset($group['description'])) {
+                                echo '<p class="description">' . esc_html($group['description']) . '</p>';
+                            }
+                        },
+                        $page_slug
+                    );
+                    
+                    // Add fields to this section
+                    if (!empty($group['fields'])) {
+                        foreach ($group['fields'] as $field_id => $field) {
+                            $option_name = 'mpai_' . $field_id;
+                            
+                            // Add the settings field
+                            add_settings_field(
+                                'field_' . $field_id,
+                                $field['title'],
+                                [$this, 'render_field_callback'],
+                                $page_slug,
+                                $section_id,
+                                [
+                                    'tab_id' => $tab_id,
+                                    'field_id' => $field_id,
+                                    'field' => $field,
+                                    'label_for' => $option_name
+                                ]
+                            );
+                        }
+                    }
+                }
+            }
+            
+            // Register each field setting
             foreach ($fields as $field) {
                 $option_name = 'mpai_' . $field['field_id'];
                 $args = isset($field['args']['register_args']) ? $field['args']['register_args'] : [];
@@ -160,6 +204,69 @@ class MPAI_Settings_Registry {
                 // Register with WordPress
                 register_setting($option_group, $option_name, $args);
             }
+        }
+    }
+    
+    /**
+     * Render field callback for WordPress Settings API
+     * 
+     * @param array $args Field arguments
+     */
+    public function render_field_callback($args) {
+        if (!isset($args['field_id']) || !isset($args['field']) || !isset($args['tab_id'])) {
+            return;
+        }
+        
+        $field_id = $args['field_id'];
+        $field = $args['field'];
+        $tab_id = $args['tab_id'];
+        
+        $option_name = 'mpai_' . $field_id;
+        $value = get_option($option_name);
+        $field_args = isset($field['args']) ? $field['args'] : [];
+        
+        // Get field description if provided
+        $description = isset($field_args['description']) ? $field_args['description'] : '';
+        
+        // Render the field based on type
+        switch ($field['type']) {
+            case 'text':
+                $this->render_text_field($option_name, $value, $field_args);
+                break;
+            case 'textarea':
+                $this->render_textarea_field($option_name, $value, $field_args);
+                break;
+            case 'checkbox':
+                $this->render_checkbox_field($option_name, $value, $field_args);
+                break;
+            case 'select':
+                $this->render_select_field($option_name, $value, $field_args);
+                break;
+            case 'radio':
+                $this->render_radio_field($option_name, $value, $field_args);
+                break;
+            case 'color':
+                $this->render_color_field($option_name, $value, $field_args);
+                break;
+            case 'custom':
+                if (isset($field_args['render_callback']) && is_callable($field_args['render_callback'])) {
+                    call_user_func($field_args['render_callback'], $option_name, $value, $field_args);
+                } else {
+                    echo '<p class="description">' . 
+                         esc_html__('Custom field has no render callback.', 'memberpress-ai-assistant') . 
+                         '</p>';
+                }
+                break;
+            default:
+                echo '<p class="description">' . 
+                     esc_html__('Unknown field type.', 'memberpress-ai-assistant') . 
+                     '</p>';
+                break;
+        }
+        
+        // Show description if available
+        if (!empty($description)) {
+            echo '<p class="description">' . esc_html($description) . '</p>';
         }
     }
 
@@ -244,6 +351,7 @@ class MPAI_Settings_Registry {
      */
     private function render_settings_form($current_tab) {
         $option_group = 'mpai_' . $current_tab . '_options';
+        $page_slug = 'mpai_' . $current_tab . '_page';
         
         // Start form
         echo '<form method="post" action="options.php" class="mpai-settings-form">';
@@ -256,10 +364,8 @@ class MPAI_Settings_Registry {
             echo '<div class="notice notice-warning"><p>' . 
                  esc_html__('No settings found for this tab.', 'memberpress-ai-assistant') . '</p></div>';
         } else {
-            // Render each settings group
-            foreach ($this->settings_groups[$current_tab] as $group_id => $group) {
-                $this->render_settings_group($current_tab, $group_id, $group);
-            }
+            // Use WordPress settings API to output sections and fields
+            do_settings_sections($page_slug);
         }
         
         // Add submit button
