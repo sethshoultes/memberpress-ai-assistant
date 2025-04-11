@@ -1,7 +1,7 @@
 # MemberPress AI Assistant - Master Roadmap Plan
 
-**Version:** 3.0.0  
-**Last Updated:** 2025-04-06  
+**Version:** 3.0.1  
+**Last Updated:** 2025-04-11  
 **Status:** ✅ Active
 
 ## Overview
@@ -21,6 +21,28 @@ A comprehensive rewrite of the entire admin interface is required due to persist
 | 4 | Diagnostics System Redesign | Rebuild diagnostics UI as standalone page, implement proper AJAX handling for tests, create dedicated diagnostics API |
 | 5 | Chat Interface Settings Integration | Redesign chat settings page, improve integration with main settings, add visual configuration options |
 | 6 | UI Testing & Quality Assurance | Create comprehensive UI test suite, implement automated navigation tests, develop visual regression testing |
+
+### NEW: Hooks and Filters Implementation (April-May 2025)
+
+A comprehensive implementation of WordPress-style hooks and filters throughout the plugin to enhance extensibility and customization options for developers. This project will be developed in parallel with the Admin UI Overhaul as it addresses a different codebase area. For detailed implementation plan, see the [Hooks and Filters Implementation Plan](./current-development/hooks-filters-implementation-plan.md).
+
+| Week | Focus Area | Priority Tasks |
+|------|------------|----------------|
+| 1 | Core System Hooks | Implement main plugin initialization hooks, chat processing hooks, system message construction filters |
+| 2 | Tool and Agent System Hooks | Add tool execution hooks, agent orchestration hooks, agent selection and scoring filters |
+| 3 | Content and UI Hooks | Implement content generation hooks, admin interface hooks, settings and options filters |
+| 4 | API and Error Handling Hooks | Add API request/response hooks, error handling hooks, logging system filters |
+
+### NEW: Chat Settings Integration (May 2025)
+
+A focused plan to improve the chat interface settings system, providing better visual configuration options and integrating with the hooks and filters system. This implementation aligns with Week 5 of the Admin UI Overhaul and will serve as a practical application of the hooks system. For detailed implementation plan, see the [Chat Settings Integration Plan](./current-development/chat-settings-integration-plan.md).
+
+| Week | Focus Area | Priority Tasks |
+|------|------------|----------------|
+| 1 | Settings Consolidation | Identify all existing chat settings, design unified structure, create migration path |
+| 2 | UI Development | Design enhanced settings UI, implement visual configuration options, create preview functionality |
+| 3 | Hooks Integration | Integrate with hooks system, create developer API, implement settings validation |
+| 4 | Advanced Features | Implement role-based settings, page-specific behavior, comprehensive testing |
 
 ### Phase 3.5: Completing Essential Features (May-June 2025)
 
@@ -136,6 +158,8 @@ After the Admin UI Overhaul is complete, the following essential features from e
 | Feature | Target Version | Status | Dependencies |
 |---------|----------------|--------|-------------|
 | **Admin UI Complete Overhaul** | 1.7.0 | **CRITICAL PRIORITY ⚠️** | None |
+| **Hooks and Filters Implementation** | 1.7.0 | **PLANNING PHASE 📝** | None |
+| **Chat Settings Integration** | 1.7.0 | **PLANNING PHASE 📝** | Admin UI Overhaul Week 5 |
 | Command System Rewrite | 1.7.0 | On hold ⏸️ | Admin UI Overhaul |
 | Error Catalog System | 1.7.0 | On hold ⏸️ | Admin UI Overhaul |
 | Connection Pooling | 1.7.0 | On hold ⏸️ | Admin UI Overhaul |
