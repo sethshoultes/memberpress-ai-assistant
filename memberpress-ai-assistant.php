@@ -743,7 +743,13 @@ class MemberPress_AI_Assistant {
         // Make sure MemberPress status is checked
         $this->check_memberpress();
         
-        require_once MPAI_PLUGIN_DIR . 'includes/settings-page.php';
+        // Load the Settings Registry class if it hasn't been loaded yet
+        if (!class_exists('MPAI_Settings_Registry')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-settings-registry.php';
+        }
+        
+        // Use the new modular settings page
+        require_once MPAI_PLUGIN_DIR . 'includes/settings-page-new.php';
     }
 
     /**
