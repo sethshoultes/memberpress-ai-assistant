@@ -1395,6 +1395,14 @@ class MPAI_Diagnostics_Page {
             }
         }
         
+        // Make sure plugin logger is also loaded
+        if (!class_exists('MPAI_Plugin_Logger')) {
+            $plugin_logger_file = MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+            if (file_exists($plugin_logger_file)) {
+                require_once $plugin_logger_file;
+            }
+        }
+        
         // Check for test file
         $test_file = MPAI_PLUGIN_DIR . 'test/test-error-recovery.php';
         
@@ -1428,15 +1436,60 @@ class MPAI_Diagnostics_Page {
         
         // Run the tests
         try {
+            error_log("MPAI: Running comprehensive error recovery tests");
             $result = mpai_test_error_recovery();
+            
+            // Format test results 
+            $test_summary = [];
+            $failed_tests = [];
+            $passed_tests = [];
+            
+            if (isset($result['data']['tests'])) {
+                foreach ($result['data']['tests'] as $test_name => $test_data) {
+                    if (isset($test_data['success']) && $test_data['success']) {
+                        $passed_tests[] = $test_name;
+                    } else {
+                        $failed_tests[] = $test_name;
+                    }
+                    
+                    $test_summary[] = [
+                        'name' => ucfirst(str_replace('_', ' ', $test_name)),
+                        'success' => isset($test_data['success']) ? $test_data['success'] : false,
+                        'message' => isset($test_data['message']) ? $test_data['message'] : 'No test message available'
+                    ];
+                }
+            }
+            
+            // Determine overall status and message
+            $status = $result['success'] ? 'success' : ($passed_tests ? 'warning' : 'error');
+            $message = '';
+            
+            if (count($failed_tests) === 0) {
+                $message = __('All Error Recovery System tests passed successfully!', 'memberpress-ai-assistant');
+            } else {
+                $message = sprintf(
+                    __('%d of %d Error Recovery System tests failed: %s', 'memberpress-ai-assistant'),
+                    count($failed_tests),
+                    count($passed_tests) + count($failed_tests),
+                    implode(', ', array_map(function($test) {
+                        return ucfirst(str_replace('_', ' ', $test));
+                    }, $failed_tests))
+                );
+            }
             
             return [
                 'success' => $result['success'],
-                'status' => $result['success'] ? 'success' : 'error',
-                'message' => $result['message'],
-                'details' => $result
+                'status' => $status,
+                'message' => $message,
+                'details' => [
+                    'test_summary' => $test_summary,
+                    'passed_tests' => $passed_tests,
+                    'failed_tests' => $failed_tests,
+                    'raw_result' => $result
+                ]
             ];
         } catch (Exception $e) {
+            error_log("MPAI: Error running error recovery tests: " . $e->getMessage());
             return [
                 'success' => false,
                 'status' => 'error',
