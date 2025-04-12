@@ -1239,7 +1239,7 @@ class MPAI_Diagnostics_Page {
                 ['role' => 'system', 'content' => 'You are a system diagnostic tool.'],
                 ['role' => 'user', 'content' => 'Respond with "Connection successful" if you receive this message.']
             ];
-            $response = $anthropic->generate_chat_completion($messages);
+            $response = $anthropic->generate_completion($messages);
             
             if (empty($response)) {
                 return [
