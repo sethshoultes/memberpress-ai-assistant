@@ -233,40 +233,32 @@ class MPAI_Error_Recovery {
             // Convert our severity to logger actions
             switch ($severity) {
                 case self::SEVERITY_CRITICAL:
-                    // Log critical errors as a special case
-                    $this->logger->insert_log(
-                        'mpai',
-                        'MPAI Assistant',
-                        '', // version
-                        '', // prev version
-                        'error',
-                        [
-                            'error_id' => $data['error_id'],
-                            'type' => $type,
-                            'code' => $code,
-                            'message' => $message,
-                            'severity' => $severity,
-                            'context' => isset($data['context']) ? $data['context'] : [],
-                        ]
-                    );
+                    // Log critical errors using public methods only
+                    $error_log_data = [
+                        'error_id' => $data['error_id'],
+                        'type' => $type,
+                        'code' => $code,
+                        'message' => $message,
+                        'severity' => $severity,
+                        'context' => isset($data['context']) ? $data['context'] : [],
+                    ];
+                    
+                    // Use error_log instead of trying to access the private method
+                    error_log('MPAI Critical Error: ' . json_encode($error_log_data));
                     break;
                     
                 case self::SEVERITY_ERROR:
-                    // Consider using a dedicated "error" action in future logger versions
-                    $this->logger->insert_log(
-                        'mpai',
-                        'MPAI Assistant',
-                        '', 
-                        '', 
-                        'error',
-                        [
-                            'error_id' => $data['error_id'],
-                            'type' => $type,
-                            'code' => $code,
-                            'message' => $message,
-                            'context' => isset($data['context']) ? $data['context'] : [],
-                        ]
-                    );
+                    // Log error using public methods only
+                    $error_log_data = [
+                        'error_id' => $data['error_id'],
+                        'type' => $type,
+                        'code' => $code,
+                        'message' => $message,
+                        'context' => isset($data['context']) ? $data['context'] : [],
+                    ];
+                    
+                    // Use error_log instead of trying to access the private method
+                    error_log('MPAI Error: ' . json_encode($error_log_data));
                     break;
                     
                 default:
