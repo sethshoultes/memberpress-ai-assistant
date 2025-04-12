@@ -126,8 +126,14 @@ $error_recovery = mpai_init_error_recovery();
                 html += '<tr><th>Test</th><th>Status</th><th>Message</th></tr>';
                 
                 for (const [testName, testResult] of Object.entries(data.data.tests)) {
+                    // Format the test name to be more readable
+                    const prettyName = testName
+                        .split('_')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
+                        
                     html += '<tr>';
-                    html += '<td>' + testName + '</td>';
+                    html += '<td>' + prettyName + '</td>';
                     html += '<td>' + (testResult.success ? 
                         '<span class="test-success">✅ Pass</span>' : 
                         '<span class="test-error">❌ Fail</span>') + '</td>';
@@ -156,7 +162,13 @@ $error_recovery = mpai_init_error_recovery();
                 html += '<ul class="test-list">';
                 
                 for (const [testName, testResult] of Object.entries(data.data.tests)) {
-                    html += '<li><strong>' + testName + ':</strong> ';
+                    // Format the test name to be more readable
+                    const prettyName = testName
+                        .split('_')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
+                    
+                    html += '<li><strong>' + prettyName + ':</strong> ';
                     if (testResult.details) {
                         html += '<a href="#" onclick="toggleDetail(\'' + testName + '\'); return false;">Show/Hide Details</a>';
                         html += '<div id="detail-' + testName + '" style="display:none;">';
@@ -194,7 +206,14 @@ $error_recovery = mpai_init_error_recovery();
         <div class="test-panel">
             <div class="test-title">Error Recovery System Test</div>
             <div class="test-desc">
-                Tests the Error Recovery System functionality including error creation, retry mechanisms, fallback strategies, and circuit breaker patterns.
+                Comprehensive testing of the Error Recovery System including:
+                <ul>
+                    <li>Basic error creation with context and severity</li>
+                    <li>Recovery mechanisms with retry capability</li>
+                    <li>Fallback strategy implementation</li>
+                    <li>Circuit breaker pattern for automatic service protection</li>
+                    <li>Error formatting for user-friendly display</li>
+                </ul>
             </div>
             <div class="test-controls">
                 <button id="run-error-recovery" class="test-button">Run Test</button>

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.5] - 2025-04-11
+
+### Added
+- New standalone Diagnostics page with improved UI and test organization
+- Comprehensive system information display in diagnostics
+- Category-based test navigation for better organization
+- Test results summary with pass/warning/fail counts
+- Improved test detail display with warnings and critical issues
+
+### Changed
+- Diagnostics system completely redesigned as a standalone page
+- Tests organized by category: Core System, API Connections, AI Tools, Integration Tests
+- Improved UI styling for better user experience
+
+### Fixed
+- Enhanced Error Recovery System tests with comprehensive test suite:
+  - Added test cases for error creation with context and severity
+  - Added test cases for retry mechanism functionality
+  - Added test cases for fallback strategies implementation
+  - Added test cases for circuit breaker pattern for service protection
+  - Added test cases for error formatting for user-friendly display
+- Fixed diagnostics test failures in API connections and tools:
+  - Fixed OpenAI API test by using the correct generate_chat_completion() method instead of non-existent complete() method
+  - Fixed Anthropic API test with similar correction to use the proper method
+  - Fixed WP-CLI tool test by using get_available_tools() instead of non-existent get_all_tools() method
+  - Fixed Plugin Logs tool test with the same correction for proper tool registry access
+  - Improved tool registration checking for all tool tests
+- Fixed nonce test in Debug tab by updating the AJAX handler to use direct-ajax-handler.php with correct parameters
+- Improved Diagnostics page with additional tests for AJAX Communication, Nonce Verification, and System Cache
+- Simplified Debug tab by removing redundant diagnostic tools in favor of the dedicated Diagnostics page
+
 ### Added
 - Implemented Phase 1 of Admin UI Overhaul plan:
   - Created new MPAI_Admin_Menu class for centralized menu registration

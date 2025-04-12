@@ -3,7 +3,7 @@
  * Plugin Name: MemberPress AI Assistant
  * Plugin URI: https://memberpress.com/memberpress-ai-assistant
  * Description: AI-powered chat assistant for MemberPress that helps with membership management, troubleshooting, and WordPress CLI command execution.
- * Version: 1.5.4
+ * Version: 1.5.5
  * Author: MemberPress
  * Author URI: https://memberpress.com
  * Text Domain: memberpress-ai-assistant
@@ -119,7 +119,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('MPAI_VERSION', '1.5.4');
+define('MPAI_VERSION', '1.5.5');
 define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MPAI_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -438,10 +438,12 @@ class MemberPress_AI_Assistant {
         }
         
         // Load the new diagnostics system
-        if (is_admin() && file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics.php')) {
-            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics.php';
+        if (is_admin()) {
+            // Load the Diagnostics Page class
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics-page.php';
+            new MPAI_Diagnostics_Page();
             
-            // Load test files
+            // Load test files if they exist
             if (file_exists(MPAI_PLUGIN_DIR . 'includes/tests/load-tests.php')) {
                 require_once MPAI_PLUGIN_DIR . 'includes/tests/load-tests.php';
             }
@@ -743,6 +745,7 @@ class MemberPress_AI_Assistant {
         // Make sure MemberPress status is checked
         $this->check_memberpress();
         
+        // Just use the original settings page for now since it works with the JS tabs
         require_once MPAI_PLUGIN_DIR . 'includes/settings-page.php';
     }
 

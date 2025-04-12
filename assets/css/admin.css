@@ -393,3 +393,82 @@
 .mpai-hidden {
     display: none !important;
 }
+
+/**
+ * Settings Registry Styles - New Admin UI
+ */
+ 
+/* Settings Registry Layout */
+.mpai-settings-wrap {
+    margin: 20px 0;
+}
+
+.mpai-settings-wrap .nav-tab-wrapper {
+    margin-bottom: 20px;
+}
+
+.mpai-tab-content {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-top: 0;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+/* Settings Sections (Groups) */
+.mpai-settings-form h2 {
+    font-size: 1.3em;
+    margin-top: 2em;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.mpai-settings-form h2:first-of-type {
+    margin-top: 0;
+}
+
+.mpai-settings-group h2 {
+    font-size: 1.3em;
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Form Elements */
+.mpai-settings-form .form-table th {
+    width: 200px;
+    padding: 15px 10px 15px 0;
+}
+
+.mpai-settings-form .form-table td {
+    padding: 15px 10px;
+}
+
+.mpai-settings-form .description {
+    font-style: italic;
+    color: #666;
+    margin-top: 5px;
+}
+
+.mpai-color-picker {
+    width: 80px;
+}
+
+.mpai-settings-form input[type="text"],
+.mpai-settings-form input[type="number"],
+.mpai-settings-form select,
+.mpai-settings-form textarea {
+    border: 1px solid #ddd;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.07);
+    transition: border-color .15s ease-in-out;
+}
+
+.mpai-settings-form input[type="text"]:focus,
+.mpai-settings-form input[type="number"]:focus,
+.mpai-settings-form select:focus,
+.mpai-settings-form textarea:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+}
