@@ -624,6 +624,10 @@ class MPAI_Diagnostics_Page {
                 'name' => __('AI Tools', 'memberpress-ai-assistant'),
                 'description' => __('Tests for AI tool functionality', 'memberpress-ai-assistant')
             ],
+            'plugins' => [
+                'name' => __('Plugin Management', 'memberpress-ai-assistant'),
+                'description' => __('Information about installed plugins and plugin history', 'memberpress-ai-assistant')
+            ],
             'integration' => [
                 'name' => __('Integration Tests', 'memberpress-ai-assistant'),
                 'description' => __('Tests for integration with WordPress and external systems', 'memberpress-ai-assistant')
@@ -705,6 +709,18 @@ class MPAI_Diagnostics_Page {
                 'description' => __('Tests the Plugin Logs tool functionality.', 'memberpress-ai-assistant'),
                 'category' => 'tools',
                 'callback' => [$this, 'test_plugin_logs_tool'],
+            ],
+            'active_plugins' => [
+                'name' => __('Active Plugins', 'memberpress-ai-assistant'),
+                'description' => __('Displays a list of active plugins on the site.', 'memberpress-ai-assistant'),
+                'category' => 'plugins',
+                'callback' => [$this, 'test_active_plugins'],
+            ],
+            'plugin_history' => [
+                'name' => __('Plugin History', 'memberpress-ai-assistant'),
+                'description' => __('Shows recent plugin installation, activation, deactivation, and update history.', 'memberpress-ai-assistant'),
+                'category' => 'plugins',
+                'callback' => [$this, 'test_plugin_history'],
             ]
         ];
     }
@@ -1796,6 +1812,480 @@ class MPAI_Diagnostics_Page {
                 'registry_info' => $registry_output
             ]
         ];
+    }
+    
+    /**
+     * Test Active Plugins
+     * 
+     * @return array Test result
+     */
+    public function test_active_plugins() {
+        // Check for WordPress function
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        
+        // Get all plugins
+        $all_plugins = get_plugins();
+        
+        // Check for active plugins function
+        if (!function_exists('is_plugin_active')) {
+            include_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        
+        // Categorize plugins as active or inactive
+        $active_plugins = [];
+        $inactive_plugins = [];
+        
+        foreach ($all_plugins as $plugin_path => $plugin_data) {
+            $is_active = is_plugin_active($plugin_path);
+            $plugin_info = [
+                'name' => $plugin_data['Name'],
+                'version' => $plugin_data['Version'],
+                'description' => $plugin_data['Description'],
+                'author' => $plugin_data['Author'],
+                'plugin_uri' => $plugin_data['PluginURI'],
+                'path' => $plugin_path,
+                'slug' => dirname($plugin_path),
+                'network_active' => is_plugin_active_for_network($plugin_path),
+            ];
+            
+            if ($is_active) {
+                $active_plugins[$plugin_path] = $plugin_info;
+            } else {
+                $inactive_plugins[$plugin_path] = $plugin_info;
+            }
+        }
+        
+        // Sort plugins by name
+        uasort($active_plugins, function($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+        
+        uasort($inactive_plugins, function($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+        
+        // Create HTML table of active plugins
+        $active_plugins_html = '<table class="widefat mpai-plugins-table">';
+        $active_plugins_html .= '<thead>';
+        $active_plugins_html .= '<tr>';
+        $active_plugins_html .= '<th>' . __('Plugin Name', 'memberpress-ai-assistant') . '</th>';
+        $active_plugins_html .= '<th>' . __('Version', 'memberpress-ai-assistant') . '</th>';
+        $active_plugins_html .= '<th>' . __('Author', 'memberpress-ai-assistant') . '</th>';
+        $active_plugins_html .= '</tr>';
+        $active_plugins_html .= '</thead>';
+        $active_plugins_html .= '<tbody>';
+        
+        foreach ($active_plugins as $plugin_info) {
+            $active_plugins_html .= '<tr>';
+            $active_plugins_html .= '<td><strong>' . esc_html($plugin_info['name']) . '</strong>';
+            if (!empty($plugin_info['description'])) {
+                $active_plugins_html .= '<br><span class="description">' . esc_html($plugin_info['description']) . '</span>';
+            }
+            $active_plugins_html .= '</td>';
+            $active_plugins_html .= '<td>' . esc_html($plugin_info['version']) . '</td>';
+            $active_plugins_html .= '<td>' . wp_kses_post($plugin_info['author']) . '</td>';
+            $active_plugins_html .= '</tr>';
+        }
+        
+        $active_plugins_html .= '</tbody>';
+        $active_plugins_html .= '</table>';
+        
+        // Create HTML table of inactive plugins
+        $inactive_plugins_html = '<h4>' . __('Inactive Plugins', 'memberpress-ai-assistant') . ' (' . count($inactive_plugins) . ')</h4>';
+        $inactive_plugins_html .= '<table class="widefat mpai-plugins-table">';
+        $inactive_plugins_html .= '<thead>';
+        $inactive_plugins_html .= '<tr>';
+        $inactive_plugins_html .= '<th>' . __('Plugin Name', 'memberpress-ai-assistant') . '</th>';
+        $inactive_plugins_html .= '<th>' . __('Version', 'memberpress-ai-assistant') . '</th>';
+        $inactive_plugins_html .= '<th>' . __('Author', 'memberpress-ai-assistant') . '</th>';
+        $inactive_plugins_html .= '</tr>';
+        $inactive_plugins_html .= '</thead>';
+        $inactive_plugins_html .= '<tbody>';
+        
+        foreach ($inactive_plugins as $plugin_info) {
+            $inactive_plugins_html .= '<tr>';
+            $inactive_plugins_html .= '<td><strong>' . esc_html($plugin_info['name']) . '</strong>';
+            if (!empty($plugin_info['description'])) {
+                $inactive_plugins_html .= '<br><span class="description">' . esc_html($plugin_info['description']) . '</span>';
+            }
+            $inactive_plugins_html .= '</td>';
+            $inactive_plugins_html .= '<td>' . esc_html($plugin_info['version']) . '</td>';
+            $inactive_plugins_html .= '<td>' . wp_kses_post($plugin_info['author']) . '</td>';
+            $inactive_plugins_html .= '</tr>';
+        }
+        
+        $inactive_plugins_html .= '</tbody>';
+        $inactive_plugins_html .= '</table>';
+        
+        // Generate summary data
+        $total_plugins = count($all_plugins);
+        $active_count = count($active_plugins);
+        $inactive_count = count($inactive_plugins);
+        $network_active_count = 0;
+        
+        foreach ($active_plugins as $plugin_info) {
+            if ($plugin_info['network_active']) {
+                $network_active_count++;
+            }
+        }
+        
+        return [
+            'success' => true,
+            'status' => 'success',
+            'message' => sprintf(
+                __('Found %d plugins (%d active, %d inactive).', 'memberpress-ai-assistant'),
+                $total_plugins,
+                $active_count,
+                $inactive_count
+            ),
+            'html_content' => $active_plugins_html . $inactive_plugins_html,
+            'details' => [
+                'total_plugins' => $total_plugins,
+                'active_plugins' => $active_count,
+                'inactive_plugins' => $inactive_count,
+                'network_active_plugins' => $network_active_count,
+                'active_plugins_list' => array_values($active_plugins),
+                'inactive_plugins_list' => array_values($inactive_plugins)
+            ]
+        ];
+    }
+    
+    /**
+     * Test Plugin History
+     * 
+     * @return array Test result
+     */
+    public function test_plugin_history() {
+        // Check if the plugin logger class exists
+        if (!class_exists('MPAI_Plugin_Logger')) {
+            $plugin_logger_file = MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+            
+            if (file_exists($plugin_logger_file)) {
+                // Try to include the file
+                require_once $plugin_logger_file;
+            } else {
+                return [
+                    'success' => false,
+                    'status' => 'error',
+                    'message' => __('Plugin Logger class file not found.', 'memberpress-ai-assistant'),
+                    'details' => [
+                        'file_path' => $plugin_logger_file,
+                        'file_exists' => false
+                    ]
+                ];
+            }
+        }
+        
+        // Check if the plugin logger is initialized
+        if (!function_exists('mpai_init_plugin_logger')) {
+            return [
+                'success' => false,
+                'status' => 'error',
+                'message' => __('Plugin Logger is not initialized.', 'memberpress-ai-assistant'),
+                'details' => [
+                    'error' => 'Plugin logger initialization function not found'
+                ]
+            ];
+        }
+        
+        try {
+            // Initialize plugin logger
+            $logger = mpai_init_plugin_logger();
+            
+            if (!$logger) {
+                return [
+                    'success' => false,
+                    'status' => 'error',
+                    'message' => __('Failed to initialize plugin logger.', 'memberpress-ai-assistant'),
+                    'details' => [
+                        'error' => 'Logger initialization returned null'
+                    ]
+                ];
+            }
+            
+            // Get plugin activity summary
+            $days = 30; // Default: show last 30 days
+            $summary = $logger->get_activity_summary($days);
+            
+            // Get recent plugin logs
+            $logs = $logger->get_logs([
+                'limit' => 50,
+                'orderby' => 'date_time',
+                'order' => 'DESC'
+            ]);
+            
+            // Check if we got any logs
+            if (empty($logs) && isset($summary['is_fallback']) && $summary['is_fallback']) {
+                // This is fallback data, show a warning
+                return [
+                    'success' => true,
+                    'status' => 'warning',
+                    'message' => __('Plugin logging database is not available or empty. Showing synthetic data.', 'memberpress-ai-assistant'),
+                    'details' => [
+                        'is_fallback' => true,
+                        'summary' => $summary
+                    ],
+                    'html_content' => $this->generate_plugin_history_html($summary, $logs, true)
+                ];
+            } else if (empty($logs)) {
+                // No logs found
+                return [
+                    'success' => true,
+                    'status' => 'warning',
+                    'message' => __('No plugin history logs found.', 'memberpress-ai-assistant'),
+                    'details' => [
+                        'summary' => $summary
+                    ],
+                    'html_content' => '<p>' . __('No plugin history logs found. Plugin actions will be recorded as they occur.', 'memberpress-ai-assistant') . '</p>'
+                ];
+            }
+            
+            // Success with data
+            return [
+                'success' => true,
+                'status' => 'success',
+                'message' => sprintf(
+                    __('Found %d plugin history logs.', 'memberpress-ai-assistant'),
+                    count($logs)
+                ),
+                'details' => [
+                    'log_count' => count($logs),
+                    'summary' => $summary,
+                    'logs' => $logs 
+                ],
+                'html_content' => $this->generate_plugin_history_html($summary, $logs)
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'status' => 'error',
+                'message' => __('Error retrieving plugin history:', 'memberpress-ai-assistant') . ' ' . $e->getMessage(),
+                'details' => [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]
+            ];
+        }
+    }
+    
+    /**
+     * Generate HTML for plugin history display
+     *
+     * @param array $summary Activity summary data
+     * @param array $logs Recent log entries
+     * @param bool $is_fallback Whether this is fallback data
+     * @return string HTML content
+     */
+    private function generate_plugin_history_html($summary, $logs, $is_fallback = false) {
+        $html = '';
+        
+        // Add notice if this is fallback data
+        if ($is_fallback) {
+            $html .= '<div class="notice notice-warning inline"><p>' . 
+                     __('Plugin logging database is not available or empty. Showing synthetic data for demonstration purposes.', 'memberpress-ai-assistant') . 
+                     '</p></div>';
+        }
+        
+        // Add summary section
+        $html .= '<div class="mpai-plugin-history-summary">';
+        $html .= '<h4>' . __('Activity Summary', 'memberpress-ai-assistant') . '</h4>';
+        
+        // Create activity counts table
+        if (isset($summary['action_counts']) && !empty($summary['action_counts'])) {
+            $html .= '<table class="widefat mpai-summary-table" style="width: auto; margin-bottom: 20px;">';
+            $html .= '<thead>';
+            $html .= '<tr>';
+            $html .= '<th>' . __('Action', 'memberpress-ai-assistant') . '</th>';
+            $html .= '<th>' . __('Count', 'memberpress-ai-assistant') . '</th>';
+            $html .= '</tr>';
+            $html .= '</thead>';
+            $html .= '<tbody>';
+            
+            $action_labels = [
+                'installed' => __('Installed', 'memberpress-ai-assistant'),
+                'updated' => __('Updated', 'memberpress-ai-assistant'),
+                'activated' => __('Activated', 'memberpress-ai-assistant'),
+                'deactivated' => __('Deactivated', 'memberpress-ai-assistant'),
+                'deleted' => __('Deleted', 'memberpress-ai-assistant')
+            ];
+            
+            foreach ($summary['action_counts'] as $action_data) {
+                if (isset($action_data['action']) && isset($action_data['count'])) {
+                    $action = $action_data['action'];
+                    $count = $action_data['count'];
+                    $label = isset($action_labels[$action]) ? $action_labels[$action] : ucfirst($action);
+                    
+                    $html .= '<tr>';
+                    $html .= '<td>' . $label . '</td>';
+                    $html .= '<td>' . $count . '</td>';
+                    $html .= '</tr>';
+                }
+            }
+            
+            $html .= '</tbody>';
+            $html .= '</table>';
+        }
+        
+        // Create most active plugins table
+        if (isset($summary['most_active_plugins']) && !empty($summary['most_active_plugins'])) {
+            $html .= '<h4>' . __('Most Active Plugins', 'memberpress-ai-assistant') . '</h4>';
+            $html .= '<table class="widefat mpai-summary-table">';
+            $html .= '<thead>';
+            $html .= '<tr>';
+            $html .= '<th>' . __('Plugin', 'memberpress-ai-assistant') . '</th>';
+            $html .= '<th>' . __('Actions', 'memberpress-ai-assistant') . '</th>';
+            $html .= '<th>' . __('Last Activity', 'memberpress-ai-assistant') . '</th>';
+            $html .= '</tr>';
+            $html .= '</thead>';
+            $html .= '<tbody>';
+            
+            $action_labels = [
+                'installed' => __('Installed', 'memberpress-ai-assistant'),
+                'updated' => __('Updated', 'memberpress-ai-assistant'),
+                'activated' => __('Activated', 'memberpress-ai-assistant'),
+                'deactivated' => __('Deactivated', 'memberpress-ai-assistant'),
+                'deleted' => __('Deleted', 'memberpress-ai-assistant')
+            ];
+            
+            // Limit to first 10 most active plugins
+            $most_active = array_slice($summary['most_active_plugins'], 0, 10);
+            
+            foreach ($most_active as $plugin_data) {
+                if (isset($plugin_data['plugin_name']) && isset($plugin_data['count'])) {
+                    $html .= '<tr>';
+                    $html .= '<td>' . esc_html($plugin_data['plugin_name']) . '</td>';
+                    $html .= '<td>' . $plugin_data['count'] . '</td>';
+                    
+                    $last_action = '';
+                    if (isset($plugin_data['last_action'])) {
+                        $label = isset($action_labels[$plugin_data['last_action']]) ? 
+                            $action_labels[$plugin_data['last_action']] : 
+                            ucfirst($plugin_data['last_action']);
+                        $last_action = $label;
+                    }
+                    
+                    $last_date = '';
+                    if (isset($plugin_data['last_date'])) {
+                        $last_date = date('M j, Y g:i a', strtotime($plugin_data['last_date']));
+                    }
+                    
+                    $html .= '<td>' . $last_action . ' on ' . $last_date . '</td>';
+                    $html .= '</tr>';
+                }
+            }
+            
+            $html .= '</tbody>';
+            $html .= '</table>';
+        }
+        $html .= '</div>'; // Close summary section
+        
+        // Add recent activity section
+        if (!empty($logs)) {
+            $html .= '<div class="mpai-plugin-history-logs">';
+            $html .= '<h4>' . __('Recent Plugin Activity', 'memberpress-ai-assistant') . '</h4>';
+            $html .= '<table class="widefat mpai-logs-table">';
+            $html .= '<thead>';
+            $html .= '<tr>';
+            $html .= '<th>' . __('Date', 'memberpress-ai-assistant') . '</th>';
+            $html .= '<th>' . __('Plugin', 'memberpress-ai-assistant') . '</th>';
+            $html .= '<th>' . __('Action', 'memberpress-ai-assistant') . '</th>';
+            $html .= '<th>' . __('Version', 'memberpress-ai-assistant') . '</th>';
+            $html .= '<th>' . __('User', 'memberpress-ai-assistant') . '</th>';
+            $html .= '</tr>';
+            $html .= '</thead>';
+            $html .= '<tbody>';
+            
+            $action_classes = [
+                'installed' => 'mpai-action-installed',
+                'updated' => 'mpai-action-updated',
+                'activated' => 'mpai-action-activated',
+                'deactivated' => 'mpai-action-deactivated',
+                'deleted' => 'mpai-action-deleted'
+            ];
+            
+            $action_labels = [
+                'installed' => __('Installed', 'memberpress-ai-assistant'),
+                'updated' => __('Updated', 'memberpress-ai-assistant'),
+                'activated' => __('Activated', 'memberpress-ai-assistant'),
+                'deactivated' => __('Deactivated', 'memberpress-ai-assistant'),
+                'deleted' => __('Deleted', 'memberpress-ai-assistant')
+            ];
+            
+            foreach ($logs as $log) {
+                $html .= '<tr>';
+                
+                // Date column
+                $date = isset($log['date_time']) ? date('M j, Y g:i a', strtotime($log['date_time'])) : '';
+                $html .= '<td>' . $date . '</td>';
+                
+                // Plugin column
+                $html .= '<td>' . esc_html($log['plugin_name']) . '</td>';
+                
+                // Action column
+                $action = $log['action'];
+                $action_class = isset($action_classes[$action]) ? $action_classes[$action] : '';
+                $action_label = isset($action_labels[$action]) ? $action_labels[$action] : ucfirst($action);
+                $html .= '<td><span class="' . $action_class . '">' . $action_label . '</span></td>';
+                
+                // Version column
+                $version_text = $log['plugin_version'];
+                if (!empty($log['plugin_prev_version']) && $action === 'updated') {
+                    $version_text = $log['plugin_prev_version'] . ' → ' . $log['plugin_version'];
+                }
+                $html .= '<td>' . esc_html($version_text) . '</td>';
+                
+                // User column
+                $user_text = $log['user_login'];
+                if (isset($log['user_info']) && !empty($log['user_info']['display_name'])) {
+                    $user_text = $log['user_info']['display_name'];
+                }
+                $html .= '<td>' . esc_html($user_text) . '</td>';
+                
+                $html .= '</tr>';
+            }
+            
+            $html .= '</tbody>';
+            $html .= '</table>';
+            $html .= '</div>'; // Close logs section
+        }
+        
+        // Add custom CSS for the tables and action colors
+        $html .= '<style>
+            .mpai-summary-table, .mpai-logs-table {
+                margin-bottom: 20px;
+            }
+            .mpai-action-installed {
+                color: #2271b1;
+                font-weight: bold;
+            }
+            .mpai-action-updated {
+                color: #007017;
+                font-weight: bold;
+            }
+            .mpai-action-activated {
+                color: #46b450;
+                font-weight: bold;
+            }
+            .mpai-action-deactivated {
+                color: #dba617;
+                font-weight: bold;
+            }
+            .mpai-action-deleted {
+                color: #dc3232;
+                font-weight: bold;
+            }
+            .mpai-plugins-table td {
+                vertical-align: top;
+            }
+            .mpai-plugins-table .description {
+                color: #666;
+                font-size: 12px;
+            }
+        </style>';
+        
+        return $html;
     }
     
     /**
