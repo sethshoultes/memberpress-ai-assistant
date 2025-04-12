@@ -183,6 +183,7 @@ settings_errors('mpai_messages');
                 <a href="#tab-cli" class="nav-tab"><?php _e('CLI Commands', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-tools" class="nav-tab"><?php _e('AI Tools', 'memberpress-ai-assistant'); ?></a>
                 <a href="#tab-advanced" class="nav-tab"><?php _e('Advanced', 'memberpress-ai-assistant'); ?></a>
+                <a href="#tab-debug" class="nav-tab"><?php _e('Debug', 'memberpress-ai-assistant'); ?></a>
             </h2>
             
             <div id="tab-api" class="mpai-settings-tab">
@@ -494,9 +495,92 @@ settings_errors('mpai_messages');
             </div>
             
             
-            <?php 
-            // Diagnostic tab has been completely removed
-            ?>
+            <div id="tab-debug" class="mpai-settings-tab" style="display: none;">
+                <h3><?php _e('Console Logging Settings', 'memberpress-ai-assistant'); ?></h3>
+                <p><?php _e('Configure browser console logging to help with troubleshooting and debugging.', 'memberpress-ai-assistant'); ?></p>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="mpai_enable_console_logging"><?php _e('Enable Console Logging', 'memberpress-ai-assistant'); ?></label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="mpai_enable_console_logging" id="mpai_enable_console_logging" value="1" <?php checked(get_option('mpai_enable_console_logging', '0'), '1'); ?> />
+                                <?php _e('Enable logging to browser console', 'memberpress-ai-assistant'); ?>
+                            </label>
+                            <p class="description"><?php _e('When enabled, debug information will be logged to your browser\'s console. This is useful for troubleshooting issues.', 'memberpress-ai-assistant'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="mpai_console_log_level"><?php _e('Log Level', 'memberpress-ai-assistant'); ?></label>
+                        </th>
+                        <td>
+                            <select name="mpai_console_log_level" id="mpai_console_log_level">
+                                <option value="error" <?php selected(get_option('mpai_console_log_level', 'info'), 'error'); ?>><?php _e('Error', 'memberpress-ai-assistant'); ?></option>
+                                <option value="warn" <?php selected(get_option('mpai_console_log_level', 'info'), 'warn'); ?>><?php _e('Warning', 'memberpress-ai-assistant'); ?></option>
+                                <option value="info" <?php selected(get_option('mpai_console_log_level', 'info'), 'info'); ?>><?php _e('Info', 'memberpress-ai-assistant'); ?></option>
+                                <option value="debug" <?php selected(get_option('mpai_console_log_level', 'info'), 'debug'); ?>><?php _e('Debug', 'memberpress-ai-assistant'); ?></option>
+                            </select>
+                            <p class="description"><?php _e('Select the minimum log level to display.', 'memberpress-ai-assistant'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label><?php _e('Log Categories', 'memberpress-ai-assistant'); ?></label>
+                        </th>
+                        <td>
+                            <fieldset>
+                                <label>
+                                    <input type="checkbox" name="mpai_log_api_calls" value="1" <?php checked(get_option('mpai_log_api_calls', '0'), '1'); ?> />
+                                    <?php _e('API Calls', 'memberpress-ai-assistant'); ?>
+                                </label>
+                                <br>
+                                <label>
+                                    <input type="checkbox" name="mpai_log_tool_usage" value="1" <?php checked(get_option('mpai_log_tool_usage', '0'), '1'); ?> />
+                                    <?php _e('Tool Usage', 'memberpress-ai-assistant'); ?>
+                                </label>
+                                <br>
+                                <label>
+                                    <input type="checkbox" name="mpai_log_agent_activity" value="1" <?php checked(get_option('mpai_log_agent_activity', '0'), '1'); ?> />
+                                    <?php _e('Agent Activity', 'memberpress-ai-assistant'); ?>
+                                </label>
+                                <br>
+                                <label>
+                                    <input type="checkbox" name="mpai_log_timing" value="1" <?php checked(get_option('mpai_log_timing', '0'), '1'); ?> />
+                                    <?php _e('Performance Timing', 'memberpress-ai-assistant'); ?>
+                                </label>
+                                <p class="description"><?php _e('Select which categories of information to log.', 'memberpress-ai-assistant'); ?></p>
+                            </fieldset>
+                        </td>
+                    </tr>
+                </table>
+                
+                <div class="mpai-debug-section">
+                    <h4><?php _e('Advanced Diagnostics', 'memberpress-ai-assistant'); ?></h4>
+                    <p><?php _e('For comprehensive system tests and diagnostics, please use the dedicated Diagnostics page.', 'memberpress-ai-assistant'); ?></p>
+                    <p>
+                        <a href="<?php echo admin_url('admin.php?page=memberpress-ai-assistant-diagnostics'); ?>" class="button button-primary">
+                            <?php _e('Open Diagnostics Page', 'memberpress-ai-assistant'); ?>
+                        </a>
+                    </p>
+                </div>
+                
+                <table id="mpai-test-console-logging" class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <button type="button" id="mpai-test-console-logging" class="button button-secondary">
+                                <?php _e('Test Console Logging', 'memberpress-ai-assistant'); ?>
+                            </button>
+                        </th>
+                        <td>
+                            <p class="description"><?php _e('Click to test console logging. Check your browser\'s developer console (F12) for test messages.', 'memberpress-ai-assistant'); ?></p>
+                            <div id="mpai-console-test-result" class="mpai-test-result" style="display: none;"></div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
         
         <p class="submit">
@@ -836,14 +920,17 @@ function initMpaiSettings() {
             
             // Create FormData for fetch API
             var formData = new FormData();
-            formData.append('action', 'mpai_debug_nonce');
-            formData.append('mpai_nonce', mpai_data.nonce);
+            formData.append('action', 'test_nonce'); // Changed from 'mpai_debug_nonce' to 'test_nonce'
+            formData.append('nonce', mpai_data.nonce); // Changed from 'mpai_nonce' to 'nonce'
             
             console.log('MPAI: Sending nonce test request with nonce:', 
                        mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
             
+            // Use direct handler instead of admin-ajax.php
+            var directHandlerUrl = mpai_data.plugin_url + 'includes/direct-ajax-handler.php';
+            
             // Use fetch API for better error handling
-            fetch(ajaxurl, {
+            fetch(directHandlerUrl, { // Changed from ajaxurl to directHandlerUrl
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin'
