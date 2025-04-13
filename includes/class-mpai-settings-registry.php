@@ -141,14 +141,32 @@ class MPAI_Settings_Registry {
         // Debug information
         error_log('MPAI: Registering settings with WordPress');
         
-        foreach ($this->settings as $tab_id => $fields) {
+        // Debug output for troubleshooting
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('MPAI DEBUG: Settings tabs: ' . print_r(array_keys($this->tabs), true));
+            
+            if (!empty($this->settings_groups)) {
+                error_log('MPAI DEBUG: Settings groups: ' . print_r(array_keys($this->settings_groups), true));
+            } else {
+                error_log('MPAI DEBUG: No settings groups defined!');
+            }
+            
+            if (!empty($this->settings)) {
+                error_log('MPAI DEBUG: Settings data: ' . print_r(array_keys($this->settings), true));
+            } else {
+                error_log('MPAI DEBUG: No settings data available!');
+            }
+        }
+        
+        // Register each tab with standard WordPress settings API
+        foreach ($this->tabs as $tab_id => $tab) {
             // Create consistent option group and page name
             $option_group = 'mpai_' . $tab_id;
             $page_slug = 'mpai-' . $tab_id;
             
             error_log('MPAI: Registering tab ' . $tab_id . ' with option_group: ' . $option_group . ' and page: ' . $page_slug);
             
-            // Register sections for each group
+            // Register sections for this tab's groups
             if (isset($this->settings_groups[$tab_id])) {
                 foreach ($this->settings_groups[$tab_id] as $group_id => $group) {
                     $section_id = 'mpai_' . $tab_id . '_' . $group_id;
@@ -184,50 +202,65 @@ class MPAI_Settings_Registry {
                                 $section_id,
                                 [
                                     'tab_id' => $tab_id,
+                                    'group_id' => $group_id,
                                     'field_id' => $field_id,
                                     'field' => $field,
                                     'label_for' => $option_name
                                 ]
                             );
+                            
+                            // Register this setting with WordPress
+                            $args = isset($field['args']['register_args']) ? $field['args']['register_args'] : [];
+                                
+                            // Set default sanitization based on type
+                            if (!isset($args['sanitize_callback'])) {
+                                switch ($field['type']) {
+                                    case 'checkbox':
+                                        $args['sanitize_callback'] = function($value) {
+                                            return $value ? '1' : '0'; // Store as string for consistency
+                                        };
+                                        break;
+                                    case 'number':
+                                        $args['sanitize_callback'] = 'absint';
+                                        break;
+                                    case 'text':
+                                    case 'select':
+                                    default:
+                                        $args['sanitize_callback'] = 'sanitize_text_field';
+                                        break;
+                                }
+                            }
+                            
+                            // Ensure default is set if available
+                            if (isset($field['args']['default']) && !isset($args['default'])) {
+                                $args['default'] = $field['args']['default'];
+                            }
+                            
+                            error_log('MPAI: Registering setting ' . $option_name . ' in option_group ' . $option_group);
+                            
+                            // Register with WordPress
+                            register_setting($option_group, $option_name, $args);
+                            
+                            // Handle any pre-existing values that need to be preserved
+                            $current_value = get_option($option_name);
+                            if ($current_value === false && isset($args['default'])) {
+                                update_option($option_name, $args['default']);
+                                error_log('MPAI: Setting default value for ' . $option_name);
+                            }
                         }
                     }
                 }
             }
-            
-            // Register each field setting
-            foreach ($fields as $field) {
-                $option_name = 'mpai_' . $field['field_id'];
-                $args = isset($field['args']['register_args']) ? $field['args']['register_args'] : [];
-                
-                // Set default sanitization based on type
-                if (!isset($args['sanitize_callback'])) {
-                    switch ($field['type']) {
-                        case 'checkbox':
-                            $args['sanitize_callback'] = function($value) {
-                                return $value ? '1' : '0'; // Store as string for consistency
-                            };
-                            break;
-                        case 'number':
-                            $args['sanitize_callback'] = 'absint';
-                            break;
-                        case 'text':
-                        case 'select':
-                        default:
-                            $args['sanitize_callback'] = 'sanitize_text_field';
-                            break;
-                    }
-                }
-                
-                // Ensure default is set if available
-                if (isset($field['args']['default']) && !isset($args['default'])) {
-                    $args['default'] = $field['args']['default'];
-                }
-                
-                error_log('MPAI: Registering setting ' . $option_name . ' in option_group ' . $option_group);
-                
-                // Register with WordPress
-                register_setting($option_group, $option_name, $args);
-            }
+        }
+        
+        // Save settings data structure for use when rendering fields
+        update_option('mpai_settings_structure', [
+            'tabs' => array_keys($this->tabs),
+            'groups' => isset($this->settings_groups) ? array_keys($this->settings_groups) : []
+        ]);
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('MPAI DEBUG: Settings registration complete');
         }
     }
     
@@ -243,17 +276,49 @@ class MPAI_Settings_Registry {
         // Log what we're doing for debugging
         error_log('MPAI: Whitelisting options for settings registry');
         
-        foreach ($this->settings as $tab_id => $fields) {
+        // Initialize array for all of our options
+        $all_options = [];
+        
+        foreach ($this->tabs as $tab_id => $tab) {
             $option_group = 'mpai_' . $tab_id;
             $allowed_options[$option_group] = [];
             
-            foreach ($fields as $field) {
-                $option_name = 'mpai_' . $field['field_id'];
-                $allowed_options[$option_group][] = $option_name;
+            // Check if this tab has settings
+            if (isset($this->settings[$tab_id]) && is_array($this->settings[$tab_id])) {
+                foreach ($this->settings[$tab_id] as $field) {
+                    $option_name = 'mpai_' . $field['field_id'];
+                    $allowed_options[$option_group][] = $option_name;
+                    $all_options[] = $option_name;
+                    
+                    error_log('MPAI: Whitelisted option ' . $option_name . ' in group ' . $option_group);
+                }
+            } else {
+                error_log('MPAI: No settings found for tab ' . $tab_id);
                 
-                error_log('MPAI: Whitelisted option ' . $option_name . ' in group ' . $option_group);
+                // Try to find settings through the settings groups structure
+                if (isset($this->settings_groups[$tab_id])) {
+                    foreach ($this->settings_groups[$tab_id] as $group_id => $group) {
+                        if (isset($group['fields']) && is_array($group['fields'])) {
+                            foreach ($group['fields'] as $field_id => $field) {
+                                $option_name = 'mpai_' . $field_id;
+                                $allowed_options[$option_group][] = $option_name;
+                                $all_options[] = $option_name;
+                                
+                                error_log('MPAI: Whitelisted option ' . $option_name . ' in group ' . $option_group . ' (from settings_groups)');
+                            }
+                        }
+                    }
+                }
             }
         }
+        
+        // Also add all options to the 'options' group for compatibility
+        if (!isset($allowed_options['options'])) {
+            $allowed_options['options'] = [];
+        }
+        $allowed_options['options'] = array_merge($allowed_options['options'], $all_options);
+        
+        error_log('MPAI: Total whitelisted options: ' . count($all_options));
         
         return $allowed_options;
     }
@@ -639,6 +704,24 @@ class MPAI_Settings_Registry {
             return;
         }
         
+        // Add debugging information in debug mode
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            echo '<!-- Debug: Rendering tab content for ' . esc_html($current_tab) . ' -->';
+            echo '<!-- Available tabs: ' . esc_html(implode(', ', array_keys($this->tabs))) . ' -->';
+            
+            if (isset($this->settings_groups[$current_tab])) {
+                echo '<!-- Groups for this tab: ' . esc_html(implode(', ', array_keys($this->settings_groups[$current_tab]))) . ' -->';
+            } else {
+                echo '<!-- No groups found for this tab -->';
+            }
+            
+            // More comprehensive debug output
+            echo '<!-- Full tabs structure: ' . esc_html(json_encode($this->tabs)) . ' -->';
+            if (isset($this->settings_groups[$current_tab])) {
+                echo '<!-- Full groups for this tab: ' . esc_html(json_encode($this->settings_groups[$current_tab])) . ' -->';
+            }
+        }
+        
         // If tab has a custom renderer, use it
         if (isset($this->tabs[$current_tab]['callback']) && is_callable($this->tabs[$current_tab]['callback'])) {
             call_user_func($this->tabs[$current_tab]['callback']);
@@ -662,6 +745,7 @@ class MPAI_Settings_Registry {
         // Add debug information - visible only in debug mode
         if (defined('WP_DEBUG') && WP_DEBUG) {
             echo '<!-- Debug: Settings form for tab ' . esc_html($current_tab) . ', option_group: ' . esc_html($option_group) . ', page: ' . esc_html($page_slug) . ' -->';
+            echo '<!-- Settings registration status: ' . (did_action('admin_init') ? 'admin_init has run' : 'admin_init has NOT run yet') . ' -->';
         }
         
         // Start form
@@ -674,6 +758,14 @@ class MPAI_Settings_Registry {
         if (!isset($this->settings_groups[$current_tab]) || empty($this->settings_groups[$current_tab])) {
             echo '<div class="notice notice-warning"><p>' . 
                  esc_html__('No settings found for this tab.', 'memberpress-ai-assistant') . '</p></div>';
+                 
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                echo '<div class="notice notice-info"><p><strong>Debug information:</strong><br>';
+                echo 'Tab ID: ' . esc_html($current_tab) . '<br>';
+                echo 'Available tabs: ' . esc_html(implode(', ', array_keys($this->tabs))) . '<br>';
+                echo 'Settings groups: ' . esc_html(json_encode(array_keys($this->settings_groups))) . '<br>';
+                echo 'Please check the error log for more details.</p></div>';
+            }
         } else {
             // Use WordPress settings API to output sections and fields
             do_settings_sections($page_slug);
@@ -681,10 +773,29 @@ class MPAI_Settings_Registry {
             // Debug option values in debug mode
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 echo '<!-- Debug: Option values for this tab -->';
-                foreach ($this->settings[$current_tab] as $field) {
-                    $option_name = 'mpai_' . $field['field_id'];
-                    $value = get_option($option_name);
-                    echo '<!-- ' . esc_html($option_name) . ' = ' . (is_array($value) ? json_encode($value) : esc_html($value)) . ' -->';
+                
+                // Check if we have settings for this tab
+                if (isset($this->settings[$current_tab]) && is_array($this->settings[$current_tab])) {
+                    foreach ($this->settings[$current_tab] as $field) {
+                        $option_name = 'mpai_' . $field['field_id'];
+                        $value = get_option($option_name);
+                        echo '<!-- ' . esc_html($option_name) . ' = ' . (is_array($value) ? json_encode($value) : esc_html($value)) . ' -->';
+                    }
+                } else {
+                    echo '<!-- No settings data available for tab: ' . esc_html($current_tab) . ' -->';
+                    
+                    // Try to find option values through settings_groups instead
+                    if (isset($this->settings_groups[$current_tab])) {
+                        foreach ($this->settings_groups[$current_tab] as $group_id => $group) {
+                            if (isset($group['fields']) && is_array($group['fields'])) {
+                                foreach ($group['fields'] as $field_id => $field) {
+                                    $option_name = 'mpai_' . $field_id;
+                                    $value = get_option($option_name);
+                                    echo '<!-- ' . esc_html($option_name) . ' = ' . (is_array($value) ? json_encode($value) : esc_html($value)) . ' -->';
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

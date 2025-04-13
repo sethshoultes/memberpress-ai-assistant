@@ -34,15 +34,14 @@ if (!class_exists('MPAI_Settings')) {
 // Create Settings Registry instance
 $mpai_settings_registry = new MPAI_Settings_Registry();
 
-// Register default settings
-if (function_exists('mpai_register_default_settings')) {
-    $mpai_settings_registry = mpai_register_default_settings($mpai_settings_registry);
-} else {
-    // Fallback implementation
+// Define a function to register default settings
+// This is defined before we use it to ensure it's available
+function mpai_register_default_settings($registry) {
+    // Get an instance of the settings class for model lists, etc.
     $settings = new MPAI_Settings();
     
     // General Tab
-    $mpai_settings_registry->register_tab(
+    $registry->register_tab(
         'general', 
         __('General', 'memberpress-ai-assistant'),
         null,
@@ -53,10 +52,10 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // API Providers - OpenAI
-    $mpai_settings_registry->register_setting_group('general', 'openai', __('OpenAI Settings', 'memberpress-ai-assistant'));
+    $registry->register_setting_group('general', 'openai', __('OpenAI Settings', 'memberpress-ai-assistant'));
     
     // OpenAI API Key
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'general', 
         'openai', 
         'api_key', 
@@ -75,7 +74,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // OpenAI Model
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'general', 
         'openai', 
         'model', 
@@ -93,10 +92,10 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // API Providers - Anthropic
-    $mpai_settings_registry->register_setting_group('general', 'anthropic', __('Anthropic Settings', 'memberpress-ai-assistant'));
+    $registry->register_setting_group('general', 'anthropic', __('Anthropic Settings', 'memberpress-ai-assistant'));
     
     // Anthropic API Key
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'general', 
         'anthropic', 
         'anthropic_api_key', 
@@ -115,7 +114,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Anthropic Model
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'general', 
         'anthropic', 
         'anthropic_model', 
@@ -133,10 +132,10 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // API Provider Selection
-    $mpai_settings_registry->register_setting_group('general', 'provider', __('AI Provider', 'memberpress-ai-assistant'));
+    $registry->register_setting_group('general', 'provider', __('AI Provider', 'memberpress-ai-assistant'));
     
     // Primary API Provider
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'general', 
         'provider', 
         'primary_api', 
@@ -154,7 +153,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Chat Interface Tab
-    $mpai_settings_registry->register_tab(
+    $registry->register_tab(
         'chat', 
         __('Chat Interface', 'memberpress-ai-assistant'),
         null,
@@ -165,10 +164,10 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Chat Interface Settings
-    $mpai_settings_registry->register_setting_group('chat', 'interface', __('Chat Interface Settings', 'memberpress-ai-assistant'));
+    $registry->register_setting_group('chat', 'interface', __('Chat Interface Settings', 'memberpress-ai-assistant'));
     
     // Enable Chat
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'chat', 
         'interface', 
         'enable_chat', 
@@ -188,7 +187,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Chat Position
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'chat', 
         'interface', 
         'chat_position', 
@@ -211,7 +210,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Show on All Pages
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'chat', 
         'interface', 
         'show_on_all_pages', 
@@ -231,7 +230,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Welcome Message
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'chat', 
         'interface', 
         'welcome_message', 
@@ -250,7 +249,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Tools Tab
-    $mpai_settings_registry->register_tab(
+    $registry->register_tab(
         'tools', 
         __('Tools', 'memberpress-ai-assistant'),
         null,
@@ -261,10 +260,10 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Tools - Command Settings
-    $mpai_settings_registry->register_setting_group('tools', 'commands', __('Command Settings', 'memberpress-ai-assistant'));
+    $registry->register_setting_group('tools', 'commands', __('Command Settings', 'memberpress-ai-assistant'));
     
     // Enable MCP
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'tools', 
         'commands', 
         'enable_mcp', 
@@ -285,7 +284,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Enable CLI Commands
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'tools', 
         'commands', 
         'enable_cli_commands', 
@@ -305,7 +304,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Debug Tab
-    $mpai_settings_registry->register_tab(
+    $registry->register_tab(
         'debug', 
         __('Debug', 'memberpress-ai-assistant'),
         null,
@@ -316,10 +315,10 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Console Logging Settings Group
-    $mpai_settings_registry->register_setting_group('debug', 'logging', __('Console Logging', 'memberpress-ai-assistant'));
+    $registry->register_setting_group('debug', 'logging', __('Console Logging', 'memberpress-ai-assistant'));
     
     // Enable Console Logging
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'debug', 
         'logging', 
         'enable_console_logging', 
@@ -339,7 +338,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Console Log Level
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'debug', 
         'logging', 
         'console_log_level', 
@@ -362,10 +361,10 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Log Categories
-    $mpai_settings_registry->register_setting_group('debug', 'log_categories', __('Log Categories', 'memberpress-ai-assistant'));
+    $registry->register_setting_group('debug', 'log_categories', __('Log Categories', 'memberpress-ai-assistant'));
     
     // Log API Calls
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'debug', 
         'log_categories', 
         'log_api_calls', 
@@ -384,7 +383,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Log Tool Usage
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'debug', 
         'log_categories', 
         'log_tool_usage', 
@@ -403,7 +402,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Log Agent Activity
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'debug', 
         'log_categories', 
         'log_agent_activity', 
@@ -422,7 +421,7 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Log Timing
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'debug', 
         'log_categories', 
         'log_timing', 
@@ -441,10 +440,10 @@ if (function_exists('mpai_register_default_settings')) {
     );
     
     // Diagnostics Group
-    $mpai_settings_registry->register_setting_group('debug', 'diagnostics', __('Diagnostics & Testing', 'memberpress-ai-assistant'));
+    $registry->register_setting_group('debug', 'diagnostics', __('Diagnostics & Testing', 'memberpress-ai-assistant'));
     
     // Diagnostics Page Link
-    $mpai_settings_registry->register_setting(
+    $registry->register_setting(
         'debug', 
         'diagnostics', 
         'diagnostics_page', 
@@ -463,16 +462,21 @@ if (function_exists('mpai_register_default_settings')) {
             }
         ]
     );
+    
+    return $registry;
 }
+
+// Use the function to register settings now that it's available
+$mpai_settings_registry = mpai_register_default_settings($mpai_settings_registry);
 
 // Display any settings errors/notices
 settings_errors('mpai_messages');
 
+// Add debug output to help troubleshoot
+if (defined('WP_DEBUG') && WP_DEBUG) {
+    echo '<!-- MPAI Debug: Settings Registry Initialization -->';
+    echo '<!-- Tabs: ' . implode(', ', array_keys($mpai_settings_registry->get_tabs())) . ' -->';
+}
+
 // Render the settings page
 $mpai_settings_registry->render_settings_page();
-
-// Register a function to run after settings are registered
-function mpai_register_default_settings($registry) {
-    // Use the registry that was already set up
-    return $registry;
-}
