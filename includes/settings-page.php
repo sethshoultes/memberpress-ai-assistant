@@ -24,13 +24,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
     if (current_user_can('manage_options')) {
         // Debug the entire POST array
         error_log('MPAI DEBUG: POST data keys: ' . print_r(array_keys($_POST), true));
+        error_log('MPAI DEBUG: RAW POST data: ' . print_r($_POST, true));
         
         // Specifically check for the two problematic fields
         error_log('MPAI DEBUG: API key exists in POST: ' . (isset($_POST['mpai_api_key']) ? 'YES' : 'NO'));
         error_log('MPAI DEBUG: Welcome message exists in POST: ' . (isset($_POST['mpai_welcome_message']) ? 'YES' : 'NO'));
         
+        // Output variables from the POST request
+        error_log('MPAI DEBUG: post_max_size = ' . ini_get('post_max_size'));
+        error_log('MPAI DEBUG: PHP_SELF = ' . $_SERVER['PHP_SELF']);
+        error_log('MPAI DEBUG: REQUEST_URI = ' . $_SERVER['REQUEST_URI']);
+        error_log('MPAI DEBUG: HTTP_USER_AGENT = ' . $_SERVER['HTTP_USER_AGENT']);
+        
+        if (isset($_POST['mpai_api_key'])) {
+            error_log('MPAI DEBUG: API key value: ' . substr($_POST['mpai_api_key'], 0, 5) . '... (Length: ' . strlen($_POST['mpai_api_key']) . ')');
+        }
+        
         if (isset($_POST['mpai_welcome_message'])) {
-            error_log('MPAI DEBUG: Welcome message value: ' . substr($_POST['mpai_welcome_message'], 0, 30) . '...');
+            error_log('MPAI DEBUG: Welcome message value: ' . substr($_POST['mpai_welcome_message'], 0, 30) . '... (Length: ' . strlen($_POST['mpai_welcome_message']) . ')');
+        }
+        
+        // Additional direct form data debugging
+        foreach ($_POST as $key => $value) {
+            if (strpos($key, 'mpai_') === 0 && ($key === 'mpai_api_key' || $key === 'mpai_welcome_message' || $key === 'mpai_anthropic_api_key')) {
+                error_log('MPAI DEBUG: CRITICAL FIELD: ' . $key . ' = ' . substr($value, 0, 10) . '... (Length: ' . strlen($value) . ')');
+            }
         }
         
         // Save all settings directly using update_option
@@ -344,12 +362,33 @@ if ($current_tab === 'general') {
         __('API Key', 'memberpress-ai-assistant'),
         function() {
             $value = get_option('mpai_api_key', '');
+            error_log('MPAI API KEY DEBUG: Current value from database: ' . substr($value, 0, 5) . '... (' . strlen($value) . ' chars)');
+            
+            // Add debugging comment for this critical field
+            echo '<!-- IMPORTANT FIELD: mpai_api_key with current length ' . strlen($value) . ' -->';
+            
+            // CRITICAL: Ensure consistent ID/name and clean output
             echo '<input type="text" id="mpai_api_key" name="mpai_api_key" value="' . esc_attr($value) . '" class="regular-text code">';
             echo '<p class="description">' . __('Enter your OpenAI API key.', 'memberpress-ai-assistant') . '</p>';
             
+            // Force a browser-level save monitor for this field
+            echo '<script>
+                jQuery(document).ready(function($) {
+                    $("#mpai_api_key").on("change", function() {
+                        console.log("OpenAI API Key changed to: " + $(this).val().substring(0, 5) + "... (" + $(this).val().length + " chars)");
+                        $(this).attr("data-changed", "true");
+                    });
+                    
+                    // Also monitor the form submission
+                    $("#mpai-settings-form").on("submit", function() {
+                        console.log("Form submit - OpenAI API Key value: " + $("#mpai_api_key").val().substring(0, 5) + "... (" + $("#mpai_api_key").val().length + " chars)");
+                    });
+                });
+            </script>';
+            
             // Add debug info for this field
             if (defined('WP_DEBUG') && WP_DEBUG) {
-                echo '<p class="description" style="color:#999;font-style:italic;">Current value in database: ' . esc_html(substr(get_option('mpai_api_key', '[empty]'), 0, 5)) . '...</p>';
+                echo '<p class="description" style="color:#999;font-style:italic;">Current value in database: ' . esc_html(substr(get_option('mpai_api_key', '[empty]'), 0, 5)) . '... (' . strlen($value) . ' chars)</p>';
             }
             
             // Add API status indicator
@@ -532,8 +571,29 @@ if ($current_tab === 'general') {
         __('Welcome Message', 'memberpress-ai-assistant'),
         function() {
             $value = get_option('mpai_welcome_message', __('Hi there! I\'m your MemberPress AI Assistant. How can I help you today?', 'memberpress-ai-assistant'));
+            error_log('MPAI WELCOME MESSAGE DEBUG: Current value from database: ' . substr($value, 0, 30) . '... (' . strlen($value) . ' chars)');
+            
+            // Add debugging comment for this critical field
+            echo '<!-- IMPORTANT FIELD: mpai_welcome_message with current length ' . strlen($value) . ' -->';
+            
+            // CRITICAL: Ensure consistent ID/name and clean output
             echo '<textarea id="mpai_welcome_message" name="mpai_welcome_message" rows="3" class="large-text">' . esc_textarea($value) . '</textarea>';
             echo '<p class="description">' . __('The message displayed when the chat is first opened.', 'memberpress-ai-assistant') . '</p>';
+            
+            // Force a browser-level save monitor for this field
+            echo '<script>
+                jQuery(document).ready(function($) {
+                    $("#mpai_welcome_message").on("change keyup", function() {
+                        console.log("Welcome message changed to: " + $(this).val().substring(0, 30) + "... (" + $(this).val().length + " chars)");
+                        $(this).attr("data-changed", "true");
+                    });
+                    
+                    // Also monitor the form submission
+                    $("#mpai-settings-form").on("submit", function() {
+                        console.log("Form submit - Welcome message value: " + $("#mpai_welcome_message").val().substring(0, 30) + "... (" + $("#mpai_welcome_message").val().length + " chars)");
+                    });
+                });
+            </script>';
             
             // Add debug info for this field
             if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -784,7 +844,7 @@ if ($current_tab === 'general') {
     </div>
     <?php endif; ?>
     
-    <form method="post" action="<?php echo admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $current_tab); ?>" id="mpai-settings-form">
+    <form method="post" action="<?php echo admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $current_tab); ?>" id="mpai-settings-form" enctype="multipart/form-data" onsubmit="console.log('Form submit event triggered')">
         <?php
         // Add debug info before form fields - extremely important
         if (defined('WP_DEBUG') && WP_DEBUG) {
