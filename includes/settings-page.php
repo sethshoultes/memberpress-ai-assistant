@@ -21,6 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
         $saved_count = 0;
         foreach ($_POST as $key => $value) {
             if (strpos($key, 'mpai_') === 0) {
+                // Remove any slashes that WordPress may have added (magic quotes)
+                if (is_string($value)) {
+                    $value = stripslashes($value);
+                }
+                
                 // Special handling for checkboxes (they don't get sent when unchecked)
                 if (in_array($key, array(
                     'mpai_enable_chat', 
@@ -40,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                     $value = ($value == '1');
                 }
                 
-                // Update the option
+                // Update the option - use the stripslashes_deep function for good measure
                 update_option($key, $value);
                 error_log('MPAI DIRECT SAVE: Saved ' . $key . ' = ' . (is_bool($value) ? ($value ? 'true' : 'false') : $value));
                 $saved_count++;
@@ -51,8 +56,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
         set_transient('mpai_settings_saved', true, 30);
         error_log('MPAI DIRECT SAVE: Saved ' . $saved_count . ' settings successfully');
         
-        // Get the tab
-        $tab = isset($_POST['mpai_active_tab']) ? $_POST['mpai_active_tab'] : 'general';
+        // Get the tab - look at both mpai_active_tab (hidden field) and tab query param
+        // This ensures we redirect back to the currently active tab
+        $tab = 'general'; // Default
+        
+        // First check our hidden field in the form
+        if (isset($_POST['mpai_active_tab']) && !empty($_POST['mpai_active_tab'])) {
+            $tab = sanitize_key($_POST['mpai_active_tab']);
+        } 
+        // Then check for the tab URL parameter
+        else if (isset($_GET['tab']) && !empty($_GET['tab'])) {
+            $tab = sanitize_key($_GET['tab']);
+        }
+        
+        error_log('MPAI DIRECT SAVE: Detected active tab: ' . $tab);
         
         // Redirect to the settings page
         $redirect_url = admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $tab . '&settings-updated=true');
@@ -631,7 +648,9 @@ if ($current_tab === 'general') {
     
     <h2 class="nav-tab-wrapper">
         <?php foreach ($tabs as $tab_id => $tab_name) { ?>
-            <a href="<?php echo admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $tab_id); ?>" class="nav-tab <?php echo $current_tab === $tab_id ? 'nav-tab-active' : ''; ?>"><?php echo esc_html($tab_name); ?></a>
+            <a href="<?php echo admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $tab_id); ?>" 
+               class="nav-tab <?php echo $current_tab === $tab_id ? 'nav-tab-active' : ''; ?>"
+               data-tab="<?php echo esc_attr($tab_id); ?>"><?php echo esc_html($tab_name); ?></a>
         <?php } ?>
     </h2>
     
@@ -690,7 +709,7 @@ if ($current_tab === 'general') {
         do_settings_sections('mpai_options');
         
         // Add a hidden field to track which tab we're on
-        echo '<input type="hidden" name="mpai_active_tab" value="' . esc_attr($current_tab) . '">';
+        echo '<input type="hidden" name="mpai_active_tab" id="mpai_active_tab" value="' . esc_attr($current_tab) . '">';
         
         // Debugging hidden field - helps verify POST data is being passed
         echo '<input type="hidden" name="mpai_debug_timestamp" value="' . time() . '">';
@@ -713,6 +732,24 @@ if ($current_tab === 'general') {
     <script>
     jQuery(document).ready(function($) {
         console.log('MPAI DEBUG: Settings page loaded, form initialized');
+        
+        // Tab change handler - update the hidden field with active tab
+        $('.nav-tab').on('click', function() {
+            // Extract tab ID from URL
+            var tabId = $(this).attr('href').replace(/.*tab=([^&]+).*/, '$1');
+            if (!tabId || tabId.indexOf('=') >= 0) {
+                // Try to get from class if URL parsing failed
+                if ($(this).hasClass('nav-tab-active')) {
+                    tabId = $(this).data('tab');
+                }
+            }
+            
+            if (tabId) {
+                console.log('MPAI DEBUG: Tab changed to:', tabId);
+                $('#mpai_active_tab').val(tabId);
+                console.log('MPAI DEBUG: Updated hidden field value to:', $('#mpai_active_tab').val());
+            }
+        });
         
         // Setup WordPress standard save method
         $('#mpai-standard-save').on('click', function(e) {
@@ -772,6 +809,13 @@ if ($current_tab === 'general') {
         // Track direct form submission
         $('#mpai-settings-form').on('submit', function(e) {
             console.log('MPAI DEBUG: Direct save form submitted!');
+            
+            // Make sure the active tab is in the form data
+            var currentTab = window.location.href.match(/[&?]tab=([^&]+)/);
+            if (currentTab && currentTab[1]) {
+                $('#mpai_active_tab').val(currentTab[1]);
+                console.log('MPAI DEBUG: Set active tab from URL to:', currentTab[1]);
+            }
             
             // Log all form data
             var formData = $(this).serialize();
