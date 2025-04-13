@@ -1118,42 +1118,58 @@
         // First fix tab navigation immediately since that's critical
         console.log('MPAI DEBUG: Setting up tab navigation...');
         
-        // Setup the tab navigation directly without waiting for mpai_data
+        // Only handle the old-style tabs for non-registry settings pages
         try {
-            // Hide all tabs first except the first one
-            $('.mpai-settings-tab').hide();
-            $('.mpai-settings-tab:first').show();
-            
-            // Make sure the first tab is active
-            $('.nav-tab-wrapper a.nav-tab:first').addClass('nav-tab-active');
-            
-            // Setup tab click handler
-            $('.nav-tab-wrapper a.nav-tab').on('click', function(e) {
-                e.preventDefault();
-                console.log('MPAI DEBUG: Tab clicked:', $(this).attr('href'));
+            // Check if we're on a settings registry page
+            if ($('.mpai-settings-wrap').length > 0 && $('.mpai-tab-content').length > 0) {
+                console.log('MPAI DEBUG: Settings Registry page detected, skipping old tab navigation setup');
                 
-                // Hide all tabs
+                // Add event listener for diagnostic tab
+                $('.mpai-tab-link[data-tab="debug"]').on('click', function() {
+                    console.log('MPAI DEBUG: Diagnostic tab clicked via registry, triggering plugin logs load');
+                    setTimeout(function() {
+                        $(document).trigger('mpai-load-plugin-logs');
+                    }, 100);
+                });
+            } else {
+                // This is an old-style settings page, use the old tab navigation
+                console.log('MPAI DEBUG: Old-style settings page detected, setting up tab navigation');
+                
+                // Hide all tabs first except the first one
                 $('.mpai-settings-tab').hide();
+                $('.mpai-settings-tab:first').show();
                 
-                // Remove active class from all tabs
-                $('.nav-tab').removeClass('nav-tab-active');
+                // Make sure the first tab is active
+                $('.nav-tab-wrapper a.nav-tab:first').addClass('nav-tab-active');
                 
-                // Show the selected tab
-                $($(this).attr('href')).show();
-                
-                // Add active class to clicked tab
-                $(this).addClass('nav-tab-active');
-                
-                // Dispatch a custom event that other parts of the code can listen for
-                $(document).trigger('mpai-tab-shown', [$(this).attr('href')]);
-                
-                // For diagnostic tab specifically, trigger plugin logs loading
-                if ($(this).attr('href') === '#tab-diagnostic') {
-                    console.log('MPAI DEBUG: Diagnostic tab clicked, triggering plugin logs load');
-                    // Trigger a custom event that the logs section can listen for
-                    $(document).trigger('mpai-load-plugin-logs');
-                }
-            });
+                // Setup tab click handler
+                $('.nav-tab-wrapper a.nav-tab').on('click', function(e) {
+                    e.preventDefault();
+                    console.log('MPAI DEBUG: Tab clicked:', $(this).attr('href'));
+                    
+                    // Hide all tabs
+                    $('.mpai-settings-tab').hide();
+                    
+                    // Remove active class from all tabs
+                    $('.nav-tab').removeClass('nav-tab-active');
+                    
+                    // Show the selected tab
+                    $($(this).attr('href')).show();
+                    
+                    // Add active class to clicked tab
+                    $(this).addClass('nav-tab-active');
+                    
+                    // Dispatch a custom event that other parts of the code can listen for
+                    $(document).trigger('mpai-tab-shown', [$(this).attr('href')]);
+                    
+                    // For diagnostic tab specifically, trigger plugin logs loading
+                    if ($(this).attr('href') === '#tab-diagnostic') {
+                        console.log('MPAI DEBUG: Diagnostic tab clicked, triggering plugin logs load');
+                        // Trigger a custom event that the logs section can listen for
+                        $(document).trigger('mpai-load-plugin-logs');
+                    }
+                });
+            }
             
             console.log('MPAI DEBUG: Tab navigation setup successfully');
         } catch (e) {
