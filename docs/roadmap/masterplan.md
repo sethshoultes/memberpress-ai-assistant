@@ -14,13 +14,14 @@ This document serves as the comprehensive roadmap for the MemberPress AI Assista
 
 A comprehensive rewrite of the entire admin interface is required due to persistent issues with menu highlighting, tab navigation, and overall UI stability. This overhaul must be completed before moving forward with any other roadmap items. For complete implementation details, see the [Admin UI Overhaul Plan](./admin-ui-overhaul-plan.md).
 
-| Week | Focus Area | Priority Tasks |
-|------|------------|----------------|
-| 1-2 | Admin Menu System Rewrite | Replace current menu registration system, implement robust parent/child menu relationships, create consistent menu API |
-| 3 | Settings Page Architecture | Create modular settings framework, implement proper tab navigation with state persistence, develop reliable global settings API |
-| 4 | Diagnostics System Redesign | Rebuild diagnostics UI as standalone page, implement proper AJAX handling for tests, create dedicated diagnostics API |
-| 5 | Chat Interface Settings Integration | Redesign chat settings page, improve integration with main settings, add visual configuration options |
-| 6 | UI Testing & Quality Assurance | Create comprehensive UI test suite, implement automated navigation tests, develop visual regression testing |
+| Week | Focus Area | Priority Tasks | Status |
+|------|------------|----------------|--------|
+| 1-2 | Admin Menu System Rewrite | Replace current menu registration system, implement robust parent/child menu relationships, create consistent menu API | ✅ Completed |
+| 3 | Settings Page Architecture | Create modular settings framework, implement proper tab navigation with state persistence, develop reliable global settings API | ✅ Completed |
+| 4 | Diagnostics System Redesign | Rebuild diagnostics UI as standalone page, implement proper AJAX handling for tests, create dedicated diagnostics API | ✅ Completed |
+| 5 | Chat Interface Settings Integration | Redesign chat settings page, improve integration with main settings, add visual configuration options | ✅ Completed |
+| 6 | Settings System Simplification | Eliminate redundant settings, simplify logging categories, hardcode default-enabled tools | ✅ Completed |
+| 7 | UI Testing & Quality Assurance | Create comprehensive UI test suite, implement automated navigation tests, develop visual regression testing | 🚧 In Progress |
 
 ### NEW: Hooks and Filters Implementation (April-May 2025)
 
@@ -157,7 +158,8 @@ After the Admin UI Overhaul is complete, the following essential features from e
 
 | Feature | Target Version | Status | Dependencies |
 |---------|----------------|--------|-------------|
-| **Admin UI Complete Overhaul** | 1.7.0 | **CRITICAL PRIORITY ⚠️** | None |
+| **Admin UI Complete Overhaul** | 1.7.0 | **IN PROGRESS (80%) 🚧** | None |
+| **Settings System Simplification** | 1.7.0 | **COMPLETED ✅** | Admin UI Overhaul |
 | **Hooks and Filters Implementation** | 1.7.0 | **PLANNING PHASE 📝** | None |
 | **Chat Settings Integration** | 1.7.0 | **PLANNING PHASE 📝** | Admin UI Overhaul Week 5 |
 | Command System Rewrite | 1.7.0 | On hold ⏸️ | Admin UI Overhaul |
@@ -184,6 +186,11 @@ These features have been implemented and documentation has been moved to the [cu
 
 | Feature | Version Added | Documentation |
 |---------|---------------|---------------|
+| Settings System Simplification | 1.7.0 | [settings-system-refactor-plan.md](../current/feature-plans/settings-system-refactor-plan.md) |
+| Admin UI Menu Stabilization | 1.7.0 | [admin-ui-overhaul-plan.md](./admin-ui-overhaul-plan.md) |
+| Settings Page Architecture | 1.7.0 | [admin-ui-overhaul-plan.md](./admin-ui-overhaul-plan.md) |
+| Diagnostics System Redesign | 1.7.0 | [admin-ui-overhaul-plan.md](./admin-ui-overhaul-plan.md) |
+| April 2025 Progress Summary | 1.7.0 | [april-2025-admin-ui-update.md](../updates/april-2025-admin-ui-update.md) |
 | AI Terms & Conditions Consent | 1.6.1 | [dashboard-page.php](../../../includes/dashboard-page.php) |
 | Tool Execution Integration Tests | 1.6.1 | [tool-execution-integration-tests.md](../current/test-system/tool-execution-integration-tests.md) |
 | Error Recovery System | 1.6.1 | [error-recovery-system.md](../current/error-system/error-recovery-system.md) |

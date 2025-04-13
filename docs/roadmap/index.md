@@ -1,7 +1,7 @@
 # MemberPress AI Assistant Roadmap Index
 
 **Version:** 3.0.0  
-**Last Updated:** 2025-04-06  
+**Last Updated:** 2025-04-13  
 **Status:** ✅ Active
 
 > **IMPORTANT UPDATE**: The roadmap documentation has been consolidated into a [Master Roadmap Plan](./masterplan.md). This document serves as a quick reference but the master plan is now the definitive source.
@@ -19,7 +19,7 @@
 
 | Phase | Timeline | Status | Details |
 |-------|----------|--------|---------|
-| **Admin UI Overhaul** | April-May 2025 | **CRITICAL PRIORITY ⚠️** | [View in Master Plan](./masterplan.md#current-development-focus) |
+| **Admin UI Overhaul** | April-May 2025 | **IN PROGRESS (80%) 🚧** | [View in Master Plan](./masterplan.md#current-development-focus) |
 | Phase 3.5: Essential Features | May-June 2025 | 🚧 Scheduled | [View in Master Plan](./masterplan.md#phase-35-essential-features-scheduled-for-may-june-2025) |
 | Phase 4: Security & Compliance | June-July 2025 | 🔮 Planned | [View in Master Plan](./masterplan.md#phase-4-security-and-compliance-planned-for-june-july-2025) |
 | Phase 5: Feature Expansion | July-August 2025 | 🔮 Planned | [View in Master Plan](./masterplan.md#phase-5-feature-expansion-planned-for-july-august-2025) |
@@ -30,7 +30,8 @@
 
 | Feature | Status | Details |
 |---------|--------|---------|
-| Admin UI Overhaul | **CRITICAL PRIORITY ⚠️** | [Implementation Plan](./admin-ui-overhaul-plan.md) |
+| Admin UI Overhaul | **IN PROGRESS (80%) 🚧** | [Implementation Plan](./admin-ui-overhaul-plan.md) |
+| Settings System Simplification | **COMPLETED ✅** | [Implementation Plan](../current/feature-plans/settings-system-refactor-plan.md) |
 
 ### Essential Phase 3.5 Features
 
@@ -97,6 +98,8 @@ This index provides a quick overview of the roadmap, but you should:
 
 ## Recent Documentation Updates
 
-- ✅ **Created**: [masterplan.md](./masterplan.md) - Consolidated roadmap document (April 6, 2025)
-- ✅ **Updated**: [README.md](./README.md) - Updated to reference the master plan (April 6, 2025)
-- ✅ **Updated**: [index.md](./index.md) - This file - Updated to serve as quick reference (April 6, 2025).
+- ✅ **Created**: [april-2025-admin-ui-update.md](../updates/april-2025-admin-ui-update.md) - Summary of April 2025 UI changes (April 13, 2025)
+- ✅ **Updated**: [admin-ui-overhaul-plan.md](./admin-ui-overhaul-plan.md) - Added progress status for completed phases (April 13, 2025)
+- ✅ **Updated**: [settings-system-refactor-plan.md](../current/feature-plans/settings-system-refactor-plan.md) - Marked complete with implementation details (April 13, 2025)
+- ✅ **Updated**: [masterplan.md](./masterplan.md) - Added status updates for Admin UI Overhaul (April 13, 2025)
+- ✅ **Updated**: [index.md](./index.md) - This file - Updated progress status of features (April 13, 2025)
