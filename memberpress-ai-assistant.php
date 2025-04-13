@@ -745,8 +745,8 @@ class MemberPress_AI_Assistant {
         // Make sure MemberPress status is checked
         $this->check_memberpress();
         
-        // Use our enhanced WordPress Settings API implementation
-        require_once MPAI_PLUGIN_DIR . 'includes/settings-page-new.php';
+        // Load the settings page with direct save functionality
+        require_once MPAI_PLUGIN_DIR . 'includes/settings-page.php';
     }
 
     /**
