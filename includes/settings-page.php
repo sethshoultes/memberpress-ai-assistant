@@ -36,6 +36,11 @@ $submenu_file = 'memberpress-ai-assistant-settings';
 // Note: The option whitelisting and capability handling has been moved to MPAI_Settings class
 // This provides a more object-oriented approach and centralizes settings management
 
+// Debug all post data when saving settings
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['option_page']) && $_POST['option_page'] === 'mpai_options') {
+    error_log('MPAI: Saving settings from settings page - POST data: ' . print_r($_POST, true));
+}
+
 // We still need our nonce verification bypass for settings page submissions
 // This allows our settings to be saved properly without nonce errors
 function mpai_bypass_referer_check_for_options($action, $result) {
@@ -43,35 +48,47 @@ function mpai_bypass_referer_check_for_options($action, $result) {
     if (strpos($_SERVER['PHP_SELF'], 'options.php') !== false && 
         isset($_POST['option_page']) && $_POST['option_page'] === 'mpai_options') {
         
+        error_log('MPAI: Nonce bypass triggered for options.php with mpai_options');
+        
         // For security, only allow this bypass for admins
         if (current_user_can('manage_options')) {
+            error_log('MPAI: Bypass allowed - user has manage_options capability');
             return true;
+        } else {
+            error_log('MPAI: Bypass denied - user does NOT have manage_options capability');
         }
     }
     
     // Default: let WordPress handle it
     return $result;
 }
-add_filter('check_admin_referer', 'mpai_bypass_referer_check_for_options', 10, 2);
+add_filter('check_admin_referer', 'mpai_bypass_referer_check_for_options', 999, 2); // Using 999 priority to ensure it runs after other filters
 
-// Make sure settings are registered - standard WordPress pattern
-register_setting('mpai_options', 'mpai_api_key');
-register_setting('mpai_options', 'mpai_model');
-register_setting('mpai_options', 'mpai_anthropic_api_key');
-register_setting('mpai_options', 'mpai_anthropic_model');
-register_setting('mpai_options', 'mpai_primary_api');
-register_setting('mpai_options', 'mpai_enable_chat', 'boolval');
-register_setting('mpai_options', 'mpai_chat_position');
-register_setting('mpai_options', 'mpai_show_on_all_pages', 'boolval');
-register_setting('mpai_options', 'mpai_welcome_message', 'wp_kses_post');
-register_setting('mpai_options', 'mpai_enable_mcp', 'boolval');
-register_setting('mpai_options', 'mpai_enable_cli_commands', 'boolval');
-register_setting('mpai_options', 'mpai_enable_console_logging', 'boolval');
-register_setting('mpai_options', 'mpai_console_log_level');
-register_setting('mpai_options', 'mpai_log_api_calls', 'boolval');
-register_setting('mpai_options', 'mpai_log_tool_usage', 'boolval');
-register_setting('mpai_options', 'mpai_log_agent_activity', 'boolval');
-register_setting('mpai_options', 'mpai_log_timing', 'boolval');
+// VERY IMPORTANT: Make sure ALL settings are registered with WordPress Settings API
+// Missing any setting here will cause save to fail in mysterious ways
+register_setting('mpai_options', 'mpai_api_key', ['sanitize_callback' => 'sanitize_text_field']);
+register_setting('mpai_options', 'mpai_model', ['sanitize_callback' => 'sanitize_text_field']);
+register_setting('mpai_options', 'mpai_temperature', ['sanitize_callback' => 'floatval']);
+register_setting('mpai_options', 'mpai_anthropic_api_key', ['sanitize_callback' => 'sanitize_text_field']);
+register_setting('mpai_options', 'mpai_anthropic_model', ['sanitize_callback' => 'sanitize_text_field']);
+register_setting('mpai_options', 'mpai_anthropic_temperature', ['sanitize_callback' => 'floatval']);
+register_setting('mpai_options', 'mpai_primary_api', ['sanitize_callback' => 'sanitize_text_field']);
+register_setting('mpai_options', 'mpai_enable_chat', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_chat_position', ['sanitize_callback' => 'sanitize_text_field']);
+register_setting('mpai_options', 'mpai_show_on_all_pages', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_welcome_message', ['sanitize_callback' => 'wp_kses_post']);
+register_setting('mpai_options', 'mpai_enable_mcp', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_enable_cli_commands', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_enable_wp_cli_tool', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_enable_memberpress_info_tool', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_enable_plugin_logs_tool', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_enable_console_logging', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_console_log_level', ['sanitize_callback' => 'sanitize_text_field']);
+register_setting('mpai_options', 'mpai_log_api_calls', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_log_tool_usage', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_log_agent_activity', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_log_timing', ['sanitize_callback' => 'boolval']);
+register_setting('mpai_options', 'mpai_active_tab', ['sanitize_callback' => 'sanitize_text_field']);
 
 // Get settings for displaying values
 $settings = new MPAI_Settings();
@@ -395,7 +412,35 @@ if ($current_tab === 'general') {
     <?php 
     // Display any settings errors/notices
     settings_errors('mpai_messages');
+    
+    // DEBUG - Show raw debug info in error logs and on screen during WP_DEBUG
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        // Debug any nonce issues - check for current nonce
+        $admin_nonce = wp_create_nonce('mpai_admin_nonce');
+        $settings_nonce = wp_create_nonce('mpai_options-options');
+        
+        // Write to error log
+        error_log('MPAI DEBUG: Settings page loaded');
+        error_log('MPAI DEBUG: User: ' . wp_get_current_user()->user_login . ' (' . wp_get_current_user()->ID . ')');
+        error_log('MPAI DEBUG: Current admin nonce: ' . $admin_nonce);
+        error_log('MPAI DEBUG: Current settings nonce: ' . $settings_nonce);
+        error_log('MPAI DEBUG: Can manage options: ' . (current_user_can('manage_options') ? 'Yes' : 'No'));
+        
+        // Verify settings are registered with WordPress
+        global $wp_registered_settings;
+        $our_settings = array_filter($wp_registered_settings, function($key) {
+            return strpos($key, 'mpai_') === 0;
+        }, ARRAY_FILTER_USE_KEY);
+        error_log('MPAI DEBUG: Registered settings count: ' . count($our_settings));
+    }
     ?>
+    
+    <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+    <!-- Debug notice only shown in WP_DEBUG mode -->
+    <div class="notice notice-info">
+        <p><strong>Admin Debug Mode Active:</strong> Settings form actions are being tracked to diagnose saving issues.</p>
+    </div>
+    <?php endif; ?>
     
     <h2 class="nav-tab-wrapper">
         <?php foreach ($tabs as $tab_id => $tab_name) { ?>
@@ -403,13 +448,35 @@ if ($current_tab === 'general') {
         <?php } ?>
     </h2>
     
-    <form method="post" action="options.php">
+    <form method="post" action="options.php" id="mpai-settings-form">
         <?php
+        // Output all the necessary nonce fields and option groups
         settings_fields('mpai_options');
+        
+        // Output the settings sections for the current tab
         do_settings_sections('mpai_options');
+        
+        // Store the current tab so we can return to it after saving
+        echo '<input type="hidden" name="mpai_active_tab" value="' . esc_attr($current_tab) . '">';
+        
         submit_button();
         ?>
     </form>
+    
+    <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+    <script>
+    // Debug script to track form submission in real time
+    jQuery(document).ready(function($) {
+        $('#mpai-settings-form').on('submit', function(e) {
+            console.log('MPAI: Settings form submitted');
+            console.log('MPAI: Form data:', $(this).serialize());
+            
+            // Let the form submit normally
+            return true;
+        });
+    });
+    </script>
+    <?php endif; ?>
     
     <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
     <!-- Debug Info, only visible during debug mode -->
