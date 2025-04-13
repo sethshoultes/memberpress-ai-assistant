@@ -131,17 +131,29 @@ class MPAI_Settings_Registry {
 
     /**
      * Register settings with WordPress
+     * 
+     * Properly register settings groups, sections, and fields following WordPress Settings API best practices
      */
     public function register_settings_with_wordpress() {
+        // Add a filter to whitelist our options
+        add_filter('allowed_options', [$this, 'whitelist_options']);
+        
+        // Debug information
+        error_log('MPAI: Registering settings with WordPress');
+        
         foreach ($this->settings as $tab_id => $fields) {
-            // Register the option group
-            $option_group = 'mpai_' . $tab_id . '_options';
-            $page_slug = 'mpai_' . $tab_id . '_page';
+            // Create consistent option group and page name
+            $option_group = 'mpai_' . $tab_id;
+            $page_slug = 'mpai-' . $tab_id;
+            
+            error_log('MPAI: Registering tab ' . $tab_id . ' with option_group: ' . $option_group . ' and page: ' . $page_slug);
             
             // Register sections for each group
             if (isset($this->settings_groups[$tab_id])) {
                 foreach ($this->settings_groups[$tab_id] as $group_id => $group) {
-                    $section_id = 'mpai_' . $tab_id . '_' . $group_id . '_section';
+                    $section_id = 'mpai_' . $tab_id . '_' . $group_id;
+                    
+                    error_log('MPAI: Adding section ' . $section_id . ' to page ' . $page_slug);
                     
                     // Add the settings section
                     add_settings_section(
@@ -160,6 +172,8 @@ class MPAI_Settings_Registry {
                     if (!empty($group['fields'])) {
                         foreach ($group['fields'] as $field_id => $field) {
                             $option_name = 'mpai_' . $field_id;
+                            
+                            error_log('MPAI: Adding field ' . $field_id . ' to section ' . $section_id);
                             
                             // Add the settings field
                             add_settings_field(
@@ -190,7 +204,7 @@ class MPAI_Settings_Registry {
                     switch ($field['type']) {
                         case 'checkbox':
                             $args['sanitize_callback'] = function($value) {
-                                return (bool) $value;
+                                return $value ? '1' : '0'; // Store as string for consistency
                             };
                             break;
                         case 'number':
@@ -204,10 +218,44 @@ class MPAI_Settings_Registry {
                     }
                 }
                 
+                // Ensure default is set if available
+                if (isset($field['args']['default']) && !isset($args['default'])) {
+                    $args['default'] = $field['args']['default'];
+                }
+                
+                error_log('MPAI: Registering setting ' . $option_name . ' in option_group ' . $option_group);
+                
                 // Register with WordPress
                 register_setting($option_group, $option_name, $args);
             }
         }
+    }
+    
+    /**
+     * Add our options to the allowed options whitelist
+     * 
+     * This ensures WordPress allows our options to be updated
+     * 
+     * @param array $allowed_options The allowed options array
+     * @return array Modified allowed options array
+     */
+    public function whitelist_options($allowed_options) {
+        // Log what we're doing for debugging
+        error_log('MPAI: Whitelisting options for settings registry');
+        
+        foreach ($this->settings as $tab_id => $fields) {
+            $option_group = 'mpai_' . $tab_id;
+            $allowed_options[$option_group] = [];
+            
+            foreach ($fields as $field) {
+                $option_name = 'mpai_' . $field['field_id'];
+                $allowed_options[$option_group][] = $option_name;
+                
+                error_log('MPAI: Whitelisted option ' . $option_name . ' in group ' . $option_group);
+            }
+        }
+        
+        return $allowed_options;
     }
     
     /**
@@ -283,6 +331,11 @@ class MPAI_Settings_Registry {
         // Add necessary scripts
         $this->enqueue_settings_scripts();
         
+        // Add debug notice for troubleshooting if in debug mode
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            echo '<div class="notice notice-info is-dismissible"><p>This page is using the new Settings Registry system with tab: ' . esc_html($current_tab) . '. If you encounter any issues, please report them.</p></div>';
+        }
+        
         ?>
         <div class="wrap mpai-settings-wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
@@ -310,34 +363,85 @@ class MPAI_Settings_Registry {
                     ?>
                 </div>
             </div>
-            
-            <!-- Add tooltips JavaScript -->
-            <script>
-                // Initialize tooltips when document is ready
-                (function($) {
-                    // Toggle help content visibility
-                    $('.mpai-toggle-help').on('click', function(e) {
-                        e.preventDefault();
-                        var $helpContent = $(this).next('.mpai-help-content');
-                        
-                        if ($helpContent.is(':visible')) {
-                            $helpContent.slideUp();
-                            $(this).text('<?php _e('Show more help', 'memberpress-ai-assistant'); ?>');
-                        } else {
-                            $helpContent.slideDown();
-                            $(this).text('<?php _e('Hide help', 'memberpress-ai-assistant'); ?>');
+        </div>
+        <?php
+    }
+    
+    /**
+     * Add JavaScript for tooltips and tab navigation
+     * This is added to the footer to ensure jQuery is loaded first
+     */
+    public function add_footer_scripts() {
+        ?>
+        <script>
+            jQuery(document).ready(function($) {
+                // Log initialization for debugging
+                console.log('MPAI: Initializing Settings Registry scripts');
+                
+                // Toggle help content visibility
+                $('.mpai-toggle-help').on('click', function(e) {
+                    e.preventDefault();
+                    var $helpContent = $(this).next('.mpai-help-content');
+                    
+                    if ($helpContent.is(':visible')) {
+                        $helpContent.slideUp();
+                        $(this).text('<?php _e('Show more help', 'memberpress-ai-assistant'); ?>');
+                    } else {
+                        $helpContent.slideDown();
+                        $(this).text('<?php _e('Hide help', 'memberpress-ai-assistant'); ?>');
+                    }
+                });
+                
+                // Check if jQuery UI is available
+                if (typeof $.fn.tooltip === 'undefined') {
+                    console.log('MPAI: jQuery UI Tooltip not found, loading it dynamically');
+                    
+                    // Load jQuery UI CSS
+                    $('<link>')
+                        .appendTo('head')
+                        .attr({
+                            type: 'text/css', 
+                            rel: 'stylesheet',
+                            href: 'https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css'
+                        });
+                    
+                    // Load jQuery UI JS
+                    $.getScript('https://code.jquery.com/ui/1.13.2/jquery-ui.min.js')
+                        .done(function() {
+                            console.log('MPAI: jQuery UI loaded successfully');
+                            initTooltips();
+                        })
+                        .fail(function() {
+                            console.error('MPAI: Failed to load jQuery UI');
+                        });
+                } else {
+                    console.log('MPAI: jQuery UI already available');
+                    initTooltips();
+                }
+                
+                // Function to initialize tooltips
+                function initTooltips() {
+                    console.log('MPAI: Initializing tooltips');
+                    $('.mpai-tooltip').tooltip({
+                        position: { my: "left+10 center", at: "right center" },
+                        content: function() {
+                            return $(this).attr('title');
                         }
                     });
+                    console.log('MPAI: Found ' + $('.mpai-tooltip').length + ' tooltips to initialize');
+                }
+                
+                // Handle tab navigation (for both URL and JavaScript navigation)
+                $('.mpai-tab-link').on('click', function(e) {
+                    // URL navigation is already handled by the href attribute
+                    // But we also update the hidden input for JavaScript navigation
+                    var tabId = $(this).data('tab');
+                    $('#mpai-current-tab').val(tabId);
                     
-                    // Initialize tooltips if jQuery UI is available
-                    if ($.fn.tooltip) {
-                        $('.mpai-tooltip').tooltip({
-                            position: { my: "left+10 center", at: "right center" }
-                        });
-                    }
-                })(jQuery);
-            </script>
-        </div>
+                    console.log('MPAI: Tab clicked: ' + tabId);
+                });
+            });
+        </script>
         <?php
     }
     
@@ -345,12 +449,18 @@ class MPAI_Settings_Registry {
      * Enqueue necessary scripts and styles for the settings page
      */
     private function enqueue_settings_scripts() {
-        // Enqueue jQuery UI for tooltips
+        // Enqueue required WordPress scripts
+        wp_enqueue_script('jquery');
+        wp_enqueue_script('jquery-ui-core');
         wp_enqueue_script('jquery-ui-tooltip');
+        wp_enqueue_script('jquery-ui-tabs');
         
-        // Enqueue WordPress color picker
+        // Enqueue WordPress color picker for color fields
         wp_enqueue_style('wp-color-picker');
         wp_enqueue_script('wp-color-picker');
+        
+        // Add our footer scripts
+        add_action('admin_footer', [$this, 'add_footer_scripts']);
         
         // Add custom styles
         ?>
@@ -425,6 +535,7 @@ class MPAI_Settings_Registry {
                 color: #777;
                 vertical-align: middle;
                 margin-left: 4px;
+                display: inline-block;
             }
             
             /* UI improvements for specific field types */
@@ -437,6 +548,7 @@ class MPAI_Settings_Registry {
                 margin-right: 8px;
             }
             
+            /* Enhanced tooltip styling */
             .ui-tooltip {
                 padding: 8px;
                 position: absolute;
@@ -444,9 +556,31 @@ class MPAI_Settings_Registry {
                 max-width: 300px;
                 background: #333;
                 color: white;
-                border-radius: 3px;
-                box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+                border-radius: 4px;
+                box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
                 font-size: 12px;
+                line-height: 1.4;
+            }
+            
+            /* Fix for field styling */
+            .form-table th {
+                padding: 15px 10px 15px 0;
+            }
+            
+            .form-table td {
+                padding: 15px 10px;
+            }
+            
+            /* "Highlight" styling for important settings */
+            .highlight-setting {
+                background-color: #f7fcfe;
+                border-left: 4px solid #2271b1;
+                padding-left: 12px !important;
+            }
+            
+            /* Success and error notices */
+            .settings-error {
+                margin: 15px 0 10px;
             }
         </style>
         <?php
@@ -483,9 +617,13 @@ class MPAI_Settings_Registry {
                 $icon_html = '<span class="dashicons ' . esc_attr($tab['icon']) . '"></span> ';
             }
             
-            echo '<a href="' . esc_url($tab_url) . '" class="nav-tab ' . $active_class . '">' . 
+            // Generate proper tab links that preserve URL state
+            echo '<a href="' . esc_url($tab_url) . '" class="nav-tab mpai-tab-link ' . $active_class . '" data-tab="' . esc_attr($tab_id) . '">' . 
                  $icon_html . '<span class="tab-label">' . esc_html($tab['title']) . '</span></a>';
         }
+        
+        // Add hidden input to track current tab
+        echo '<input type="hidden" id="mpai-current-tab" name="mpai_current_tab" value="' . esc_attr($current_tab) . '">';
     }
 
     /**
@@ -517,8 +655,14 @@ class MPAI_Settings_Registry {
      * @param string $current_tab Current active tab
      */
     private function render_settings_form($current_tab) {
-        $option_group = 'mpai_' . $current_tab . '_options';
-        $page_slug = 'mpai_' . $current_tab . '_page';
+        // Use consistent naming convention
+        $option_group = 'mpai_' . $current_tab;
+        $page_slug = 'mpai-' . $current_tab;
+        
+        // Add debug information - visible only in debug mode
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            echo '<!-- Debug: Settings form for tab ' . esc_html($current_tab) . ', option_group: ' . esc_html($option_group) . ', page: ' . esc_html($page_slug) . ' -->';
+        }
         
         // Start form
         echo '<form method="post" action="options.php" class="mpai-settings-form">';
@@ -533,6 +677,16 @@ class MPAI_Settings_Registry {
         } else {
             // Use WordPress settings API to output sections and fields
             do_settings_sections($page_slug);
+            
+            // Debug option values in debug mode
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                echo '<!-- Debug: Option values for this tab -->';
+                foreach ($this->settings[$current_tab] as $field) {
+                    $option_name = 'mpai_' . $field['field_id'];
+                    $value = get_option($option_name);
+                    echo '<!-- ' . esc_html($option_name) . ' = ' . (is_array($value) ? json_encode($value) : esc_html($value)) . ' -->';
+                }
+            }
         }
         
         // Add submit button
