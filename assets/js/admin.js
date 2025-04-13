@@ -1118,10 +1118,33 @@
         // First fix tab navigation immediately since that's critical
         console.log('MPAI DEBUG: Setting up tab navigation...');
         
-        // Only handle the old-style tabs for non-registry settings pages
+        // Handle Standard WordPress settings tabs
         try {
-            // Check if we're on a settings registry page
-            if ($('.mpai-settings-wrap').length > 0 && $('.mpai-tab-content').length > 0) {
+            // Check if we're on a WordPress standard settings page using URL tab parameter
+            if ($('.nav-tab-wrapper').length > 0 && !$('.mpai-settings-wrap').length) {
+                console.log('MPAI DEBUG: WordPress standard settings page detected with URL-based tabs');
+                
+                // No need to set up click handlers as the links navigate directly to the correct URL
+                console.log('MPAI DEBUG: Using WordPress standard URL-based tab navigation');
+                
+                // Add a cleanup to remove any href attributes with full URLs
+                $('.nav-tab-wrapper a.nav-tab').each(function() {
+                    var href = $(this).attr('href');
+                    if (href && href.indexOf('http') === 0) {
+                        // This href contains a full URL which can cause jQuery errors
+                        // Extract just the tab parameter 
+                        var tabMatch = href.match(/[&?]tab=([^&]+)/);
+                        if (tabMatch && tabMatch[1]) {
+                            // Replace the full URL with just the tab parameter
+                            var newHref = 'admin.php?page=memberpress-ai-assistant-settings&tab=' + tabMatch[1];
+                            $(this).attr('href', newHref);
+                            console.log('MPAI DEBUG: Fixed tab URL:', href, ' -> ', newHref);
+                        }
+                    }
+                });
+            }
+            // Check if we're on a settings registry page with JavaScript tabs
+            else if ($('.mpai-settings-wrap').length > 0 && $('.mpai-tab-content').length > 0) {
                 console.log('MPAI DEBUG: Settings Registry page detected, skipping old tab navigation setup');
                 
                 // Add event listener for diagnostic tab
@@ -1131,9 +1154,11 @@
                         $(document).trigger('mpai-load-plugin-logs');
                     }, 100);
                 });
-            } else {
-                // This is an old-style settings page, use the old tab navigation
-                console.log('MPAI DEBUG: Old-style settings page detected, setting up tab navigation');
+            } 
+            // Fallback to old-style JavaScript tabs if needed
+            else if ($('.mpai-settings-tab').length > 0) {
+                // This is an old-style settings page with JavaScript tabs
+                console.log('MPAI DEBUG: Old-style JavaScript settings tabs detected');
                 
                 // Hide all tabs first except the first one
                 $('.mpai-settings-tab').hide();
