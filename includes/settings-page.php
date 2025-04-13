@@ -5,6 +5,11 @@
  * @package MemberPress AI Assistant
  */
 
+// Debug load count
+static $settings_page_load_count = 0;
+$settings_page_load_count++;
+error_log('MPAI LOADING: Settings page loaded ' . $settings_page_load_count . ' times. Called from: ' . debug_backtrace()[0]['file']);
+
 // The direct save functionality MUST be at the very top of the file
 // This code must execute BEFORE any output is sent
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) && $_POST['mpai_direct_save'] === '1') {
