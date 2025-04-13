@@ -496,14 +496,18 @@ class MPAI_Settings_Registry {
                     console.log('MPAI: Found ' + $('.mpai-tooltip').length + ' tooltips to initialize');
                 }
                 
-                // Handle tab navigation (for both URL and JavaScript navigation)
+                // Handle tab navigation - fixed to prevent jQuery selector errors
                 $('.mpai-tab-link').on('click', function(e) {
-                    // URL navigation is already handled by the href attribute
-                    // But we also update the hidden input for JavaScript navigation
+                    // Get the tab ID
                     var tabId = $(this).data('tab');
+                    
+                    // Update the hidden input
                     $('#mpai-current-tab').val(tabId);
                     
                     console.log('MPAI: Tab clicked: ' + tabId);
+                    
+                    // We don't need to manually handle the navigation here
+                    // The browser will handle it through the href attribute
                 });
             });
         </script>
@@ -667,14 +671,14 @@ class MPAI_Settings_Registry {
      * @param string $current_tab Current active tab
      */
     private function render_tabs_navigation($current_tab) {
-        // Get current page URL
-        $current_url = remove_query_arg('settings-updated'); // Remove any success message
+        // Get base page URL without any query parameters except page
+        $base_url = admin_url('admin.php?page=' . $_GET['page']);
         
         foreach ($this->tabs as $tab_id => $tab) {
             $active_class = ($tab_id === $current_tab) ? 'nav-tab-active' : '';
             
-            // Generate URL with tab parameter
-            $tab_url = add_query_arg('tab', $tab_id, $current_url);
+            // Generate proper URL with tab parameter
+            $tab_url = $base_url . '&tab=' . $tab_id;
             
             // Add icon if available
             $icon_html = '';
@@ -682,7 +686,7 @@ class MPAI_Settings_Registry {
                 $icon_html = '<span class="dashicons ' . esc_attr($tab['icon']) . '"></span> ';
             }
             
-            // Generate proper tab links that preserve URL state
+            // Generate proper tab links with hashtag for client-side navigation
             echo '<a href="' . esc_url($tab_url) . '" class="nav-tab mpai-tab-link ' . $active_class . '" data-tab="' . esc_attr($tab_id) . '">' . 
                  $icon_html . '<span class="tab-label">' . esc_html($tab['title']) . '</span></a>';
         }
