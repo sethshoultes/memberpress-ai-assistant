@@ -4,12 +4,12 @@ This directory contains archived components that have been replaced by more stre
 
 ## Settings System Evolution
 
-The settings system for MemberPress AI Assistant has evolved from complex custom implementations to a more standard WordPress Settings API approach:
+The settings system for MemberPress AI Assistant has evolved from complex custom implementations to a centralized system using the WordPress Settings API:
 
 ### Current (Active) Implementation
 
 - `includes/settings-page.php` - Current implementation using standard WordPress Settings API
-- `includes/class-mpai-settings.php` - Utility class with model lists and helper methods
+- `includes/class-mpai-settings.php` - Centralized settings definition class with field rendering methods
 
 ### Archived (Deprecated) Implementations
 
@@ -30,4 +30,14 @@ In Phase 2 of the Admin UI Overhaul, we transitioned to a standard WordPress Set
 2. **Reliability**: The WordPress Settings API has been thoroughly tested across countless plugins.
 3. **Compatibility**: Using standard WordPress functions ensures better compatibility with other plugins and themes.
 
-If you need to modify settings functionality, please update the active implementation files rather than reviving these archived approaches.
+### Phase 3 (April 2025) - Centralized Settings System
+
+In the latest refactoring:
+
+1. **Single Source of Truth**: Created a centralized settings definition system in `class-mpai-settings.php` that serves as the single source of truth for all settings.
+2. **Eliminated Redundant Registrations**: Removed duplicated settings registrations from multiple files.
+3. **Tools Tab Removal**: Removed the problematic Tools tab and hardcoded those settings to always be enabled.
+4. **Consistent Field Rendering**: Added field rendering methods for all field types to ensure consistent UI.
+5. **Consolidated Plugin Logger Settings**: Moved plugin logger settings into the centralized system.
+
+If you need to modify settings functionality, please update the centralized definitions in `class-mpai-settings.php` rather than adding settings in other files.

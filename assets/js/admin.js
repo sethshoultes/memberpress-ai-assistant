@@ -796,10 +796,10 @@
                 enabled: $('#mpai_enable_console_logging').is(':checked'),
                 logLevel: $('#mpai_console_log_level').val(),
                 categories: {
-                    api_calls: $('#mpai_log_api_calls').is(':checked'),
-                    tool_usage: $('#mpai_log_tool_usage').is(':checked'),
-                    agent_activity: $('#mpai_log_agent_activity').is(':checked'),
-                    timing: $('#mpai_log_timing').is(':checked'),
+                    api_calls: true, // Always enabled
+                    tool_usage: true, // Always enabled
+                    agent_activity: true, // Always enabled
+                    timing: true, // Always enabled
                     ui: true // Always enable UI logging for tests
                 }
             };
@@ -821,10 +821,10 @@
             formData.append('enable_logging', enabledValue);
             
             formData.append('log_level', settings.logLevel);
-            formData.append('log_api_calls', settings.categories.api_calls ? '1' : '0');
-            formData.append('log_tool_usage', settings.categories.tool_usage ? '1' : '0');
-            formData.append('log_agent_activity', settings.categories.agent_activity ? '1' : '0');
-            formData.append('log_timing', settings.categories.timing ? '1' : '0');
+            formData.append('log_api_calls', '1'); // Always enabled
+            formData.append('log_tool_usage', '1'); // Always enabled
+            formData.append('log_agent_activity', '1'); // Always enabled
+            formData.append('log_timing', '1'); // Always enabled
             formData.append('save_settings', '1');
             
             // Use the direct AJAX handler

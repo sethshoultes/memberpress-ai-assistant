@@ -79,19 +79,11 @@ class MPAI_Plugin_Logger {
     }
 
     /**
-     * Register settings
+     * Register settings - No longer needed as settings are registered in MPAI_Settings class
      */
     public function register_settings() {
-        register_setting( 'mpai_options', 'mpai_enable_plugin_logging', array(
-            'type'    => 'boolean',
-            'default' => true,
-        ) );
-        
-        register_setting( 'mpai_options', 'mpai_plugin_logs_retention_days', array(
-            'type'              => 'integer',
-            'default'           => 90,
-            'sanitize_callback' => 'absint',
-        ) );
+        // Settings are now registered in the centralized MPAI_Settings class
+        error_log('MPAI: Plugin logger settings are now managed by MPAI_Settings class');
     }
 
     /**
@@ -1059,7 +1051,7 @@ class MPAI_Plugin_Logger {
      * @return bool Whether logging is enabled.
      */
     private function is_logging_enabled() {
-        return get_option( 'mpai_enable_plugin_logging', true );
+        return true; // Always enabled
     }
 
     /**

@@ -756,12 +756,8 @@ class MPAI_Admin {
         // We've already tried flexible nonce verification above, so no need to repeat
         error_log('MPAI: Proceeding with tool execution even if nonce verification failed');
         
-        // Check if MCP is enabled
-        if (!get_option('mpai_enable_mcp', true)) {
-            error_log('MPAI: MCP is not enabled in settings');
-            wp_send_json_error('MCP is not enabled in settings');
-            return;
-        }
+        // MCP is always enabled now (settings were removed from UI)
+        error_log('MPAI: MCP is always enabled in admin');
 
         // Check tool request
         if (empty($_POST['tool_request'])) {

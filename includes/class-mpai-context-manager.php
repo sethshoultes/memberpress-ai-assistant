@@ -339,14 +339,8 @@ class MPAI_Context_Manager {
             }
         }
         
-        // Check if CLI commands are enabled in settings - temporarily bypass for debugging
-        error_log('MPAI: ⚠️ TEMPORARILY BYPASSING CLI COMMANDS ENABLED CHECK FOR DEBUGGING');
-        /*
-        if (!get_option('mpai_enable_cli_commands', true)) {
-            error_log('MPAI: CLI commands are disabled in settings');
-            return 'CLI commands are disabled in settings. Please enable them in the MemberPress AI Assistant settings page.';
-        }
-        */
+        // CLI commands are always enabled now (settings were removed from UI)
+        error_log('MPAI: CLI commands are always enabled');
         
         // Check if command is allowed - temporarily bypass for debugging
         error_log('MPAI: ⚠️ TEMPORARILY BYPASSING COMMAND ALLOWED CHECK FOR DEBUGGING');
@@ -1793,14 +1787,8 @@ class MPAI_Context_Manager {
             unset($request['tool']);
         }
         
-        if (!get_option('mpai_enable_mcp', true)) {
-            error_log('MPAI: MCP is disabled in settings');
-            return array(
-                'success' => false,
-                'error' => 'MCP is disabled in settings',
-                'tool' => isset($request['name']) ? $request['name'] : 'unknown'
-            );
-        }
+        // MCP is always enabled now (settings were removed from UI)
+        error_log('MPAI: MCP is always enabled');
         
         // FAST PATH: Special handling for common wp_cli commands - bypass validation
         if (isset($request['name']) && $request['name'] === 'wp_cli' && 
@@ -1974,24 +1962,8 @@ class MPAI_Context_Manager {
 
         $tool = $this->available_tools[$request['name']];
         
-        // Check if the specific tool is enabled
-        if ($tool['name'] === 'wp_cli' && !get_option('mpai_enable_wp_cli_tool', true)) {
-            error_log('MPAI: wp_cli tool is disabled in settings');
-            return array(
-                'success' => false,
-                'error' => 'The wp_cli tool is disabled in settings',
-                'tool' => $request['name']
-            );
-        }
-        
-        if ($tool['name'] === 'memberpress_info' && !get_option('mpai_enable_memberpress_info_tool', true)) {
-            error_log('MPAI: memberpress_info tool is disabled in settings');
-            return array(
-                'success' => false,
-                'error' => 'The memberpress_info tool is disabled in settings',
-                'tool' => $request['name']
-            );
-        }
+        // All tools are always enabled now (settings were removed from UI)
+        error_log('MPAI: All tools are always enabled');
         
         // Special handling for plugin_logs tool
         if ($tool['name'] === 'plugin_logs') {

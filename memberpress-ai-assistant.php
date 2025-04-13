@@ -575,33 +575,12 @@ class MemberPress_AI_Assistant {
         // Add filter for parent file to fix menu highlighting
         add_filter('parent_file', array($this, 'highlight_parent_menu'), 999);
         
-        // Register settings
-        register_setting('mpai_options', 'mpai_api_key');
-        register_setting('mpai_options', 'mpai_model');
-        register_setting('mpai_options', 'mpai_temperature', array(
-            'sanitize_callback' => function($value) {
-                return floatval($value);
-            },
-        ));
-        register_setting('mpai_options', 'mpai_max_tokens', array(
-            'sanitize_callback' => 'absint',
-        ));
-        register_setting('mpai_options', 'mpai_enable_chat', array(
-            'sanitize_callback' => function($value) {
-                return (bool) $value;
-            },
-        ));
-        register_setting('mpai_options', 'mpai_chat_position', array(
-            'sanitize_callback' => 'sanitize_text_field',
-        ));
-        register_setting('mpai_options', 'mpai_show_on_all_pages', array(
-            'sanitize_callback' => function($value) {
-                return (bool) $value;
-            },
-        ));
-        register_setting('mpai_options', 'mpai_welcome_message', array(
-            'sanitize_callback' => 'wp_kses_post',
-        ));
+        // Settings are now registered in MPAI_Settings class
+        if (class_exists('MPAI_Settings')) {
+            $settings = new MPAI_Settings();
+            // Make sure settings are registered
+            $settings->register_settings();
+        }
     }
 
     /**
@@ -963,11 +942,11 @@ class MemberPress_AI_Assistant {
                     'error_message' => __('Sorry, there was an error processing your request. Please try again.', 'memberpress-ai-assistant'),
                 ),
                 'tools_enabled' => array(
-                    'mcp' => get_option('mpai_enable_mcp', true) ? true : false,
-                    'cli_commands' => get_option('mpai_enable_cli_commands', true) ? true : false,
-                    'wp_cli_tool' => get_option('mpai_enable_wp_cli_tool', true) ? true : false,
-                    'memberpress_info_tool' => get_option('mpai_enable_memberpress_info_tool', true) ? true : false,
-                    'plugin_logs_tool' => get_option('mpai_enable_plugin_logs_tool', true) ? true : false
+                    'mcp' => true, // Always enabled
+                    'cli_commands' => true, // Always enabled
+                    'wp_cli_tool' => true, // Always enabled
+                    'memberpress_info_tool' => true, // Always enabled
+                    'plugin_logs_tool' => true // Always enabled
                 )
             )
         );
@@ -1980,49 +1959,96 @@ class MemberPress_AI_Assistant {
     }
     
     private function set_default_options() {
-        $default_options = array(
-            // OpenAI Settings
-            'api_key' => '',
-            'model' => 'gpt-4o',
-            'temperature' => 0.7,
-            'max_tokens' => 2048,
-            
-            // Anthropic Settings
-            'anthropic_api_key' => '',
-            'anthropic_model' => 'claude-3-opus-20240229',
-            'anthropic_temperature' => 0.7,
-            'anthropic_max_tokens' => 2048,
-            
-            // API Router Settings
-            'primary_api' => 'openai',
-            
-            // Chat Interface Settings
-            'enable_chat' => true,
-            'chat_position' => 'bottom-right',
-            'show_on_all_pages' => true,
-            'welcome_message' => 'Hi there! I\'m your MemberPress AI Assistant. How can I help you today?',
-            
-            // MCP and CLI settings
-            'enable_mcp' => true,
-            'enable_cli_commands' => true,
-            'enable_wp_cli_tool' => true,
-            'enable_memberpress_info_tool' => true,
-            'enable_plugin_logs_tool' => true,
-            'allowed_cli_commands' => array('wp user list', 'wp post list', 'wp plugin list'),
-            
-            // Agent system settings
-            'agent_system_enabled' => true,
-            'agent_system_version' => MPAI_VERSION,
-            'agent_system_model' => 'gpt-4o',
-            
-            // Plugin logger settings
-            'enable_plugin_logging' => true,
-            'plugin_logs_retention_days' => 90,
-        );
+        // Load the settings class to get centralized definitions
+        if (!class_exists('MPAI_Settings')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-settings.php';
+        }
         
-        foreach ($default_options as $option => $value) {
-            if (get_option('mpai_' . $option) === false) {
-                update_option('mpai_' . $option, $value);
+        if (class_exists('MPAI_Settings')) {
+            $settings = new MPAI_Settings();
+            $definitions = $settings->get_settings_definitions();
+            
+            foreach ($definitions as $option_name => $args) {
+                // Strip the mpai_ prefix from option_name for backwards compatibility
+                $option_key = str_replace('mpai_', '', $option_name);
+                
+                // Check if the option exists
+                if (get_option($option_name) === false) {
+                    // Set default value from centralized definitions
+                    update_option($option_name, $args['default']);
+                    error_log('MPAI: Set default option for ' . $option_name . ' to ' . (is_bool($args['default']) ? ($args['default'] ? 'true' : 'false') : (is_array($args['default']) ? 'array' : $args['default'])));
+                }
+            }
+            
+            // Set additional defaults not in the settings system
+            $additional_defaults = array(
+                // Agent system settings
+                'mpai_agent_system_enabled' => true,
+                'mpai_agent_system_version' => MPAI_VERSION,
+                'mpai_agent_system_model' => 'gpt-4o',
+                
+                // Plugin logger settings
+                'mpai_enable_plugin_logging' => true,
+                'mpai_plugin_logs_retention_days' => 90,
+                
+                // Hardcoded tool settings (removed from UI)
+                'mpai_enable_mcp' => true,
+                'mpai_enable_cli_commands' => true,
+                'mpai_enable_wp_cli_tool' => true,
+                'mpai_enable_memberpress_info_tool' => true,
+                'mpai_enable_plugin_logs_tool' => true,
+                
+                // CLI commands
+                'mpai_allowed_cli_commands' => array('wp user list', 'wp post list', 'wp plugin list'),
+            );
+            
+            foreach ($additional_defaults as $option => $value) {
+                if (get_option($option) === false) {
+                    update_option($option, $value);
+                }
+            }
+        } else {
+            // Fallback to legacy default options if settings class not available
+            $default_options = array(
+                // OpenAI Settings
+                'api_key' => '',
+                'model' => 'gpt-4o',
+                'temperature' => 0.7,
+                'max_tokens' => 2048,
+                
+                // Anthropic Settings
+                'anthropic_api_key' => '',
+                'anthropic_model' => 'claude-3-opus-20240229',
+                'anthropic_temperature' => 0.7,
+                
+                // API Router Settings
+                'primary_api' => 'openai',
+                
+                // Chat Interface Settings
+                'chat_position' => 'bottom-right',
+                'welcome_message' => 'Hi there! I\'m your MemberPress AI Assistant. How can I help you today?',
+                
+                // Debug settings
+                'enable_console_logging' => false,
+                'console_log_level' => 'info',
+                'log_api_calls' => false,
+                'log_tool_usage' => false,
+                'log_agent_activity' => false,
+                'log_timing' => false,
+            );
+            
+            // Hard-coded tool settings (no longer configurable)
+            update_option('mpai_enable_mcp', true);
+            update_option('mpai_enable_cli_commands', true);
+            update_option('mpai_enable_wp_cli_tool', true);
+            update_option('mpai_enable_memberpress_info_tool', true);
+            update_option('mpai_enable_plugin_logs_tool', true);
+            update_option('mpai_allowed_cli_commands', array('wp user list', 'wp post list', 'wp plugin list'));
+            
+            foreach ($default_options as $option => $value) {
+                if (get_option('mpai_' . $option) === false) {
+                    update_option('mpai_' . $option, $value);
+                }
             }
         }
     }

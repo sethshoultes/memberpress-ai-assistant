@@ -169,10 +169,10 @@ class MPAI_Chat_Interface {
             'enabled' => get_option('mpai_enable_console_logging', '1'),
             'log_level' => get_option('mpai_console_log_level', 'info'),
             'categories' => array(
-                'api_calls' => get_option('mpai_log_api_calls', '1'),
-                'tool_usage' => get_option('mpai_log_tool_usage', '1'),
-                'agent_activity' => get_option('mpai_log_agent_activity', '1'),
-                'timing' => get_option('mpai_log_timing', '1'),
+                'api_calls' => '1',
+                'tool_usage' => '1',
+                'agent_activity' => '1',
+                'timing' => '1',
                 'ui' => '1' // Always enable UI logging
             )
         );

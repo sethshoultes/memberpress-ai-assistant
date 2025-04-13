@@ -1504,12 +1504,8 @@ class MPAI_Chat {
      * @return string Processed response
      */
     private function process_commands($response) {
-        // Check if CLI commands are enabled
-        $enable_cli_commands = get_option('mpai_enable_cli_commands', false);
-        
-        if (!$enable_cli_commands) {
-            return $response;
-        }
+        // CLI commands are always enabled now (settings were removed from UI)
+        error_log('MPAI: CLI commands are always enabled in chat');
         
         // Look for suggested WP-CLI commands in the response
         preg_match_all('/```sh\n(wp .*?)\n```/s', $response, $matches);
