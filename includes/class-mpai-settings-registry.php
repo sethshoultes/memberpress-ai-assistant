@@ -795,9 +795,13 @@ class MPAI_Settings_Registry {
         // WordPress uses this hidden field to determine which allowlist to check
         echo '<input type="hidden" name="option_page" value="' . esc_attr($option_group) . '">';
         
-        // Output nonce, action, and option page fields (but not option_page again)
-        wp_nonce_field('update-options');
+        // Output the correct referer nonce - this is what settings_fields does
+        // The nonce is specifically for the option_group we're using
+        wp_nonce_field($option_group . '-options', '_wpnonce', true, true);
         echo '<input type="hidden" name="action" value="update">';
+        
+        // Extra redundant referer field
+        echo '<input type="hidden" name="_wp_http_referer" value="' . esc_attr($_SERVER['REQUEST_URI']) . '">';
         
         // If there are no groups for this tab, show a message
         if (!isset($this->settings_groups[$current_tab]) || empty($this->settings_groups[$current_tab])) {
