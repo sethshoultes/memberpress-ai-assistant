@@ -469,6 +469,9 @@ function mpai_register_default_settings($registry) {
 // Use the function to register settings now that it's available
 $mpai_settings_registry = mpai_register_default_settings($mpai_settings_registry);
 
+// Register settings with WordPress explicitly
+$mpai_settings_registry->register_settings_with_wordpress();
+
 // Display any settings errors/notices
 settings_errors('mpai_messages');
 
@@ -476,6 +479,15 @@ settings_errors('mpai_messages');
 if (defined('WP_DEBUG') && WP_DEBUG) {
     echo '<!-- MPAI Debug: Settings Registry Initialization -->';
     echo '<!-- Tabs: ' . implode(', ', array_keys($mpai_settings_registry->get_tabs())) . ' -->';
+    
+    // Show all registered settings groups
+    $groups = $mpai_settings_registry->get_settings_groups();
+    foreach ($groups as $tab_id => $tab_groups) {
+        echo '<!-- Tab: ' . $tab_id . ' has ' . count($tab_groups) . ' groups -->';
+        foreach ($tab_groups as $group_id => $group) {
+            echo '<!-- Group: ' . $group_id . ' has ' . (isset($group['fields']) ? count($group['fields']) : 0) . ' fields -->';
+        }
+    }
 }
 
 // Render the settings page
