@@ -53,13 +53,16 @@ class MPAI_Settings_Registry {
      * @param string   $id       Tab ID
      * @param string   $title    Tab title
      * @param callable $callback Optional custom renderer for tab content
+     * @param array    $args     Additional arguments (icon, description, etc.)
      * 
      * @return MPAI_Settings_Registry Self reference for chaining
      */
-    public function register_tab($id, $title, $callback = null) {
+    public function register_tab($id, $title, $callback = null, $args = []) {
         $this->tabs[$id] = [
             'title' => $title,
-            'callback' => $callback
+            'callback' => $callback,
+            'icon' => isset($args['icon']) ? $args['icon'] : '',
+            'description' => isset($args['description']) ? $args['description'] : ''
         ];
         
         return $this;
@@ -277,22 +280,175 @@ class MPAI_Settings_Registry {
         // Get current tab
         $current_tab = $this->get_current_tab();
         
+        // Add necessary scripts
+        $this->enqueue_settings_scripts();
+        
         ?>
         <div class="wrap mpai-settings-wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
             
-            <?php if (count($this->tabs) > 1): ?>
-                <!-- Tabs navigation -->
-                <div class="nav-tab-wrapper">
-                    <?php $this->render_tabs_navigation($current_tab); ?>
+            <div class="mpai-settings-container">
+                <?php if (count($this->tabs) > 1): ?>
+                    <!-- Tabs navigation -->
+                    <div class="nav-tab-wrapper mpai-tabs">
+                        <?php $this->render_tabs_navigation($current_tab); ?>
+                    </div>
+                <?php endif; ?>
+                
+                <!-- Tab content -->
+                <div class="mpai-tab-content">
+                    <?php 
+                    // Display tab description if available
+                    if (!empty($this->tabs[$current_tab]['description'])) {
+                        echo '<div class="mpai-tab-description">';
+                        echo wp_kses_post($this->tabs[$current_tab]['description']);
+                        echo '</div>';
+                    }
+                    
+                    // Render tab content
+                    $this->render_tab_content($current_tab); 
+                    ?>
                 </div>
-            <?php endif; ?>
-            
-            <!-- Tab content -->
-            <div class="mpai-tab-content">
-                <?php $this->render_tab_content($current_tab); ?>
             </div>
+            
+            <!-- Add tooltips JavaScript -->
+            <script>
+                // Initialize tooltips when document is ready
+                (function($) {
+                    // Toggle help content visibility
+                    $('.mpai-toggle-help').on('click', function(e) {
+                        e.preventDefault();
+                        var $helpContent = $(this).next('.mpai-help-content');
+                        
+                        if ($helpContent.is(':visible')) {
+                            $helpContent.slideUp();
+                            $(this).text('<?php _e('Show more help', 'memberpress-ai-assistant'); ?>');
+                        } else {
+                            $helpContent.slideDown();
+                            $(this).text('<?php _e('Hide help', 'memberpress-ai-assistant'); ?>');
+                        }
+                    });
+                    
+                    // Initialize tooltips if jQuery UI is available
+                    if ($.fn.tooltip) {
+                        $('.mpai-tooltip').tooltip({
+                            position: { my: "left+10 center", at: "right center" }
+                        });
+                    }
+                })(jQuery);
+            </script>
         </div>
+        <?php
+    }
+    
+    /**
+     * Enqueue necessary scripts and styles for the settings page
+     */
+    private function enqueue_settings_scripts() {
+        // Enqueue jQuery UI for tooltips
+        wp_enqueue_script('jquery-ui-tooltip');
+        
+        // Enqueue WordPress color picker
+        wp_enqueue_style('wp-color-picker');
+        wp_enqueue_script('wp-color-picker');
+        
+        // Add custom styles
+        ?>
+        <style>
+            /* Settings page styles */
+            .mpai-settings-container {
+                margin: 20px 0;
+            }
+            
+            .mpai-tabs {
+                margin-bottom: 20px;
+            }
+            
+            .mpai-tabs .nav-tab {
+                display: flex;
+                align-items: center;
+            }
+            
+            .mpai-tabs .dashicons {
+                margin-right: 5px;
+            }
+            
+            .mpai-tab-description {
+                background: #fff;
+                border-left: 4px solid #2271b1;
+                box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+                margin: 0 0 20px;
+                padding: 12px;
+            }
+            
+            .mpai-tab-content {
+                background: #fff;
+                border: 1px solid #ccd0d4;
+                box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .mpai-settings-group {
+                margin-bottom: 30px;
+            }
+            
+            .mpai-settings-group h2 {
+                font-size: 16px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #eee;
+                margin-bottom: 15px;
+            }
+            
+            .mpai-field-wrapper {
+                position: relative;
+            }
+            
+            .mpai-field-help {
+                margin-top: 8px;
+            }
+            
+            .mpai-help-content {
+                background: #f9f9f9;
+                border-left: 4px solid #2271b1;
+                margin: 10px 0;
+                padding: 10px;
+            }
+            
+            .mpai-toggle-help {
+                text-decoration: none;
+                color: #2271b1;
+            }
+            
+            .mpai-tooltip {
+                cursor: help;
+                color: #777;
+                vertical-align: middle;
+                margin-left: 4px;
+            }
+            
+            /* UI improvements for specific field types */
+            .mpai-field-checkbox label {
+                display: flex;
+                align-items: center;
+            }
+            
+            .mpai-field-checkbox input[type="checkbox"] {
+                margin-right: 8px;
+            }
+            
+            .ui-tooltip {
+                padding: 8px;
+                position: absolute;
+                z-index: 9999;
+                max-width: 300px;
+                background: #333;
+                color: white;
+                border-radius: 3px;
+                box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+                font-size: 12px;
+            }
+        </style>
         <?php
     }
 
@@ -312,12 +468,23 @@ class MPAI_Settings_Registry {
      * @param string $current_tab Current active tab
      */
     private function render_tabs_navigation($current_tab) {
+        // Get current page URL
+        $current_url = remove_query_arg('settings-updated'); // Remove any success message
+        
         foreach ($this->tabs as $tab_id => $tab) {
             $active_class = ($tab_id === $current_tab) ? 'nav-tab-active' : '';
-            $url = add_query_arg('tab', $tab_id);
             
-            echo '<a href="' . esc_url($url) . '" class="nav-tab ' . $active_class . '">' . 
-                 esc_html($tab['title']) . '</a>';
+            // Generate URL with tab parameter
+            $tab_url = add_query_arg('tab', $tab_id, $current_url);
+            
+            // Add icon if available
+            $icon_html = '';
+            if (!empty($tab['icon'])) {
+                $icon_html = '<span class="dashicons ' . esc_attr($tab['icon']) . '"></span> ';
+            }
+            
+            echo '<a href="' . esc_url($tab_url) . '" class="nav-tab ' . $active_class . '">' . 
+                 $icon_html . '<span class="tab-label">' . esc_html($tab['title']) . '</span></a>';
         }
     }
 
@@ -420,55 +587,81 @@ class MPAI_Settings_Registry {
         // Get field description if provided
         $description = isset($args['description']) ? $args['description'] : '';
         
+        // Get tooltip if provided
+        $tooltip = isset($args['tooltip']) ? $args['tooltip'] : '';
+        
+        // Get help text
+        $help = isset($args['help']) ? $args['help'] : '';
+        
+        // Get CSS class
+        $field_class = isset($args['field_class']) ? $args['field_class'] : '';
+        
         ?>
-        <tr>
+        <tr class="mpai-field mpai-field-<?php echo esc_attr($field['type']); ?> <?php echo esc_attr($field_class); ?>">
             <th scope="row">
                 <label for="<?php echo esc_attr($option_name); ?>">
                     <?php echo esc_html($field['title']); ?>
+                    <?php if (!empty($tooltip)): ?>
+                        <span class="mpai-tooltip dashicons dashicons-editor-help" title="<?php echo esc_attr($tooltip); ?>"></span>
+                    <?php endif; ?>
                 </label>
             </th>
             <td>
-                <?php
-                switch ($field['type']) {
-                    case 'text':
-                        $this->render_text_field($option_name, $value, $args);
-                        break;
-                    case 'textarea':
-                        $this->render_textarea_field($option_name, $value, $args);
-                        break;
-                    case 'checkbox':
-                        $this->render_checkbox_field($option_name, $value, $args);
-                        break;
-                    case 'select':
-                        $this->render_select_field($option_name, $value, $args);
-                        break;
-                    case 'radio':
-                        $this->render_radio_field($option_name, $value, $args);
-                        break;
-                    case 'color':
-                        $this->render_color_field($option_name, $value, $args);
-                        break;
-                    case 'custom':
-                        if (isset($args['render_callback']) && is_callable($args['render_callback'])) {
-                            call_user_func($args['render_callback'], $option_name, $value, $args);
-                        } else {
+                <div class="mpai-field-wrapper">
+                    <?php
+                    switch ($field['type']) {
+                        case 'text':
+                            $this->render_text_field($option_name, $value, $args);
+                            break;
+                        case 'textarea':
+                            $this->render_textarea_field($option_name, $value, $args);
+                            break;
+                        case 'checkbox':
+                            $this->render_checkbox_field($option_name, $value, $args);
+                            break;
+                        case 'select':
+                            $this->render_select_field($option_name, $value, $args);
+                            break;
+                        case 'radio':
+                            $this->render_radio_field($option_name, $value, $args);
+                            break;
+                        case 'color':
+                            $this->render_color_field($option_name, $value, $args);
+                            break;
+                        case 'custom':
+                            if (isset($args['render_callback']) && is_callable($args['render_callback'])) {
+                                call_user_func($args['render_callback'], $option_name, $value, $args);
+                            } else {
+                                echo '<p class="description">' . 
+                                     esc_html__('Custom field has no render callback.', 'memberpress-ai-assistant') . 
+                                     '</p>';
+                            }
+                            break;
+                        default:
                             echo '<p class="description">' . 
-                                 esc_html__('Custom field has no render callback.', 'memberpress-ai-assistant') . 
+                                 esc_html__('Unknown field type.', 'memberpress-ai-assistant') . 
                                  '</p>';
-                        }
-                        break;
-                    default:
-                        echo '<p class="description">' . 
-                             esc_html__('Unknown field type.', 'memberpress-ai-assistant') . 
-                             '</p>';
-                        break;
-                }
-                
-                // Show description if available
-                if (!empty($description)) {
-                    echo '<p class="description">' . esc_html($description) . '</p>';
-                }
-                ?>
+                            break;
+                    }
+                    
+                    // Show description if available
+                    if (!empty($description)) {
+                        echo '<p class="description">' . wp_kses_post($description) . '</p>';
+                    }
+                    
+                    // Show detailed help if available
+                    if (!empty($help)) {
+                        ?>
+                        <div class="mpai-field-help">
+                            <a href="#" class="mpai-toggle-help"><?php _e('Show more help', 'memberpress-ai-assistant'); ?></a>
+                            <div class="mpai-help-content" style="display: none;">
+                                <?php echo wp_kses_post($help); ?>
+                            </div>
+                        </div>
+                        <?php
+                    }
+                    ?>
+                </div>
             </td>
         </tr>
         <?php
