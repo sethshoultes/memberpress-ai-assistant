@@ -745,7 +745,7 @@ class MemberPress_AI_Assistant {
         // Make sure MemberPress status is checked
         $this->check_memberpress();
         
-        // Just use the original settings page for now since it works with the JS tabs
+        // Use our standard WordPress Settings API implementation
         require_once MPAI_PLUGIN_DIR . 'includes/settings-page.php';
     }
 

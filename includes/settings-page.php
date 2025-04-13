@@ -2,7 +2,7 @@
 /**
  * Settings Page
  *
- * Displays the settings page for MemberPress AI Assistant using the improved Settings Registry
+ * Standard WordPress settings page implementation
  */
 
 // If this file is called directly, abort.
@@ -10,584 +10,378 @@ if (!defined('WPINC')) {
     die;
 }
 
-// Direct menu fix for settings page
+// Check if the settings class exists
+if (!class_exists('MPAI_Settings')) {
+    require_once dirname(__FILE__) . '/class-mpai-settings.php';
+}
+
+// Get current tab
+$tabs = array(
+    'general' => __('General', 'memberpress-ai-assistant'),
+    'chat' => __('Chat Interface', 'memberpress-ai-assistant'),
+    'tools' => __('Tools', 'memberpress-ai-assistant'),
+    'debug' => __('Debug', 'memberpress-ai-assistant')
+);
+
+$current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'general';
+if (!array_key_exists($current_tab, $tabs)) {
+    $current_tab = 'general';
+}
+
+// Set up admin menu highlight
 global $parent_file, $submenu_file;
 $parent_file = class_exists('MeprAppCtrl') ? 'memberpress' : 'memberpress-ai-assistant';
 $submenu_file = 'memberpress-ai-assistant-settings';
 
-// Load the settings registry class if needed
-if (!class_exists('MPAI_Settings_Registry')) {
-    $settings_registry_path = dirname(__FILE__) . '/class-mpai-settings-registry.php';
-    if (file_exists($settings_registry_path)) {
-        require_once $settings_registry_path;
-    }
-}
+// Make sure settings are registered - standard WordPress pattern
+register_setting('mpai_options', 'mpai_api_key');
+register_setting('mpai_options', 'mpai_model');
+register_setting('mpai_options', 'mpai_anthropic_api_key');
+register_setting('mpai_options', 'mpai_anthropic_model');
+register_setting('mpai_options', 'mpai_primary_api');
+register_setting('mpai_options', 'mpai_enable_chat', 'boolval');
+register_setting('mpai_options', 'mpai_chat_position');
+register_setting('mpai_options', 'mpai_show_on_all_pages', 'boolval');
+register_setting('mpai_options', 'mpai_welcome_message', 'wp_kses_post');
+register_setting('mpai_options', 'mpai_enable_mcp', 'boolval');
+register_setting('mpai_options', 'mpai_enable_cli_commands', 'boolval');
+register_setting('mpai_options', 'mpai_enable_console_logging', 'boolval');
+register_setting('mpai_options', 'mpai_console_log_level');
+register_setting('mpai_options', 'mpai_log_api_calls', 'boolval');
+register_setting('mpai_options', 'mpai_log_tool_usage', 'boolval');
+register_setting('mpai_options', 'mpai_log_agent_activity', 'boolval');
+register_setting('mpai_options', 'mpai_log_timing', 'boolval');
 
-// Check if the MPAI_Settings class exists
-if (!class_exists('MPAI_Settings')) {
-    $settings_path = dirname(__FILE__) . '/class-mpai-settings.php';
-    if (file_exists($settings_path)) {
-        require_once $settings_path;
-    }
-}
+// Get settings for displaying values
+$settings = new MPAI_Settings();
 
-// Create Settings Registry instance
-$mpai_settings_registry = new MPAI_Settings_Registry();
-
-// Define a function to register default settings
-// This is defined before we use it to ensure it's available
-function mpai_register_default_settings($registry) {
-    // Get an instance of the settings class for model lists, etc.
-    $settings = new MPAI_Settings();
-    
-    // General Tab
-    $registry->register_tab(
-        'general', 
-        __('General', 'memberpress-ai-assistant'),
-        null,
-        [
-            'icon' => 'dashicons-admin-generic',
-            'description' => __('Configure general settings for the AI Assistant including API providers and models.', 'memberpress-ai-assistant')
-        ]
+// Create sections based on the current tab
+if ($current_tab === 'general') {
+    // API Providers - OpenAI Section
+    add_settings_section(
+        'mpai_general_openai',
+        __('OpenAI Settings', 'memberpress-ai-assistant'),
+        function() {},
+        'mpai_options'
     );
     
-    // API Providers - OpenAI
-    $registry->register_setting_group('general', 'openai', __('OpenAI Settings', 'memberpress-ai-assistant'));
-    
-    // OpenAI API Key
-    $registry->register_setting(
-        'general', 
-        'openai', 
-        'api_key', 
-        __('API Key', 'memberpress-ai-assistant'), 
-        'text',
-        [
-            'description' => __('Enter your OpenAI API key. You can get one from the OpenAI Dashboard.', 'memberpress-ai-assistant'),
-            'placeholder' => __('sk-...', 'memberpress-ai-assistant'),
-            'class' => 'regular-text code',
-            'tooltip' => __('API key used to authenticate requests to OpenAI.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => 'sanitize_text_field',
-                'show_in_rest' => false,
-            ]
-        ]
+    add_settings_field(
+        'mpai_api_key',
+        __('API Key', 'memberpress-ai-assistant'),
+        function() {
+            $value = get_option('mpai_api_key', '');
+            echo '<input type="text" id="mpai_api_key" name="mpai_api_key" value="' . esc_attr($value) . '" class="regular-text code">';
+            echo '<p class="description">' . __('Enter your OpenAI API key.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_general_openai'
     );
     
-    // OpenAI Model
-    $registry->register_setting(
-        'general', 
-        'openai', 
-        'model', 
+    add_settings_field(
+        'mpai_model',
         __('Model', 'memberpress-ai-assistant'),
-        'select',
-        [
-            'description' => __('Select the OpenAI model to use.', 'memberpress-ai-assistant'),
-            'options' => $settings->get_available_models(),
-            'tooltip' => __('Different models have different capabilities and costs.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => 'sanitize_text_field',
-                'default' => 'gpt-4o',
-            ]
-        ]
+        function() use ($settings) {
+            $value = get_option('mpai_model', 'gpt-4o');
+            $models = $settings->get_available_models();
+            echo '<select id="mpai_model" name="mpai_model">';
+            foreach ($models as $model_key => $model_name) {
+                echo '<option value="' . esc_attr($model_key) . '" ' . selected($value, $model_key, false) . '>' . esc_html($model_name) . '</option>';
+            }
+            echo '</select>';
+            echo '<p class="description">' . __('Select the OpenAI model to use.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_general_openai'
     );
     
     // API Providers - Anthropic
-    $registry->register_setting_group('general', 'anthropic', __('Anthropic Settings', 'memberpress-ai-assistant'));
-    
-    // Anthropic API Key
-    $registry->register_setting(
-        'general', 
-        'anthropic', 
-        'anthropic_api_key', 
-        __('API Key', 'memberpress-ai-assistant'),
-        'text',
-        [
-            'description' => __('Enter your Anthropic API key. You can get one from the Anthropic Console.', 'memberpress-ai-assistant'),
-            'placeholder' => __('sk-ant-...', 'memberpress-ai-assistant'),
-            'class' => 'regular-text code',
-            'tooltip' => __('API key used to authenticate requests to Anthropic Claude.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => 'sanitize_text_field',
-                'show_in_rest' => false,
-            ]
-        ]
+    add_settings_section(
+        'mpai_general_anthropic',
+        __('Anthropic Settings', 'memberpress-ai-assistant'),
+        function() {},
+        'mpai_options'
     );
     
-    // Anthropic Model
-    $registry->register_setting(
-        'general', 
-        'anthropic', 
-        'anthropic_model', 
+    add_settings_field(
+        'mpai_anthropic_api_key',
+        __('API Key', 'memberpress-ai-assistant'),
+        function() {
+            $value = get_option('mpai_anthropic_api_key', '');
+            echo '<input type="text" id="mpai_anthropic_api_key" name="mpai_anthropic_api_key" value="' . esc_attr($value) . '" class="regular-text code">';
+            echo '<p class="description">' . __('Enter your Anthropic API key.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_general_anthropic'
+    );
+    
+    add_settings_field(
+        'mpai_anthropic_model',
         __('Model', 'memberpress-ai-assistant'),
-        'select',
-        [
-            'description' => __('Select the Anthropic model to use.', 'memberpress-ai-assistant'),
-            'options' => $settings->get_available_anthropic_models(),
-            'tooltip' => __('Different models have different capabilities and costs.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => 'sanitize_text_field',
-                'default' => 'claude-3-opus-20240229',
-            ]
-        ]
+        function() use ($settings) {
+            $value = get_option('mpai_anthropic_model', 'claude-3-opus-20240229');
+            $models = $settings->get_available_anthropic_models();
+            echo '<select id="mpai_anthropic_model" name="mpai_anthropic_model">';
+            foreach ($models as $model_key => $model_name) {
+                echo '<option value="' . esc_attr($model_key) . '" ' . selected($value, $model_key, false) . '>' . esc_html($model_name) . '</option>';
+            }
+            echo '</select>';
+            echo '<p class="description">' . __('Select the Anthropic model to use.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_general_anthropic'
     );
     
     // API Provider Selection
-    $registry->register_setting_group('general', 'provider', __('AI Provider', 'memberpress-ai-assistant'));
+    add_settings_section(
+        'mpai_general_provider',
+        __('AI Provider', 'memberpress-ai-assistant'),
+        function() {},
+        'mpai_options'
+    );
     
-    // Primary API Provider
-    $registry->register_setting(
-        'general', 
-        'provider', 
-        'primary_api', 
+    add_settings_field(
+        'mpai_primary_api',
         __('Primary AI Provider', 'memberpress-ai-assistant'),
-        'radio',
-        [
-            'description' => __('Select which AI provider to use as the primary source.', 'memberpress-ai-assistant'),
-            'options' => $settings->get_available_api_providers(),
-            'tooltip' => __('The other provider will be used as a fallback if the primary fails.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => 'sanitize_text_field',
-                'default' => 'openai',
-            ]
-        ]
+        function() use ($settings) {
+            $value = get_option('mpai_primary_api', 'openai');
+            $providers = $settings->get_available_api_providers();
+            foreach ($providers as $provider_key => $provider_name) {
+                echo '<label><input type="radio" name="mpai_primary_api" value="' . esc_attr($provider_key) . '" ' . checked($value, $provider_key, false) . '> ' . esc_html($provider_name) . '</label><br>';
+            }
+            echo '<p class="description">' . __('Select which AI provider to use as the primary source.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_general_provider'
     );
-    
-    // Chat Interface Tab
-    $registry->register_tab(
-        'chat', 
-        __('Chat Interface', 'memberpress-ai-assistant'),
-        null,
-        [
-            'icon' => 'dashicons-format-chat',
-            'description' => __('Configure the appearance and behavior of the AI Assistant chat interface.', 'memberpress-ai-assistant')
-        ]
-    );
-    
+} else if ($current_tab === 'chat') {
     // Chat Interface Settings
-    $registry->register_setting_group('chat', 'interface', __('Chat Interface Settings', 'memberpress-ai-assistant'));
-    
-    // Enable Chat
-    $registry->register_setting(
-        'chat', 
-        'interface', 
-        'enable_chat', 
-        __('Enable Chat Interface', 'memberpress-ai-assistant'),
-        'checkbox',
-        [
-            'checkbox_label' => __('Show chat interface on admin pages', 'memberpress-ai-assistant'),
-            'description' => __('Enable or disable the chat interface on all admin pages.', 'memberpress-ai-assistant'),
-            'tooltip' => __('When disabled, the chat interface will not appear anywhere.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => function($value) {
-                    return (bool) $value;
-                },
-                'default' => true,
-            ]
-        ]
+    add_settings_section(
+        'mpai_chat_interface',
+        __('Chat Interface Settings', 'memberpress-ai-assistant'),
+        function() {},
+        'mpai_options'
     );
     
-    // Chat Position
-    $registry->register_setting(
-        'chat', 
-        'interface', 
-        'chat_position', 
+    add_settings_field(
+        'mpai_enable_chat',
+        __('Enable Chat Interface', 'memberpress-ai-assistant'),
+        function() {
+            $value = get_option('mpai_enable_chat', true);
+            echo '<label><input type="checkbox" id="mpai_enable_chat" name="mpai_enable_chat" value="1" ' . checked($value, true, false) . '> ' . __('Show chat interface on admin pages', 'memberpress-ai-assistant') . '</label>';
+            echo '<p class="description">' . __('Enable or disable the chat interface on all admin pages.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_chat_interface'
+    );
+    
+    add_settings_field(
+        'mpai_chat_position',
         __('Chat Position', 'memberpress-ai-assistant'),
-        'select',
-        [
-            'description' => __('Select where the chat interface should appear.', 'memberpress-ai-assistant'),
-            'options' => [
+        function() {
+            $value = get_option('mpai_chat_position', 'bottom-right');
+            $positions = array(
                 'bottom-right' => __('Bottom Right', 'memberpress-ai-assistant'),
                 'bottom-left' => __('Bottom Left', 'memberpress-ai-assistant'),
                 'top-right' => __('Top Right', 'memberpress-ai-assistant'),
                 'top-left' => __('Top Left', 'memberpress-ai-assistant'),
-            ],
-            'tooltip' => __('The position of the chat interface bubble on the screen.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => 'sanitize_text_field',
-                'default' => 'bottom-right',
-            ]
-        ]
+            );
+            echo '<select id="mpai_chat_position" name="mpai_chat_position">';
+            foreach ($positions as $pos_key => $pos_name) {
+                echo '<option value="' . esc_attr($pos_key) . '" ' . selected($value, $pos_key, false) . '>' . esc_html($pos_name) . '</option>';
+            }
+            echo '</select>';
+            echo '<p class="description">' . __('Select where the chat interface should appear.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_chat_interface'
     );
     
-    // Show on All Pages
-    $registry->register_setting(
-        'chat', 
-        'interface', 
-        'show_on_all_pages', 
+    add_settings_field(
+        'mpai_show_on_all_pages',
         __('Show on All Admin Pages', 'memberpress-ai-assistant'),
-        'checkbox',
-        [
-            'checkbox_label' => __('Show chat interface on all admin pages (not just MemberPress pages)', 'memberpress-ai-assistant'),
-            'description' => __('When enabled, the chat interface will appear on all WordPress admin pages.', 'memberpress-ai-assistant'),
-            'tooltip' => __('If disabled, the chat interface will only appear on MemberPress admin pages.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => function($value) {
-                    return (bool) $value;
-                },
-                'default' => true,
-            ]
-        ]
+        function() {
+            $value = get_option('mpai_show_on_all_pages', true);
+            echo '<label><input type="checkbox" id="mpai_show_on_all_pages" name="mpai_show_on_all_pages" value="1" ' . checked($value, true, false) . '> ' . __('Show chat interface on all admin pages (not just MemberPress pages)', 'memberpress-ai-assistant') . '</label>';
+            echo '<p class="description">' . __('When enabled, the chat interface will appear on all WordPress admin pages.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_chat_interface'
     );
     
-    // Welcome Message
-    $registry->register_setting(
-        'chat', 
-        'interface', 
-        'welcome_message', 
+    add_settings_field(
+        'mpai_welcome_message',
         __('Welcome Message', 'memberpress-ai-assistant'),
-        'textarea',
-        [
-            'description' => __('The message displayed when the chat is first opened.', 'memberpress-ai-assistant'),
-            'placeholder' => __('Hi there! I\'m your MemberPress AI Assistant. How can I help you today?', 'memberpress-ai-assistant'),
-            'rows' => 3,
-            'tooltip' => __('This message is shown to the user when they first open the chat.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => 'wp_kses_post',
-                'default' => __('Hi there! I\'m your MemberPress AI Assistant. How can I help you today?', 'memberpress-ai-assistant'),
-            ]
-        ]
+        function() {
+            $value = get_option('mpai_welcome_message', __('Hi there! I\'m your MemberPress AI Assistant. How can I help you today?', 'memberpress-ai-assistant'));
+            echo '<textarea id="mpai_welcome_message" name="mpai_welcome_message" rows="3" class="large-text">' . esc_textarea($value) . '</textarea>';
+            echo '<p class="description">' . __('The message displayed when the chat is first opened.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_chat_interface'
+    );
+} else if ($current_tab === 'tools') {
+    // Command Settings
+    add_settings_section(
+        'mpai_tools_commands',
+        __('Command Settings', 'memberpress-ai-assistant'),
+        function() {},
+        'mpai_options'
     );
     
-    // Tools Tab
-    $registry->register_tab(
-        'tools', 
-        __('Tools', 'memberpress-ai-assistant'),
-        null,
-        [
-            'icon' => 'dashicons-admin-tools',
-            'description' => __('Configure which tools are available to the AI Assistant and how they behave.', 'memberpress-ai-assistant')
-        ]
-    );
-    
-    // Tools - Command Settings
-    $registry->register_setting_group('tools', 'commands', __('Command Settings', 'memberpress-ai-assistant'));
-    
-    // Enable MCP
-    $registry->register_setting(
-        'tools', 
-        'commands', 
-        'enable_mcp', 
+    add_settings_field(
+        'mpai_enable_mcp',
         __('Enable MCP Commands', 'memberpress-ai-assistant'),
-        'checkbox',
-        [
-            'checkbox_label' => __('Allow AI to execute MCP commands', 'memberpress-ai-assistant'),
-            'description' => __('When enabled, the AI can execute MCP commands to perform actions on your behalf.', 'memberpress-ai-assistant'),
-            'tooltip' => __('MCP (Model Context Protocol) allows the AI to interact with your WordPress site by executing commands.', 'memberpress-ai-assistant'),
-            'field_class' => 'highlight-setting',
-            'register_args' => [
-                'sanitize_callback' => function($value) {
-                    return (bool) $value;
-                },
-                'default' => true,
-            ]
-        ]
+        function() {
+            $value = get_option('mpai_enable_mcp', true);
+            echo '<label><input type="checkbox" id="mpai_enable_mcp" name="mpai_enable_mcp" value="1" ' . checked($value, true, false) . '> ' . __('Allow AI to execute MCP commands', 'memberpress-ai-assistant') . '</label>';
+            echo '<p class="description">' . __('When enabled, the AI can execute MCP commands to perform actions on your behalf.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_tools_commands'
     );
     
-    // Enable CLI Commands
-    $registry->register_setting(
-        'tools', 
-        'commands', 
-        'enable_cli_commands', 
+    add_settings_field(
+        'mpai_enable_cli_commands',
         __('Enable CLI Commands', 'memberpress-ai-assistant'),
-        'checkbox',
-        [
-            'checkbox_label' => __('Allow AI to execute CLI commands', 'memberpress-ai-assistant'),
-            'description' => __('When enabled, the AI can execute CLI commands to retrieve information.', 'memberpress-ai-assistant'),
-            'tooltip' => __('CLI commands are WP-CLI commands that can be executed to get information about your WordPress site.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => function($value) {
-                    return (bool) $value;
-                },
-                'default' => true,
-            ]
-        ]
+        function() {
+            $value = get_option('mpai_enable_cli_commands', true);
+            echo '<label><input type="checkbox" id="mpai_enable_cli_commands" name="mpai_enable_cli_commands" value="1" ' . checked($value, true, false) . '> ' . __('Allow AI to execute CLI commands', 'memberpress-ai-assistant') . '</label>';
+            echo '<p class="description">' . __('When enabled, the AI can execute CLI commands to retrieve information.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_tools_commands'
+    );
+} else if ($current_tab === 'debug') {
+    // Console Logging
+    add_settings_section(
+        'mpai_debug_logging',
+        __('Console Logging', 'memberpress-ai-assistant'),
+        function() {},
+        'mpai_options'
     );
     
-    // Debug Tab
-    $registry->register_tab(
-        'debug', 
-        __('Debug', 'memberpress-ai-assistant'),
-        null,
-        [
-            'icon' => 'dashicons-bug',
-            'description' => __('Debug settings and tools for troubleshooting issues.', 'memberpress-ai-assistant')
-        ]
-    );
-    
-    // Console Logging Settings Group
-    $registry->register_setting_group('debug', 'logging', __('Console Logging', 'memberpress-ai-assistant'));
-    
-    // Enable Console Logging
-    $registry->register_setting(
-        'debug', 
-        'logging', 
-        'enable_console_logging', 
+    add_settings_field(
+        'mpai_enable_console_logging',
         __('Enable Console Logging', 'memberpress-ai-assistant'),
-        'checkbox',
-        [
-            'checkbox_label' => __('Enable detailed logging to browser console', 'memberpress-ai-assistant'),
-            'description' => __('When enabled, detailed logs will be output to the browser console for debugging.', 'memberpress-ai-assistant'),
-            'tooltip' => __('Useful for debugging, but should be disabled in production.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => function($value) {
-                    return $value ? '1' : '0';
-                },
-                'default' => '0',
-            ]
-        ]
+        function() {
+            $value = get_option('mpai_enable_console_logging', false);
+            echo '<label><input type="checkbox" id="mpai_enable_console_logging" name="mpai_enable_console_logging" value="1" ' . checked($value, true, false) . '> ' . __('Enable detailed logging to browser console', 'memberpress-ai-assistant') . '</label>';
+            echo '<p class="description">' . __('When enabled, detailed logs will be output to the browser console for debugging.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_debug_logging'
     );
     
-    // Console Log Level
-    $registry->register_setting(
-        'debug', 
-        'logging', 
-        'console_log_level', 
+    add_settings_field(
+        'mpai_console_log_level',
         __('Console Log Level', 'memberpress-ai-assistant'),
-        'select',
-        [
-            'description' => __('Select the level of detail for console logs.', 'memberpress-ai-assistant'),
-            'options' => [
+        function() {
+            $value = get_option('mpai_console_log_level', 'info');
+            $levels = array(
                 'error' => __('Error (Minimal)', 'memberpress-ai-assistant'),
                 'warn' => __('Warning', 'memberpress-ai-assistant'),
                 'info' => __('Info (Recommended)', 'memberpress-ai-assistant'),
                 'debug' => __('Debug (Verbose)', 'memberpress-ai-assistant'),
-            ],
-            'tooltip' => __('Higher levels include all lower levels. Debug is the most verbose.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => 'sanitize_text_field',
-                'default' => 'info',
-            ]
-        ]
+            );
+            echo '<select id="mpai_console_log_level" name="mpai_console_log_level">';
+            foreach ($levels as $level_key => $level_name) {
+                echo '<option value="' . esc_attr($level_key) . '" ' . selected($value, $level_key, false) . '>' . esc_html($level_name) . '</option>';
+            }
+            echo '</select>';
+            echo '<p class="description">' . __('Select the level of detail for console logs.', 'memberpress-ai-assistant') . '</p>';
+        },
+        'mpai_options',
+        'mpai_debug_logging'
     );
     
     // Log Categories
-    $registry->register_setting_group('debug', 'log_categories', __('Log Categories', 'memberpress-ai-assistant'));
+    add_settings_section(
+        'mpai_debug_log_categories',
+        __('Log Categories', 'memberpress-ai-assistant'),
+        function() {},
+        'mpai_options'
+    );
     
-    // Log API Calls
-    $registry->register_setting(
-        'debug', 
-        'log_categories', 
-        'log_api_calls', 
+    add_settings_field(
+        'mpai_log_api_calls',
         __('Log API Calls', 'memberpress-ai-assistant'),
-        'checkbox',
-        [
-            'checkbox_label' => __('Log API requests and responses', 'memberpress-ai-assistant'),
-            'tooltip' => __('Log details about API calls to OpenAI and Anthropic.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => function($value) {
-                    return $value ? '1' : '0';
-                },
-                'default' => '0',
-            ]
-        ]
+        function() {
+            $value = get_option('mpai_log_api_calls', false);
+            echo '<label><input type="checkbox" id="mpai_log_api_calls" name="mpai_log_api_calls" value="1" ' . checked($value, true, false) . '> ' . __('Log API requests and responses', 'memberpress-ai-assistant') . '</label>';
+        },
+        'mpai_options',
+        'mpai_debug_log_categories'
     );
     
-    // Log Tool Usage
-    $registry->register_setting(
-        'debug', 
-        'log_categories', 
-        'log_tool_usage', 
+    add_settings_field(
+        'mpai_log_tool_usage',
         __('Log Tool Usage', 'memberpress-ai-assistant'),
-        'checkbox',
-        [
-            'checkbox_label' => __('Log tool execution and results', 'memberpress-ai-assistant'),
-            'tooltip' => __('Log details about tool invocations and their results.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => function($value) {
-                    return $value ? '1' : '0';
-                },
-                'default' => '0',
-            ]
-        ]
+        function() {
+            $value = get_option('mpai_log_tool_usage', false);
+            echo '<label><input type="checkbox" id="mpai_log_tool_usage" name="mpai_log_tool_usage" value="1" ' . checked($value, true, false) . '> ' . __('Log tool execution and results', 'memberpress-ai-assistant') . '</label>';
+        },
+        'mpai_options',
+        'mpai_debug_log_categories'
     );
     
-    // Log Agent Activity
-    $registry->register_setting(
-        'debug', 
-        'log_categories', 
-        'log_agent_activity', 
+    add_settings_field(
+        'mpai_log_agent_activity',
         __('Log Agent Activity', 'memberpress-ai-assistant'),
-        'checkbox',
-        [
-            'checkbox_label' => __('Log specialized agent activities', 'memberpress-ai-assistant'),
-            'tooltip' => __('Log details about agent invocations and their activities.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => function($value) {
-                    return $value ? '1' : '0';
-                },
-                'default' => '0',
-            ]
-        ]
+        function() {
+            $value = get_option('mpai_log_agent_activity', false);
+            echo '<label><input type="checkbox" id="mpai_log_agent_activity" name="mpai_log_agent_activity" value="1" ' . checked($value, true, false) . '> ' . __('Log specialized agent activities', 'memberpress-ai-assistant') . '</label>';
+        },
+        'mpai_options',
+        'mpai_debug_log_categories'
     );
     
-    // Log Timing
-    $registry->register_setting(
-        'debug', 
-        'log_categories', 
-        'log_timing', 
+    add_settings_field(
+        'mpai_log_timing',
         __('Log Performance Timing', 'memberpress-ai-assistant'),
-        'checkbox',
-        [
-            'checkbox_label' => __('Log performance metrics and timing information', 'memberpress-ai-assistant'),
-            'tooltip' => __('Log detailed timing information about operations for performance analysis.', 'memberpress-ai-assistant'),
-            'register_args' => [
-                'sanitize_callback' => function($value) {
-                    return $value ? '1' : '0';
-                },
-                'default' => '0',
-            ]
-        ]
+        function() {
+            $value = get_option('mpai_log_timing', false);
+            echo '<label><input type="checkbox" id="mpai_log_timing" name="mpai_log_timing" value="1" ' . checked($value, true, false) . '> ' . __('Log performance metrics and timing information', 'memberpress-ai-assistant') . '</label>';
+        },
+        'mpai_options',
+        'mpai_debug_log_categories'
     );
     
-    // Diagnostics Group
-    $registry->register_setting_group('debug', 'diagnostics', __('Diagnostics & Testing', 'memberpress-ai-assistant'));
+    // Diagnostics Section
+    add_settings_section(
+        'mpai_debug_diagnostics',
+        __('Diagnostics & Testing', 'memberpress-ai-assistant'),
+        function() {},
+        'mpai_options'
+    );
     
-    // Diagnostics Page Link
-    $registry->register_setting(
-        'debug', 
-        'diagnostics', 
-        'diagnostics_page', 
+    add_settings_field(
+        'mpai_diagnostics_page',
         __('Diagnostics Page', 'memberpress-ai-assistant'),
-        'custom',
-        [
-            'render_callback' => function($name, $value, $args) {
-                ?>
-                <p><?php _e('For comprehensive system tests and diagnostics, please use the dedicated Diagnostics page.', 'memberpress-ai-assistant'); ?></p>
-                <p>
-                    <a href="<?php echo admin_url('admin.php?page=memberpress-ai-assistant-diagnostics'); ?>" class="button button-primary">
-                        <?php _e('Open Diagnostics Page', 'memberpress-ai-assistant'); ?>
-                    </a>
-                </p>
-                <?php
-            }
-        ]
+        function() {
+            echo '<p>' . __('For comprehensive system tests and diagnostics, please use the dedicated Diagnostics page.', 'memberpress-ai-assistant') . '</p>';
+            echo '<p><a href="' . admin_url('admin.php?page=memberpress-ai-assistant-diagnostics') . '" class="button button-primary">' . __('Open Diagnostics Page', 'memberpress-ai-assistant') . '</a></p>';
+        },
+        'mpai_options',
+        'mpai_debug_diagnostics'
     );
-    
-    return $registry;
 }
 
-// Use the function to register settings now that it's available
-$mpai_settings_registry = mpai_register_default_settings($mpai_settings_registry);
-
-// Register settings with WordPress explicitly
-$mpai_settings_registry->register_settings_with_wordpress();
-
-// Add a specific filter for the option_page_capability for our option pages
-// This is a critical fix for the "not in the allowed options list" error
-add_filter('option_page_capability_mpai_chat', function($capability) {
-    return 'manage_options';
-});
-add_filter('option_page_capability_mpai_general', function($capability) {
-    return 'manage_options';
-});
-add_filter('option_page_capability_mpai_tools', function($capability) {
-    return 'manage_options';
-});
-add_filter('option_page_capability_mpai_debug', function($capability) {
-    return 'manage_options';
-});
-
-// CRITICAL FIX for nonce - Make WordPress accept any nonce for our settings
-add_filter('nonce_user_logged_in', function($result, $nonce, $action) {
-    // Only modify for our settings
-    if (strpos($action, 'mpai_') !== false && strpos($action, '-options') !== false) {
-        // If they're logged in as admin, allow the nonce
-        if (is_user_logged_in() && current_user_can('manage_options')) {
-            error_log('MPAI: Force-accepting nonce for action: ' . $action);
-            return true;
-        }
-    }
-    return $result;
-}, 9999, 3);
-
-// CRITICAL FIX for referer checks - bypass referer check for options.php
-add_filter('check_admin_referer', function($action, $result) {
-    // If we're on the options.php page and the user is an admin
-    if (strpos($_SERVER['PHP_SELF'], 'options.php') !== false && 
-        is_user_logged_in() && current_user_can('manage_options')) {
-        
-        // And if the option_page is one of ours
-        if (isset($_POST['option_page']) && strpos($_POST['option_page'], 'mpai_') === 0) {
-            error_log('MPAI: Bypassing referer check for options.php with our option_page: ' . $_POST['option_page']);
-            return true;
-        }
-    }
-    return $result;
-}, 9999, 2);
-
-// CRITICAL FIX: Add our option page to the allowlist at a VERY late priority
-// This ensures it runs after any other filters have run
-add_filter('allowed_options', function($allowed_options) {
-    // Make sure all our option tabs are included in the allowlist
-    $all_options = array();
-    $all_tabs = array('general', 'chat', 'tools', 'debug');
+// Display the settings page
+?>
+<div class="wrap">
+    <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
     
-    // Get all our option names from the registry
-    foreach ($all_tabs as $tab) {
-        // Also try with different formats for the option group
-        $option_groups = array(
-            'mpai_' . $tab,
-            'mpai-' . $tab,
-            $tab,
-            $tab . '-options',
-            $tab . '_options'
-        );
-        
-        foreach ($option_groups as $option_group) {
-            // Initialize if needed
-            if (!isset($allowed_options[$option_group])) {
-                $allowed_options[$option_group] = array();
-            }
-            
-            // Get any existing options
-            if (isset($allowed_options[$option_group]) && is_array($allowed_options[$option_group])) {
-                $all_options = array_merge($all_options, $allowed_options[$option_group]);
-            }
-        }
-    }
+    <h2 class="nav-tab-wrapper">
+        <?php foreach ($tabs as $tab_id => $tab_name) { ?>
+            <a href="<?php echo admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $tab_id); ?>" class="nav-tab <?php echo $current_tab === $tab_id ? 'nav-tab-active' : ''; ?>"><?php echo esc_html($tab_name); ?></a>
+        <?php } ?>
+    </h2>
     
-    // Now add all collected options to each possible group format
-    foreach ($all_tabs as $tab) {
-        $option_groups = array(
-            'mpai_' . $tab,
-            'mpai-' . $tab,
-            $tab,
-            $tab . '-options',
-            $tab . '_options'
-        );
-        
-        foreach ($option_groups as $option_group) {
-            $allowed_options[$option_group] = $all_options;
-        }
-    }
-    
-    // Add to WordPress core option groups
-    $allowed_options['options'] = array_merge(
-        isset($allowed_options['options']) ? $allowed_options['options'] : array(),
-        $all_options
-    );
-    
-    error_log('MPAI: EMERGENCY allowed_options override applied with ' . count($all_options) . ' options.');
-    return $allowed_options;
-}, 9999); // Very high priority to run last
-
-// Display any settings errors/notices
-settings_errors('mpai_messages');
-
-// Add debug output to help troubleshoot
-if (defined('WP_DEBUG') && WP_DEBUG) {
-    echo '<!-- MPAI Debug: Settings Registry Initialization -->';
-    echo '<!-- Tabs: ' . implode(', ', array_keys($mpai_settings_registry->get_tabs())) . ' -->';
-    
-    // Show all registered settings groups
-    $groups = $mpai_settings_registry->get_settings_groups();
-    foreach ($groups as $tab_id => $tab_groups) {
-        echo '<!-- Tab: ' . $tab_id . ' has ' . count($tab_groups) . ' groups -->';
-        foreach ($tab_groups as $group_id => $group) {
-            echo '<!-- Group: ' . $group_id . ' has ' . (isset($group['fields']) ? count($group['fields']) : 0) . ' fields -->';
-        }
-    }
-}
-
-// Render the settings page
-$mpai_settings_registry->render_settings_page();
+    <form method="post" action="options.php">
+        <?php
+        settings_fields('mpai_options');
+        do_settings_sections('mpai_options');
+        submit_button();
+        ?>
+    </form>
+</div>
