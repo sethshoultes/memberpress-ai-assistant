@@ -64,34 +64,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                     $value = ($value == '1');
                 }
                 
-                // CRITICAL: Force explicit handling of special fields that might not be saving
-                if ($key === 'mpai_api_key' || $key === 'mpai_welcome_message' || $key === 'mpai_anthropic_api_key') {
-                    error_log('MPAI DEBUG: Explicitly updating ' . $key);
-                    // Use direct database access to ensure it's saved
+                // SPECIAL HANDLING FOR THE TWO FIELDS THAT WON'T SAVE
+                if ($key === 'mpai_api_key') {
+                    // Hard-coded special handling for API key and welcome message
+                    error_log('MPAI CRITICAL FIX: Forcing direct DB update for OpenAI API key');
                     global $wpdb;
-                    $result = $wpdb->update(
+                    
+                    // First delete the option completely to ensure no conflicting data
+                    $wpdb->delete($wpdb->options, array('option_name' => 'mpai_api_key'));
+                    
+                    // Then insert it fresh
+                    $wpdb->insert(
                         $wpdb->options,
-                        array('option_value' => maybe_serialize($value)),
-                        array('option_name' => $key)
+                        array(
+                            'option_name' => 'mpai_api_key',
+                            'option_value' => $value,
+                            'autoload' => 'yes'
+                        )
                     );
                     
-                    if ($result === false) {
-                        // Option doesn't exist yet, so add it
-                        $wpdb->insert(
-                            $wpdb->options,
-                            array(
-                                'option_name' => $key,
-                                'option_value' => maybe_serialize($value),
-                                'autoload' => 'yes'
-                            )
-                        );
-                        error_log('MPAI DEBUG: Inserted new option ' . $key);
-                    } else if ($result === 0) {
-                        error_log('MPAI DEBUG: Option ' . $key . ' unchanged or update failed');
-                    } else {
-                        error_log('MPAI DEBUG: Updated option ' . $key . ' via direct database access');
-                    }
-                } else {
+                    // Also set with update_option for cache consistency
+                    update_option('mpai_api_key', $value, true);
+                    
+                    // Additional backup approach
+                    $GLOBALS['wp_options']['mpai_api_key'] = $value;
+                    
+                    error_log('MPAI CRITICAL FIX: OpenAI API key set to: ' . substr($value, 0, 5) . '...');
+                } 
+                else if ($key === 'mpai_welcome_message') {
+                    // Hard-coded special handling for welcome message
+                    error_log('MPAI CRITICAL FIX: Forcing direct DB update for welcome message');
+                    global $wpdb;
+                    
+                    // First delete the option completely
+                    $wpdb->delete($wpdb->options, array('option_name' => 'mpai_welcome_message'));
+                    
+                    // Then insert it fresh
+                    $wpdb->insert(
+                        $wpdb->options,
+                        array(
+                            'option_name' => 'mpai_welcome_message',
+                            'option_value' => $value,
+                            'autoload' => 'yes'
+                        )
+                    );
+                    
+                    // Also set with update_option for cache consistency
+                    update_option('mpai_welcome_message', $value, true);
+                    
+                    // Additional backup approach
+                    $GLOBALS['wp_options']['mpai_welcome_message'] = $value;
+                    
+                    error_log('MPAI CRITICAL FIX: Welcome message set to: ' . substr($value, 0, 30) . '...');
+                }
+                else if ($key === 'mpai_anthropic_api_key') {
+                    // Hard-coded special handling for Anthropic API key
+                    error_log('MPAI CRITICAL FIX: Forcing direct DB update for Anthropic API key');
+                    global $wpdb;
+                    
+                    // First delete the option completely
+                    $wpdb->delete($wpdb->options, array('option_name' => 'mpai_anthropic_api_key'));
+                    
+                    // Then insert it fresh
+                    $wpdb->insert(
+                        $wpdb->options,
+                        array(
+                            'option_name' => 'mpai_anthropic_api_key',
+                            'option_value' => $value,
+                            'autoload' => 'yes'
+                        )
+                    );
+                    
+                    // Also set with update_option for cache consistency
+                    update_option('mpai_anthropic_api_key', $value, true);
+                    
+                    // Additional backup approach
+                    $GLOBALS['wp_options']['mpai_anthropic_api_key'] = $value;
+                    
+                    error_log('MPAI CRITICAL FIX: Anthropic API key set to: ' . substr($value, 0, 5) . '...');
+                }
+                else {
                     // Update the option normally for other fields
                     update_option($key, $value);
                 }
@@ -290,6 +342,11 @@ if ($current_tab === 'general') {
             echo '<input type="text" id="mpai_api_key" name="mpai_api_key" value="' . esc_attr($value) . '" class="regular-text code">';
             echo '<p class="description">' . __('Enter your OpenAI API key.', 'memberpress-ai-assistant') . '</p>';
             
+            // Add debug info for this field
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                echo '<p class="description" style="color:#999;font-style:italic;">Current value in database: ' . esc_html(substr(get_option('mpai_api_key', '[empty]'), 0, 5)) . '...</p>';
+            }
+            
             // Add API status indicator
             echo '<div id="openai-api-status" class="mpai-api-status">
                 <span class="mpai-api-status-icon"></span>
@@ -472,6 +529,12 @@ if ($current_tab === 'general') {
             $value = get_option('mpai_welcome_message', __('Hi there! I\'m your MemberPress AI Assistant. How can I help you today?', 'memberpress-ai-assistant'));
             echo '<textarea id="mpai_welcome_message" name="mpai_welcome_message" rows="3" class="large-text">' . esc_textarea($value) . '</textarea>';
             echo '<p class="description">' . __('The message displayed when the chat is first opened.', 'memberpress-ai-assistant') . '</p>';
+            
+            // Add debug info for this field
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                $current = get_option('mpai_welcome_message', '[empty]');
+                echo '<p class="description" style="color:#999;font-style:italic;">Current value in database: ' . esc_html(substr($current, 0, 30)) . '... (' . strlen($current) . ' chars)</p>';
+            }
         },
         'mpai_options',
         'mpai_chat_interface'
@@ -737,12 +800,31 @@ if ($current_tab === 'general') {
             }
             echo '<p>MPAI settings registered with WordPress: ' . $mpai_settings_count . '</p>';
             
+            // Show values for the problematic fields
+            echo '<p><strong>Current API Key:</strong> ';
+            $api_key = get_option('mpai_api_key', '');
+            if (empty($api_key)) {
+                echo '<span style="color:red;">Not set</span>';
+            } else {
+                echo substr($api_key, 0, 5) . '... (' . strlen($api_key) . ' chars)';
+            }
+            echo '</p>';
+            
+            echo '<p><strong>Current Welcome Message:</strong> ';
+            $welcome = get_option('mpai_welcome_message', '');
+            if (empty($welcome)) {
+                echo '<span style="color:red;">Not set</span>';
+            } else {
+                echo '"' . esc_html(substr($welcome, 0, 30)) . '..." (' . strlen($welcome) . ' chars)';
+            }
+            echo '</p>';
+            
             // Show capability status
             echo '<p>User can manage_options: ' . (current_user_can('manage_options') ? 'Yes' : 'No') . '</p>';
             
             // Add alternate save method notice
             echo '<div style="background-color: #fff8e5; border-left: 4px solid #ffb900; padding: 10px; margin: 10px 0;">';
-            echo '<strong>ALTERNATE SAVE METHOD ENABLED:</strong> This form bypasses the WordPress Settings API and directly updates options.';
+            echo '<strong>DIRECT SAVE METHOD ENABLED:</strong> This form uses a direct DB save method with multiple layers of redundancy for problematic fields.';
             echo '</div>';
             
             echo '</div>';
