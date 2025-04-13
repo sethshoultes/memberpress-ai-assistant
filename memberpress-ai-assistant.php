@@ -3,7 +3,7 @@
  * Plugin Name: MemberPress AI Assistant
  * Plugin URI: https://memberpress.com/memberpress-ai-assistant
  * Description: AI-powered chat assistant for MemberPress that helps with membership management, troubleshooting, and WordPress CLI command execution.
- * Version: 1.5.5
+ * Version: 1.6.0
  * Author: MemberPress
  * Author URI: https://memberpress.com
  * Text Domain: memberpress-ai-assistant
@@ -119,7 +119,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('MPAI_VERSION', '1.5.5');
+define('MPAI_VERSION', '1.6.0');
 define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MPAI_PLUGIN_BASENAME', plugin_basename(__FILE__));

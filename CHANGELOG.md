@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- New AI Plugin Documentation feature:
+  - Added AI-powered documentation generation for plugin developers
+  - Implemented pattern detection for best documentation practices
+  - Created automated code documentation suggestions
+  - Added support for both inline and standalone documentation
+  
+### Changed
+- Enhanced error handling system with improved logging:
+  - Added detailed context tracking for better debugging
+  - Implemented hierarchical error categories
+  - Created structured error reporting format
+  
+### Fixed
+- Fixed inconsistent behavior in API fallback mechanism
+- Fixed style conflicts with WordPress 6.4 admin interface
+
+## [1.6.0] - 2025-04-15
+
+### Added
 - Enhanced Diagnostics Page with Plugin Management tab:
   - Added a new Plugin Management category in the diagnostics page
   - Implemented Active Plugins test to display all active/inactive plugins
