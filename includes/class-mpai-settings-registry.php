@@ -791,8 +791,13 @@ class MPAI_Settings_Registry {
         // Add hidden field for debug to trace form submission
         echo '<input type="hidden" name="mpai_tab" value="' . esc_attr($current_tab) . '">';
         
-        // Output nonce, action, and option page fields
-        settings_fields($option_group);
+        // CRITICAL: Output explicit option page value to avoid the "not in allowed list" error
+        // WordPress uses this hidden field to determine which allowlist to check
+        echo '<input type="hidden" name="option_page" value="' . esc_attr($option_group) . '">';
+        
+        // Output nonce, action, and option page fields (but not option_page again)
+        wp_nonce_field('update-options');
+        echo '<input type="hidden" name="action" value="update">';
         
         // If there are no groups for this tab, show a message
         if (!isset($this->settings_groups[$current_tab]) || empty($this->settings_groups[$current_tab])) {

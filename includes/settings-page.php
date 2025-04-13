@@ -487,6 +487,62 @@ add_filter('option_page_capability_mpai_debug', function($capability) {
     return 'manage_options';
 });
 
+// CRITICAL FIX: Add our option page to the allowlist at a VERY late priority
+// This ensures it runs after any other filters have run
+add_filter('allowed_options', function($allowed_options) {
+    // Make sure all our option tabs are included in the allowlist
+    $all_options = array();
+    $all_tabs = array('general', 'chat', 'tools', 'debug');
+    
+    // Get all our option names from the registry
+    foreach ($all_tabs as $tab) {
+        // Also try with different formats for the option group
+        $option_groups = array(
+            'mpai_' . $tab,
+            'mpai-' . $tab,
+            $tab,
+            $tab . '-options',
+            $tab . '_options'
+        );
+        
+        foreach ($option_groups as $option_group) {
+            // Initialize if needed
+            if (!isset($allowed_options[$option_group])) {
+                $allowed_options[$option_group] = array();
+            }
+            
+            // Get any existing options
+            if (isset($allowed_options[$option_group]) && is_array($allowed_options[$option_group])) {
+                $all_options = array_merge($all_options, $allowed_options[$option_group]);
+            }
+        }
+    }
+    
+    // Now add all collected options to each possible group format
+    foreach ($all_tabs as $tab) {
+        $option_groups = array(
+            'mpai_' . $tab,
+            'mpai-' . $tab,
+            $tab,
+            $tab . '-options',
+            $tab . '_options'
+        );
+        
+        foreach ($option_groups as $option_group) {
+            $allowed_options[$option_group] = $all_options;
+        }
+    }
+    
+    // Add to WordPress core option groups
+    $allowed_options['options'] = array_merge(
+        isset($allowed_options['options']) ? $allowed_options['options'] : array(),
+        $all_options
+    );
+    
+    error_log('MPAI: EMERGENCY allowed_options override applied with ' . count($all_options) . ' options.');
+    return $allowed_options;
+}, 9999); // Very high priority to run last
+
 // Display any settings errors/notices
 settings_errors('mpai_messages');
 
