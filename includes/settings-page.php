@@ -1,55 +1,18 @@
 <?php
 /**
- * Enhanced Settings Page Template
+ * Enhanced Settings Page Template with Direct Save Functionality
  * 
- * Modern implementation of the settings page using standard WordPress Settings API
- * with improved field rendering and organization
- *
  * @package MemberPress AI Assistant
  */
 
-// If this file is called directly, abort.
-if (!defined('WPINC')) {
-    die;
-}
-
-// Force debug output for troubleshooting
-error_log('MPAI: Loading enhanced settings page with WordPress Settings API');
-error_log('MPAI: Current user: ' . wp_get_current_user()->user_login . ' (' . wp_get_current_user()->ID . ')');
-error_log('MPAI: User can manage_options: ' . (current_user_can('manage_options') ? 'yes' : 'no'));
-
-// Check if the settings class exists
-if (!class_exists('MPAI_Settings')) {
-    require_once dirname(__FILE__) . '/class-mpai-settings.php';
-}
-
-// Get current tab
-$tabs = array(
-    'general' => __('General', 'memberpress-ai-assistant'),
-    'chat' => __('Chat Interface', 'memberpress-ai-assistant'),
-    'tools' => __('Tools', 'memberpress-ai-assistant'),
-    'debug' => __('Debug', 'memberpress-ai-assistant')
-);
-
-$current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'general';
-if (!array_key_exists($current_tab, $tabs)) {
-    $current_tab = 'general';
-}
-
-// Set up admin menu highlight
-global $parent_file, $submenu_file;
-$parent_file = class_exists('MeprAppCtrl') ? 'memberpress' : 'memberpress-ai-assistant';
-$submenu_file = 'memberpress-ai-assistant-settings';
-
-// Debug settings submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    error_log('MPAI: POST request detected in settings page');
-    error_log('MPAI: option_page: ' . (isset($_POST['option_page']) ? $_POST['option_page'] : 'not set'));
-    error_log('MPAI: _wpnonce: ' . (isset($_POST['_wpnonce']) ? 'set (first 5 chars: ' . substr($_POST['_wpnonce'], 0, 5) . ')' : 'not set'));
-}
-
-// DIRECT SAVE HACK: This is a last resort to make settings save by completely bypassing WordPress Settings API
+// The direct save functionality MUST be at the very top of the file
+// before ANY output, including blank lines or whitespace!
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) && $_POST['mpai_direct_save'] === '1') {
+    // If this file is called directly, abort.
+    if (!defined('WPINC')) {
+        die;
+    }
+    
     error_log('MPAI: DIRECT SAVE MODE ACTIVATED');
     
     // Security check - only admin users can use direct save
@@ -90,11 +53,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
         
         // Redirect to the same page with success message
         $tab = isset($_POST['mpai_active_tab']) ? $_POST['mpai_active_tab'] : 'general';
-        wp_redirect(admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $tab . '&settings-updated=true'));
+        wp_safe_redirect(admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $tab . '&settings-updated=true'));
         exit;
     } else {
         error_log('MPAI DIRECT SAVE: Security check failed - not an admin user');
     }
+}
+
+// If this file is called directly, abort.
+if (!defined('WPINC')) {
+    die;
+}
+
+// Force debug output for troubleshooting
+error_log('MPAI: Loading enhanced settings page with WordPress Settings API');
+error_log('MPAI: Current user: ' . wp_get_current_user()->user_login . ' (' . wp_get_current_user()->ID . ')');
+error_log('MPAI: User can manage_options: ' . (current_user_can('manage_options') ? 'yes' : 'no'));
+
+// Check if the settings class exists
+if (!class_exists('MPAI_Settings')) {
+    require_once dirname(__FILE__) . '/class-mpai-settings.php';
+}
+
+// Get current tab
+$tabs = array(
+    'general' => __('General', 'memberpress-ai-assistant'),
+    'chat' => __('Chat Interface', 'memberpress-ai-assistant'),
+    'tools' => __('Tools', 'memberpress-ai-assistant'),
+    'debug' => __('Debug', 'memberpress-ai-assistant')
+);
+
+$current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'general';
+if (!array_key_exists($current_tab, $tabs)) {
+    $current_tab = 'general';
+}
+
+// Set up admin menu highlight
+global $parent_file, $submenu_file;
+$parent_file = class_exists('MeprAppCtrl') ? 'memberpress' : 'memberpress-ai-assistant';
+$submenu_file = 'memberpress-ai-assistant-settings';
+
+// Debug settings submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    error_log('MPAI: POST request detected in settings page');
+    error_log('MPAI: option_page: ' . (isset($_POST['option_page']) ? $_POST['option_page'] : 'not set'));
+    error_log('MPAI: _wpnonce: ' . (isset($_POST['_wpnonce']) ? 'set (first 5 chars: ' . substr($_POST['_wpnonce'], 0, 5) . ')' : 'not set'));
 }
 
 // Get settings instance
