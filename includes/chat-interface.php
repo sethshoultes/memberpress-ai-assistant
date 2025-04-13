@@ -11,10 +11,7 @@ if (!defined('WPINC')) {
     die;
 }
 
-// Check if AI Assistant is enabled
-if (get_option('mpai_enable_chat', 1) != 1) {
-    return;
-}
+// Chat interface is always enabled now (setting removed)
 
 // Check if user has consented to terms and conditions
 $user_id = get_current_user_id();
@@ -31,13 +28,7 @@ if (!$has_consented) {
     return;
 }
 
-// Check if should only show on MemberPress pages
-if (get_option('mpai_show_on_all_pages', 1) != 1) {
-    $screen = get_current_screen();
-    if (!$screen || (strpos($screen->id, 'memberpress') === false && strpos($screen->id, 'mepr') === false)) {
-        return;
-    }
-}
+// Always show on all admin pages now (setting removed)
 
 // Get chat position
 $position = get_option('mpai_chat_position', 'bottom-right');

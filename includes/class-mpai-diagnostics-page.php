@@ -1636,21 +1636,9 @@ class MPAI_Diagnostics_Page {
             }
         }
         
-        // Check if WP-CLI is enabled
-        $wpcli_enabled = get_option('mpai_enable_wp_cli_tool', true);
-        
-        if (!$wpcli_enabled) {
-            return [
-                'success' => false,
-                'status' => 'warning',
-                'message' => __('WP-CLI Tool is disabled in settings.', 'memberpress-ai-assistant'),
-                'details' => [
-                    'tool_registered' => $tool_registered,
-                    'tool_enabled' => $wpcli_enabled,
-                    'registry_info' => $registry_output
-                ]
-            ];
-        }
+        // WP-CLI is always enabled now (settings were removed from UI)
+        $wpcli_enabled = true;
+        error_log('MPAI: WP-CLI is always enabled in diagnostics');
         
         if (!$tool_registered) {
             return [
@@ -1717,21 +1705,9 @@ class MPAI_Diagnostics_Page {
             }
         }
         
-        // Check if Plugin Logs is enabled
-        $plugin_logs_enabled = get_option('mpai_enable_plugin_logs_tool', true);
-        
-        if (!$plugin_logs_enabled) {
-            return [
-                'success' => false,
-                'status' => 'warning',
-                'message' => __('Plugin Logs Tool is disabled in settings.', 'memberpress-ai-assistant'),
-                'details' => [
-                    'tool_registered' => $tool_registered,
-                    'tool_enabled' => $plugin_logs_enabled,
-                    'registry_info' => $registry_output
-                ]
-            ];
-        }
+        // Plugin Logs is always enabled now (settings were removed from UI)
+        $plugin_logs_enabled = true;
+        error_log('MPAI: Plugin Logs is always enabled in diagnostics');
         
         if (!$tool_registered) {
             return [
