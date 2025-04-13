@@ -87,6 +87,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                     $value = ($value == '1');
                 }
                 
+                // Handle backup field for API key
+                if ($key === 'mpai_api_key_backup') {
+                    error_log('MPAI CRITICAL FIX: Found API key backup field!');
+                    
+                    // Get the value of the backup field
+                    $api_key = $value;
+                    
+                    // Skip this field in regular processing, we'll handle it separately
+                    continue;
+                }
+                
                 // SPECIAL HANDLING FOR THE TWO FIELDS THAT WON'T SAVE
                 if ($key === 'mpai_api_key') {
                     // Hard-coded special handling for API key and welcome message
@@ -179,6 +190,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
         // Set a transient to show settings saved message
         set_transient('mpai_settings_saved', true, 30);
         error_log('MPAI DIRECT SAVE: Saved ' . $saved_count . ' settings successfully');
+        
+        // Process backup API key if we found it
+        if (isset($api_key) && !empty($api_key)) {
+            error_log('MPAI CRITICAL FIX: Processing backup API key: ' . substr($api_key, 0, 5) . '...');
+            
+            // Set the API key with all available methods
+            update_option('mpai_api_key', $api_key);
+            
+            // Also do direct DB entry
+            global $wpdb;
+            $wpdb->delete($wpdb->options, array('option_name' => 'mpai_api_key'));
+            $wpdb->insert(
+                $wpdb->options,
+                array(
+                    'option_name' => 'mpai_api_key',
+                    'option_value' => $api_key,
+                    'autoload' => 'yes'
+                )
+            );
+            
+            error_log('MPAI CRITICAL FIX: Successfully saved API key from backup field');
+        }
         
         // Get the tab - look at both mpai_active_tab (hidden field) and tab query param
         // This ensures we redirect back to the currently active tab
@@ -367,8 +400,20 @@ if ($current_tab === 'general') {
             // Add debugging comment for this critical field
             echo '<!-- IMPORTANT FIELD: mpai_api_key with current length ' . strlen($value) . ' -->';
             
-            // CRITICAL: Ensure consistent ID/name and clean output
-            echo '<input type="text" id="mpai_api_key" name="mpai_api_key" value="' . esc_attr($value) . '" class="regular-text code">';
+            // CRITICAL FIX: Use input type password to avoid password managers interfering
+            echo '<input type="password" id="mpai_api_key" name="mpai_api_key" value="' . esc_attr($value) . '" class="regular-text code">';
+            
+            // Add a hidden backup field to ensure the value is always submitted
+            echo '<input type="hidden" id="mpai_api_key_backup" name="mpai_api_key_backup" value="' . esc_attr($value) . '">';
+            
+            // Add script to keep values in sync
+            echo '<script>
+                jQuery(document).ready(function($) {
+                    $("#mpai_api_key").on("input", function() {
+                        $("#mpai_api_key_backup").val($(this).val());
+                    });
+                });
+            </script>';
             echo '<p class="description">' . __('Enter your OpenAI API key.', 'memberpress-ai-assistant') . '</p>';
             
             // Force a browser-level save monitor for this field
