@@ -472,6 +472,21 @@ $mpai_settings_registry = mpai_register_default_settings($mpai_settings_registry
 // Register settings with WordPress explicitly
 $mpai_settings_registry->register_settings_with_wordpress();
 
+// Add a specific filter for the option_page_capability for our option pages
+// This is a critical fix for the "not in the allowed options list" error
+add_filter('option_page_capability_mpai_chat', function($capability) {
+    return 'manage_options';
+});
+add_filter('option_page_capability_mpai_general', function($capability) {
+    return 'manage_options';
+});
+add_filter('option_page_capability_mpai_tools', function($capability) {
+    return 'manage_options';
+});
+add_filter('option_page_capability_mpai_debug', function($capability) {
+    return 'manage_options';
+});
+
 // Display any settings errors/notices
 settings_errors('mpai_messages');
 

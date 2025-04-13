@@ -280,17 +280,35 @@ class MPAI_Settings_Registry {
         $all_options = [];
         
         foreach ($this->tabs as $tab_id => $tab) {
+            // Create standardized option group name
             $option_group = 'mpai_' . $tab_id;
-            $allowed_options[$option_group] = [];
+            
+            // Initialize this group if it doesn't exist
+            if (!isset($allowed_options[$option_group])) {
+                $allowed_options[$option_group] = [];
+            }
+            
+            // Additional fix for the options page error
+            // Sometimes WordPress expects a different format for allowed options
+            $option_page_key = $tab_id . '-options';
+            $allowed_options[$option_page_key] = [];
+            
+            // Also try the plain tab name as a key
+            $allowed_options[$tab_id] = [];
             
             // Check if this tab has settings
             if (isset($this->settings[$tab_id]) && is_array($this->settings[$tab_id])) {
                 foreach ($this->settings[$tab_id] as $field) {
                     $option_name = 'mpai_' . $field['field_id'];
+                    
+                    // Add to all option groups to ensure it works
                     $allowed_options[$option_group][] = $option_name;
+                    $allowed_options[$option_page_key][] = $option_name;
+                    $allowed_options[$tab_id][] = $option_name;
+                    
                     $all_options[] = $option_name;
                     
-                    error_log('MPAI: Whitelisted option ' . $option_name . ' in group ' . $option_group);
+                    error_log('MPAI: Whitelisted option ' . $option_name . ' in multiple groups');
                 }
             } else {
                 error_log('MPAI: No settings found for tab ' . $tab_id);
@@ -301,10 +319,15 @@ class MPAI_Settings_Registry {
                         if (isset($group['fields']) && is_array($group['fields'])) {
                             foreach ($group['fields'] as $field_id => $field) {
                                 $option_name = 'mpai_' . $field_id;
+                                
+                                // Add to all option groups to ensure it works
                                 $allowed_options[$option_group][] = $option_name;
+                                $allowed_options[$option_page_key][] = $option_name;
+                                $allowed_options[$tab_id][] = $option_name;
+                                
                                 $all_options[] = $option_name;
                                 
-                                error_log('MPAI: Whitelisted option ' . $option_name . ' in group ' . $option_group . ' (from settings_groups)');
+                                error_log('MPAI: Whitelisted option ' . $option_name . ' from settings_groups');
                             }
                         }
                     }
@@ -318,7 +341,17 @@ class MPAI_Settings_Registry {
         }
         $allowed_options['options'] = array_merge($allowed_options['options'], $all_options);
         
+        // For standard WordPress compatibility
+        $allowed_options['mpai_options'] = $all_options;
+        $allowed_options['mpai-options'] = $all_options;
+        
+        // Special handling for the chat options error
+        $allowed_options['mpai_chat'] = $all_options;
+        $allowed_options['chat-options'] = $all_options;
+        $allowed_options['chat_options'] = $all_options;
+        
         error_log('MPAI: Total whitelisted options: ' . count($all_options));
+        error_log('MPAI: Option groups in allowed_options: ' . implode(', ', array_keys($allowed_options)));
         
         return $allowed_options;
     }
@@ -755,6 +788,9 @@ class MPAI_Settings_Registry {
         // Start form
         echo '<form method="post" action="options.php" class="mpai-settings-form">';
         
+        // Add hidden field for debug to trace form submission
+        echo '<input type="hidden" name="mpai_tab" value="' . esc_attr($current_tab) . '">';
+        
         // Output nonce, action, and option page fields
         settings_fields($option_group);
         
@@ -801,6 +837,42 @@ class MPAI_Settings_Registry {
                         }
                     }
                 }
+            }
+            
+            // If in debug mode, add special debug information form
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                echo '<div class="notice notice-info is-dismissible">';
+                echo '<p><strong>Debug Information:</strong></p>';
+                echo '<p>Current tab: ' . esc_html($current_tab) . '<br>';
+                echo 'Option group: ' . esc_html($option_group) . '<br>';
+                echo 'Page slug: ' . esc_html($page_slug) . '</p>';
+                
+                // Add a list of registered option groups for reference
+                global $wp_registered_settings;
+                $registered_groups = array();
+                foreach ($wp_registered_settings as $setting => $data) {
+                    if (strpos($setting, 'mpai_') === 0) {
+                        if (isset($data['group'])) {
+                            if (!isset($registered_groups[$data['group']])) {
+                                $registered_groups[$data['group']] = array();
+                            }
+                            $registered_groups[$data['group']][] = $setting;
+                        }
+                    }
+                }
+                
+                if (!empty($registered_groups)) {
+                    echo '<p><strong>Registered setting groups:</strong></p>';
+                    echo '<ul>';
+                    foreach ($registered_groups as $group => $settings) {
+                        echo '<li>' . esc_html($group) . ': ' . count($settings) . ' settings</li>';
+                    }
+                    echo '</ul>';
+                } else {
+                    echo '<p>No MPAI settings registered with WordPress.</p>';
+                }
+                
+                echo '</div>';
             }
         }
         
