@@ -50,8 +50,10 @@ class MPAI_Settings {
         $mpai_options = array(
             'mpai_api_key',
             'mpai_model',
+            'mpai_temperature',
             'mpai_anthropic_api_key',
             'mpai_anthropic_model',
+            'mpai_anthropic_temperature',
             'mpai_primary_api',
             'mpai_enable_chat',
             'mpai_chat_position',
@@ -59,6 +61,9 @@ class MPAI_Settings {
             'mpai_welcome_message',
             'mpai_enable_mcp',
             'mpai_enable_cli_commands',
+            'mpai_enable_wp_cli_tool',
+            'mpai_enable_memberpress_info_tool',
+            'mpai_enable_plugin_logs_tool',
             'mpai_enable_console_logging',
             'mpai_console_log_level',
             'mpai_log_api_calls',
@@ -66,6 +71,9 @@ class MPAI_Settings {
             'mpai_log_agent_activity',
             'mpai_log_timing'
         );
+        
+        // Debug the whitelist options for troubleshooting
+        error_log('MPAI: Whitelisting ' . count($mpai_options) . ' options for mpai_options page');
         
         // Add our options to the allowed list
         $allowed_options['mpai_options'] = $mpai_options;

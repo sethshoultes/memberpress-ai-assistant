@@ -13,6 +13,11 @@ if (!defined('WPINC')) {
     die;
 }
 
+// Force debug output for troubleshooting
+error_log('MPAI: Loading enhanced settings page with WordPress Settings API');
+error_log('MPAI: Current user: ' . wp_get_current_user()->user_login . ' (' . wp_get_current_user()->ID . ')');
+error_log('MPAI: User can manage_options: ' . (current_user_can('manage_options') ? 'yes' : 'no'));
+
 // Check if the settings class exists
 if (!class_exists('MPAI_Settings')) {
     require_once dirname(__FILE__) . '/class-mpai-settings.php';
@@ -36,25 +41,41 @@ global $parent_file, $submenu_file;
 $parent_file = class_exists('MeprAppCtrl') ? 'memberpress' : 'memberpress-ai-assistant';
 $submenu_file = 'memberpress-ai-assistant-settings';
 
+// Debug settings submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    error_log('MPAI: POST request detected in settings page');
+    error_log('MPAI: option_page: ' . (isset($_POST['option_page']) ? $_POST['option_page'] : 'not set'));
+    error_log('MPAI: _wpnonce: ' . (isset($_POST['_wpnonce']) ? 'set (first 5 chars: ' . substr($_POST['_wpnonce'], 0, 5) . ')' : 'not set'));
+}
+
 // Get settings instance
 $settings = new MPAI_Settings();
 
-// We need our nonce verification bypass for settings page submissions
-function mpai_bypass_referer_check_for_options_new($action, $result) {
-    // If we're on options.php and the option_page is set to mpai_options
-    if (strpos($_SERVER['PHP_SELF'], 'options.php') !== false && 
-        isset($_POST['option_page']) && $_POST['option_page'] === 'mpai_options') {
-        
-        // For security, only allow this bypass for admins
-        if (current_user_can('manage_options')) {
-            return true;
+// Use the same nonce verification bypass name for consistency with settings-page.php
+if (!function_exists('mpai_bypass_referer_check_for_options')) {
+    // We need our nonce verification bypass for settings page submissions
+    function mpai_bypass_referer_check_for_options($action, $result) {
+        // If we're on options.php and the option_page is set to mpai_options
+        if (strpos($_SERVER['PHP_SELF'], 'options.php') !== false && 
+            isset($_POST['option_page']) && $_POST['option_page'] === 'mpai_options') {
+            
+            // Debug info for troubleshooting
+            error_log('MPAI: Nonce check bypassed for mpai_options page. User can manage_options: ' . 
+                (current_user_can('manage_options') ? 'yes' : 'no'));
+            
+            // For security, only allow this bypass for admins
+            if (current_user_can('manage_options')) {
+                return true;
+            }
         }
+        
+        // Default: let WordPress handle it
+        return $result;
     }
     
-    // Default: let WordPress handle it
-    return $result;
+    // Apply the filter with a high priority to ensure it runs after any other checks
+    add_filter('check_admin_referer', 'mpai_bypass_referer_check_for_options', 999, 2);
 }
-add_filter('check_admin_referer', 'mpai_bypass_referer_check_for_options_new', 10, 2);
 
 // Make sure settings are registered - standard WordPress pattern
 register_setting('mpai_options', 'mpai_api_key');
@@ -498,10 +519,30 @@ if ($current_tab === 'general') {
         <?php } ?>
     </h2>
     
+    <!-- Note about settings saving for admins -->
+    <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+    <div class="notice notice-info">
+        <p><strong>Admin Notice:</strong> This page uses the WordPress Settings API. If settings don't save, check the following:</p>
+        <ol>
+            <li>All options must be added to the whitelist in class-mpai-settings.php</li>
+            <li>The nonce bypass function must be working for the mpai_options page</li>
+            <li>All settings must be registered using register_setting()</li>
+            <li>You must have the 'manage_options' capability</li>
+        </ol>
+    </div>
+    <?php endif; ?>
+    
     <form method="post" action="options.php">
         <?php
+        // Output hidden fields, security nonce, etc.
         settings_fields('mpai_options');
+        
+        // Output all the settings sections for the current tab
         do_settings_sections('mpai_options');
+        
+        // Add a hidden field to track which tab we're on
+        echo '<input type="hidden" name="mpai_active_tab" value="' . esc_attr($current_tab) . '">';
+        
         submit_button();
         ?>
     </form>
