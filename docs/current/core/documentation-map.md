@@ -27,6 +27,7 @@ memberpress-ai-assistant/
 │   │   │   ├── documentation-glossary.md # Terminology definitions
 │   │   │   ├── searchable-documentation-index.md # Comprehensive document index
 │   │   │   ├── system-information-caching.md # System Information Caching feature
+│   │   │   ├── diagnostics-system.md # Diagnostics System documentation
 │   │   │   ├── documentation-consolidation-results.md # Phase 1 results
 │   │   │   └── phase-2/3/4-documentation-consolidation-results.md # Phase results
 │   │   ├── agent-system/        # Agent system documentation

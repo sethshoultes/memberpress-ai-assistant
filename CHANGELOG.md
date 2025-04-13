@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Enhanced Diagnostics Page with Plugin Management tab:
+  - Added a new Plugin Management category in the diagnostics page
+  - Implemented Active Plugins test to display all active/inactive plugins
+  - Added Plugin History test to show plugin installation, activation, and update history
+  - Created visual formatting with HTML tables and CSS styling
+  - Added statistics summary for plugin activity
+
+### Fixed
+- Fixed Anthropic API test method name
+- Fixed Error Recovery System logger method access issue
+
 ## [1.5.5] - 2025-04-11
 
 ### Added

@@ -49,11 +49,13 @@ For new developers, we recommend starting with:
 | [Documentation Categories](core/documentation-categories.md) | Documentation organized by type | ✅ Maintained |
 | [Documentation Map](core/documentation-map.md) | Visual map of documentation resources | ✅ Maintained |
 | [Implementation Status](core/implementation-status.md) | Current status of all features | ✅ Maintained |
+| [Diagnostics System](core/diagnostics-system.md) | Comprehensive testing and troubleshooting framework | ✅ Maintained |
 
 ## Implemented Features
 
 | Feature | Version Added | Status | Documentation |
 |---------|--------------|--------|--------------|
+| Plugin Management Tab | 1.6.0 (2025-04-13) | ✅ Implemented | [diagnostics-system.md](core/diagnostics-system.md) |
 | Error Recovery System | 1.6.1 (2025-04-05) | ✅ Implemented | [error-recovery-system.md](error-system/error-recovery-system.md) |
 | Error Catalog System | 1.6.1 (2025-04-05) | ✅ Implemented | [error-catalog-system.md](error-system/error-catalog-system.md) |
 | Blog XML Formatting | 1.6.0 (2025-04-03) | ✅ Implemented | [blog-xml-formatting-implementation.md](content-system/blog-xml-formatting-implementation.md) |
@@ -103,6 +105,7 @@ For new developers, we recommend starting with:
 - [Duplicate Tool Execution Prevention](../_snacks/tool-system/duplicate-tool-execution-snack.md) - ✅ (Scooby Snack)
 
 ### Core Features
+- [Diagnostics System](core/diagnostics-system.md) - ✅
 - [Independent Operation Mode](../_snacks/architecture/independent-operation-implementation.md) - ✅ (Scooby Snack)
 - [Support Routing System](feature-plans/support-routing-system.md) - ✅
 - [Developer Onboarding System](core/developer-onboarding-system.md) - ✅
