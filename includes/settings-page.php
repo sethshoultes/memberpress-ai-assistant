@@ -714,15 +714,9 @@ if ($current_tab === 'general') {
         // Debugging hidden field - helps verify POST data is being passed
         echo '<input type="hidden" name="mpai_debug_timestamp" value="' . time() . '">';
         
-        // Use both save methods for maximum compatibility
-        echo '<div class="submit-container" style="display: flex; justify-content: space-between; align-items: center;">';
-        
-        // Direct save button
-        echo '<input type="submit" name="submit" id="mpai-save-settings" class="button button-primary" value="' . esc_attr__('Save Settings (Direct Method)', 'memberpress-ai-assistant') . '">';
-        
-        // Standard save button (as fallback)
-        echo '<span>Or try: <button type="button" id="mpai-standard-save" class="button button-secondary">' . esc_attr__('Save with WordPress API', 'memberpress-ai-assistant') . '</button></span>';
-        
+        // Simple save button
+        echo '<div class="submit-container">';
+        echo '<input type="submit" name="submit" id="mpai-save-settings" class="button button-primary" value="' . esc_attr__('Save Settings', 'memberpress-ai-assistant') . '">';
         echo '</div>';
         ?>
     </form>
@@ -751,60 +745,7 @@ if ($current_tab === 'general') {
             }
         });
         
-        // Setup WordPress standard save method
-        $('#mpai-standard-save').on('click', function(e) {
-            e.preventDefault();
-            
-            console.log('MPAI DEBUG: WordPress standard save clicked');
-            
-            // Create a hidden form that uses the WordPress Settings API
-            var $wpForm = $('<form>', {
-                action: 'options.php',
-                method: 'post',
-                style: 'display: none;'
-            }).appendTo('body');
-            
-            // Add option_page hidden field
-            $wpForm.append('<input type="hidden" name="option_page" value="mpai_options">');
-            
-            // Add action hidden field
-            $wpForm.append('<input type="hidden" name="action" value="update">');
-            
-            // Add WordPress nonce
-            var nonce = '<?php echo wp_create_nonce('mpai_options-options'); ?>';
-            $wpForm.append('<input type="hidden" name="_wpnonce" value="' + nonce + '">');
-            $wpForm.append('<input type="hidden" name="_wp_http_referer" value="<?php echo esc_attr($_SERVER['REQUEST_URI']); ?>">');
-            
-            // Copy all form field values to the hidden form
-            $('#mpai-settings-form').find('input, select, textarea').each(function() {
-                var $this = $(this);
-                var name = $this.attr('name');
-                var type = $this.attr('type');
-                
-                // Skip submit buttons 
-                if (type === 'submit') return;
-                
-                // Skip the direct save flag
-                if (name === 'mpai_direct_save') return;
-                
-                // Handle checkboxes specially
-                if (type === 'checkbox') {
-                    if ($this.is(':checked')) {
-                        $wpForm.append('<input type="hidden" name="' + name + '" value="1">');
-                    } else {
-                        $wpForm.append('<input type="hidden" name="' + name + '" value="0">');
-                    }
-                } else {
-                    // For all other fields, just copy the value
-                    $wpForm.append('<input type="hidden" name="' + name + '" value="' + $this.val() + '">');
-                }
-            });
-            
-            console.log('MPAI DEBUG: Created WordPress settings form with fields:', $wpForm.find('input').length);
-            
-            // Submit the form
-            $wpForm.submit();
-        });
+        // No WordPress API save method needed
         
         // Track direct form submission
         $('#mpai-settings-form').on('submit', function(e) {
