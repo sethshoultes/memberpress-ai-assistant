@@ -5,8 +5,10 @@
  * @package MemberPress AI Assistant
  */
 
+// Start output buffering to prevent "headers already sent" errors
+ob_start();
+
 // The direct save functionality MUST be at the very top of the file
-// before ANY output, including blank lines or whitespace!
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) && $_POST['mpai_direct_save'] === '1') {
     // If this file is called directly, abort.
     if (!defined('WPINC')) {
@@ -51,9 +53,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
         set_transient('mpai_settings_saved', true, 30);
         error_log('MPAI DIRECT SAVE: Saved ' . $saved_count . ' settings successfully');
         
+        // Clean any previous output and buffer
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
         // Redirect to the same page with success message
         $tab = isset($_POST['mpai_active_tab']) ? $_POST['mpai_active_tab'] : 'general';
-        wp_safe_redirect(admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $tab . '&settings-updated=true'));
+        $redirect_url = admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $tab . '&settings-updated=true');
+        
+        // Log the redirect URL for debugging
+        error_log('MPAI DIRECT SAVE: Redirecting to ' . $redirect_url);
+        
+        // Use direct header redirect to avoid WordPress safe redirect issues
+        header('Location: ' . $redirect_url);
         exit;
     } else {
         error_log('MPAI DIRECT SAVE: Security check failed - not an admin user');
@@ -885,3 +898,7 @@ if ($current_tab === 'general') {
     color: white;
 }
 </style>
+<?php
+// Flush the output buffer
+ob_end_flush();
+?>
