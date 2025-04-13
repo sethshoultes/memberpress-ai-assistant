@@ -17,6 +17,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
     
     // Security check - only admin users can use direct save
     if (current_user_can('manage_options')) {
+        // Debug the entire POST array
+        error_log('MPAI DEBUG: POST data keys: ' . print_r(array_keys($_POST), true));
+        
+        // Specifically check for the two problematic fields
+        error_log('MPAI DEBUG: API key exists in POST: ' . (isset($_POST['mpai_api_key']) ? 'YES' : 'NO'));
+        error_log('MPAI DEBUG: Welcome message exists in POST: ' . (isset($_POST['mpai_welcome_message']) ? 'YES' : 'NO'));
+        
+        if (isset($_POST['mpai_welcome_message'])) {
+            error_log('MPAI DEBUG: Welcome message value: ' . substr($_POST['mpai_welcome_message'], 0, 30) . '...');
+        }
+        
         // Save all settings directly using update_option
         $saved_count = 0;
         foreach ($_POST as $key => $value) {
@@ -24,6 +35,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                 // Remove any slashes that WordPress may have added (magic quotes)
                 if (is_string($value)) {
                     $value = stripslashes($value);
+                }
+                
+                // Extra debug for problematic fields
+                if ($key === 'mpai_api_key' || $key === 'mpai_welcome_message') {
+                    error_log('MPAI DEBUG: Processing ' . $key . ' with type: ' . gettype($value));
+                    if (is_string($value)) {
+                        error_log('MPAI DEBUG: Value length: ' . strlen($value) . ', First chars: ' . substr($value, 0, 30) . '...');
+                    }
                 }
                 
                 // Special handling for checkboxes (they don't get sent when unchecked)
@@ -45,8 +64,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                     $value = ($value == '1');
                 }
                 
-                // Update the option - use the stripslashes_deep function for good measure
-                update_option($key, $value);
+                // CRITICAL: Force explicit handling of special fields that might not be saving
+                if ($key === 'mpai_api_key' || $key === 'mpai_welcome_message' || $key === 'mpai_anthropic_api_key') {
+                    error_log('MPAI DEBUG: Explicitly updating ' . $key);
+                    // Use direct database access to ensure it's saved
+                    global $wpdb;
+                    $result = $wpdb->update(
+                        $wpdb->options,
+                        array('option_value' => maybe_serialize($value)),
+                        array('option_name' => $key)
+                    );
+                    
+                    if ($result === false) {
+                        // Option doesn't exist yet, so add it
+                        $wpdb->insert(
+                            $wpdb->options,
+                            array(
+                                'option_name' => $key,
+                                'option_value' => maybe_serialize($value),
+                                'autoload' => 'yes'
+                            )
+                        );
+                        error_log('MPAI DEBUG: Inserted new option ' . $key);
+                    } else if ($result === 0) {
+                        error_log('MPAI DEBUG: Option ' . $key . ' unchanged or update failed');
+                    } else {
+                        error_log('MPAI DEBUG: Updated option ' . $key . ' via direct database access');
+                    }
+                } else {
+                    // Update the option normally for other fields
+                    update_option($key, $value);
+                }
+                
                 error_log('MPAI DIRECT SAVE: Saved ' . $key . ' = ' . (is_bool($value) ? ($value ? 'true' : 'false') : $value));
                 $saved_count++;
             }
@@ -667,7 +716,7 @@ if ($current_tab === 'general') {
     </div>
     <?php endif; ?>
     
-    <form method="post" action="" id="mpai-settings-form">
+    <form method="post" action="<?php echo admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $current_tab); ?>" id="mpai-settings-form">
         <?php
         // Add debug info before form fields - extremely important
         if (defined('WP_DEBUG') && WP_DEBUG) {
