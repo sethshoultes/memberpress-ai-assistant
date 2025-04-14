@@ -24,6 +24,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed inconsistent behavior in API fallback mechanism
 - Fixed style conflicts with WordPress 6.4 admin interface
 
+## [1.6.1] - 2025-04-14
+
+### Fixed
+- Fixed WP-CLI command handling and type safety issues:
+  - Added robust error handling in MPAI_Command_Handler with fallbacks for component initialization
+  - Fixed type safety in MPAI_WP_CLI_Executor output formatting
+  - Enhanced WP-CLI Tool wrapper with better error logging
+  - Added direct plugin list fallback method in MPAI_Chat
+  - Improved special case handling for wp plugin list command with multiple execution paths
+  - Fixed uninitialized logger in MPAI_Command_Detector
+  - Changed security approach from restrictive whitelist to permissive blacklist with dangerous pattern detection
+  - Added tool name mapping for backward compatibility (wp_cli → wpcli)
+  - Updated tool registry with dual registration for both name formats
+  - Enhanced JavaScript frontend to handle both tool name formats
+  - Improved command adapter to support different return formats
+  - Fixed parsing of tool responses with enhanced type checking
+
 ## [1.6.0] - 2025-04-15
 
 ### Added
