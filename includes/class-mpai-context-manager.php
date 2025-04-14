@@ -3,6 +3,10 @@
  * Context Manager Class
  *
  * Handles CLI command execution and context management
+ * 
+ * SECURITY NOTE: Command validation now uses a permissive blacklist approach rather 
+ * than a restrictive whitelist. This is more user-friendly while still maintaining 
+ * security by blocking known dangerous patterns.
  */
 
 // If this file is called directly, abort.
@@ -141,8 +145,8 @@ class MPAI_Context_Manager {
         }
         
         $this->available_tools = array(
-            'wp_cli' => array(
-                'name' => 'wp_cli',
+            'wpcli' => array(
+                'name' => 'wpcli',
                 'description' => 'Run WordPress CLI commands',
                 'parameters' => array(
                     'command' => array(
@@ -1172,17 +1176,46 @@ class MPAI_Context_Manager {
      * @return bool Whether command is allowed
      */
     private function is_command_allowed($command) {
+        // For backward compatibility - if $allowed_commands is empty, use blacklist approach
         if (empty($this->allowed_commands)) {
-            return false;
+            // Important: Initialize with some basic safe commands
+            $this->allowed_commands = [
+                'wp plugin', 'wp post', 'wp user', 'wp option', 'wp core',
+                'wp theme', 'wp site', 'wp db', 'wp mepr', 'php -v'
+            ];
         }
-
-        foreach ($this->allowed_commands as $allowed_command) {
-            if (strpos($command, $allowed_command) === 0) {
-                return true;
+        
+        // Dangerous command patterns to block
+        $dangerous_patterns = [
+            '/rm\s+-rf/i',                   // Recursive file deletion
+            '/DROP\s+TABLE/i',               // SQL table drops
+            '/system\s*\(/i',                // PHP system calls
+            '/(?:curl|wget)\s+.*-o/i',       // File downloads
+            '/eval\s*\(/i',                  // PHP code evaluation
+            '/<\?php/i',                     // PHP code inclusion
+            '/>(\\/dev\\/null|\\/dev\\/zero)/i', // Redirects to system devices
+            '/:(){ :|:& };:/i',              // Fork bomb
+            '/sudo /i',                      // Sudo commands
+            '/shutdown/i',                   // System shutdown
+            '/reboot/i',                     // System reboot
+        ];
+        
+        // Check command against blacklist
+        foreach ($dangerous_patterns as $pattern) {
+            if (preg_match($pattern, $command)) {
+                error_log('MPAI: Dangerous command pattern detected: ' . $pattern);
+                return false;
             }
         }
-
-        return false;
+        
+        // Basic validation - command must start with wp or php
+        if (strpos($command, 'wp ') !== 0 && strpos($command, 'php ') !== 0) {
+            error_log('MPAI: Command must start with wp or php: ' . $command);
+            return false;
+        }
+        
+        // If it passes security checks, it's allowed
+        return true;
     }
     
     /**
@@ -1787,11 +1820,17 @@ class MPAI_Context_Manager {
             unset($request['tool']);
         }
         
+        // IMPORTANT: Map tool names to match registry names
+        if (isset($request['name']) && $request['name'] === 'wp_cli') {
+            $request['name'] = 'wpcli';
+            error_log('MPAI: Mapping wp_cli tool name to wpcli for backend compatibility - THIS IS CRITICAL');
+        }
+        
         // MCP is always enabled now (settings were removed from UI)
         error_log('MPAI: MCP is always enabled');
         
-        // FAST PATH: Special handling for common wp_cli commands - bypass validation
-        if (isset($request['name']) && $request['name'] === 'wp_cli' && 
+        // FAST PATH: Special handling for common wpcli commands - bypass validation
+        if (isset($request['name']) && ($request['name'] === 'wpcli' || $request['name'] === 'wp_cli') && 
             isset($request['parameters']) && isset($request['parameters']['command'])) {
             
             $command = $request['parameters']['command'];

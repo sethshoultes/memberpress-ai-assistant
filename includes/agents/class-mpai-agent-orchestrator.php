@@ -330,8 +330,16 @@ class MPAI_Agent_Orchestrator {
 				error_log( 'MPAI: Registered command adapter as tool' );
 				
 				// Replace the standard WP-CLI tool with our new implementation
-				$this->tool_registry->register_tool( 'wpcli', $this->tool_registry->get_tool( 'wpcli_new' ) );
-				error_log( 'MPAI: Replaced standard WP-CLI tool with new implementation' );
+				// Get the new implementation and register it as the primary tools
+				$wpcli_new_tool = $this->tool_registry->get_tool( 'wpcli_new' );
+				if ($wpcli_new_tool) {
+					$this->tool_registry->register_tool( 'wpcli', $wpcli_new_tool );
+					// For backward compatibility, also register under the wp_cli name
+					$this->tool_registry->register_tool( 'wp_cli', $wpcli_new_tool );
+					error_log( 'MPAI: Replaced standard WP-CLI tools with new implementation' );
+				} else {
+					error_log( 'MPAI: Could not get wpcli_new tool' );
+				}
 				
 				return true;
 			}

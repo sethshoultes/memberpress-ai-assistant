@@ -82,7 +82,14 @@ class MPAI_Command_Adapter {
                         throw new Exception('Command execution failed: ' . ($result['error'] ?? 'Unknown error'));
                     }
                     
-                    return $result['output'];
+                    // Handle different return format preferences
+                    if (isset($parameters['format']) && $parameters['format'] === 'full') {
+                        // Return the full result object
+                        return $result;
+                    } else {
+                        // Default to just returning the output for backward compatibility
+                        return $result['output'];
+                    }
                 } else {
                     throw new Exception('Missing required parameter: command');
                 }
