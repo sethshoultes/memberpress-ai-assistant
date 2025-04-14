@@ -98,18 +98,176 @@ class MPAI_Command_Handler {
      * Initialize components
      */
     private function initialize_components() {
-        // Initialize command sanitizer
-        $this->sanitizer = new MPAI_Command_Sanitizer();
+        error_log('MPAI COMMAND: Initializing components');
         
-        // Initialize security filter
-        $this->security = new MPAI_Command_Security();
+        // Initialize command sanitizer with error handling
+        try {
+            $this->sanitizer = new MPAI_Command_Sanitizer();
+            error_log('MPAI COMMAND: Successfully initialized Command Sanitizer');
+        } catch (Exception $e) {
+            error_log('MPAI COMMAND ERROR: Failed to initialize Command Sanitizer: ' . $e->getMessage());
+            // Create a minimal fallback sanitizer
+            $this->sanitizer = new class {
+                public function sanitize($command) {
+                    return trim(preg_replace('/[;&|><]/', '', $command));
+                }
+            };
+        }
         
-        // Initialize command executors
-        $this->wp_cli_executor = new MPAI_WP_CLI_Executor();
-        $this->php_executor = new MPAI_PHP_Executor();
+        // Initialize security filter with error handling
+        try {
+            $this->security = new MPAI_Command_Security();
+            error_log('MPAI COMMAND: Successfully initialized Command Security filter');
+        } catch (Exception $e) {
+            error_log('MPAI COMMAND ERROR: Failed to initialize Command Security filter: ' . $e->getMessage());
+            // Create a minimal fallback security filter
+            $this->security = new class {
+                public function is_dangerous($command) {
+                    // Basic security check for dangerous patterns
+                    $dangerous_patterns = ['/rm\s+-rf/i', '/DROP\s+TABLE/i', '/system\s*\(/i'];
+                    foreach ($dangerous_patterns as $pattern) {
+                        if (preg_match($pattern, $command)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            };
+        }
         
-        // Initialize command detector
-        $this->detector = new MPAI_Command_Detector();
+        // Initialize WP-CLI executor with enhanced error handling
+        try {
+            $this->wp_cli_executor = new MPAI_WP_CLI_Executor();
+            error_log('MPAI COMMAND: Successfully initialized WP-CLI executor');
+        } catch (Throwable $e) {
+            error_log('MPAI COMMAND ERROR: Failed to initialize WP-CLI executor: ' . $e->getMessage());
+            error_log('MPAI COMMAND ERROR: ' . $e->getTraceAsString());
+            
+            // Create a fallback executor that handles the wp plugin list special case
+            $this->wp_cli_executor = new class {
+                public function execute($command, $parameters = []) {
+                    // Special handling for wp plugin list
+                    if (trim($command) === 'wp plugin list') {
+                        error_log('MPAI COMMAND: Using fallback wp plugin list handler');
+                        
+                        // Load plugin functions if needed
+                        if (!function_exists('get_plugins')) {
+                            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                        }
+                        
+                        // Get plugins and format output
+                        $all_plugins = get_plugins();
+                        $active_plugins = get_option('active_plugins');
+                        
+                        $output = "NAME\tSTATUS\tVERSION\tDESCRIPTION\n";
+                        foreach ($all_plugins as $plugin_path => $plugin_data) {
+                            $plugin_status = in_array($plugin_path, $active_plugins) ? 'active' : 'inactive';
+                            $name = $plugin_data['Name'];
+                            $version = $plugin_data['Version'];
+                            $description = isset($plugin_data['Description']) && is_string($plugin_data['Description']) ? 
+                                          (strlen($plugin_data['Description']) > 40 ? 
+                                          substr($plugin_data['Description'], 0, 40) . '...' : 
+                                          $plugin_data['Description']) : '';
+                            
+                            $output .= "$name\t$plugin_status\t$version\t$description\n";
+                        }
+                        
+                        return [
+                            'success' => true,
+                            'output' => $output,
+                            'command' => 'wp plugin list',
+                            'command_type' => 'plugin_list',
+                            'result' => $output
+                        ];
+                    }
+                    
+                    return [
+                        'success' => false,
+                        'output' => 'WP-CLI executor could not be initialized. Command: ' . $command,
+                        'error' => 'Executor initialization failed'
+                    ];
+                }
+            };
+        }
+        
+        // Initialize PHP executor with enhanced error handling
+        try {
+            $this->php_executor = new MPAI_PHP_Executor();
+            error_log('MPAI COMMAND: Successfully initialized PHP executor');
+        } catch (Throwable $e) {
+            error_log('MPAI COMMAND ERROR: Failed to initialize PHP executor: ' . $e->getMessage());
+            error_log('MPAI COMMAND ERROR: ' . $e->getTraceAsString());
+            
+            // Create a fallback executor
+            $this->php_executor = new class {
+                public function execute($command, $parameters = []) {
+                    // Special handling for php -v
+                    if (trim($command) === 'php -v' || trim($command) === 'php --version') {
+                        $php_version = phpversion();
+                        return [
+                            'success' => true,
+                            'output' => "PHP $php_version",
+                            'command' => $command
+                        ];
+                    }
+                    
+                    return [
+                        'success' => false,
+                        'output' => 'PHP executor could not be initialized. Command: ' . $command,
+                        'error' => 'Executor initialization failed'
+                    ];
+                }
+            };
+        }
+        
+        // Initialize command detector with error handling
+        try {
+            $this->detector = new MPAI_Command_Detector();
+            error_log('MPAI COMMAND: Successfully initialized Command Detector');
+        } catch (Throwable $e) {
+            error_log('MPAI COMMAND ERROR: Failed to initialize Command Detector: ' . $e->getMessage());
+            error_log('MPAI COMMAND ERROR: ' . $e->getTraceAsString());
+            
+            // Create a minimal fallback detector
+            $this->detector = new class {
+                private $logger;
+                
+                public function __construct() {
+                    $this->logger = new class() {
+                        public function info($msg) { error_log('FALLBACK DETECTOR: ' . $msg); }
+                        public function warning($msg) { error_log('FALLBACK DETECTOR WARNING: ' . $msg); }
+                        public function error($msg) { error_log('FALLBACK DETECTOR ERROR: ' . $msg); }
+                        public function debug($msg) { error_log('FALLBACK DETECTOR DEBUG: ' . $msg); }
+                    };
+                }
+                
+                public function detect_command($message) {
+                    $this->logger->info('Using fallback command detector');
+                    
+                    // Handle special cases directly
+                    if (strpos($message, 'plugin list') !== false || strpos($message, 'list plugins') !== false) {
+                        return [
+                            'type' => 'plugin_list',
+                            'command' => 'wp plugin list',
+                            'parameters' => []
+                        ];
+                    }
+                    
+                    // Direct commands
+                    if (strpos($message, 'wp ') === 0 || strpos($message, 'php ') === 0) {
+                        return [
+                            'type' => 'explicit',
+                            'command' => $message,
+                            'parameters' => []
+                        ];
+                    }
+                    
+                    return false;
+                }
+            };
+        }
+        
+        error_log('MPAI COMMAND: Component initialization complete');
     }
 
     /**
