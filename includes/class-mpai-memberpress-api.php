@@ -38,7 +38,7 @@ class MPAI_MemberPress_API {
     public function __construct() {
         $this->api_key = get_option('mpai_memberpress_api_key', '');
         $this->base_url = site_url('/wp-json/mp/v1/');
-        $this->has_memberpress = class_exists('MeprAppCtrl');
+        $this->has_memberpress = mpai_is_memberpress_active();
     }
     
     /**

@@ -3,6 +3,10 @@
  * WP-CLI Executor
  *
  * Executes WP-CLI commands
+ * 
+ * SECURITY NOTE: This implementation uses a permissive blacklist approach rather than
+ * a restrictive whitelist. This follows the Command System Rewrite Plan's KISS principle
+ * and is more user-friendly while still maintaining security by blocking dangerous patterns.
  *
  * @package MemberPress AI Assistant
  */
@@ -25,10 +29,83 @@ class MPAI_WP_CLI_Executor {
     private $timeout = 30;
 
     /**
+     * Logger instance
+     *
+     * @var object
+     */
+    private $logger;
+
+    /**
+     * List of dangerous command patterns to block
+     * 
+     * Following the Command System Rewrite Plan that adopts a permissive-by-default approach,
+     * we block commands that are explicitly dangerous rather than starting with an allowlist.
+     * 
+     * @var array
+     */
+    private $dangerous_patterns = [
+        '/rm\s+-rf/i',                   // Recursive file deletion
+        '/DROP\s+TABLE/i',               // SQL table drops
+        '/system\s*\(/i',                // PHP system calls
+        '/(?:curl|wget)\s+.*-o/i',       // File downloads
+        '/eval\s*\(/i',                  // PHP code evaluation
+        '/<\?php/i',                     // PHP code inclusion
+        '/>(\\/dev\\/null|\\/dev\\/zero)/i', // Redirects to system devices
+        '/:(){ :|:& };:/i',              // Fork bomb
+        '/sudo /i',                      // Sudo commands
+        '/shutdown/i',                   // System shutdown
+        '/reboot/i',                     // System reboot
+        '/mkfs/i',                       // Filesystem formatting
+        '/dd\s+if/i',                    // Disk operations
+        '/shred/i',                      // Secure deletion
+        '/chmod\s+777/i',                // Insecure permissions
+        '/chmod\s+-R/i',                 // Recursive permission changes
+        '/chown\s+-R/i',                 // Recursive ownership changes
+        '/alias\s+/i',                   // Shell alias commands
+        '/exec\s*\(/i',                  // PHP exec function
+        '/passthru\s*\(/i',              // PHP passthru function
+        '/shell_exec\s*\(/i',            // PHP shell_exec function
+        '/popen\s*\(/i',                 // PHP popen function
+        '/proc_open\s*\(/i',             // PHP proc_open function
+        '/pcntl_exec\s*\(/i',            // PHP pcntl_exec function
+        '/\|\s*bash/i',                  // Piping to bash
+        '/`.*`/i',                       // Backtick command execution
+        '/>\s*\/etc\/passwd/i',          // Writing to /etc/passwd
+        '/>\s*\/etc\/shadow/i',          // Writing to /etc/shadow
+        '/>\s*\/etc\/hosts/i',           // Writing to /etc/hosts
+    ];
+
+    /**
      * Constructor
      */
     public function __construct() {
-        // No initialization needed
+        // Initialize logger
+        $this->init_logger();
+        
+        // Allow plugins to extend the dangerous patterns list
+        $this->dangerous_patterns = apply_filters('mpai_blocked_cli_patterns', $this->dangerous_patterns);
+    }
+    
+    /**
+     * Initialize logger
+     */
+    private function init_logger() {
+        // Create a simple logger class
+        $this->logger = new class() {
+            public function info($message) {
+                error_log('MPAI WP-CLI: ' . $message);
+            }
+            
+            public function error($message) {
+                error_log('MPAI WP-CLI ERROR: ' . $message);
+            }
+            
+            public function debug($message) {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('MPAI WP-CLI DEBUG: ' . $message);
+                }
+            }
+        };
     }
 
 
@@ -40,6 +117,18 @@ class MPAI_WP_CLI_Executor {
      * @return array Execution result
      */
     public function execute($command, $parameters = []) {
+        $this->logger->info('Executing WP-CLI command: ' . $command);
+        
+        // Validate the command for security
+        if (!$this->validate_command($command)) {
+            $this->logger->error('Command security validation failed: ' . $command);
+            return [
+                'success' => false,
+                'output' => 'Command could not be executed for security reasons. Please try a different command.',
+                'error' => 'Command blocked by security validation',
+                'command' => $command
+            ];
+        }
         try {
             error_log('MPAI WP-CLI: Executing command: ' . $command);
             
@@ -48,13 +137,30 @@ class MPAI_WP_CLI_Executor {
                 $this->timeout = min((int)$parameters['timeout'], 60); // Max 60 seconds
             }
             
-            // Parse command type
+            // Parse command type and route to appropriate handler
+            $command = trim($command);
+            $this->logger->info('Analyzing command type: ' . $command);
+            
             if ($this->is_php_version_query($command)) {
+                $this->logger->info('Handling as PHP version query');
                 return $this->get_php_version_info();
             } elseif ($this->is_plugin_query($command)) {
+                $this->logger->info('Handling as plugin command');
                 return $this->handle_plugin_command($command, $parameters);
             } elseif ($this->is_system_query($command)) {
+                $this->logger->info('Handling as system command');
                 return $this->handle_system_command($command, $parameters);
+            }
+            
+            $this->logger->info('Handling as general WP-CLI command');
+            
+            // Check for special cases that should bypass WP-CLI
+            if (trim($command) === 'wp plugin list' || 
+                trim($command) === 'wp plugins' || 
+                trim($command) === 'plugins') {
+                // Special handling for plugin list command
+                $this->logger->info('Using direct WordPress API for plugin list');
+                return $this->get_plugin_list($parameters);
             }
             
             // Build the command
@@ -131,7 +237,11 @@ class MPAI_WP_CLI_Executor {
      * @return bool Whether command is a plugin query
      */
     private function is_plugin_query($command) {
-        return (strpos($command, 'wp plugin') === 0 || strpos($command, 'plugin') === 0);
+        $command = strtolower(trim($command));
+        return (strpos($command, 'wp plugin') === 0 || 
+                strpos($command, 'plugin') === 0 || 
+                strpos($command, 'plugins') === 0 || 
+                strpos($command, 'wp plugins') === 0);
     }
 
     /**
@@ -145,7 +255,16 @@ class MPAI_WP_CLI_Executor {
             '/wp\s+system-info/i',
             '/wp\s+site\s+health/i',
             '/wp\s+core\s+version/i',
-            '/wp\s+db\s+info/i'
+            '/wp\s+core\s+/i',         // Any core command
+            '/wp\s+db\s+info/i',
+            '/wp\s+db\s+/i',           // Any db command
+            '/wp\s+option\s+/i',       // Any option command
+            '/wp\s+post\s+/i',         // Any post command
+            '/wp\s+user\s+/i',         // Any user command
+            '/wp\s+theme\s+/i',        // Any theme command
+            '/wp\s+config\s+/i',       // Any config command
+            '/wp\s+maintenance-mode/i',
+            '/wp\s+cron\s+/i'          // Any cron command
         ];
         
         foreach ($system_patterns as $pattern) {
@@ -211,19 +330,30 @@ class MPAI_WP_CLI_Executor {
      * @return array Execution result
      */
     private function handle_plugin_command($command, $parameters = []) {
-        error_log('MPAI WP-CLI: Handling plugin command: ' . $command);
+        $this->logger->info('Handling plugin command: ' . $command);
         
-        // Ensure WP-CLI functions are available
-        if (preg_match('/wp\s+plugin\s+list/i', $command) || preg_match('/plugin\s+list/i', $command)) {
+        // Normalize command for better pattern matching
+        $command_lower = strtolower(trim($command));
+        
+        // Handle plugin list commands
+        if (preg_match('/wp\s+plugins?\s+list/i', $command) || 
+            $command_lower === 'plugins' || 
+            $command_lower === 'wp plugins' || 
+            $command_lower === 'plugin list' || 
+            $command_lower === 'wp plugin list') {
+            $this->logger->info('Getting plugin list');
             return $this->get_plugin_list($parameters);
         }
         
-        // For plugin status or info
-        if (preg_match('/wp\s+plugin\s+(status|info)/i', $command) || preg_match('/plugin\s+(status|info)/i', $command)) {
+        // Handle plugin status or info commands
+        if (preg_match('/wp\s+plugins?\s+(status|info)/i', $command) || 
+            preg_match('/plugins?\s+(status|info)/i', $command)) {
+            $this->logger->info('Getting plugin status');
             return $this->get_plugin_status($parameters);
         }
         
         // For other plugin commands, execute directly
+        $this->logger->info('Executing plugin command directly: ' . $command);
         $wp_cli_command = $this->build_command($command, $parameters);
         $output = [];
         $return_var = 0;
@@ -244,7 +374,7 @@ class MPAI_WP_CLI_Executor {
      * @return array Plugin list
      */
     private function get_plugin_list($parameters) {
-        $this->logger->info('Getting plugin list');
+        $this->logger->info('Getting plugin list from WordPress API');
         
         // Ensure plugin functions are available
         if (!function_exists('get_plugins')) {
@@ -257,30 +387,65 @@ class MPAI_WP_CLI_Executor {
         
         // Filter by status if requested
         $status = isset($parameters['status']) ? $parameters['status'] : null;
+        $this->logger->info('Status filter: ' . ($status ?: 'none'));
         
-        // Format output
-        $output = "Plugin Name\tStatus\tVersion\n";
-        
-        foreach ($all_plugins as $plugin_path => $plugin_data) {
-            $plugin_status = in_array($plugin_path, $active_plugins) ? 'active' : 'inactive';
-            
-            // Skip if status filter doesn't match
-            if ($status && $plugin_status !== $status) {
-                continue;
+        // Format output - headers in the same format as WP-CLI would output
+        if (isset($parameters['format']) && $parameters['format'] === 'json') {
+            // Format as JSON array
+            $plugins_json = [];
+            foreach ($all_plugins as $plugin_path => $plugin_data) {
+                $plugin_status = in_array($plugin_path, $active_plugins) ? 'active' : 'inactive';
+                
+                // Skip if status filter doesn't match
+                if ($status && $plugin_status !== $status) {
+                    continue;
+                }
+                
+                $plugins_json[] = [
+                    'name' => $plugin_data['Name'],
+                    'status' => $plugin_status,
+                    'version' => $plugin_data['Version'],
+                    'description' => $plugin_data['Description'],
+                    'path' => $plugin_path
+                ];
             }
             
-            $name = $plugin_data['Name'];
-            $version = $plugin_data['Version'];
+            return [
+                'success' => true,
+                'output' => json_encode($plugins_json),
+                'command' => 'wp plugin list',
+                'plugins' => $all_plugins
+            ];
+        } else {
+            // Format as text table 
+            $output = "NAME\tSTATUS\tVERSION\tDESCRIPTION\n";
             
-            $output .= "$name\t$plugin_status\t$version\n";
+            foreach ($all_plugins as $plugin_path => $plugin_data) {
+                $plugin_status = in_array($plugin_path, $active_plugins) ? 'active' : 'inactive';
+                
+                // Skip if status filter doesn't match
+                if ($status && $plugin_status !== $status) {
+                    continue;
+                }
+                
+                $name = $plugin_data['Name'];
+                $version = $plugin_data['Version'];
+                // Make sure description is a string before using strlen
+                $description = isset($plugin_data['Description']) && is_string($plugin_data['Description']) ? 
+                               (strlen($plugin_data['Description']) > 40 ? 
+                               substr($plugin_data['Description'], 0, 40) . '...' : 
+                               $plugin_data['Description']) : '';
+                
+                $output .= "$name\t$plugin_status\t$version\t$description\n";
+            }
+            
+            return [
+                'success' => true,
+                'output' => $output,
+                'command' => 'wp plugin list',
+                'plugins' => $all_plugins
+            ];
         }
-        
-        return [
-            'success' => true,
-            'output' => $output,
-            'command' => 'wp plugin list',
-            'plugins' => $all_plugins
-        ];
     }
 
     /**
@@ -515,19 +680,93 @@ class MPAI_WP_CLI_Executor {
     }
 
     /**
+     * Check if a command contains dangerous patterns
+     *
+     * @param string $command WP-CLI command
+     * @return bool Whether command is safe (true = safe, false = dangerous)
+     */
+    private function validate_command($command) {
+        // Sanitize the command
+        $sanitized_command = $this->sanitize_command($command);
+        
+        // Check against blacklist of dangerous patterns
+        foreach ($this->dangerous_patterns as $pattern) {
+            if (preg_match($pattern, $sanitized_command)) {
+                $this->logger->error('Dangerous command pattern detected: ' . $pattern);
+                return false;
+            }
+        }
+        
+        // Additional basic safety check
+        if (strpos($sanitized_command, 'wp ') !== 0 && strpos($sanitized_command, 'php ') !== 0) {
+            $this->logger->error('Command must start with wp or php: ' . $sanitized_command);
+            return false;
+        }
+        
+        // Command passed all security checks
+        return true;
+    }
+    
+    /**
+     * Sanitize a command to prevent injection
+     *
+     * @param string $command Command to sanitize
+     * @return string Sanitized command
+     */
+    private function sanitize_command($command) {
+        // Remove potentially dangerous characters
+        $command = preg_replace('/[;&|><]/', '', $command);
+        
+        // Ensure command starts with 'wp ' or 'php '
+        if (strpos($command, 'wp ') !== 0 && strpos($command, 'php ') !== 0) {
+            $command = 'wp ' . $command;
+        }
+        
+        return trim($command);
+    }
+    
+    /**
      * Format command output based on requested format
      *
-     * @param array $output Command output lines
+     * @param array|string $output Command output lines
      * @param string $format Desired output format
      * @return mixed Formatted output
      */
     private function format_output($output, $format) {
+        // Improved type safety handling
+        $this->logger->info('Formatting output of type: ' . gettype($output));
+        
+        // Handle different input types
+        if (is_string($output)) {
+            // If it's already a string and format is text, return directly
+            if ($format === 'text') {
+                return $output;
+            }
+            
+            // For other formats, convert to array
+            $output = [$output];
+        } elseif (is_object($output)) {
+            // Convert objects to JSON strings
+            $this->logger->info('Converting object to JSON');
+            return json_encode($output);
+        } elseif (!is_array($output)) {
+            // For any other type, convert to string then array
+            $this->logger->warning('Converting unexpected type to string: ' . gettype($output));
+            $output = [(string)$output];
+        }
+        
+        // Now $output should be an array
+        if (empty($output)) {
+            return '';
+        }
+        
         $raw_output = implode("\n", $output);
         
         switch ($format) {
             case 'json':
+                // Try to parse the output as JSON
                 $decoded = json_decode($raw_output, true);
-                if ($decoded && json_last_error() === JSON_ERROR_NONE) {
+                if ($decoded !== null && json_last_error() === JSON_ERROR_NONE) {
                     return $decoded;
                 }
                 // Fall through to array if not valid JSON

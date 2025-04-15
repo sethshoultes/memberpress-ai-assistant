@@ -425,30 +425,67 @@ class MPAI_Chat {
             $plugin_keywords = ['recently installed', 'recently activated', 'plugin history', 'plugin log', 'plugin activity', 'when was plugin', 'installed recently', 'activated recently', 'what plugins', 'which plugins'];
             $inject_plugin_guidance = false;
             
-            // Special handling for wp plugin list command - ADDED April 2, 2025 for debugging
-            $is_wp_plugin_list_command = (strtolower(trim($message)) === 'wp plugin list');
+            // Special handling for common WP-CLI commands - enhanced for reliability
+            $lower_message = strtolower(trim($message));
+            $is_wp_plugin_list_command = ($lower_message === 'wp plugin list' || 
+                                          $lower_message === 'list plugins' || 
+                                          $lower_message === 'show plugins' || 
+                                          $lower_message === 'plugins');
+                                          
             if ($is_wp_plugin_list_command) {
-                error_log('MPAI Chat: CRITICAL! Detected direct wp plugin list command - ' . date('H:i:s'));
+                error_log('MPAI Chat: CRITICAL! Detected plugin list command: "' . $message . '" - ' . date('H:i:s'));
                 
                 // DIRECT EXECUTION - Skip AI entirely for this specific command
                 try {
                     error_log('MPAI Chat: Attempting direct execution of wp plugin list...');
                     
-                    // Initialize the context manager if needed
-                    if (!isset($this->context_manager)) {
-                        $this->context_manager = new MPAI_Context_Manager();
-                        error_log('MPAI Chat: Created new Context Manager for direct execution');
+                    // Use a try/catch with multiple fallback methods
+                    try {
+                        // First attempt: Use context manager
+                        error_log('MPAI Chat: Using primary method (context manager)');
+                        if (!isset($this->context_manager)) {
+                            $this->context_manager = new MPAI_Context_Manager();
+                            error_log('MPAI Chat: Created new Context Manager for direct execution');
+                        }
+                        
+                        // Execute the command directly
+                        $plugin_list_output = $this->context_manager->run_command('wp plugin list');
+                        error_log('MPAI Chat: Direct execution successful, output length: ' . strlen($plugin_list_output));
+                    } catch (Throwable $e) {
+                        // Second attempt: Use WP-CLI executor directly
+                        error_log('MPAI Chat: Primary method failed, using fallback method (direct executor)');
+                        
+                        // Include necessary files
+                        $executor_file = MPAI_PLUGIN_DIR . '/includes/commands/class-mpai-wp-cli-executor.php';
+                        if (file_exists($executor_file)) {
+                            require_once $executor_file;
+                            
+                            if (class_exists('MPAI_WP_CLI_Executor')) {
+                                $executor = new MPAI_WP_CLI_Executor();
+                                $result = $executor->execute('wp plugin list');
+                                
+                                if (is_array($result) && isset($result['output'])) {
+                                    $plugin_list_output = $result['output'];
+                                } else {
+                                    $plugin_list_output = is_string($result) ? $result : json_encode($result);
+                                }
+                                
+                                error_log('MPAI Chat: Fallback executor successful, output length: ' . strlen($plugin_list_output));
+                            } else {
+                                // Third attempt: Use direct WordPress API
+                                error_log('MPAI Chat: Second method failed, using final fallback (WordPress API)');
+                                $plugin_list_output = $this->get_direct_plugin_list();
+                            }
+                        } else {
+                            // Third attempt: Use direct WordPress API
+                            error_log('MPAI Chat: Second method failed, using final fallback (WordPress API)');
+                            $plugin_list_output = $this->get_direct_plugin_list();
+                        }
                     }
                     
-                    // Execute the command directly
-                    $plugin_list_output = $this->context_manager->run_command('wp plugin list');
-                    error_log('MPAI Chat: Direct execution successful, output length: ' . strlen($plugin_list_output));
-                    
-                    // Create a response with the direct output, using a clean code block format
-                    // that's easier for our JavaScript to parse
-                    
                     // Extract actual table data if it's a JSON string
-                    if (strpos($plugin_list_output, '{"success":true,"tool":"wp_cli","command_type":"plugin_list","result":') === 0) {
+                    if (is_string($plugin_list_output) && 
+                        strpos($plugin_list_output, '{"success":true,"tool":"wp_cli","command_type":"plugin_list","result":') === 0) {
                         error_log('MPAI Chat: Plugin list is in JSON format, extracting tabular data');
                         try {
                             $decoded = json_decode($plugin_list_output, true);
@@ -456,8 +493,17 @@ class MPAI_Chat {
                                 $plugin_list_output = $decoded['result'];
                                 error_log('MPAI Chat: Successfully extracted tabular data from plugin list JSON');
                             }
-                        } catch (Exception $e) {
+                        } catch (Throwable $e) {
                             error_log('MPAI Chat: Error decoding plugin list JSON: ' . $e->getMessage());
+                        }
+                    }
+                    
+                    // Ensure plugin_list_output is a string
+                    if (!is_string($plugin_list_output)) {
+                        if (is_array($plugin_list_output) || is_object($plugin_list_output)) {
+                            $plugin_list_output = json_encode($plugin_list_output, JSON_PRETTY_PRINT);
+                        } else {
+                            $plugin_list_output = (string)$plugin_list_output;
                         }
                     }
                     
@@ -475,8 +521,9 @@ class MPAI_Chat {
                         'success' => true,
                         'message' => $ai_response,
                     );
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     error_log('MPAI Chat: Error in direct execution of wp plugin list: ' . $e->getMessage());
+                    error_log('MPAI Chat: ' . $e->getTraceAsString());
                     // Continue with normal processing if direct execution fails
                 }
             }
@@ -1673,5 +1720,46 @@ class MPAI_Chat {
             
             return false;
         }
+    }
+    
+    /**
+     * Get plugin list directly from WordPress API
+     * This is a fallback method for wp plugin list command
+     * 
+     * @return string Formatted plugin list
+     */
+    private function get_direct_plugin_list() {
+        error_log('MPAI Chat: Getting direct plugin list using WordPress functions');
+        
+        // Ensure plugin functions are available
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        
+        // Get plugins
+        $all_plugins = get_plugins();
+        $active_plugins = get_option('active_plugins');
+        
+        // Format output as a table
+        $output = "NAME\tSTATUS\tVERSION\tDESCRIPTION\n";
+        
+        foreach ($all_plugins as $plugin_path => $plugin_data) {
+            $plugin_status = in_array($plugin_path, $active_plugins) ? 'active' : 'inactive';
+            $name = isset($plugin_data['Name']) ? $plugin_data['Name'] : 'Unknown';
+            $version = isset($plugin_data['Version']) ? $plugin_data['Version'] : '';
+            
+            // Make sure description is a string before using strlen
+            $description = '';
+            if (isset($plugin_data['Description']) && is_string($plugin_data['Description'])) {
+                $description = (strlen($plugin_data['Description']) > 40) ? 
+                               substr($plugin_data['Description'], 0, 40) . '...' : 
+                               $plugin_data['Description'];
+            }
+            
+            $output .= "$name\t$plugin_status\t$version\t$description\n";
+        }
+        
+        error_log('MPAI Chat: Direct plugin list fetched, ' . count($all_plugins) . ' plugins found');
+        return $output;
     }
 }

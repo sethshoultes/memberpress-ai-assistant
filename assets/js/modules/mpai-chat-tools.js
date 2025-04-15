@@ -344,7 +344,8 @@ var MPAI_Tools = (function($) {
                 }
                 break;
                 
-            case 'wp_cli':
+            case 'wpcli':
+            case 'wp_cli': // For backward compatibility
             case 'runCommand':
                 // Format tabular data
                 if (result && typeof result === 'object' && result.result && result.command_type) {

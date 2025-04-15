@@ -244,70 +244,13 @@ class MemberPress_AI_Assistant {
      * Check if MemberPress is active, store status and display upsell notice if needed
      */
     public function check_memberpress() {
-        // Start with the assumption that MemberPress is not active
-        $has_memberpress = false;
+        // Use the centralized MemberPress detection system
+        $has_memberpress = mpai_is_memberpress_active();
         
-        // Check for MemberPress class definitions
-        $classes_to_check = [
-            'MeprAppCtrl',
-            'MeprOptions',
-            'MeprUser',
-            'MeprProduct',
-            'MeprTransaction',
-            'MeprSubscription'
-        ];
-        
-        foreach ($classes_to_check as $class) {
-            if (class_exists($class)) {
-                $has_memberpress = true;
-                break;
-            }
-        }
-        
-        // Check for MemberPress constants
-        $constants_to_check = [
-            'MEPR_VERSION',
-            'MEPR_PLUGIN_NAME',
-            'MEPR_PATH',
-            'MEPR_URL'
-        ];
-        
-        foreach ($constants_to_check as $constant) {
-            if (defined($constant)) {
-                $has_memberpress = true;
-                break;
-            }
-        }
-        
-        // Check if the MemberPress plugin is active (the most reliable method)
-        if (function_exists('is_plugin_active') && is_plugin_active('memberpress/memberpress.php')) {
-            $has_memberpress = true;
-        }
-        
-        // Check if MemberPress API exists
-        if (class_exists('MeprApi') || class_exists('MeprRestApi')) {
-            $has_memberpress = true;
-        }
-        
-        // Also check if the 'memberpress' admin menu exists as a last resort
-        global $menu;
-        if (is_array($menu)) {
-            foreach ($menu as $item) {
-                if (isset($item[2]) && $item[2] === 'memberpress') {
-                    $has_memberpress = true;
-                    break;
-                }
-            }
-        }
-        
-        // Special case for settings page - Always force MemberPress detection on settings page
-        // This ensures the MemberPress menu is highlighted and visible
-        global $pagenow;
-        if (($pagenow === 'admin.php' && isset($_GET['page']) && $_GET['page'] === 'memberpress-ai-assistant-settings') ||
-            (isset($plugin_page) && $plugin_page === 'memberpress-ai-assistant-settings')) {
-            $has_memberpress = true;
-            error_log('MPAI DEBUG: Force-enabling MemberPress detection on settings page for menu highlight');
-        }
+        // Log that we're using the unified detection system
+        mpai_log_debug('Using unified MemberPress detection system', [
+            'detection_info' => mpai_memberpress_detector()->get_detection_info()
+        ]);
         
         // Store the result
         $this->has_memberpress = $has_memberpress;
@@ -407,6 +350,14 @@ class MemberPress_AI_Assistant {
         // Load State Validation System for state consistency
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-state-validator.php';
         
+        // Load Unified Logger System with high priority
+        require_once MPAI_PLUGIN_DIR . 'includes/logging/load.php';
+        
+        // Load Unified Detection System for MemberPress
+        require_once MPAI_PLUGIN_DIR . 'includes/detection/load.php';
+        
+        // Unified Settings Manager has been removed
+        
         // API Integration Classes
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-openai.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-anthropic.php';
@@ -437,9 +388,12 @@ class MemberPress_AI_Assistant {
             require_once MPAI_PLUGIN_DIR . 'test/integration/register-integration-tests.php';
         }
         
-        // Load the new diagnostics system
+        // Load the unified diagnostics system
         if (is_admin()) {
             // Load the Diagnostics Page class
+            // Load the unified diagnostics system
+            
+            // Load diagnostics page
             require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics-page.php';
             new MPAI_Diagnostics_Page();
             
@@ -1956,8 +1910,7 @@ class MemberPress_AI_Assistant {
             // Register AJAX handler for running edge case tests
             add_action('wp_ajax_mpai_run_edge_case_tests', array($this, 'run_edge_case_tests_ajax'));
         }
-    }
-    
+    }   
     private function set_default_options() {
         // Load the settings class to get centralized definitions
         if (!class_exists('MPAI_Settings')) {

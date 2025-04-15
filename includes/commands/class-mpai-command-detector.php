@@ -18,10 +18,46 @@ if ( ! defined( 'ABSPATH' ) ) {
 class MPAI_Command_Detector {
 
     /**
+     * Logger instance
+     *
+     * @var object
+     */
+    private $logger;
+
+    /**
      * Constructor
      */
     public function __construct() {
-        // No initialization needed
+        // Initialize logger
+        $this->logger = $this->get_default_logger();
+    }
+    
+    /**
+     * Get default logger
+     * 
+     * @return object Default logger
+     */
+    private function get_default_logger() {
+        // Create a simple logger class
+        return new class() {
+            public function info($message) {
+                error_log('MPAI DETECTOR: ' . $message);
+            }
+            
+            public function warning($message) {
+                error_log('MPAI DETECTOR WARNING: ' . $message);
+            }
+            
+            public function error($message) {
+                error_log('MPAI DETECTOR ERROR: ' . $message);
+            }
+            
+            public function debug($message) {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('MPAI DETECTOR DEBUG: ' . $message);
+                }
+            }
+        };
     }
 
 
@@ -74,7 +110,7 @@ class MPAI_Command_Detector {
         }
         
         // No command detected
-        error_log('MPAI DETECTOR WARNING: No command detected from message');
+        $this->logger->warning('No command detected from message');
         return false;
     }
 
