@@ -52,24 +52,24 @@ switch ($action) {
     case 'test_error_recovery':
         // Include the test script
         $test_file = dirname(dirname(__FILE__)) . '/test/test-error-recovery.php';
-        error_log('MPAI: Loading Error Recovery test file from: ' . $test_file);
+        mpai_log_debug('Loading Error Recovery test file from: ' . $test_file, 'error-recovery');
         
         try {
             // Load required dependencies first
             if (!class_exists('MPAI_Plugin_Logger')) {
                 $plugin_logger_file = dirname(__FILE__) . '/class-mpai-plugin-logger.php';
-                error_log('MPAI: Loading Plugin Logger from: ' . $plugin_logger_file);
+                mpai_log_debug('Loading Plugin Logger from: ' . $plugin_logger_file, 'error-recovery');
                 if (file_exists($plugin_logger_file)) {
                     require_once($plugin_logger_file);
-                    error_log('MPAI: Plugin Logger loaded successfully');
+                    mpai_log_debug('Plugin Logger loaded successfully', 'error-recovery');
                 } else {
-                    error_log('MPAI: Plugin Logger file not found');
+                    mpai_log_error('Plugin Logger file not found', 'error-recovery');
                 }
             }
     
             // Make sure the plugin logger function exists
             if (!function_exists('mpai_init_plugin_logger')) {
-                error_log('MPAI: mpai_init_plugin_logger function not found, creating locally');
+                mpai_log_warning('mpai_init_plugin_logger function not found, creating locally', 'error-recovery');
                 function mpai_init_plugin_logger() {
                     return MPAI_Plugin_Logger::get_instance();
                 }
@@ -78,10 +78,10 @@ switch ($action) {
             // Load error recovery class
             if (!class_exists('MPAI_Error_Recovery')) {
                 $error_recovery_file = dirname(__FILE__) . '/class-mpai-error-recovery.php';
-                error_log('MPAI: Loading Error Recovery from: ' . $error_recovery_file);
+                mpai_log_debug('Loading Error Recovery from: ' . $error_recovery_file, 'error-recovery');
                 if (file_exists($error_recovery_file)) {
                     require_once($error_recovery_file);
-                    error_log('MPAI: Error Recovery loaded successfully');
+                    mpai_log_debug('Error Recovery loaded successfully', 'error-recovery');
                 } else {
                     throw new Exception('Error Recovery file not found at: ' . $error_recovery_file);
                 }
@@ -89,7 +89,7 @@ switch ($action) {
             
             // Make sure the error recovery function exists
             if (!function_exists('mpai_init_error_recovery')) {
-                error_log('MPAI: mpai_init_error_recovery function not found, creating locally');
+                mpai_log_warning('mpai_init_error_recovery function not found, creating locally', 'error-recovery');
                 function mpai_init_error_recovery() {
                     return MPAI_Error_Recovery::get_instance();
                 }
@@ -97,14 +97,14 @@ switch ($action) {
             
             // Now load the test script
             if (file_exists($test_file)) {
-                error_log('MPAI: Loading Error Recovery test file');
+                mpai_log_debug('Loading Error Recovery test file', 'error-recovery');
                 require_once($test_file);
                 
                 if (function_exists('mpai_test_error_recovery')) {
-                    error_log('MPAI: Running Error Recovery tests');
+                    mpai_log_info('Running Error Recovery tests', 'error-recovery');
                     $results = mpai_test_error_recovery();
                     echo json_encode($results);
-                    error_log('MPAI: Error Recovery tests completed');
+                    mpai_log_info('Error Recovery tests completed', 'error-recovery');
                 } else {
                     throw new Exception('Error recovery test function not found after loading test file');
                 }
@@ -112,7 +112,11 @@ switch ($action) {
                 throw new Exception('Error recovery test file not found at: ' . $test_file);
             }
         } catch (Exception $e) {
-            error_log('MPAI: Error in Error Recovery test: ' . $e->getMessage());
+            mpai_log_error('Error in Error Recovery test: ' . $e->getMessage(), 'error-recovery', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             echo json_encode([
                 'success' => false,
                 'message' => 'Error running tests: ' . $e->getMessage(),
@@ -274,8 +278,8 @@ switch ($action) {
         if (isset($_POST['wp_api_action']) && $_POST['wp_api_action'] === 'create_post') {
             // Handle post creation request
             try {
-                error_log('MPAI Direct AJAX: Handling wp_api_action = create_post request');
-                error_log('MPAI Direct AJAX: Request data: ' . print_r($_POST, true));
+                mpai_log_debug('Handling wp_api_action = create_post request', 'direct-ajax');
+                mpai_log_debug('Request data: ' . print_r($_POST, true), 'direct-ajax');
                 
                 // Get the post data - check different parameter keys to be flexible
                 $title = '';
@@ -296,13 +300,13 @@ switch ($action) {
                 $content_type = isset($_POST['content_type']) ? sanitize_text_field($_POST['content_type']) : 'post';
                 $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'draft';
                 
-                error_log('MPAI Direct AJAX: Creating ' . $content_type . ' with direct parameters');
-                error_log('MPAI Direct AJAX: Title: ' . $title);
-                error_log('MPAI Direct AJAX: Content length: ' . strlen($content));
+                mpai_log_debug('Creating ' . $content_type . ' with direct parameters', 'direct-ajax');
+                mpai_log_debug('Title: ' . $title, 'direct-ajax');
+                mpai_log_debug('Content length: ' . strlen($content), 'direct-ajax');
                 
                 // Check if this is XML content that needs parsing
                 if (empty($title) && (strpos($content, '<wp-post>') !== false && strpos($content, '</wp-post>') !== false)) {
-                    error_log('MPAI Direct AJAX: Content appears to be XML, attempting to parse');
+                    mpai_log_debug('Content appears to be XML, attempting to parse', 'direct-ajax');
                     
                     // Load the XML parser class if needed
                     if (!class_exists('MPAI_XML_Content_Parser')) {
@@ -323,7 +327,7 @@ switch ($action) {
                         $excerpt = isset($parsed_data['excerpt']) ? $parsed_data['excerpt'] : '';
                         $status = isset($parsed_data['status']) ? $parsed_data['status'] : 'draft';
                     } else {
-                        error_log('MPAI Direct AJAX: Failed to parse XML content, using raw content');
+                        mpai_log_warning('Failed to parse XML content, using raw content', 'direct-ajax');
                     }
                 }
                 
@@ -334,7 +338,7 @@ switch ($action) {
                 
                 // Ensure content has Gutenberg blocks if needed
                 if (!empty($content) && strpos($content, '<!-- wp:') === false) {
-                    error_log('MPAI Direct AJAX: Content does not have Gutenberg blocks, adding paragraph formatting');
+                    mpai_log_debug('Content does not have Gutenberg blocks, adding paragraph formatting', 'direct-ajax');
                     
                     // Simple conversion to paragraphs
                     $paragraphs = explode("\n\n", $content);
@@ -363,13 +367,13 @@ switch ($action) {
                     'post_excerpt' => $excerpt,
                 );
                 
-                error_log('MPAI Direct AJAX: Inserting post with data: ' . print_r($post_data, true));
+                mpai_log_debug('Inserting post with data: ' . print_r($post_data, true), 'direct-ajax');
                 
                 // Insert the post
                 $post_id = wp_insert_post($post_data);
                 
                 if (is_wp_error($post_id)) {
-                    error_log('MPAI Direct AJAX: Error inserting post: ' . $post_id->get_error_message());
+                    mpai_log_error('Error inserting post: ' . $post_id->get_error_message(), 'direct-ajax', array('error_details' => $post_id->get_error_data()));
                     echo json_encode(array(
                         'success' => false,
                         'message' => 'Failed to create post: ' . $post_id->get_error_message(),
@@ -382,9 +386,9 @@ switch ($action) {
                 $post_url = get_permalink($post_id);
                 $edit_url = get_edit_post_link($post_id, 'raw');
                 
-                error_log('MPAI Direct AJAX: Post created successfully with ID: ' . $post_id);
-                error_log('MPAI Direct AJAX: Post URL: ' . $post_url);
-                error_log('MPAI Direct AJAX: Edit URL: ' . $edit_url);
+                mpai_log_info('Post created successfully with ID: ' . $post_id, 'direct-ajax');
+                mpai_log_debug('Post URL: ' . $post_url, 'direct-ajax');
+                mpai_log_debug('Edit URL: ' . $edit_url, 'direct-ajax');
                 
                 echo json_encode(array(
                     'success' => true,
@@ -395,8 +399,11 @@ switch ($action) {
                 ));
                 
             } catch (Exception $e) {
-                error_log('MPAI Direct AJAX: Exception creating post: ' . $e->getMessage());
-                error_log('MPAI Direct AJAX: Exception trace: ' . $e->getTraceAsString());
+                mpai_log_error('Exception creating post: ' . $e->getMessage(), 'direct-ajax', array(
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ));
                 echo json_encode(array(
                     'success' => false,
                     'message' => 'Error creating post: ' . $e->getMessage()

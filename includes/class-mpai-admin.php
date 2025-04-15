@@ -41,12 +41,12 @@ class MPAI_Admin {
      */
     public function save_logger_settings() {
         // Log the request
-        error_log('MPAI: save_logger_settings called');
-        error_log('MPAI: POST data: ' . json_encode($_POST));
+        mpai_log_debug('save_logger_settings called', 'admin');
+        mpai_log_debug('POST data: ' . json_encode($_POST), 'admin');
         
         // Basic nonce check but don't error out if it fails (for testing)
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_settings_nonce')) {
-            error_log('MPAI: Nonce check failed in save_logger_settings, but continuing anyway');
+            mpai_log_warning('Nonce check failed in save_logger_settings, but continuing anyway', 'admin');
         }
         
         // Save the settings
@@ -78,21 +78,21 @@ class MPAI_Admin {
      * Also handles plugin logs directly for maximum compatibility
      */
     public function simple_test() {
-        error_log('MPAI: Simple test AJAX handler called');
-        error_log('MPAI: POST data: ' . json_encode($_POST));
+        mpai_log_debug('Simple test AJAX handler called', 'admin');
+        mpai_log_debug('POST data: ' . json_encode($_POST), 'admin');
         
         // Special handling for plugin logs requests
         if (isset($_POST['is_plugin_logs']) && $_POST['is_plugin_logs'] === 'true') {
-            error_log('MPAI: Simple test handler detected plugin_logs request');
+            mpai_log_debug('Simple test handler detected plugin_logs request', 'admin');
             
             try {
                 // Load the plugin logger class
                 if (!function_exists('mpai_init_plugin_logger')) {
                     if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
                         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
-                        error_log('MPAI: Loaded plugin logger class in simple test handler');
+                        mpai_log_debug('Loaded plugin logger class in simple test handler', 'admin');
                     } else {
-                        error_log('MPAI: Plugin logger class not found in simple test handler');
+                        mpai_log_error('Plugin logger class not found in simple test handler', 'admin');
                         wp_send_json_success([
                             'tool' => 'plugin_logs',
                             'error' => 'Plugin logger class not found',

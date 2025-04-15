@@ -415,7 +415,7 @@ class MPAI_MemberPress_API {
         
         // If API fails, try direct database query as fallback
         if (is_wp_error($new_members) || !is_array($new_members)) {
-            error_log('MPAI: Failed to get new members from API, using database fallback');
+            mpai_log_warning('Failed to get new members from API, using database fallback', 'memberpress-api');
             
             global $wpdb;
             
