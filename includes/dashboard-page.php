@@ -151,9 +151,9 @@ if (!$global_consent && is_user_logged_in()) {
                 </div>
                 <div class="mpai-status-item">
                     <span class="mpai-status-label"><?php _e('MemberPress:', 'memberpress-ai-assistant'); ?></span>
-                    <span class="mpai-status-value mpai-status-<?php echo class_exists('MeprAppCtrl') ? 'good' : 'bad'; ?>">
+                    <span class="mpai-status-value mpai-status-<?php echo mpai_is_memberpress_active() ? 'good' : 'bad'; ?>">
                         <?php 
-                        if (class_exists('MeprAppCtrl')) {
+                        if (mpai_is_memberpress_active()) {
                             echo '<span class="dashicons dashicons-yes-alt"></span> ' . esc_html__('Detected', 'memberpress-ai-assistant');
                         } else {
                             echo '<span class="dashicons dashicons-warning"></span> ' . esc_html__('Not Detected', 'memberpress-ai-assistant');

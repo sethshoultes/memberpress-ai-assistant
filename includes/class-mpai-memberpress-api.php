@@ -47,7 +47,8 @@ class MPAI_MemberPress_API {
      * @return bool
      */
     public function is_memberpress_available() {
-        return $this->has_memberpress;
+        // Always use the central detection system
+        return mpai_is_memberpress_active();
     }
     
     /**
@@ -87,8 +88,8 @@ class MPAI_MemberPress_API {
      * @return array|WP_Error The data response or error
      */
     public function request($endpoint, $method = 'GET', $data = array()) {
-        // Check if MemberPress is available
-        if (!$this->has_memberpress) {
+        // Check if MemberPress is available using the central detector
+        if (!mpai_is_memberpress_active()) {
             return $this->get_upsell_response($endpoint);
         }
         
@@ -1078,6 +1079,9 @@ class MPAI_MemberPress_API {
                 if (function_exists('get_plugins')) {
                     get_plugins('', true); // Use true to refresh the cache
                 }
+                
+                // Clear MemberPress detection cache
+                mpai_memberpress_detector()->clear_detection_cache();
             }
             
             // Initialize with default values
@@ -1092,8 +1096,8 @@ class MPAI_MemberPress_API {
                 'subscription_count' => 0
             );
             
-            // Check if MemberPress is active
-            if (!class_exists('MeprAppCtrl')) {
+            // Check if MemberPress is active using the central detector
+            if (!mpai_is_memberpress_active($force_refresh)) {
                 // MemberPress is not active
                 $summary['status'] = 'MemberPress is not active';
                 return $summary;

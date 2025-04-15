@@ -1209,8 +1209,8 @@ class MPAI_SDK_Integration {
 	private function execute_memberpress_operation($args) {
 		$command = $args['command'];
 		
-		// Check if MemberPress is active
-		if (!class_exists('MeprOptions')) {
+		// Check if MemberPress is active using central detector
+		if (!mpai_is_memberpress_active()) {
 			return "Error: MemberPress is not active or not installed.";
 		}
 		

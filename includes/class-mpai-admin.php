@@ -333,7 +333,7 @@ class MPAI_Admin {
                     'plugin_version' => MPAI_VERSION,
                     'wp_version' => get_bloginfo('version'),
                     'api_configured' => !empty(get_option('mpai_api_key')),
-                    'memberpress_active' => class_exists('MeprAppCtrl')
+                    'memberpress_active' => mpai_is_memberpress_active()
                 )
             )
         );
