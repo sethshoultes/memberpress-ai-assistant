@@ -106,7 +106,7 @@ class MPAI_Admin {
                 // Initialize the plugin logger
                 $plugin_logger = mpai_init_plugin_logger();
                 if (!$plugin_logger) {
-                    error_log('MPAI: Failed to initialize plugin logger in simple test handler');
+                    mpai_log_error('Failed to initialize plugin logger in simple test handler', 'admin');
                     wp_send_json_success([
                         'tool' => 'plugin_logs',
                         'error' => 'Failed to initialize plugin logger',
@@ -121,7 +121,7 @@ class MPAI_Admin {
                 $days = isset($_POST['days']) && is_numeric($_POST['days']) ? intval($_POST['days']) : 30;
                 $limit = isset($_POST['limit']) && is_numeric($_POST['limit']) ? intval($_POST['limit']) : 25;
                 
-                error_log("MPAI: Simple test handler getting plugin logs with action={$action}, days={$days}");
+                mpai_log_debug("Simple test handler getting plugin logs with action={$action}, days={$days}", 'admin');
                 
                 // Get the logs
                 $args = [
@@ -133,7 +133,7 @@ class MPAI_Admin {
                 ];
                 
                 $logs = $plugin_logger->get_logs($args);
-                error_log('MPAI: Simple test handler found ' . count($logs) . ' plugin logs');
+                mpai_log_debug('Simple test handler found ' . count($logs) . ' plugin logs', 'admin');
                 
                 // Count logs by action
                 $summary = [
@@ -169,7 +169,11 @@ class MPAI_Admin {
                 ]);
                 
             } catch (Exception $e) {
-                error_log('MPAI: Exception in simple test handler processing plugin logs: ' . $e->getMessage());
+                mpai_log_error('Exception in simple test handler processing plugin logs: ' . $e->getMessage(), 'admin', array(
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ));
                 wp_send_json_success([
                     'tool' => 'plugin_logs',
                     'error' => 'Error processing plugin logs: ' . $e->getMessage(),
@@ -199,7 +203,7 @@ class MPAI_Admin {
         );
         
         // Log all POST data for debugging
-        error_log('MPAI: debug_nonce called with POST data: ' . json_encode($_POST));
+        mpai_log_debug('debug_nonce called with POST data: ' . json_encode($_POST), 'admin');
         
         // Check if nonce is present
         if (!isset($_POST['mpai_nonce'])) {
@@ -210,15 +214,15 @@ class MPAI_Admin {
         
         // Get and sanitize the nonce
         $nonce = sanitize_text_field($_POST['mpai_nonce']);
-        error_log('MPAI: Nonce provided to debug_nonce: ' . substr($nonce, 0, 5) . '... (length: ' . strlen($nonce) . ')');
+        mpai_log_debug('Nonce provided to debug_nonce: ' . substr($nonce, 0, 5) . '... (length: ' . strlen($nonce) . ')', 'admin');
         
         // Verify the nonce manually without terminating
         $verified = wp_verify_nonce($nonce, 'mpai_nonce');
-        error_log('MPAI: Manual nonce verification result in debug_nonce: ' . ($verified ? 'Success ('.$verified.')' : 'Failed (0)'));
+        mpai_log_debug('Manual nonce verification result in debug_nonce: ' . ($verified ? 'Success ('.$verified.')' : 'Failed (0)'), 'admin');
         
         // Also try verifying with another action string to see if that works
         $verified_alt = wp_verify_nonce($nonce, 'mpai_settings_nonce');
-        error_log('MPAI: Alternative nonce verification result using mpai_settings_nonce: ' . ($verified_alt ? 'Success ('.$verified_alt.')' : 'Failed (0)'));
+        mpai_log_debug('Alternative nonce verification result using mpai_settings_nonce: ' . ($verified_alt ? 'Success ('.$verified_alt.')' : 'Failed (0)'), 'admin');
         
         // Add debug info to response
         $response['data']['nonce_provided'] = $nonce;
@@ -253,7 +257,7 @@ class MPAI_Admin {
             $response['message'] = 'Nonce verification failed for both standard and alternate actions';
         }
         
-        error_log('MPAI: debug_nonce responding with: ' . json_encode($response));
+        mpai_log_debug('debug_nonce responding with: ' . json_encode($response), 'admin');
         
         echo wp_json_encode($response);
         wp_die();
@@ -345,7 +349,7 @@ class MPAI_Admin {
     public function process_chat() {
         try {
             // Log the AJAX request for debugging
-            error_log('MPAI: AJAX process_chat called. POST data: ' . json_encode($_POST));
+            mpai_log_debug('AJAX process_chat called. POST data: ' . json_encode($_POST), 'admin');
             
             // Check nonce - changed to check_ajax_referer which handles error automatically
             check_ajax_referer('mpai_nonce', 'mpai_nonce');
@@ -460,11 +464,11 @@ class MPAI_Admin {
         $command = sanitize_text_field($_POST['command']);
         $context = isset($_POST['context']) ? sanitize_textarea_field($_POST['context']) : '';
         
-        error_log('MPAI: Running command: ' . $command);
+        mpai_log_info('Running command: ' . $command, 'admin');
 
         // SPECIAL CASE: Handle wp post list and wp user list commands directly to prevent 500 errors
         if ($command === 'wp post list' || $command === 'wp user list') {
-            error_log('MPAI: Special handling for ' . $command . ' command');
+            mpai_log_debug('Special handling for ' . $command . ' command', 'admin');
             
             try {
                 // Create custom output without going through validation
@@ -516,7 +520,11 @@ class MPAI_Admin {
                     return;
                 }
             } catch (Exception $e) {
-                error_log('MPAI: Error in special case handling: ' . $e->getMessage());
+                mpai_log_error('Error in special case handling: ' . $e->getMessage(), 'admin', array(
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ));
                 // Continue with normal processing if special case fails
             }
         }
@@ -547,7 +555,7 @@ class MPAI_Admin {
                     }
                 }
             } catch (Exception $e) {
-                error_log('MPAI: Error parsing output as JSON: ' . $e->getMessage());
+                mpai_log_warning('Error parsing output as JSON: ' . $e->getMessage(), 'admin');
             }
             
             // For frontend compatibility, use the existing JSON if formatted, or wrap in a tool-like response
@@ -557,12 +565,12 @@ class MPAI_Admin {
                 'result' => $output
             );
             
-            error_log('MPAI: Command execution successful. Output length: ' . strlen($output));
+            mpai_log_debug('Command execution successful. Output length: ' . strlen($output), 'admin');
             
             // Log what we're doing to help with debugging
-            error_log('MPAI: Is JSON formatted: ' . ($is_json_formatted ? 'Yes' : 'No'));
+            mpai_log_debug('Is JSON formatted: ' . ($is_json_formatted ? 'Yes' : 'No'), 'admin');
             if ($is_json_formatted) {
-                error_log('MPAI: Parsed output: ' . print_r($parsed_output, true));
+                mpai_log_debug('Parsed output: ' . print_r($parsed_output, true), 'admin');
             }
             
             // THIS IS THE CRITICAL CHANGE:
@@ -587,7 +595,11 @@ class MPAI_Admin {
                 ));
             }
         } catch (Exception $e) {
-            error_log('MPAI: Error executing command: ' . $e->getMessage());
+            mpai_log_error('Error executing command: ' . $e->getMessage(), 'admin', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             wp_send_json_error('Error executing command: ' . $e->getMessage());
         }
     }
@@ -597,12 +609,12 @@ class MPAI_Admin {
      */
     public function execute_tool() {
         // Log the tool execution request for debugging
-        error_log('MPAI: execute_tool called. POST data: ' . json_encode($_POST));
+        mpai_log_debug('execute_tool called. POST data: ' . json_encode($_POST), 'admin');
         
         // IMMEDIATE HANDLING FOR PLUGIN LOGS: Check if this is a plugin_logs request before doing anything else
         if ((isset($_POST['tool_request']) && strpos($_POST['tool_request'], 'plugin_logs') !== false) || 
             (isset($_POST['is_plugin_logs']) && $_POST['is_plugin_logs'])) {
-            error_log('MPAI: Detected plugin_logs in request, using fast-path handling');
+            mpai_log_debug('Detected plugin_logs in request, using fast-path handling', 'admin');
             
             try {
                 // Make sure we have class-mpai-plugin-logger.php
@@ -1336,15 +1348,15 @@ class MPAI_Admin {
     public function update_message() {
         try {
             // Log the request for debugging
-            error_log('MPAI: update_message called');
-            error_log('MPAI: update_message POST data keys: ' . json_encode(array_keys($_POST)));
-            error_log('MPAI: update_message POST nonce value: ' . (isset($_POST['nonce']) ? substr($_POST['nonce'], 0, 6) . '...' : 'NOT SET'));
+            mpai_log_debug('update_message called', 'admin');
+            mpai_log_debug('update_message POST data keys: ' . json_encode(array_keys($_POST)), 'admin');
+            mpai_log_debug('update_message POST nonce value: ' . (isset($_POST['nonce']) ? substr($_POST['nonce'], 0, 6) . '...' : 'NOT SET'), 'admin');
             
             // Skip nonce check in debug mode or if bypass_nonce is set
             $verify_nonce = true;
             if (isset($_POST['bypass_nonce']) && $_POST['bypass_nonce'] === 'true') {
                 $verify_nonce = false;
-                error_log('MPAI: update_message - Bypassing nonce check due to bypass_nonce parameter');
+                mpai_log_warning('update_message - Bypassing nonce check due to bypass_nonce parameter', 'admin');
             }
             
             if ($verify_nonce) {
@@ -1353,26 +1365,30 @@ class MPAI_Admin {
                     if (isset($_POST['nonce'])) {
                         $nonce = sanitize_text_field($_POST['nonce']);
                         $verified = wp_verify_nonce($nonce, 'mpai_nonce');
-                        error_log('MPAI: update_message - Manual nonce verification result: ' . ($verified ? 'Success ('.$verified.')' : 'Failed (0)'));
+                        mpai_log_debug('update_message - Manual nonce verification result: ' . ($verified ? 'Success ('.$verified.')' : 'Failed (0)'), 'admin');
                     } else {
-                        error_log('MPAI: update_message - No nonce provided in POST data');
+                        mpai_log_warning('update_message - No nonce provided in POST data', 'admin');
                     }
                     
                     // Now check with check_ajax_referer (will die on failure)
-                    error_log('MPAI: update_message - About to check nonce with check_ajax_referer');
+                    mpai_log_debug('update_message - About to check nonce with check_ajax_referer', 'admin');
                     check_ajax_referer('mpai_nonce', 'nonce', true);
-                    error_log('MPAI: update_message - Nonce check passed!');
+                    mpai_log_debug('update_message - Nonce check passed!', 'admin');
                 } catch (Exception $e) {
-                    error_log('MPAI: update_message - Exception during nonce verification: ' . $e->getMessage());
+                    mpai_log_error('update_message - Exception during nonce verification: ' . $e->getMessage(), 'admin', array(
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ));
                     // Don't die, continue processing for debugging
                 }
             } else {
-                error_log('MPAI: update_message - SKIPPING NONCE CHECK FOR DEBUGGING');
+                mpai_log_warning('update_message - SKIPPING NONCE CHECK FOR DEBUGGING', 'admin');
             }
             
             // Check for required fields
             if (empty($_POST['message_id'])) {
-                error_log('MPAI: update_message - message_id is required');
+                mpai_log_warning('update_message - message_id is required', 'admin');
                 wp_send_json_error('Message ID is required');
                 return;
             }
@@ -1387,14 +1403,14 @@ class MPAI_Admin {
             
             // Check if message_id is numeric (refers to database ID)
             if (!is_numeric($message_id)) {
-                error_log('MPAI: update_message - Invalid message ID format: ' . $message_id);
+                mpai_log_warning('update_message - Invalid message ID format: ' . $message_id, 'admin');
                 wp_send_json_error('Invalid message ID format');
                 return;
             }
             
             // Get content
             if (empty($_POST['content'])) {
-                error_log('MPAI: update_message - content is required');
+                mpai_log_warning('update_message - content is required', 'admin');
                 wp_send_json_error('Content is required');
                 return;
             }
@@ -1415,7 +1431,7 @@ class MPAI_Admin {
             );
             
             if (!$message_data) {
-                error_log('MPAI: update_message - Message not found: ' . $message_id);
+                mpai_log_warning('update_message - Message not found: ' . $message_id, 'admin');
                 wp_send_json_error('Message not found');
                 return;
             }
@@ -1428,19 +1444,23 @@ class MPAI_Admin {
             );
             
             if ($result === false) {
-                error_log('MPAI: update_message - Error updating message: ' . $wpdb->last_error);
+                mpai_log_error('update_message - Error updating message: ' . $wpdb->last_error, 'admin');
                 wp_send_json_error('Error updating message: ' . $wpdb->last_error);
                 return;
             }
             
-            error_log('MPAI: update_message - Successfully updated message ' . $message_id);
+            mpai_log_info('update_message - Successfully updated message ' . $message_id, 'admin');
             wp_send_json_success(array(
                 'message' => 'Message updated successfully',
                 'message_id' => $message_id
             ));
             
         } catch (Exception $e) {
-            error_log('MPAI: Exception in update_message: ' . $e->getMessage());
+            mpai_log_error('Exception in update_message: ' . $e->getMessage(), 'admin', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             wp_send_json_error('Error updating message: ' . $e->getMessage());
         }
     }
