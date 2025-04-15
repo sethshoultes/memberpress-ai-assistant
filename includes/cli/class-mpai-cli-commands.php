@@ -587,22 +587,11 @@ class MPAI_CLI_Commands extends WP_CLI_Command {
         mpai_cli_log("Checking MemberPress installation...");
         $has_memberpress = false;
         
-        // Check for MemberPress class definitions
-        $classes_to_check = [
-            'MeprAppCtrl',
-            'MeprOptions',
-            'MeprUser',
-            'MeprProduct',
-            'MeprTransaction',
-            'MeprSubscription'
-        ];
+        // Check if MemberPress is active using central detector
+        $has_memberpress = mpai_is_memberpress_active();
         
-        foreach ($classes_to_check as $class) {
-            if (class_exists($class)) {
-                mpai_cli_log("Found MemberPress class: " . $class, 'debug');
-                $has_memberpress = true;
-                break;
-            }
+        if ($has_memberpress) {
+            mpai_cli_log("MemberPress detected using central detection system", 'debug');
         }
         
         if ($has_memberpress) {

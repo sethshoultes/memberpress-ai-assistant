@@ -32,7 +32,7 @@
 
 ## Scooby Snack Protocol (Historical - Documentation Archived)
 
-The Scooby Snack Protocol has been archived. All Scooby Snack documents are now located in the archive directory at `/docs/archive/_snacks/`. 
+The Scooby Snack Protocol has been archived. All Scooby Snack documents are now located in the archive directory at `/docs/archive/_snacks/`.
 
 New investigation results should be documented using the standard documentation format in the appropriate system directory under `/docs/current/`.
 
@@ -41,7 +41,7 @@ For historical reference on the Scooby Snack system, see `/docs/archive/_snacks/
 
 ## Code Style
 - Follow WordPress PHP Coding Standards
-- Class naming: 
+- Class naming:
   - `MPAI_PascalCase` for AI Assistant classes
   - `MeprPascalCase` for MemberPress core classes
 - File naming: matches class names with `class-mpai-*.php` format
@@ -180,6 +180,7 @@ For historical reference on the Scooby Snack system, see `/docs/archive/_snacks/
 - **Tool call format variations**: Both AI providers have slightly different formats
 - **Avoid tight coupling** with MemberPress core to maintain compatibility across versions
 - **Use the logging system consistently** to ensure debugging information is available
+- **Do not retain backwards compatibility** always remove old code or place in an archive directory there are no users that need to be supported
 
 ### Complex Component Documentation
 - **API Router**: Handles both OpenAI and Anthropic formats; see implementation details in `class-mpai-api-router.php`

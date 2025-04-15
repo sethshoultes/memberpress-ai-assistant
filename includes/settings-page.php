@@ -278,7 +278,7 @@ if (!array_key_exists($current_tab, $tabs)) {
 
 // Set up admin menu highlight
 global $parent_file, $submenu_file;
-$parent_file = class_exists('MeprAppCtrl') ? 'memberpress' : 'memberpress-ai-assistant';
+$parent_file = mpai_is_memberpress_active() ? 'memberpress' : 'memberpress-ai-assistant';
 $submenu_file = 'memberpress-ai-assistant-settings';
 
 // Debug settings submission

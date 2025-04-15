@@ -201,7 +201,7 @@ switch ($action) {
             // This is a create_membership request
             try {
                 // Check if MemberPress is active
-                if (!class_exists('MeprOptions')) {
+                if (!mpai_is_memberpress_active()) {
                     echo json_encode(array(
                         'success' => false,
                         'message' => 'MemberPress is not active'
@@ -649,7 +649,7 @@ switch ($action) {
         // API key is now optional - direct database access is used
         
         // Check if MemberPress is active
-        if (!class_exists('MeprAppCtrl')) {
+        if (!mpai_is_memberpress_active()) {
             echo json_encode(array(
                 'success' => false,
                 'data' => 'MemberPress plugin is not active'
