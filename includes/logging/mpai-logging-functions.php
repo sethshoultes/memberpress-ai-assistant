@@ -39,7 +39,20 @@ function mpai_get_logger( $key = null ) {
  * @param string $logger  Optional logger key to use.
  * @return void
  */
-function mpai_log_emergency( $message, array $context = array(), $logger = null ) {
+function mpai_log_emergency( $message, $context = [], $logger = null ) {
+    // Handle case where parameters are passed in the wrong order
+    // (logger as second parameter and context as third)
+    if (is_string($context) && (is_array($logger) || is_null($logger))) {
+        $temp = $context;
+        $context = $logger ?: []; // Use logger as context, or empty array if null
+        $logger = $temp;
+    }
+    
+    // Ensure context is always an array
+    if (!is_array($context)) {
+        $context = [];
+    }
+    
     mpai_logger_manager()->emergency( $message, $context, $logger );
 }
 
@@ -51,7 +64,20 @@ function mpai_log_emergency( $message, array $context = array(), $logger = null 
  * @param string $logger  Optional logger key to use.
  * @return void
  */
-function mpai_log_alert( $message, array $context = array(), $logger = null ) {
+function mpai_log_alert( $message, $context = [], $logger = null ) {
+    // Handle case where parameters are passed in the wrong order
+    // (logger as second parameter and context as third)
+    if (is_string($context) && (is_array($logger) || is_null($logger))) {
+        $temp = $context;
+        $context = $logger ?: []; // Use logger as context, or empty array if null
+        $logger = $temp;
+    }
+    
+    // Ensure context is always an array
+    if (!is_array($context)) {
+        $context = [];
+    }
+    
     mpai_logger_manager()->alert( $message, $context, $logger );
 }
 
@@ -63,7 +89,20 @@ function mpai_log_alert( $message, array $context = array(), $logger = null ) {
  * @param string $logger  Optional logger key to use.
  * @return void
  */
-function mpai_log_critical( $message, array $context = array(), $logger = null ) {
+function mpai_log_critical( $message, $context = [], $logger = null ) {
+    // Handle case where parameters are passed in the wrong order
+    // (logger as second parameter and context as third)
+    if (is_string($context) && (is_array($logger) || is_null($logger))) {
+        $temp = $context;
+        $context = $logger ?: []; // Use logger as context, or empty array if null
+        $logger = $temp;
+    }
+    
+    // Ensure context is always an array
+    if (!is_array($context)) {
+        $context = [];
+    }
+    
     mpai_logger_manager()->critical( $message, $context, $logger );
 }
 
@@ -75,7 +114,20 @@ function mpai_log_critical( $message, array $context = array(), $logger = null )
  * @param string $logger  Optional logger key to use.
  * @return void
  */
-function mpai_log_error( $message, array $context = array(), $logger = null ) {
+function mpai_log_error( $message, $context = [], $logger = null ) {
+    // Handle case where parameters are passed in the wrong order
+    // (logger as second parameter and context as third)
+    if (is_string($context) && (is_array($logger) || is_null($logger))) {
+        $temp = $context;
+        $context = $logger ?: []; // Use logger as context, or empty array if null
+        $logger = $temp;
+    }
+    
+    // Ensure context is always an array
+    if (!is_array($context)) {
+        $context = [];
+    }
+    
     mpai_logger_manager()->error( $message, $context, $logger );
 }
 
@@ -87,7 +139,20 @@ function mpai_log_error( $message, array $context = array(), $logger = null ) {
  * @param string $logger  Optional logger key to use.
  * @return void
  */
-function mpai_log_warning( $message, array $context = array(), $logger = null ) {
+function mpai_log_warning( $message, $context = [], $logger = null ) {
+    // Handle case where parameters are passed in the wrong order
+    // (logger as second parameter and context as third)
+    if (is_string($context) && (is_array($logger) || is_null($logger))) {
+        $temp = $context;
+        $context = $logger ?: []; // Use logger as context, or empty array if null
+        $logger = $temp;
+    }
+    
+    // Ensure context is always an array
+    if (!is_array($context)) {
+        $context = [];
+    }
+    
     mpai_logger_manager()->warning( $message, $context, $logger );
 }
 
@@ -99,7 +164,20 @@ function mpai_log_warning( $message, array $context = array(), $logger = null ) 
  * @param string $logger  Optional logger key to use.
  * @return void
  */
-function mpai_log_notice( $message, array $context = array(), $logger = null ) {
+function mpai_log_notice( $message, $context = [], $logger = null ) {
+    // Handle case where parameters are passed in the wrong order
+    // (logger as second parameter and context as third)
+    if (is_string($context) && (is_array($logger) || is_null($logger))) {
+        $temp = $context;
+        $context = $logger ?: []; // Use logger as context, or empty array if null
+        $logger = $temp;
+    }
+    
+    // Ensure context is always an array
+    if (!is_array($context)) {
+        $context = [];
+    }
+    
     mpai_logger_manager()->notice( $message, $context, $logger );
 }
 
@@ -111,7 +189,20 @@ function mpai_log_notice( $message, array $context = array(), $logger = null ) {
  * @param string $logger  Optional logger key to use.
  * @return void
  */
-function mpai_log_info( $message, array $context = array(), $logger = null ) {
+function mpai_log_info( $message, $context = [], $logger = null ) {
+    // Handle case where parameters are passed in the wrong order
+    // (logger as second parameter and context as third)
+    if (is_string($context) && (is_array($logger) || is_null($logger))) {
+        $temp = $context;
+        $context = $logger ?: []; // Use logger as context, or empty array if null
+        $logger = $temp;
+    }
+    
+    // Ensure context is always an array
+    if (!is_array($context)) {
+        $context = [];
+    }
+    
     mpai_logger_manager()->info( $message, $context, $logger );
 }
 
@@ -123,7 +214,20 @@ function mpai_log_info( $message, array $context = array(), $logger = null ) {
  * @param string $logger  Optional logger key to use.
  * @return void
  */
-function mpai_log_debug( $message, array $context = array(), $logger = null ) {
+function mpai_log_debug( $message, $context = [], $logger = null ) {
+    // Handle case where parameters are passed in the wrong order
+    // (logger as second parameter and context as third)
+    if (is_string($context) && (is_array($logger) || is_null($logger))) {
+        $temp = $context;
+        $context = $logger ?: []; // Use logger as context, or empty array if null
+        $logger = $temp;
+    }
+    
+    // Ensure context is always an array
+    if (!is_array($context)) {
+        $context = [];
+    }
+    
     mpai_logger_manager()->debug( $message, $context, $logger );
 }
 
@@ -136,7 +240,20 @@ function mpai_log_debug( $message, array $context = array(), $logger = null ) {
  * @param string $logger  Optional logger key to use.
  * @return void
  */
-function mpai_log( $level, $message, array $context = array(), $logger = null ) {
+function mpai_log( $level, $message, $context = [], $logger = null ) {
+    // Handle case where parameters are passed in the wrong order
+    // (logger as second parameter and context as third)
+    if (is_string($context) && (is_array($logger) || is_null($logger))) {
+        $temp = $context;
+        $context = $logger ?: []; // Use logger as context, or empty array if null
+        $logger = $temp;
+    }
+    
+    // Ensure context is always an array
+    if (!is_array($context)) {
+        $context = [];
+    }
+    
     mpai_logger_manager()->log( $level, $message, $context, $logger );
 }
 
@@ -227,7 +344,7 @@ function mpai_register_logging_settings_init() {
 function mpai_log_level_field_callback() {
     $log_level = get_option( 'mpai_log_level', 'info' );
     
-    $levels = array(
+    $levels = [
         'emergency' => __( 'Emergency', 'memberpress-ai-assistant' ),
         'alert'     => __( 'Alert', 'memberpress-ai-assistant' ),
         'critical'  => __( 'Critical', 'memberpress-ai-assistant' ),
@@ -236,7 +353,7 @@ function mpai_log_level_field_callback() {
         'notice'    => __( 'Notice', 'memberpress-ai-assistant' ),
         'info'      => __( 'Info', 'memberpress-ai-assistant' ),
         'debug'     => __( 'Debug', 'memberpress-ai-assistant' ),
-    );
+    ];
     
     echo '<select name="mpai_log_level" id="mpai_log_level">';
     
@@ -336,15 +453,15 @@ function mpai_get_backtrace( $limit = 5, $get_args = false, $skip_first = true )
     $formatted = array();
     
     foreach ( $backtrace as $trace ) {
-        $entry = array(
+        $entry = [
             'function' => isset( $trace['class'] ) ? $trace['class'] . $trace['type'] . $trace['function'] : $trace['function'],
             'file'     => isset( $trace['file'] ) ? $trace['file'] : 'unknown',
             'line'     => isset( $trace['line'] ) ? $trace['line'] : 0,
-        );
+        ];
         
         if ( $get_args && isset( $trace['args'] ) ) {
             // Format arguments safely
-            $args = array();
+            $args = [];
             
             foreach ( $trace['args'] as $arg ) {
                 if ( is_object( $arg ) ) {
@@ -375,7 +492,7 @@ function mpai_get_backtrace( $limit = 5, $get_args = false, $skip_first = true )
  * @return array Modified plugin action links.
  */
 function mpai_add_logs_action_link( $links, $plugin_file ) {
-    if ( plugin_basename( MPAI_PLUGIN_FILE ) === $plugin_file ) {
+    if ( MPAI_PLUGIN_BASENAME === $plugin_file ) {
         $logs_url = admin_url( 'admin.php?page=mpai-settings&tab=logging' );
         $logs_link = sprintf( '<a href="%s">%s</a>', esc_url( $logs_url ), esc_html__( 'View Logs', 'memberpress-ai-assistant' ) );
         
@@ -394,7 +511,7 @@ function mpai_register_logs_rest_routes() {
     register_rest_route(
         'mpai/v1',
         '/logs',
-        array(
+        [
             'methods'             => 'GET',
             'callback'            => 'mpai_rest_get_logs',
             'permission_callback' => function() {
@@ -446,13 +563,13 @@ function mpai_register_logs_rest_routes() {
                     'default'           => 'DESC',
                 ),
             ),
-        )
+        ]
     );
     
     register_rest_route(
         'mpai/v1',
         '/logs/count',
-        array(
+        [
             'methods'             => 'GET',
             'callback'            => 'mpai_rest_count_logs',
             'permission_callback' => function() {
@@ -484,26 +601,26 @@ function mpai_register_logs_rest_routes() {
                     'sanitize_callback' => 'sanitize_text_field',
                 ),
             ),
-        )
+        ]
     );
     
     register_rest_route(
         'mpai/v1',
         '/logs/cleanup',
-        array(
+        [
             'methods'             => 'POST',
             'callback'            => 'mpai_rest_cleanup_logs',
             'permission_callback' => function() {
                 return current_user_can( 'manage_options' );
             },
-            'args'                => array(
-                'days' => array(
+            'args'                => [
+                'days' => [
                     'type'              => 'integer',
                     'sanitize_callback' => 'absint',
                     'default'           => 30,
-                ),
-            ),
-        )
+                ],
+            ],
+        ]
     );
 }
 
@@ -518,15 +635,15 @@ function mpai_rest_get_logs( $request ) {
     
     if ( ! $logger || ! method_exists( $logger, 'get_logs' ) ) {
         return new WP_REST_Response(
-            array(
+            [
                 'success' => false,
                 'message' => __( 'Database logger is not enabled', 'memberpress-ai-assistant' ),
-            ),
+            ],
             404
         );
     }
     
-    $args = array(
+    $args = [
         'level'       => $request->get_param( 'level' ),
         'component'   => $request->get_param( 'component' ),
         'date_from'   => $request->get_param( 'date_from' ),
@@ -537,15 +654,15 @@ function mpai_rest_get_logs( $request ) {
         'offset'      => $request->get_param( 'offset' ),
         'orderby'     => $request->get_param( 'orderby' ),
         'order'       => $request->get_param( 'order' ),
-    );
+    ];
     
     $logs = $logger->get_logs( $args );
     
     return new WP_REST_Response(
-        array(
+        [
             'success' => true,
             'logs'    => $logs,
-        ),
+        ],
         200
     );
 }
@@ -561,30 +678,30 @@ function mpai_rest_count_logs( $request ) {
     
     if ( ! $logger || ! method_exists( $logger, 'count_logs' ) ) {
         return new WP_REST_Response(
-            array(
+            [
                 'success' => false,
                 'message' => __( 'Database logger is not enabled', 'memberpress-ai-assistant' ),
-            ),
+            ],
             404
         );
     }
     
-    $args = array(
+    $args = [
         'level'       => $request->get_param( 'level' ),
         'component'   => $request->get_param( 'component' ),
         'date_from'   => $request->get_param( 'date_from' ),
         'date_to'     => $request->get_param( 'date_to' ),
         'user_id'     => $request->get_param( 'user_id' ),
         'search'      => $request->get_param( 'search' ),
-    );
+    ];
     
     $count = $logger->count_logs( $args );
     
     return new WP_REST_Response(
-        array(
+        [
             'success' => true,
             'count'   => $count,
-        ),
+        ],
         200
     );
 }
@@ -600,10 +717,10 @@ function mpai_rest_cleanup_logs( $request ) {
     
     if ( ! $logger || ! method_exists( $logger, 'delete_old_logs' ) ) {
         return new WP_REST_Response(
-            array(
+            [
                 'success' => false,
                 'message' => __( 'Database logger is not enabled', 'memberpress-ai-assistant' ),
-            ),
+            ],
             404
         );
     }
@@ -612,10 +729,10 @@ function mpai_rest_cleanup_logs( $request ) {
     $deleted = $logger->delete_old_logs( $days );
     
     return new WP_REST_Response(
-        array(
+        [
             'success' => true,
             'deleted' => $deleted,
-        ),
+        ],
         200
     );
 }

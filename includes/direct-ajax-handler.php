@@ -934,8 +934,11 @@ switch ($action) {
             ));
             
         } catch (Exception $e) {
-            error_log('MPAI Direct AJAX: Exception creating post: ' . $e->getMessage());
-            error_log('MPAI Direct AJAX: Exception trace: ' . $e->getTraceAsString());
+            mpai_log_error('Exception creating post: ' . $e->getMessage(), 'direct-ajax', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             echo json_encode(array(
                 'success' => false,
                 'message' => 'Error creating post: ' . $e->getMessage()
@@ -946,27 +949,27 @@ switch ($action) {
     case 'test_agent_discovery':
         // Test agent discovery functionality
         try {
-            error_log('MPAI Phase One Test: Agent Discovery test started');
+            mpai_log_info('Phase One Test: Agent Discovery test started', 'direct-ajax');
             
             // Check if the agent interface is loaded
             if (!interface_exists('MPAI_Agent')) {
                 $interface_path = dirname(__FILE__) . '/agents/interfaces/interface-mpai-agent.php';
-                error_log('MPAI Phase One Test: Loading agent interface from: ' . $interface_path);
+                mpai_log_debug('Phase One Test: Loading agent interface from: ' . $interface_path, 'direct-ajax');
                 if (file_exists($interface_path)) {
                     require_once($interface_path);
                 } else {
-                    error_log('MPAI Phase One Test: Agent interface file not found at: ' . $interface_path);
+                    mpai_log_warning('Phase One Test: Agent interface file not found at: ' . $interface_path, 'direct-ajax');
                 }
             }
             
             // Check if the base agent class is loaded
             if (!class_exists('MPAI_Base_Agent')) {
                 $base_agent_path = dirname(__FILE__) . '/agents/class-mpai-base-agent.php';
-                error_log('MPAI Phase One Test: Loading base agent from: ' . $base_agent_path);
+                mpai_log_debug('Phase One Test: Loading base agent from: ' . $base_agent_path, 'direct-ajax');
                 if (file_exists($base_agent_path)) {
                     require_once($base_agent_path);
                 } else {
-                    error_log('MPAI Phase One Test: Base agent file not found at: ' . $base_agent_path);
+                    mpai_log_warning('Phase One Test: Base agent file not found at: ' . $base_agent_path, 'direct-ajax');
                 }
             }
             
@@ -984,15 +987,15 @@ switch ($action) {
             // Check if the agent orchestrator class exists
             if (!class_exists('MPAI_Agent_Orchestrator')) {
                 $orchestrator_path = dirname(__FILE__) . '/agents/class-mpai-agent-orchestrator.php';
-                error_log('MPAI Phase One Test: Loading orchestrator from: ' . $orchestrator_path);
+                mpai_log_debug('Phase One Test: Loading orchestrator from: ' . $orchestrator_path, 'direct-ajax');
                 if (file_exists($orchestrator_path)) {
                     require_once($orchestrator_path);
                 } else {
-                    error_log('MPAI Phase One Test: Orchestrator file not found at: ' . $orchestrator_path);
+                    mpai_log_error('Phase One Test: Orchestrator file not found at: ' . $orchestrator_path, 'direct-ajax');
                     throw new Exception('Agent orchestrator class file not found');
                 }
             } else {
-                error_log('MPAI Phase One Test: Orchestrator class already loaded');
+                mpai_log_debug('Phase One Test: Orchestrator class already loaded', 'direct-ajax');
             }
             
             // Create an orchestrator instance
@@ -1002,7 +1005,7 @@ switch ($action) {
             $agents = $orchestrator->get_available_agents();
             
             // Log detailed information
-            error_log('MPAI Phase One Test: Agent Discovery - Found ' . count($agents) . ' agents');
+            mpai_log_info('Phase One Test: Agent Discovery - Found ' . count($agents) . ' agents', 'direct-ajax');
             
             // Prepare result data
             $result = array(
@@ -1020,7 +1023,7 @@ switch ($action) {
                     'capabilities' => isset($agent_info['capabilities']) ? $agent_info['capabilities'] : array()
                 );
                 
-                error_log('MPAI Phase One Test: Agent Discovery - Found agent: ' . $agent_id . ' (' . (isset($agent_info['name']) ? $agent_info['name'] : 'Unknown') . ')');
+                mpai_log_debug('Phase One Test: Agent Discovery - Found agent: ' . $agent_id . ' (' . (isset($agent_info['name']) ? $agent_info['name'] : 'Unknown') . ')', 'direct-ajax');
             }
             
             echo json_encode(array(
@@ -1029,7 +1032,11 @@ switch ($action) {
             ));
             
         } catch (Exception $e) {
-            error_log('MPAI Phase One Test: Agent Discovery Error - ' . $e->getMessage());
+            mpai_log_error('Phase One Test: Agent Discovery Error - ' . $e->getMessage(), 'direct-ajax', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             echo json_encode(array(
                 'success' => false,
                 'message' => 'Agent Discovery Test failed: ' . $e->getMessage()
@@ -1074,8 +1081,8 @@ switch ($action) {
                 'available_tools' => array_keys($all_tools)
             );
             
-            error_log('MPAI Phase One Test: Tool Lazy Loading - Definition registered: ' . ($tool_found ? 'YES' : 'NO'));
-            error_log('MPAI Phase One Test: Tool Lazy Loading - Tool loaded on demand: ' . ($tool_loaded ? 'YES' : 'NO'));
+            mpai_log_debug('Phase One Test: Tool Lazy Loading - Definition registered: ' . ($tool_found ? 'YES' : 'NO'), 'direct-ajax');
+            mpai_log_debug('Phase One Test: Tool Lazy Loading - Tool loaded on demand: ' . ($tool_loaded ? 'YES' : 'NO'), 'direct-ajax');
             
             echo json_encode(array(
                 'success' => true,
@@ -1083,7 +1090,11 @@ switch ($action) {
             ));
             
         } catch (Exception $e) {
-            error_log('MPAI Phase One Test: Tool Lazy Loading Error - ' . $e->getMessage());
+            mpai_log_error('Phase One Test: Tool Lazy Loading Error - ' . $e->getMessage(), 'direct-ajax', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             echo json_encode(array(
                 'success' => false,
                 'message' => 'Tool Lazy Loading Test failed: ' . $e->getMessage()
@@ -1094,7 +1105,7 @@ switch ($action) {
     case 'test_response_cache':
         // Test response cache functionality
         try {
-            error_log('MPAI Phase One Test: Response Cache test started');
+            mpai_log_info('Phase One Test: Response Cache test started', 'direct-ajax');
             
             // Check if the response cache class exists
             if (!class_exists('MPAI_Response_Cache')) {
@@ -1107,9 +1118,9 @@ switch ($action) {
                 
                 $loaded = false;
                 foreach ($possible_paths as $path) {
-                    error_log('MPAI Phase One Test: Checking for Response Cache at: ' . $path);
+                    mpai_log_debug('Phase One Test: Checking for Response Cache at: ' . $path, 'direct-ajax');
                     if (file_exists($path)) {
-                        error_log('MPAI Phase One Test: Loading Response Cache from: ' . $path);
+                        mpai_log_debug('Phase One Test: Loading Response Cache from: ' . $path, 'direct-ajax');
                         require_once($path);
                         $loaded = true;
                         break;
@@ -1120,7 +1131,7 @@ switch ($action) {
                     throw new Exception('Response cache class file not found. Searched paths: ' . implode(', ', $possible_paths));
                 }
             } else {
-                error_log('MPAI Phase One Test: Response Cache class already loaded');
+                mpai_log_debug('Phase One Test: Response Cache class already loaded', 'direct-ajax');
             }
             
             // Create a cache instance
@@ -1158,9 +1169,9 @@ switch ($action) {
                 'retrieved_data' => $retrieved_data
             );
             
-            error_log('MPAI Phase One Test: Response Cache - Set: ' . ($set_result ? 'SUCCESS' : 'FAILED'));
-            error_log('MPAI Phase One Test: Response Cache - Get: ' . ($retrieved_data !== null ? 'SUCCESS' : 'FAILED'));
-            error_log('MPAI Phase One Test: Response Cache - Delete: ' . ($after_delete === null ? 'SUCCESS' : 'FAILED'));
+            mpai_log_debug('Phase One Test: Response Cache - Set: ' . ($set_result ? 'SUCCESS' : 'FAILED'), 'direct-ajax');
+            mpai_log_debug('Phase One Test: Response Cache - Get: ' . ($retrieved_data !== null ? 'SUCCESS' : 'FAILED'), 'direct-ajax');
+            mpai_log_debug('Phase One Test: Response Cache - Delete: ' . ($after_delete === null ? 'SUCCESS' : 'FAILED'), 'direct-ajax');
             
             echo json_encode(array(
                 'success' => true,
@@ -1168,7 +1179,11 @@ switch ($action) {
             ));
             
         } catch (Exception $e) {
-            error_log('MPAI Phase One Test: Response Cache Error - ' . $e->getMessage());
+            mpai_log_error('Phase One Test: Response Cache Error - ' . $e->getMessage(), 'direct-ajax', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             echo json_encode(array(
                 'success' => false,
                 'message' => 'Response Cache Test failed: ' . $e->getMessage()
@@ -1179,7 +1194,7 @@ switch ($action) {
     case 'test_agent_messaging':
         // Test agent messaging functionality
         try {
-            error_log('MPAI Phase One Test: Agent Messaging test started');
+            mpai_log_info('Phase One Test: Agent Messaging test started', 'direct-ajax');
             
             // Check if the agent message class exists
             if (!class_exists('MPAI_Agent_Message')) {
@@ -1192,9 +1207,9 @@ switch ($action) {
                 
                 $loaded = false;
                 foreach ($possible_paths as $path) {
-                    error_log('MPAI Phase One Test: Checking for Agent Message at: ' . $path);
+                    mpai_log_debug('Phase One Test: Checking for Agent Message at: ' . $path, 'direct-ajax');
                     if (file_exists($path)) {
-                        error_log('MPAI Phase One Test: Loading Agent Message from: ' . $path);
+                        mpai_log_debug('Phase One Test: Loading Agent Message from: ' . $path, 'direct-ajax');
                         require_once($path);
                         $loaded = true;
                         break;
@@ -1205,7 +1220,7 @@ switch ($action) {
                     throw new Exception('Agent message class file not found. Searched paths: ' . implode(', ', $possible_paths));
                 }
             } else {
-                error_log('MPAI Phase One Test: Agent Message class already loaded');
+                mpai_log_debug('Phase One Test: Agent Message class already loaded', 'direct-ajax');
             }
             
             // Create a test message
@@ -1256,9 +1271,9 @@ switch ($action) {
                 'message_array' => $message_array
             );
             
-            error_log('MPAI Phase One Test: Agent Messaging - Message created: ' . ($message instanceof MPAI_Agent_Message ? 'YES' : 'NO'));
-            error_log('MPAI Phase One Test: Agent Messaging - Properties match: ' . ($result['properties_match'] ? 'YES' : 'NO'));
-            error_log('MPAI Phase One Test: Agent Messaging - Serialization works: ' . ($validate ? 'YES' : 'NO'));
+            mpai_log_debug('Phase One Test: Agent Messaging - Message created: ' . ($message instanceof MPAI_Agent_Message ? 'YES' : 'NO'), 'direct-ajax');
+            mpai_log_debug('Phase One Test: Agent Messaging - Properties match: ' . ($result['properties_match'] ? 'YES' : 'NO'), 'direct-ajax');
+            mpai_log_debug('Phase One Test: Agent Messaging - Serialization works: ' . ($validate ? 'YES' : 'NO'), 'direct-ajax');
             
             echo json_encode(array(
                 'success' => true,
@@ -1266,7 +1281,11 @@ switch ($action) {
             ));
             
         } catch (Exception $e) {
-            error_log('MPAI Phase One Test: Agent Messaging Error - ' . $e->getMessage());
+            mpai_log_error('Phase One Test: Agent Messaging Error - ' . $e->getMessage(), 'direct-ajax', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             echo json_encode(array(
                 'success' => false,
                 'message' => 'Agent Messaging Test failed: ' . $e->getMessage()
@@ -1277,7 +1296,7 @@ switch ($action) {
     case 'test_agent_scoring':
         // Test agent specialization scoring system
         try {
-            error_log('MPAI: Phase Two Test - Agent Specialization Scoring test started');
+            mpai_log_info('Phase Two Test - Agent Specialization Scoring test started', 'direct-ajax');
             
             // Include the test file
             $test_file = plugin_dir_path(dirname(__FILE__)) . 'test/test-agent-scoring.php';
@@ -1304,7 +1323,7 @@ switch ($action) {
             // Include formatted results in the response
             $test_results['formatted_html'] = $formatted_results;
             
-            error_log('MPAI: Phase Two Test - Agent Specialization Scoring - Success: ' . ($test_results['success'] ? 'YES' : 'NO'));
+            mpai_log_debug('Phase Two Test - Agent Specialization Scoring - Success: ' . ($test_results['success'] ? 'YES' : 'NO'), 'direct-ajax');
             
             // Append test result to _scooby/_error_log.md
             $error_log_file = plugin_dir_path(dirname(__FILE__)) . '_scooby/_error_log.md';
@@ -1318,7 +1337,11 @@ switch ($action) {
             ));
             
         } catch (Exception $e) {
-            error_log('MPAI: Phase Two Test - Agent Specialization Scoring Error - ' . $e->getMessage());
+            mpai_log_error('Phase Two Test - Agent Specialization Scoring Error - ' . $e->getMessage(), 'direct-ajax', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             echo json_encode(array(
                 'success' => false,
                 'message' => 'Agent Specialization Scoring Test failed: ' . $e->getMessage()
@@ -1329,31 +1352,31 @@ switch ($action) {
     case 'test_system_cache':
         // Test system information caching
         try {
-            error_log('MPAI: Phase Two Test - System Information Cache test started');
+            mpai_log_info('Phase Two Test - System Information Cache test started', 'direct-ajax');
             
             // First, load the required classes
             $system_cache_file = dirname(__FILE__) . '/class-mpai-system-cache.php';
             if (!class_exists('MPAI_System_Cache') && file_exists($system_cache_file)) {
                 require_once $system_cache_file;
-                error_log('MPAI: Loaded system cache class from: ' . $system_cache_file);
+                mpai_log_debug('Loaded system cache class from: ' . $system_cache_file, 'direct-ajax');
             } else {
-                error_log('MPAI: MPAI_System_Cache class already loaded or not found at: ' . $system_cache_file);
+                mpai_log_debug('MPAI_System_Cache class already loaded or not found at: ' . $system_cache_file, 'direct-ajax');
             }
             
             $base_tool_file = dirname(__FILE__) . '/tools/class-mpai-base-tool.php';
             if (!class_exists('MPAI_Base_Tool') && file_exists($base_tool_file)) {
                 require_once $base_tool_file;
-                error_log('MPAI: Loaded base tool class from: ' . $base_tool_file);
+                mpai_log_debug('Loaded base tool class from: ' . $base_tool_file, 'direct-ajax');
             } else {
-                error_log('MPAI: MPAI_Base_Tool class already loaded or not found at: ' . $base_tool_file);
+                mpai_log_debug('MPAI_Base_Tool class already loaded or not found at: ' . $base_tool_file, 'direct-ajax');
             }
             
             $wp_cli_tool_file = dirname(__FILE__) . '/tools/implementations/class-mpai-wpcli-tool.php';
             if (!class_exists('MPAI_WP_CLI_Tool') && file_exists($wp_cli_tool_file)) {
                 require_once $wp_cli_tool_file;
-                error_log('MPAI: Loaded WP CLI tool class from: ' . $wp_cli_tool_file);
+                mpai_log_debug('Loaded WP CLI tool class from: ' . $wp_cli_tool_file, 'direct-ajax');
             } else {
-                error_log('MPAI: MPAI_WP_CLI_Tool class already loaded or not found at: ' . $wp_cli_tool_file);
+                mpai_log_debug('MPAI_WP_CLI_Tool class already loaded or not found at: ' . $wp_cli_tool_file, 'direct-ajax');
             }
             
             // Check if the required classes exist
@@ -1363,7 +1386,7 @@ switch ($action) {
             
             // Initialize system cache
             $system_cache = MPAI_System_Cache::get_instance();
-            error_log('MPAI: Successfully initialized system cache instance');
+            mpai_log_debug('Successfully initialized system cache instance', 'direct-ajax');
             
             // Prepare results container
             $test_results = [
@@ -1381,10 +1404,10 @@ switch ($action) {
             
             // Clear existing cache for clean testing
             $system_cache->clear();
-            error_log('MPAI: Cleared existing cache for testing');
+            mpai_log_debug('Cleared existing cache for testing', 'direct-ajax');
             
             // Test 1: Basic Cache Operations
-            error_log('MPAI: Running Test 1: Basic Cache Operations');
+            mpai_log_debug('Running Test 1: Basic Cache Operations', 'direct-ajax');
             $start_time = microtime(true);
             $test_data = ['test_key' => 'test_value', 'timestamp' => time()];
             $set_result = $system_cache->set('test_key', $test_data, 'default');
@@ -1403,7 +1426,7 @@ switch ($action) {
             ];
             
             // Test 2: Cache with Different Types
-            error_log('MPAI: Running Test 2: Cache with Different Types');
+            mpai_log_debug('Running Test 2: Cache with Different Types', 'direct-ajax');
             $types = ['php_info', 'wp_info', 'plugin_list', 'theme_list'];
             $type_test_success = true;
             
@@ -1431,7 +1454,7 @@ switch ($action) {
             ];
             
             // Test 3: Cache Expiration (simulate with a very short TTL)
-            error_log('MPAI: Running Test 3: Cache Expiration');
+            mpai_log_debug('Running Test 3: Cache Expiration', 'direct-ajax');
             try {
                 // Set a testing key with a manually short TTL
                 $system_cache->set('expiring_test', 'This data should expire', 'default');
@@ -1464,7 +1487,11 @@ switch ($action) {
                     'timing' => '2000 ms (sleep duration)'
                 ];
             } catch (Exception $exp_e) {
-                error_log('MPAI: Error in expiration test: ' . $exp_e->getMessage());
+                mpai_log_error('Error in expiration test: ' . $exp_e->getMessage(), 'direct-ajax', array(
+                    'file' => $exp_e->getFile(),
+                    'line' => $exp_e->getLine(),
+                    'trace' => $exp_e->getTraceAsString()
+                ));
                 $test_results['data']['tests'][] = [
                     'name' => 'Cache Expiration',
                     'success' => false,
@@ -1474,7 +1501,7 @@ switch ($action) {
             }
             
             // Test 4: Cache Invalidation
-            error_log('MPAI: Running Test 4: Cache Invalidation');
+            mpai_log_debug('Running Test 4: Cache Invalidation', 'direct-ajax');
             // Store a value in the plugin cache
             $system_cache->set('test_invalidation', 'Plugin cache test data', 'plugin_list');
             
@@ -1492,7 +1519,7 @@ switch ($action) {
             ];
             
             // Test 5: Performance comparison
-            error_log('MPAI: Running Test 5: Performance comparison');
+            mpai_log_debug('Running Test 5: Performance comparison', 'direct-ajax');
             
             // Function to generate a large test dataset
             $generate_test_data = function() {
@@ -1545,7 +1572,7 @@ switch ($action) {
             ];
             
             // Test 6: Filesystem Persistence
-            error_log('MPAI: Running Test 6: Filesystem Persistence');
+            mpai_log_debug('Running Test 6: Filesystem Persistence', 'direct-ajax');
             // Set a value to be persisted
             $persist_key = 'filesystem_test';
             $persist_data = ['test' => 'filesystem persistence', 'timestamp' => time()];
@@ -1593,7 +1620,7 @@ switch ($action) {
             $test_results['success'] = true;
             $test_results['message'] = 'All System Information Cache tests passed successfully';
                         
-            error_log('MPAI: Phase Two Test - System Information Cache - Success: YES');
+            mpai_log_info('Phase Two Test - System Information Cache - Success: YES', 'direct-ajax');
             
             // Return the test results
             echo json_encode([
@@ -1602,7 +1629,11 @@ switch ($action) {
             ]);
             
         } catch (Exception $e) {
-            error_log('MPAI: Phase Two Test - System Information Cache Error - ' . $e->getMessage());
+            mpai_log_error('Phase Two Test - System Information Cache Error - ' . $e->getMessage(), 'direct-ajax', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             
             // Create a fallback result with the error message
             $error_results = [
@@ -1633,14 +1664,14 @@ switch ($action) {
     case 'test_all_phase_one':
         // Run all phase one tests
         try {
-            error_log('MPAI Phase One Test: Running all Phase One tests');
+            mpai_log_info('Phase One Test: Running all Phase One tests', 'direct-ajax');
             $results = array();
             
             // ---- Agent Discovery Test ----
             ob_start(); // Capture output
             
             try {
-                error_log('MPAI Phase One Test: Running Agent Discovery test internally');
+                mpai_log_debug('Phase One Test: Running Agent Discovery test internally', 'direct-ajax');
                 
                 // Check if the agent interface is loaded
                 if (!interface_exists('MPAI_Agent')) {
@@ -1703,7 +1734,11 @@ switch ($action) {
                 );
                 
             } catch (Exception $e) {
-                error_log('MPAI Phase One Test: Agent Discovery Error - ' . $e->getMessage());
+                mpai_log_error('Phase One Test: Agent Discovery Error - ' . $e->getMessage(), 'direct-ajax', array(
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ));
                 $results['agent_discovery'] = array(
                     'success' => false,
                     'message' => 'Agent Discovery Test failed: ' . $e->getMessage()
@@ -1716,7 +1751,7 @@ switch ($action) {
             ob_start(); // Capture output
             
             try {
-                error_log('MPAI Phase One Test: Running Lazy Loading test internally');
+                mpai_log_debug('Phase One Test: Running Lazy Loading test internally', 'direct-ajax');
                 
                 // Check if the tool registry class exists
                 if (!class_exists('MPAI_Tool_Registry')) {
@@ -1761,7 +1796,11 @@ switch ($action) {
                 );
                 
             } catch (Exception $e) {
-                error_log('MPAI Phase One Test: Lazy Loading Error - ' . $e->getMessage());
+                mpai_log_error('Phase One Test: Lazy Loading Error - ' . $e->getMessage(), 'direct-ajax', array(
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ));
                 $results['lazy_loading'] = array(
                     'success' => false,
                     'message' => 'Lazy Loading Test failed: ' . $e->getMessage()
@@ -1774,7 +1813,7 @@ switch ($action) {
             ob_start(); // Capture output
             
             try {
-                error_log('MPAI Phase One Test: Running Response Cache test internally');
+                mpai_log_debug('Phase One Test: Running Response Cache test internally', 'direct-ajax');
                 
                 // Check if the response cache class exists
                 if (!class_exists('MPAI_Response_Cache')) {
@@ -1840,7 +1879,11 @@ switch ($action) {
                 );
                 
             } catch (Exception $e) {
-                error_log('MPAI Phase One Test: Response Cache Error - ' . $e->getMessage());
+                mpai_log_error('Phase One Test: Response Cache Error - ' . $e->getMessage(), 'direct-ajax', array(
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ));
                 $results['response_cache'] = array(
                     'success' => false,
                     'message' => 'Response Cache Test failed: ' . $e->getMessage()
@@ -1853,7 +1896,7 @@ switch ($action) {
             ob_start(); // Capture output
             
             try {
-                error_log('MPAI Phase One Test: Running Agent Messaging test internally');
+                mpai_log_debug('Phase One Test: Running Agent Messaging test internally', 'direct-ajax');
                 
                 // Check if the agent message class exists
                 if (!class_exists('MPAI_Agent_Message')) {
@@ -1932,7 +1975,11 @@ switch ($action) {
                 );
                 
             } catch (Exception $e) {
-                error_log('MPAI Phase One Test: Agent Messaging Error - ' . $e->getMessage());
+                mpai_log_error('Phase One Test: Agent Messaging Error - ' . $e->getMessage(), 'direct-ajax', array(
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ));
                 $results['agent_messaging'] = array(
                     'success' => false,
                     'message' => 'Agent Messaging Test failed: ' . $e->getMessage()
@@ -1950,7 +1997,7 @@ switch ($action) {
                 }
             }
             
-            error_log('MPAI Phase One Test: All tests completed. Overall success: ' . ($overall_success ? 'YES' : 'NO'));
+            mpai_log_info('Phase One Test: All tests completed. Overall success: ' . ($overall_success ? 'YES' : 'NO'), 'direct-ajax');
             
             echo json_encode(array(
                 'success' => true,
@@ -1961,7 +2008,11 @@ switch ($action) {
             ));
             
         } catch (Exception $e) {
-            error_log('MPAI Phase One Test: All Tests Error - ' . $e->getMessage());
+            mpai_log_error('Phase One Test: All Tests Error - ' . $e->getMessage(), 'direct-ajax', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             echo json_encode(array(
                 'success' => false,
                 'message' => 'All Phase One Tests failed: ' . $e->getMessage()

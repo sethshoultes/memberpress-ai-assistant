@@ -22,7 +22,6 @@ require_once dirname( __FILE__ ) . '/class-mpai-null-logger.php';
 require_once dirname( __FILE__ ) . '/class-mpai-multi-logger.php';
 require_once dirname( __FILE__ ) . '/class-mpai-logger-manager.php';
 require_once dirname( __FILE__ ) . '/mpai-logging-functions.php';
-require_once dirname( __FILE__ ) . '/replace-error-log.php';
 
 // Initialize the logger manager (singleton)
 function mpai_init_logger() {

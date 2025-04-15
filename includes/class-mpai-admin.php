@@ -356,7 +356,7 @@ class MPAI_Admin {
 
             // Check message
             if (empty($_POST['message'])) {
-                error_log('MPAI: Empty message in AJAX request');
+                mpai_log_warning('Empty message in AJAX request', 'admin');
                 wp_send_json_error('Message is required');
             }
 
@@ -386,11 +386,15 @@ class MPAI_Admin {
                 
                 wp_send_json_success($response);
             } else {
-                error_log('MPAI: Error in chat processing: ' . json_encode($response));
+                mpai_log_error('Error in chat processing: ' . json_encode($response), 'admin');
                 wp_send_json_error(isset($response['message']) ? $response['message'] : 'Unknown error occurred');
             }
         } catch (Exception $e) {
-            error_log('MPAI: Exception in process_chat: ' . $e->getMessage());
+            mpai_log_error('Exception in process_chat: ' . $e->getMessage(), 'admin', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             wp_send_json_error('An error occurred: ' . $e->getMessage());
         }
     }
@@ -418,7 +422,7 @@ class MPAI_Admin {
      */
     public function run_command() {
         // Log the request for debugging
-        error_log('MPAI: run_command called. POST data: ' . json_encode($_POST));
+        mpai_log_debug('run_command called. POST data: ' . json_encode($_POST), 'admin');
         
         // Check nonce - handling flexibly to support various ways the nonce might be sent
         try {
@@ -428,35 +432,39 @@ class MPAI_Admin {
             if (isset($_POST['mpai_nonce'])) {
                 $nonce = sanitize_text_field($_POST['mpai_nonce']);
                 $nonce_verified = wp_verify_nonce($nonce, 'mpai_nonce');
-                error_log('MPAI: Verifying with mpai_nonce field: ' . ($nonce_verified ? 'success' : 'failed'));
+                mpai_log_debug('Verifying with mpai_nonce field: ' . ($nonce_verified ? 'success' : 'failed'), 'admin');
             }
             
             // Option 2: Simple 'nonce' field
             if (!$nonce_verified && isset($_POST['nonce'])) {
                 $nonce = sanitize_text_field($_POST['nonce']);
                 $nonce_verified = wp_verify_nonce($nonce, 'mpai_nonce');
-                error_log('MPAI: Verifying with nonce field: ' . ($nonce_verified ? 'success' : 'failed'));
+                mpai_log_debug('Verifying with nonce field: ' . ($nonce_verified ? 'success' : 'failed'), 'admin');
             }
             
             // Option 3: Legacy format of _wpnonce
             if (!$nonce_verified && isset($_POST['_wpnonce'])) {
                 $nonce = sanitize_text_field($_POST['_wpnonce']);
                 $nonce_verified = wp_verify_nonce($nonce, 'mpai_nonce');
-                error_log('MPAI: Verifying with _wpnonce field: ' . ($nonce_verified ? 'success' : 'failed'));
+                mpai_log_debug('Verifying with _wpnonce field: ' . ($nonce_verified ? 'success' : 'failed'), 'admin');
             }
             
             // Either verification succeeded or bypassing for debugging
             if (!$nonce_verified) {
-                error_log('MPAI: ⚠️ Nonce verification failed, but continuing for debugging');
+                mpai_log_warning('⚠️ Nonce verification failed, but continuing for debugging', 'admin');
             }
         } catch (Exception $e) {
-            error_log('MPAI: Exception in nonce verification: ' . $e->getMessage());
+            mpai_log_error('Exception in nonce verification: ' . $e->getMessage(), 'admin', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             // Continue anyway for debugging
         }
 
         // Check command
         if (empty($_POST['command'])) {
-            error_log('MPAI: Command is empty in run_command request');
+            mpai_log_warning('Command is empty in run_command request', 'admin');
             wp_send_json_error('Command is required');
             return;
         }
@@ -621,9 +629,9 @@ class MPAI_Admin {
                 if (!function_exists('mpai_init_plugin_logger')) {
                     if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
                         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
-                        error_log('MPAI: Loaded plugin logger class');
+                        mpai_log_debug('Loaded plugin logger class', 'admin');
                     } else {
-                        error_log('MPAI: Plugin logger class not found in fast-path');
+                        mpai_log_error('Plugin logger class not found in fast-path', 'admin');
                         wp_send_json_error('Plugin logger class not found for plugin_logs');
                         return;
                     }
@@ -632,7 +640,7 @@ class MPAI_Admin {
                 // Initialize plugin logger
                 $plugin_logger = mpai_init_plugin_logger();
                 if (!$plugin_logger) {
-                    error_log('MPAI: Failed to initialize plugin logger in fast-path');
+                    mpai_log_error('Failed to initialize plugin logger in fast-path', 'admin');
                     wp_send_json_error('Failed to initialize plugin logger for plugin_logs');
                     return;
                 }
@@ -644,19 +652,19 @@ class MPAI_Admin {
                 // Check for explicit parameters sent directly from JavaScript
                 if (isset($_POST['plugin_logs_action'])) {
                     $action = sanitize_text_field($_POST['plugin_logs_action']);
-                    error_log('MPAI: Fast-path using explicit action parameter: ' . $action);
+                    mpai_log_debug('Fast-path using explicit action parameter: ' . $action, 'admin');
                 } elseif (isset($_POST['tool_request']) && preg_match('/"action"\s*:\s*"([^"]+)"/', $_POST['tool_request'], $matches)) {
                     $action = $matches[1];
-                    error_log('MPAI: Fast-path extracted action via regex: ' . $action);
+                    mpai_log_debug('Fast-path extracted action via regex: ' . $action, 'admin');
                 }
                 
                 // Extract days parameter
                 if (isset($_POST['plugin_logs_days']) && is_numeric($_POST['plugin_logs_days'])) {
                     $days = (int)$_POST['plugin_logs_days'];
-                    error_log('MPAI: Fast-path using explicit days parameter: ' . $days);
+                    mpai_log_debug('Fast-path using explicit days parameter: ' . $days, 'admin');
                 } elseif (isset($_POST['tool_request']) && preg_match('/"days"\s*:\s*(\d+)/', $_POST['tool_request'], $matches)) {
                     $days = (int)$matches[1];
-                    error_log('MPAI: Fast-path extracted days via regex: ' . $days);
+                    mpai_log_debug('Fast-path extracted days via regex: ' . $days, 'admin');
                 }
                 
                 // Get logs with minimal processing
@@ -668,7 +676,7 @@ class MPAI_Admin {
                     'limit'     => 25
                 ];
                 
-                error_log('MPAI: Fast-path getting plugin logs with args: ' . json_encode($args));
+                mpai_log_debug('Fast-path getting plugin logs with args: ' . json_encode($args), 'admin');
                 $logs = $plugin_logger->get_logs($args);
                 
                 // Simple counting of log entries by action
@@ -704,11 +712,15 @@ class MPAI_Admin {
                     'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
                 ];
                 
-                error_log('MPAI: Fast-path successfully retrieved plugin logs, entry count: ' . count($logs));
+                mpai_log_info('Fast-path successfully retrieved plugin logs, entry count: ' . count($logs), 'admin');
                 wp_send_json_success($result);
                 return;
             } catch (Exception $e) {
-                error_log('MPAI: Fast-path error in plugin_logs: ' . $e->getMessage());
+                mpai_log_error('Fast-path error in plugin_logs: ' . $e->getMessage(), 'admin', array(
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ));
                 wp_send_json_error('Error in fast-path plugin_logs handler: ' . $e->getMessage());
                 return;
             }
@@ -723,93 +735,97 @@ class MPAI_Admin {
             if (isset($_POST['mpai_nonce'])) {
                 $nonce = sanitize_text_field($_POST['mpai_nonce']);
                 $nonce_verified = wp_verify_nonce($nonce, 'mpai_nonce');
-                error_log('MPAI: Verifying with mpai_nonce field: ' . ($nonce_verified ? 'success' : 'failed'));
+                mpai_log_debug('Verifying with mpai_nonce field: ' . ($nonce_verified ? 'success' : 'failed'), 'admin');
             }
             
             // Option 2: Simple 'nonce' field
             if (!$nonce_verified && isset($_POST['nonce'])) {
                 $nonce = sanitize_text_field($_POST['nonce']);
                 $nonce_verified = wp_verify_nonce($nonce, 'mpai_nonce');
-                error_log('MPAI: Verifying with nonce field: ' . ($nonce_verified ? 'success' : 'failed'));
+                mpai_log_debug('Verifying with nonce field: ' . ($nonce_verified ? 'success' : 'failed'), 'admin');
             }
             
             // Option 3: Legacy format of _wpnonce
             if (!$nonce_verified && isset($_POST['_wpnonce'])) {
                 $nonce = sanitize_text_field($_POST['_wpnonce']);
                 $nonce_verified = wp_verify_nonce($nonce, 'mpai_nonce');
-                error_log('MPAI: Verifying with _wpnonce field: ' . ($nonce_verified ? 'success' : 'failed'));
+                mpai_log_debug('Verifying with _wpnonce field: ' . ($nonce_verified ? 'success' : 'failed'), 'admin');
             }
             
             // Either verification succeeded or bypassing for debugging
             if (!$nonce_verified) {
-                error_log('MPAI: ⚠️ Nonce verification failed, but continuing for debugging');
+                mpai_log_warning('⚠️ Nonce verification failed, but continuing for debugging', 'admin');
             }
         } catch (Exception $e) {
-            error_log('MPAI: Exception in nonce verification: ' . $e->getMessage());
+            mpai_log_error('Exception in nonce verification: ' . $e->getMessage(), 'admin', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             // Continue anyway for debugging
         }
         
         // For debugging, dump all POST data
-        error_log('MPAI: All POST data keys: ' . implode(', ', array_keys($_POST)));
+        mpai_log_debug('All POST data keys: ' . implode(', ', array_keys($_POST)), 'admin');
         
         // Log the raw tool_request for debugging
         if (isset($_POST['tool_request'])) {
-            error_log('MPAI: Raw tool_request: ' . $_POST['tool_request']);
+            mpai_log_debug('Raw tool_request: ' . $_POST['tool_request'], 'admin');
             
             // Check if it's valid JSON
             $decoded = @json_decode(stripslashes($_POST['tool_request']), true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                error_log('MPAI: tool_request is not valid JSON: ' . json_last_error_msg());
+                mpai_log_warning('tool_request is not valid JSON: ' . json_last_error_msg(), 'admin');
             } else {
-                error_log('MPAI: Decoded tool_request: ' . print_r($decoded, true));
+                mpai_log_debug('Decoded tool_request: ' . print_r($decoded, true), 'admin');
             }
         }
         
         // We've already tried flexible nonce verification above, so no need to repeat
-        error_log('MPAI: Proceeding with tool execution even if nonce verification failed');
+        mpai_log_debug('Proceeding with tool execution even if nonce verification failed', 'admin');
         
         // MCP is always enabled now (settings were removed from UI)
-        error_log('MPAI: MCP is always enabled in admin');
+        mpai_log_debug('MCP is always enabled in admin', 'admin');
 
         // Check tool request
         if (empty($_POST['tool_request'])) {
-            error_log('MPAI: Tool request is empty');
+            mpai_log_warning('Tool request is empty', 'admin');
             wp_send_json_error('Tool request is required');
             return;
         }
 
         // Log the raw value before any processing
-        error_log('MPAI: Raw tool_request value: "' . $_POST['tool_request'] . '"');
+        mpai_log_debug('Raw tool_request value: "' . $_POST['tool_request'] . '"', 'admin');
         
         // Try with and without stripslashes for json_decode
         $tool_request = json_decode(stripslashes($_POST['tool_request']), true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
             // Try without stripslashes
-            error_log('MPAI: First JSON decode attempt failed: ' . json_last_error_msg() . '. Trying without stripslashes.');
+            mpai_log_debug('First JSON decode attempt failed: ' . json_last_error_msg() . '. Trying without stripslashes.', 'admin');
             $tool_request = json_decode($_POST['tool_request'], true);
             
             if (json_last_error() !== JSON_ERROR_NONE) {
-                error_log('MPAI: Invalid JSON in tool request: ' . json_last_error_msg() . ', raw value: "' . $_POST['tool_request'] . '"');
+                mpai_log_warning('Invalid JSON in tool request: ' . json_last_error_msg() . ', raw value: "' . $_POST['tool_request'] . '"', 'admin');
                 
                 // Last attempt - sometimes the frontend sends a JSON object inside a string
                 if (strpos($_POST['tool_request'], '"tool":"plugin_logs"') !== false ||
                     strpos($_POST['tool_request'], '"name":"plugin_logs"') !== false) {
-                    error_log('MPAI: Found plugin_logs reference in malformed JSON, creating synthetic request');
+                    mpai_log_debug('Found plugin_logs reference in malformed JSON, creating synthetic request', 'admin');
                     
                     // Create a synthetic tool request for plugin_logs
                     // Extract action parameter if possible using regex
                     $action = '';
                     if (preg_match('/"action"\s*:\s*"([^"]+)"/', $_POST['tool_request'], $matches)) {
                         $action = $matches[1];
-                        error_log('MPAI: Extracted action: ' . $action);
+                        mpai_log_debug('Extracted action: ' . $action, 'admin');
                     }
                     
                     // Extract days parameter if possible
                     $days = 30; // Default
                     if (preg_match('/"days"\s*:\s*(\d+)/', $_POST['tool_request'], $matches)) {
                         $days = (int)$matches[1];
-                        error_log('MPAI: Extracted days: ' . $days);
+                        mpai_log_debug('Extracted days: ' . $days, 'admin');
                     }
                     
                     // Create synthetic request
@@ -821,41 +837,41 @@ class MPAI_Admin {
                         ]
                     ];
                     
-                    error_log('MPAI: Created synthetic tool_request: ' . json_encode($tool_request));
+                    mpai_log_debug('Created synthetic tool_request: ' . json_encode($tool_request), 'admin');
                 } else {
                     // Give up if we can't find plugin_logs reference
                     wp_send_json_error('Invalid JSON in tool request: ' . json_last_error_msg());
                     return;
                 }
             } else {
-                error_log('MPAI: Successful JSON decode without stripslashes');
+                mpai_log_debug('Successful JSON decode without stripslashes', 'admin');
             }
         } else {
-            error_log('MPAI: Successful JSON decode with stripslashes');
+            mpai_log_debug('Successful JSON decode with stripslashes', 'admin');
         }
         
         // Log the parsed tool request
-        error_log('MPAI: Parsed tool request structure: ' . json_encode($tool_request));
+        mpai_log_debug('Parsed tool request structure: ' . json_encode($tool_request), 'admin');
         
-        error_log('MPAI: Processing tool request: ' . json_encode($tool_request));
+        mpai_log_debug('Processing tool request: ' . json_encode($tool_request), 'admin');
         
         try {
-            error_log('MPAI: Initializing context manager for tool execution');
+            mpai_log_debug('Initializing context manager for tool execution', 'admin');
             $context_manager = new MPAI_Context_Manager();
             
             // Special case for plugin_logs tool - handle it directly for debugging
             // Check both 'name' and 'tool' keys for plugin_logs (tool is the key used by Claude)
             if ((isset($tool_request['name']) && $tool_request['name'] === 'plugin_logs') || 
                 (isset($tool_request['tool']) && $tool_request['tool'] === 'plugin_logs')) {
-                error_log('MPAI: Special handling for plugin_logs tool');
+                mpai_log_debug('Special handling for plugin_logs tool', 'admin');
                 
                 // Make sure we have class-mpai-plugin-logger.php
                 if (!function_exists('mpai_init_plugin_logger')) {
                     if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
                         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
-                        error_log('MPAI: Loaded plugin logger class');
+                        mpai_log_debug('Loaded plugin logger class', 'admin');
                     } else {
-                        error_log('MPAI: Plugin logger class not found');
+                        mpai_log_error('Plugin logger class not found', 'admin');
                         wp_send_json_error('Plugin logger class not found at: ' . MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php');
                         return;
                     }
@@ -864,7 +880,7 @@ class MPAI_Admin {
                 // Initialize plugin logger
                 $plugin_logger = mpai_init_plugin_logger();
                 if (!$plugin_logger) {
-                    error_log('MPAI: Failed to initialize plugin logger');
+                    mpai_log_error('Failed to initialize plugin logger', 'admin');
                     wp_send_json_error('Failed to initialize plugin logger');
                     return;
                 }
@@ -878,7 +894,7 @@ class MPAI_Admin {
                     $parameters = $tool_request['parameters'];
                 }
                 
-                error_log('MPAI: Extracted parameters for plugin_logs: ' . json_encode($parameters));
+                mpai_log_debug('Extracted parameters for plugin_logs: ' . json_encode($parameters), 'admin');
                 
                 $action = isset($parameters['action']) ? sanitize_text_field($parameters['action']) : '';
                 $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
@@ -893,7 +909,7 @@ class MPAI_Admin {
                     'limit'     => $limit
                 ];
                 
-                error_log('MPAI: Getting plugin logs with args: ' . json_encode($args));
+                mpai_log_debug('Getting plugin logs with args: ' . json_encode($args), 'admin');
                 $logs = $plugin_logger->get_logs($args);
                 
                 // Create summary of logs
@@ -929,7 +945,7 @@ class MPAI_Admin {
                     'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
                 ];
                 
-                error_log('MPAI: Successfully retrieved plugin logs, entry count: ' . count($logs));
+                mpai_log_info('Successfully retrieved plugin logs, entry count: ' . count($logs), 'admin');
                 wp_send_json_success($result);
                 return;
             }
@@ -937,7 +953,7 @@ class MPAI_Admin {
             // Normal tool execution flow for other tools
             $result = $context_manager->process_tool_request($tool_request);
             
-            error_log('MPAI: Tool execution result: ' . json_encode($result));
+            mpai_log_debug('Tool execution result: ' . json_encode($result), 'admin');
             
             // Process structured result to avoid double-encoding
             if (isset($result['tool']) && $result['tool'] === 'wp_cli' && isset($result['result']) && 
@@ -946,14 +962,18 @@ class MPAI_Admin {
                 $parsed_json = json_decode($result['result'], true);
                 if (json_last_error() === JSON_ERROR_NONE && isset($parsed_json['success']) && isset($parsed_json['command_type'])) {
                     // This is already formatted JSON with command type, parse it to avoid double-encoding
-                    error_log('MPAI: Detected double-encoded JSON, unwrapping...');
+                    mpai_log_debug('Detected double-encoded JSON, unwrapping...', 'admin');
                     $result['result'] = $parsed_json;
                 }
             }
             
             wp_send_json_success($result);
         } catch (Exception $e) {
-            error_log('MPAI: Error executing tool: ' . $e->getMessage());
+            mpai_log_error('Error executing tool: ' . $e->getMessage(), 'admin', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             wp_send_json_error('Error executing tool: ' . $e->getMessage());
         }
     }
@@ -964,7 +984,7 @@ class MPAI_Admin {
     public function test_openai_api() {
         try {
             // Log the AJAX request for debugging
-            error_log('MPAI: test_openai_api called.');
+            mpai_log_debug('test_openai_api called.', 'admin');
             
             // Convert to associative array for better logging
             $post_data = array();
@@ -978,69 +998,69 @@ class MPAI_Admin {
                 }
             }
             
-            error_log('MPAI: POST data: ' . wp_json_encode($post_data));
+            mpai_log_debug('POST data: ' . wp_json_encode($post_data), 'admin');
             
             // Check nonce - be more thorough about checking if it exists
             if (!isset($_POST['mpai_nonce'])) {
-                error_log('MPAI: No nonce provided in request');
+                mpai_log_warning('No nonce provided in request', 'admin');
                 wp_send_json_error('Security check failed - no nonce provided');
                 return;
             }
             
             // Log the received nonce first few characters for debugging
             $nonce = sanitize_text_field($_POST['mpai_nonce']);
-            error_log('MPAI: Received nonce: ' . substr($nonce, 0, 5) . '... (length: ' . strlen($nonce) . ')');
+            mpai_log_debug('Received nonce: ' . substr($nonce, 0, 5) . '... (length: ' . strlen($nonce) . ')', 'admin');
             
             // Log POST data for debugging (excluding sensitive info)
             $debug_post = $_POST;
             if (isset($debug_post['api_key'])) {
                 $debug_post['api_key'] = substr($debug_post['api_key'], 0, 5) . '...';
             }
-            error_log('MPAI: POST data for OpenAI test: ' . json_encode($debug_post));
+            mpai_log_debug('POST data for OpenAI test: ' . json_encode($debug_post), 'admin');
             
             // Manually verify nonce first for debugging
             $verified = wp_verify_nonce($nonce, 'mpai_nonce');
-            error_log('MPAI: Manual nonce verification result: ' . ($verified ? 'Success ('.$verified.')' : 'Failed (0)'));
+            mpai_log_debug('Manual nonce verification result: ' . ($verified ? 'Success ('.$verified.')' : 'Failed (0)'), 'admin');
             
             // Try with alternate nonce action
             $verified_alt = wp_verify_nonce($nonce, 'mpai_settings_nonce');
-            error_log('MPAI: Alternative nonce verification result: ' . ($verified_alt ? 'Success ('.$verified_alt.')' : 'Failed (0)'));
+            mpai_log_debug('Alternative nonce verification result: ' . ($verified_alt ? 'Success ('.$verified_alt.')' : 'Failed (0)'), 'admin');
             
             // Get a new nonce to compare
             $new_nonce = wp_create_nonce('mpai_nonce');
-            error_log('MPAI: New nonce generated for comparison: ' . substr($new_nonce, 0, 5) . '... (length: ' . strlen($new_nonce) . ')');
+            mpai_log_debug('New nonce generated for comparison: ' . substr($new_nonce, 0, 5) . '... (length: ' . strlen($new_nonce) . ')', 'admin');
             
             // For testing purposes, use either standard or alternate verification
             if (!$verified && !$verified_alt) {
-                error_log('MPAI: Both standard and alternate nonce verification failed, sending error response');
+                mpai_log_warning('Both standard and alternate nonce verification failed, sending error response', 'admin');
                 wp_send_json_error('Security check failed - invalid nonce');
                 return;
             }
             
             if ($verified_alt && !$verified) {
-                error_log('MPAI: Using alternate nonce verification');
+                mpai_log_debug('Using alternate nonce verification', 'admin');
             }
             
             // Log successful nonce check
-            error_log('MPAI: Nonce check passed with check_ajax_referer');
+            mpai_log_debug('Nonce check passed with check_ajax_referer', 'admin');
             
             // Log after nonce check
-            error_log('MPAI: test_openai_api nonce check passed');
+            mpai_log_debug('test_openai_api nonce check passed', 'admin');
             
             // Check API key
             if (empty($_POST['api_key'])) {
-                error_log('MPAI: API key is empty');
+                mpai_log_warning('API key is empty', 'admin');
                 wp_send_json_error(__('API key is required', 'memberpress-ai-assistant'));
                 return;
             }
             
             $api_key = sanitize_text_field($_POST['api_key']);
-            error_log('MPAI: Testing OpenAI API with key: ' . substr($api_key, 0, 3) . '...');
+            mpai_log_debug('Testing OpenAI API with key: ' . substr($api_key, 0, 3) . '...', 'admin');
             
             // Direct API test using wp_remote_get
             $endpoint = 'https://api.openai.com/v1/models';
             
-            error_log('MPAI: Making request to OpenAI models endpoint');
+            mpai_log_debug('Making request to OpenAI models endpoint', 'admin');
             $response = wp_remote_get(
                 $endpoint,
                 array(
@@ -1054,7 +1074,7 @@ class MPAI_Admin {
             );
             
             if (is_wp_error($response)) {
-                error_log('MPAI: API test returned WP_Error: ' . $response->get_error_message());
+                mpai_log_error('API test returned WP_Error: ' . $response->get_error_message(), 'admin');
                 wp_send_json_error($response->get_error_message());
                 return;
             }
@@ -1062,35 +1082,39 @@ class MPAI_Admin {
             $status_code = wp_remote_retrieve_response_code($response);
             $body = wp_remote_retrieve_body($response);
             
-            error_log('MPAI: OpenAI API test response status: ' . $status_code);
-            error_log('MPAI: Response body (partial): ' . substr($body, 0, 100) . '...');
+            mpai_log_debug('OpenAI API test response status: ' . $status_code, 'admin');
+            mpai_log_debug('Response body (partial): ' . substr($body, 0, 100) . '...', 'admin');
             
             $data = json_decode($body, true);
             
             if (json_last_error() !== JSON_ERROR_NONE) {
-                error_log('MPAI: JSON decode error: ' . json_last_error_msg());
+                mpai_log_error('JSON decode error: ' . json_last_error_msg(), 'admin');
                 wp_send_json_error('Failed to parse API response: ' . json_last_error_msg());
                 return;
             }
             
             if ($status_code !== 200) {
                 $error_message = isset($data['error']['message']) ? $data['error']['message'] : 'Invalid API key or API error';
-                error_log('MPAI: API error: ' . $error_message);
+                mpai_log_error('API error: ' . $error_message, 'admin');
                 wp_send_json_error($error_message);
                 return;
             }
             
             if (empty($data['data'])) {
-                error_log('MPAI: API response missing data array');
+                mpai_log_error('API response missing data array', 'admin');
                 wp_send_json_error(__('Invalid response from OpenAI API', 'memberpress-ai-assistant'));
                 return;
             }
             
-            error_log('MPAI: OpenAI API test successful');
+            mpai_log_info('OpenAI API test successful', 'admin');
             wp_send_json_success(__('Connection successful!', 'memberpress-ai-assistant'));
             
         } catch (Exception $e) {
-            error_log('MPAI: Exception in test_openai_api: ' . $e->getMessage());
+            mpai_log_error('Exception in test_openai_api: ' . $e->getMessage(), 'admin', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             wp_send_json_error($e->getMessage());
         }
     }
@@ -1101,7 +1125,7 @@ class MPAI_Admin {
     public function test_memberpress_api() {
         try {
             // Log the AJAX request for debugging
-            error_log('MPAI: test_memberpress_api called.');
+            mpai_log_debug('test_memberpress_api called.', 'admin');
             
             // Convert to associative array for better logging
             $post_data = array();
@@ -1115,79 +1139,79 @@ class MPAI_Admin {
                 }
             }
             
-            error_log('MPAI: POST data: ' . wp_json_encode($post_data));
+            mpai_log_debug('POST data: ' . wp_json_encode($post_data), 'admin');
             
             // Check nonce - be more thorough about checking if it exists
             if (!isset($_POST['mpai_nonce'])) {
-                error_log('MPAI: No nonce provided in request');
+                mpai_log_warning('No nonce provided in request', 'admin');
                 wp_send_json_error('Security check failed - no nonce provided');
                 return;
             }
             
             // Log the received nonce first few characters for debugging
             $nonce = sanitize_text_field($_POST['mpai_nonce']);
-            error_log('MPAI: Received nonce: ' . substr($nonce, 0, 5) . '... (length: ' . strlen($nonce) . ')');
+            mpai_log_debug('Received nonce: ' . substr($nonce, 0, 5) . '... (length: ' . strlen($nonce) . ')', 'admin');
             
             // Log POST data for debugging (excluding sensitive info)
             $debug_post = $_POST;
             if (isset($debug_post['api_key'])) {
                 $debug_post['api_key'] = substr($debug_post['api_key'], 0, 5) . '...';
             }
-            error_log('MPAI: POST data for MemberPress test: ' . json_encode($debug_post));
+            mpai_log_debug('POST data for MemberPress test: ' . json_encode($debug_post), 'admin');
             
             // Manually verify nonce first for debugging
             $verified = wp_verify_nonce($nonce, 'mpai_nonce');
-            error_log('MPAI: Manual nonce verification result: ' . ($verified ? 'Success ('.$verified.')' : 'Failed (0)'));
+            mpai_log_debug('Manual nonce verification result: ' . ($verified ? 'Success ('.$verified.')' : 'Failed (0)'), 'admin');
             
             // Try with alternate nonce action
             $verified_alt = wp_verify_nonce($nonce, 'mpai_settings_nonce');
-            error_log('MPAI: Alternative nonce verification result: ' . ($verified_alt ? 'Success ('.$verified_alt.')' : 'Failed (0)'));
+            mpai_log_debug('Alternative nonce verification result: ' . ($verified_alt ? 'Success ('.$verified_alt.')' : 'Failed (0)'), 'admin');
             
             // Get a new nonce to compare
             $new_nonce = wp_create_nonce('mpai_nonce');
-            error_log('MPAI: New nonce generated for comparison: ' . substr($new_nonce, 0, 5) . '... (length: ' . strlen($new_nonce) . ')');
+            mpai_log_debug('New nonce generated for comparison: ' . substr($new_nonce, 0, 5) . '... (length: ' . strlen($new_nonce) . ')', 'admin');
             
             // For testing purposes, use either standard or alternate verification
             if (!$verified && !$verified_alt) {
-                error_log('MPAI: Both standard and alternate nonce verification failed, sending error response');
+                mpai_log_warning('Both standard and alternate nonce verification failed, sending error response', 'admin');
                 wp_send_json_error('Security check failed - invalid nonce');
                 return;
             }
             
             if ($verified_alt && !$verified) {
-                error_log('MPAI: Using alternate nonce verification');
+                mpai_log_debug('Using alternate nonce verification', 'admin');
             }
             
             // Log successful nonce check
-            error_log('MPAI: Nonce check passed with check_ajax_referer');
+            mpai_log_debug('Nonce check passed with check_ajax_referer', 'admin');
             
             // Log after nonce check
-            error_log('MPAI: test_memberpress_api nonce check passed');
+            mpai_log_debug('test_memberpress_api nonce check passed', 'admin');
             
             // Check API key
             if (empty($_POST['api_key'])) {
-                error_log('MPAI: MemberPress API key is empty');
+                mpai_log_warning('MemberPress API key is empty', 'admin');
                 wp_send_json_error(__('API key is required', 'memberpress-ai-assistant'));
                 return;
             }
             
             // Check if MemberPress is active
             if (!class_exists('MeprAppCtrl')) {
-                error_log('MPAI: MemberPress plugin is not active');
+                mpai_log_warning('MemberPress plugin is not active', 'admin');
                 wp_send_json_error(__('MemberPress plugin is not active', 'memberpress-ai-assistant'));
                 return;
             }
             
             // Check if Developer Tools is active by looking for specific REST endpoints
             if (!function_exists('rest_get_server') || !class_exists('MeprRestRoutes')) {
-                error_log('MPAI: MemberPress Developer Tools does not appear to be active');
+                mpai_log_warning('MemberPress Developer Tools does not appear to be active', 'admin');
                 wp_send_json_error(__('MemberPress Developer Tools plugin is not active. Please activate it to use the API.', 'memberpress-ai-assistant'));
                 return;
             }
             
             $api_key = sanitize_text_field($_POST['api_key']);
             
-            error_log('MPAI: Testing MemberPress API with key: ' . substr($api_key, 0, 3) . '...');
+            mpai_log_debug('Testing MemberPress API with key: ' . substr($api_key, 0, 3) . '...', 'admin');
             
             // Create test instance of MemberPress API with the provided key
             $memberpress_api = new MPAI_MemberPress_API();
@@ -1198,16 +1222,16 @@ class MPAI_Admin {
             $property->setAccessible(true);
             $property->setValue($memberpress_api, $api_key);
             
-            error_log('MPAI: API base URL: ' . $memberpress_api->get_base_url());
+            mpai_log_debug('API base URL: ' . $memberpress_api->get_base_url(), 'admin');
             
             // Try to get memberships to test connection
-            error_log('MPAI: Attempting to get memberships to test connection');
+            mpai_log_debug('Attempting to get memberships to test connection', 'admin');
             $response = $memberpress_api->get_memberships(array('per_page' => 1));
             
             if (is_wp_error($response)) {
                 $error_message = $response->get_error_message();
                 $error_code = $response->get_error_code();
-                error_log('MPAI: MemberPress API test error: [' . $error_code . '] ' . $error_message);
+                mpai_log_error('MemberPress API test error: [' . $error_code . '] ' . $error_message, 'admin');
                 
                 // If the error is due to no MemberPress REST API, give a clearer message
                 if (strpos($error_message, '404') !== false || $error_code === 'http_request_failed') {
@@ -1222,20 +1246,20 @@ class MPAI_Admin {
             
             // Check if response is an array (valid response format)
             if (!is_array($response)) {
-                error_log('MPAI: Invalid response format from MemberPress API: ' . wp_json_encode($response));
+                mpai_log_error('Invalid response format from MemberPress API: ' . wp_json_encode($response), 'admin');
                 wp_send_json_error(__('Invalid response from MemberPress API', 'memberpress-ai-assistant'));
                 return;
             }
             
             // Get the count of memberships found
             $count = count($response);
-            error_log('MPAI: Found ' . $count . ' memberships in API response');
+            mpai_log_debug('Found ' . $count . ' memberships in API response', 'admin');
             
             if ($count > 0) {
                 // Log a bit more info about what we found
-                error_log('MPAI: Membership titles: ' . wp_json_encode(array_map(function($item) {
+                mpai_log_debug('Membership titles: ' . wp_json_encode(array_map(function($item) {
                     return isset($item['title']) ? $item['title'] : 'Untitled';
-                }, $response)));
+                }, $response)), 'admin');
                 
                 wp_send_json_success(sprintf(__('Connection successful! Found %d membership(s).', 'memberpress-ai-assistant'), $count));
             } else {
@@ -1243,7 +1267,11 @@ class MPAI_Admin {
             }
             
         } catch (Exception $e) {
-            error_log('MPAI: Exception in test_memberpress_api: ' . $e->getMessage());
+            mpai_log_error('Exception in test_memberpress_api: ' . $e->getMessage(), 'admin', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             wp_send_json_error($e->getMessage());
         }
     }
@@ -1257,16 +1285,16 @@ class MPAI_Admin {
      */
     public function get_plugin_logs() {
         try {
-            error_log('MPAI: get_plugin_logs direct endpoint called');
-            error_log('MPAI: POST data: ' . json_encode($_POST));
+            mpai_log_debug('get_plugin_logs direct endpoint called', 'admin');
+            mpai_log_debug('POST data: ' . json_encode($_POST), 'admin');
             
             // Make sure we have class-mpai-plugin-logger.php
             if (!function_exists('mpai_init_plugin_logger')) {
                 if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
                     require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
-                    error_log('MPAI: Loaded plugin logger class directly');
+                    mpai_log_debug('Loaded plugin logger class directly', 'admin');
                 } else {
-                    error_log('MPAI: Plugin logger class not found in direct endpoint');
+                    mpai_log_error('Plugin logger class not found in direct endpoint', 'admin');
                     wp_send_json_error('Plugin logger class not found');
                     return;
                 }
@@ -1275,7 +1303,7 @@ class MPAI_Admin {
             // Initialize plugin logger
             $plugin_logger = mpai_init_plugin_logger();
             if (!$plugin_logger) {
-                error_log('MPAI: Failed to initialize plugin logger in direct endpoint');
+                mpai_log_error('Failed to initialize plugin logger in direct endpoint', 'admin');
                 wp_send_json_error('Failed to initialize plugin logger');
                 return;
             }
@@ -1285,7 +1313,7 @@ class MPAI_Admin {
             $days = isset($_POST['days']) && is_numeric($_POST['days']) ? intval($_POST['days']) : 30;
             $limit = isset($_POST['limit']) && is_numeric($_POST['limit']) ? intval($_POST['limit']) : 25;
             
-            error_log("MPAI: Direct plugin logs using action={$action}, days={$days}, limit={$limit}");
+            mpai_log_debug("Direct plugin logs using action={$action}, days={$days}, limit={$limit}", 'admin');
             
             // Get logs
             $args = [
@@ -1297,7 +1325,7 @@ class MPAI_Admin {
             ];
             
             $logs = $plugin_logger->get_logs($args);
-            error_log('MPAI: Direct plugin logs found: ' . count($logs));
+            mpai_log_debug('Direct plugin logs found: ' . count($logs), 'admin');
             
             // Simple counting of log entries by action
             $summary = [
@@ -1332,11 +1360,15 @@ class MPAI_Admin {
                 'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
             ];
             
-            error_log('MPAI: Direct plugin logs returning success');
+            mpai_log_info('Direct plugin logs returning success', 'admin');
             wp_send_json_success($result);
             
         } catch (Exception $e) {
-            error_log('MPAI: Exception in direct get_plugin_logs: ' . $e->getMessage());
+            mpai_log_error('Exception in direct get_plugin_logs: ' . $e->getMessage(), 'admin', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             wp_send_json_error('Error getting plugin logs: ' . $e->getMessage());
         }
     }
