@@ -306,27 +306,35 @@ class MPAI_Context_Manager {
                 }
                 
                 mpai_log_debug('wp_cli_tool execution complete at ' . date('H:i:s') . ', result length: ' . strlen($result), 'context-manager');
-                error_log('MPAI: Result preview: ' . substr($result, 0, 100) . '...');
+                mpai_log_debug('Result preview: ' . substr($result, 0, 100) . '...', 'context-manager');
                 
                 // Check if the result is a JSON-encoded string and extract the tabular data
                 if (is_string($result) && strpos($result, '{"success":true,"tool":"wp_cli","command_type":"plugin_list","result":') === 0) {
-                    error_log('MPAI: Detected JSON format in result, extracting tabular data');
+                    mpai_log_debug('Detected JSON format in result, extracting tabular data', 'context-manager');
                     
                     try {
                         $decoded = json_decode($result, true);
                         if (json_last_error() === JSON_ERROR_NONE && isset($decoded['result']) && is_string($decoded['result'])) {
-                            error_log('MPAI: Successfully extracted tabular data from JSON');
+                            mpai_log_debug('Successfully extracted tabular data from JSON', 'context-manager');
                             // Return just the tabular data part
                             return $decoded['result'];
                         }
                     } catch (Exception $e) {
-                        error_log('MPAI: Error decoding JSON result: ' . $e->getMessage());
+                        mpai_log_error('Error decoding JSON result: ' . $e->getMessage(), 'context-manager', array(
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                            'trace' => $e->getTraceAsString()
+                        ));
                     }
                 }
                 
                 return $result;
             } catch (Exception $e) {
-                error_log('MPAI: Error executing wp plugin list with WP CLI Tool: ' . $e->getMessage());
+                mpai_log_error('Error executing wp plugin list with WP CLI Tool: ' . $e->getMessage(), 'context-manager', array(
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ));
                 
                 // Use error recovery formatting if available
                 if ($this->error_recovery) {
@@ -344,25 +352,25 @@ class MPAI_Context_Manager {
         }
         
         // CLI commands are always enabled now (settings were removed from UI)
-        error_log('MPAI: CLI commands are always enabled');
+        mpai_log_debug('CLI commands are always enabled', 'context-manager');
         
         // Check if command is allowed - temporarily bypass for debugging
-        error_log('MPAI: ⚠️ TEMPORARILY BYPASSING COMMAND ALLOWED CHECK FOR DEBUGGING');
-        error_log('MPAI: Current allowed commands: ' . implode(', ', $this->allowed_commands));
+        mpai_log_warning('⚠️ TEMPORARILY BYPASSING COMMAND ALLOWED CHECK FOR DEBUGGING', 'context-manager');
+        mpai_log_debug('Current allowed commands: ' . implode(', ', $this->allowed_commands), 'context-manager');
         $is_allowed = $this->is_command_allowed($command);
-        error_log('MPAI: Command allowed check result: ' . ($is_allowed ? 'allowed' : 'not allowed'));
+        mpai_log_debug('Command allowed check result: ' . ($is_allowed ? 'allowed' : 'not allowed'), 'context-manager');
         
         // Always consider the command allowed for debugging
         /*
         if (!$this->is_command_allowed($command)) {
-            error_log('MPAI: Command not allowed: ' . $command);
+            mpai_log_warning('Command not allowed: ' . $command, 'context-manager');
             return 'Command not allowed. Only allowed commands can be executed. Currently allowed: ' . implode(', ', $this->allowed_commands);
         }
         */
 
         // Since WP-CLI might not be available in admin context, use WordPress API fallback
         if (!defined('WP_CLI') || !class_exists('WP_CLI')) {
-            error_log('MPAI: WP-CLI not available in this environment, using WordPress API fallback');
+            mpai_log_info('WP-CLI not available in this environment, using WordPress API fallback', 'context-manager');
             
             // Initialize WP API Tool if needed
             if (!isset($this->wp_api_tool)) {
@@ -377,15 +385,15 @@ class MPAI_Context_Manager {
                 // Initialize the tool if the class exists
                 if (class_exists('MPAI_WP_API_Tool')) {
                     $this->wp_api_tool = new MPAI_WP_API_Tool();
-                    error_log('MPAI: WordPress API Tool initialized successfully');
+                    mpai_log_debug('WordPress API Tool initialized successfully', 'context-manager');
                 } else {
-                    error_log('MPAI: WordPress API Tool class not found');
+                    mpai_log_warning('WordPress API Tool class not found', 'context-manager');
                 }
             }
             
             // For post creation/update commands
             if (preg_match('/wp post create --post_title=[\'"]?([^\'"]*)/', $command, $matches)) {
-                error_log('MPAI: Detected post create command, using WordPress API');
+                mpai_log_debug('Detected post create command, using WordPress API', 'context-manager');
                 $title = isset($matches[1]) ? $matches[1] : 'New Post';
                 
                 // Extract content if provided
@@ -413,7 +421,11 @@ class MPAI_Context_Manager {
                         return "Post created successfully.\nID: {$result['post_id']}\nTitle: {$title}\nStatus: {$status}\nURL: {$result['post_url']}";
                     }
                 } catch (Exception $e) {
-                    error_log('MPAI: Error creating post: ' . $e->getMessage());
+                    mpai_log_error('Error creating post: ' . $e->getMessage(), 'context-manager', array(
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ));
                     return 'Error creating post: ' . $e->getMessage();
                 }
             }
