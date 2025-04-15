@@ -64,13 +64,13 @@ class MPAI_Context_Manager {
      * Constructor
      */
     public function __construct() {
-        error_log('MPAI_Context_Manager v' . self::VERSION . ' initialized');
+        mpai_log_info('Context Manager v' . self::VERSION . ' initialized', 'context-manager');
         
         // Initialize error recovery system
         if (class_exists('MPAI_Error_Recovery')) {
             $this->error_recovery = mpai_init_error_recovery();
         } else {
-            error_log('MPAI: Error recovery system not available');
+            mpai_log_warning('Error recovery system not available', 'context-manager');
         }
         
         $this->openai = new MPAI_OpenAI();
@@ -86,7 +86,7 @@ class MPAI_Context_Manager {
      */
     public function set_chat_instance($chat_instance) {
         $this->chat_instance = $chat_instance;
-        error_log('MPAI: Chat instance set in context manager');
+        mpai_log_debug('Chat instance set in context manager', 'context-manager');
     }
     
     /**
@@ -96,31 +96,31 @@ class MPAI_Context_Manager {
      * chat sessions.
      */
     public function reset_context() {
-        error_log('MPAI: Resetting context manager state');
+        mpai_log_debug('Resetting context manager state', 'context-manager');
         
         // Clear chat instance
         if (isset($this->chat_instance)) {
             $this->chat_instance = null;
-            error_log('MPAI: Cleared chat instance reference');
+            mpai_log_debug('Cleared chat instance reference', 'context-manager');
         }
         
         // Clear any tool-specific cached data
         if (isset($this->wp_api_tool)) {
             $this->wp_api_tool = null;
-            error_log('MPAI: Cleared WP API tool instance');
+            mpai_log_debug('Cleared WP API tool instance', 'context-manager');
         }
         
         // Reinitialize the tools
         $this->init_tools();
-        error_log('MPAI: Reinitialized tools');
+        mpai_log_debug('Reinitialized tools', 'context-manager');
         
         // Reload allowed commands from database
         $this->allowed_commands = get_option('mpai_allowed_cli_commands', array());
-        error_log('MPAI: Reloaded allowed commands');
+        mpai_log_debug('Reloaded allowed commands', 'context-manager');
         
         // Clear any other cached data here
         
-        error_log('MPAI: Context manager reset complete');
+        mpai_log_info('Context manager reset complete', 'context-manager');
     }
 
     /**
@@ -131,17 +131,17 @@ class MPAI_Context_Manager {
         $tool_registry = null;
         if (class_exists('MPAI_Tool_Registry')) {
             $tool_registry = new MPAI_Tool_Registry();
-            error_log('MPAI Context Manager: Tool Registry initialized');
+            mpai_log_debug('Tool Registry initialized', 'context-manager');
             
             // Get plugin_logs tool from registry
             $plugin_logs_tool = $tool_registry->get_tool('plugin_logs');
             if ($plugin_logs_tool) {
-                error_log('MPAI Context Manager: Found plugin_logs tool in registry');
+                mpai_log_debug('Found plugin_logs tool in registry', 'context-manager');
             } else {
-                error_log('MPAI Context Manager: plugin_logs tool not found in registry');
+                mpai_log_debug('plugin_logs tool not found in registry', 'context-manager');
             }
         } else {
-            error_log('MPAI Context Manager: MPAI_Tool_Registry class not available');
+            mpai_log_warning('MPAI_Tool_Registry class not available', 'context-manager');
         }
         
         $this->available_tools = array(
@@ -246,27 +246,27 @@ class MPAI_Context_Manager {
      */
     public function run_command($command) {
         $current_time = date('H:i:s');
-        error_log('MPAI: run_command called with command: ' . $command . ' (v' . self::VERSION . ') at ' . $current_time);
+        mpai_log_info('run_command called with command: ' . $command . ' (v' . self::VERSION . ') at ' . $current_time, 'context-manager');
         
         // Special handling for wp plugin list
         if (trim($command) === 'wp plugin list') {
-            error_log('MPAI: Context Manager handling wp plugin list command at ' . $current_time);
+            mpai_log_debug('Context Manager handling wp plugin list command at ' . $current_time, 'context-manager');
             
             // Initialize the WP CLI Tool which has special handling for this command
             if (!class_exists('MPAI_WP_CLI_Tool')) {
                 $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-wpcli-tool.php';
                 if (file_exists($tool_path)) {
                     require_once $tool_path;
-                    error_log('MPAI: Loaded MPAI_WP_CLI_Tool class at ' . date('H:i:s'));
+                    mpai_log_debug('Loaded MPAI_WP_CLI_Tool class at ' . date('H:i:s'), 'context-manager');
                 } else {
-                    error_log('MPAI: Could not find MPAI_WP_CLI_Tool at: ' . $tool_path);
+                    mpai_log_error('Could not find MPAI_WP_CLI_Tool at: ' . $tool_path, 'context-manager');
                     return 'Error: Could not load required tool class.';
                 }
             }
             
             try {
                 $wp_cli_tool = new MPAI_WP_CLI_Tool();
-                error_log('MPAI: Created MPAI_WP_CLI_Tool instance at ' . date('H:i:s'));
+                mpai_log_debug('Created MPAI_WP_CLI_Tool instance at ' . date('H:i:s'), 'context-manager');
                 
                 // Define execution and fallback functions for error recovery
                 $execute_command = function() use ($wp_cli_tool) {
@@ -297,7 +297,7 @@ class MPAI_Context_Manager {
                     
                     // If result is WP_Error, use the formatted message
                     if (is_wp_error($result)) {
-                        error_log('MPAI: Command execution failed even with error recovery');
+                        mpai_log_error('Command execution failed even with error recovery', 'context-manager');
                         return $this->error_recovery->format_error_for_display($result);
                     }
                 } else {
@@ -305,7 +305,7 @@ class MPAI_Context_Manager {
                     $result = $execute_command();
                 }
                 
-                error_log('MPAI: wp_cli_tool execution complete at ' . date('H:i:s') . ', result length: ' . strlen($result));
+                mpai_log_debug('wp_cli_tool execution complete at ' . date('H:i:s') . ', result length: ' . strlen($result), 'context-manager');
                 error_log('MPAI: Result preview: ' . substr($result, 0, 100) . '...');
                 
                 // Check if the result is a JSON-encoded string and extract the tabular data
