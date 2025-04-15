@@ -18,17 +18,17 @@ class MPAI_XML_Content_Parser {
      * @return array|false Parsed post data or false on failure
      */
     public function parse_xml_blog_post($xml_content) {
-        error_log('MPAI: Parsing XML blog post, content length: ' . strlen($xml_content));
+        mpai_log_debug('Parsing XML blog post, content length: ' . strlen($xml_content), 'xml-parser');
         
         // Handle empty content
         if (empty($xml_content)) {
-            error_log('MPAI: Empty XML content received');
+            mpai_log_warning('Empty XML content received', 'xml-parser');
             return false;
         }
         
         // Handle HTML-escaped content (useful for direct AJAX requests)
         if (strpos($xml_content, '&lt;wp-post') !== false && strpos($xml_content, '&lt;/wp-post&gt;') !== false) {
-            error_log('MPAI: HTML-escaped XML content detected, unescaping');
+            mpai_log_debug('HTML-escaped XML content detected, unescaping', 'xml-parser');
             $xml_content = html_entity_decode($xml_content);
         }
         
@@ -36,7 +36,7 @@ class MPAI_XML_Content_Parser {
         $xml_content = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $xml_content);
         
         // Log the content for debugging
-        error_log('MPAI: XML content starts with: ' . substr($xml_content, 0, 50) . '...');
+        mpai_log_debug('XML content starts with: ' . substr($xml_content, 0, 50) . '...', 'xml-parser');
         
         // Try multiple approaches to extract the XML content
         $xml = false;
@@ -44,11 +44,11 @@ class MPAI_XML_Content_Parser {
         // Approach 1: Regular expression with DOTALL flag and non-greedy quantifier
         if (preg_match('/<wp-post[^>]*>(.*?)<\/wp-post>/s', $xml_content, $matches)) {
             $xml = $matches[1];
-            error_log('MPAI: Successfully extracted XML content using regex, length: ' . strlen($xml));
+            mpai_log_debug('Successfully extracted XML content using regex, length: ' . strlen($xml), 'xml-parser');
         } 
         // Approach 2: Position-based extraction
         else {
-            error_log('MPAI: Regex extraction failed, trying position-based approach');
+            mpai_log_debug('Regex extraction failed, trying position-based approach', 'xml-parser');
             
             $start_pos = stripos($xml_content, '<wp-post');
             if ($start_pos !== false) {
@@ -57,23 +57,23 @@ class MPAI_XML_Content_Parser {
                 
                 if ($start_tag_end !== false && $end_pos !== false && $end_pos > $start_tag_end) {
                     $xml = substr($xml_content, $start_tag_end + 1, $end_pos - $start_tag_end - 1);
-                    error_log('MPAI: Extracted XML content using position-based approach, length: ' . strlen($xml));
+                    mpai_log_debug('Extracted XML content using position-based approach, length: ' . strlen($xml), 'xml-parser');
                 } else {
                     // Last resort - try to work with the entire content including tags
-                    error_log('MPAI: Position-based extraction failed, using entire content');
+                    mpai_log_warning('Position-based extraction failed, using entire content', 'xml-parser');
                     $xml = $xml_content;
                 }
             } else {
-                error_log('MPAI: Could not find wp-post tags in content');
+                mpai_log_warning('Could not find wp-post tags in content', 'xml-parser');
                 
                 // Last resort - try to work with the content directly without wp-post tags
                 // Check if it has any XML-like structure
                 if (strpos($xml_content, '<post-title>') !== false || 
                     strpos($xml_content, '<post-content>') !== false) {
-                    error_log('MPAI: Found post elements without wp-post tags, using content directly');
+                    mpai_log_debug('Found post elements without wp-post tags, using content directly', 'xml-parser');
                     $xml = $xml_content;
                 } else {
-                    error_log('MPAI: No XML structure found in content');
+                    mpai_log_error('No XML structure found in content', 'xml-parser');
                     return false;
                 }
             }
@@ -85,21 +85,21 @@ class MPAI_XML_Content_Parser {
         // Title extraction - allowing for attributes in the tag
         if (preg_match('/<post-title[^>]*>(.*?)<\/post-title>/s', $xml, $title_match)) {
             $post_data['title'] = trim($title_match[1]);
-            error_log('MPAI: Extracted title: ' . substr($post_data['title'], 0, 50) . (strlen($post_data['title']) > 50 ? '...' : ''));
+            mpai_log_debug('Extracted title: ' . substr($post_data['title'], 0, 50) . (strlen($post_data['title']) > 50 ? '...' : ''), 'xml-parser');
         } else {
-            error_log('MPAI: No post title found in XML');
+            mpai_log_warning('No post title found in XML', 'xml-parser');
         }
         
         // Content extraction - allowing for attributes in the tag
         if (preg_match('/<post-content[^>]*>(.*?)<\/post-content>/s', $xml, $content_match)) {
             $blocks_content = $content_match[1];
-            error_log('MPAI: Extracted content blocks, length: ' . strlen($blocks_content));
+            mpai_log_debug('Extracted content blocks, length: ' . strlen($blocks_content), 'xml-parser');
             $post_data['content'] = $this->convert_xml_blocks_to_gutenberg($blocks_content);
         } else {
-            error_log('MPAI: No post content found in XML');
+            mpai_log_warning('No post content found in XML', 'xml-parser');
             // Fallback - treat the entire XML as content if no post-content tags found
             if (!empty($xml)) {
-                error_log('MPAI: Using fallback - treating entire XML as content');
+                mpai_log_debug('Using fallback - treating entire XML as content', 'xml-parser');
                 $post_data['content'] = $this->convert_xml_blocks_to_gutenberg($xml);
             }
         }
@@ -107,29 +107,29 @@ class MPAI_XML_Content_Parser {
         // Excerpt extraction - allowing for attributes in the tag
         if (preg_match('/<post-excerpt[^>]*>(.*?)<\/post-excerpt>/s', $xml, $excerpt_match)) {
             $post_data['excerpt'] = trim($excerpt_match[1]);
-            error_log('MPAI: Extracted excerpt: ' . substr($post_data['excerpt'], 0, 50) . (strlen($post_data['excerpt']) > 50 ? '...' : ''));
+            mpai_log_debug('Extracted excerpt: ' . substr($post_data['excerpt'], 0, 50) . (strlen($post_data['excerpt']) > 50 ? '...' : ''), 'xml-parser');
         }
         
         // Status extraction - allowing for attributes in the tag
         if (preg_match('/<post-status[^>]*>(.*?)<\/post-status>/s', $xml, $status_match)) {
             $post_data['status'] = trim($status_match[1]);
-            error_log('MPAI: Extracted status: ' . $post_data['status']);
+            mpai_log_debug('Extracted status: ' . $post_data['status'], 'xml-parser');
         }
         
         // Add fallback values for required fields
         if (empty($post_data['title'])) {
             $post_data['title'] = 'New Blog Post';
-            error_log('MPAI: Using default title');
+            mpai_log_info('Using default title', 'xml-parser');
         }
         
         if (empty($post_data['content'])) {
             $post_data['content'] = '<!-- wp:paragraph --><p>Content not provided.</p><!-- /wp:paragraph -->';
-            error_log('MPAI: Using default content');
+            mpai_log_info('Using default content', 'xml-parser');
         }
         
         if (empty($post_data['status'])) {
             $post_data['status'] = 'draft';
-            error_log('MPAI: Using default status: draft');
+            mpai_log_info('Using default status: draft', 'xml-parser');
         }
         
         return $post_data;
@@ -145,11 +145,11 @@ class MPAI_XML_Content_Parser {
         $gutenberg_blocks = [];
         
         // Log the original content for debugging
-        error_log('MPAI XML Parser: Processing block content: ' . substr($blocks_content, 0, 100) . '...');
+        mpai_log_debug('Processing block content: ' . substr($blocks_content, 0, 100) . '...', 'xml-parser');
         
         // Make sure blocks_content is a string
         if (!is_string($blocks_content)) {
-            error_log('MPAI XML Parser: blocks_content is not a string: ' . gettype($blocks_content));
+            mpai_log_warning('blocks_content is not a string: ' . gettype($blocks_content), 'xml-parser');
             return '<!-- wp:paragraph --><p>Invalid content format.</p><!-- /wp:paragraph -->';
         }
         
@@ -158,20 +158,20 @@ class MPAI_XML_Content_Parser {
         
         // Handle empty content
         if (empty(trim($blocks_content))) {
-            error_log('MPAI XML Parser: Empty or whitespace-only content');
+            mpai_log_warning('Empty or whitespace-only content', 'xml-parser');
             return '<!-- wp:paragraph --><p>No content provided.</p><!-- /wp:paragraph -->';
         }
         
         // If no blocks are found, try to identify sections from raw text that might follow a specific pattern
         if (strpos($blocks_content, '<block') === false) {
-            error_log('MPAI XML Parser: No blocks found, attempting to extract structure from raw content');
+            mpai_log_debug('No blocks found, attempting to extract structure from raw content', 'xml-parser');
             
             // Try to identify headings and paragraphs from raw text
             $blocks_content = $this->preprocess_raw_content($blocks_content);
             
             // Check again if preprocessing created block tags
             if (strpos($blocks_content, '<block') === false) {
-                error_log('MPAI XML Parser: No blocks found after preprocessing, treating as single paragraph');
+                mpai_log_debug('No blocks found after preprocessing, treating as single paragraph', 'xml-parser');
                 $gutenberg_blocks[] = '<!-- wp:paragraph --><p>' . esc_html($blocks_content) . '</p><!-- /wp:paragraph -->';
                 return implode("\n\n", $gutenberg_blocks);
             }
@@ -184,14 +184,14 @@ class MPAI_XML_Content_Parser {
             
             // Log the number of blocks found
             $block_count = count($blocks);
-            error_log('MPAI XML Parser: Found ' . $block_count . ' blocks using permissive pattern');
+            mpai_log_debug('Found ' . $block_count . ' blocks using permissive pattern', 'xml-parser');
             
             // If we didn't find any blocks with our pattern, try an even more basic approach
             if ($block_count === 0) {
-                error_log('MPAI XML Parser: No blocks found with regex, trying position-based parsing');
+                mpai_log_debug('No blocks found with regex, trying position-based parsing', 'xml-parser');
                 $blocks = $this->extract_blocks_by_position($blocks_content);
                 $block_count = count($blocks);
-                error_log('MPAI XML Parser: Found ' . $block_count . ' blocks using position-based parsing');
+                mpai_log_debug('Found ' . $block_count . ' blocks using position-based parsing', 'xml-parser');
             }
             
             // Process each block
@@ -234,11 +234,11 @@ class MPAI_XML_Content_Parser {
                     }
                 }
                 
-                error_log('MPAI XML Parser: Processing block type: ' . $block_type);
+                mpai_log_debug('Processing block type: ' . $block_type, 'xml-parser');
                 
                 // Skip empty blocks
                 if (empty(trim($block_content))) {
-                    error_log('MPAI XML Parser: Skipping empty block');
+                    mpai_log_debug('Skipping empty block', 'xml-parser');
                     continue;
                 }
                 
@@ -306,11 +306,15 @@ class MPAI_XML_Content_Parser {
                 }
             }
         } catch (Exception $e) {
-            error_log('MPAI XML Parser: Error processing blocks: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            mpai_log_error('Error processing blocks: ' . $e->getMessage(), 'xml-parser', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             
             // Default fallback - split into paragraphs based on newlines and format each
             $paragraphs = preg_split('/\n\s*\n/', $blocks_content);
-            error_log('MPAI XML Parser: Fallback - processing as ' . count($paragraphs) . ' paragraphs');
+            mpai_log_debug('Fallback - processing as ' . count($paragraphs) . ' paragraphs', 'xml-parser');
             
             foreach ($paragraphs as $paragraph) {
                 $paragraph = trim($paragraph);
@@ -327,7 +331,7 @@ class MPAI_XML_Content_Parser {
         
         // If no blocks were processed, add a fallback paragraph
         if (empty($gutenberg_blocks)) {
-            error_log('MPAI XML Parser: No blocks processed, using fallback paragraph');
+            mpai_log_warning('No blocks processed, using fallback paragraph', 'xml-parser');
             $gutenberg_blocks[] = '<!-- wp:paragraph --><p>' . esc_html($blocks_content) . '</p><!-- /wp:paragraph -->';
         }
         
@@ -346,7 +350,7 @@ class MPAI_XML_Content_Parser {
             strpos($content, '<h3>') !== false || strpos($content, '<p>') !== false ||
             strpos($content, '<ul>') !== false || strpos($content, '<ol>') !== false) {
             
-            error_log('MPAI XML Parser: Content contains HTML tags, converting to block format');
+            mpai_log_debug('Content contains HTML tags, converting to block format', 'xml-parser');
             
             // Extract headings
             $content = preg_replace('/<h1>(.*?)<\/h1>/s', '<block type="heading" level="1">$1</block>', $content);
@@ -540,7 +544,7 @@ class MPAI_XML_Content_Parser {
         try {
             // Handle explicitly defined list items
             if (preg_match_all('/<item>(.*?)<\/item>/s', $list_content, $items)) {
-                error_log('MPAI XML Parser: Found ' . count($items[1]) . ' explicit <item> tags');
+                mpai_log_debug('Found ' . count($items[1]) . ' explicit <item> tags', 'xml-parser');
                 
                 foreach ($items[1] as $item) {
                     $html .= '<li>' . esc_html(trim($item)) . '</li>';
@@ -549,7 +553,7 @@ class MPAI_XML_Content_Parser {
             }
             
             // Fall back to splitting by newlines if no <item> tags
-            error_log('MPAI XML Parser: No <item> tags found, splitting by newlines');
+            mpai_log_debug('No <item> tags found, splitting by newlines', 'xml-parser');
             $lines = preg_split('/\r\n|\r|\n/', $list_content);
             
             foreach ($lines as $line) {
@@ -563,11 +567,15 @@ class MPAI_XML_Content_Parser {
             
             // If still no items found, just wrap the entire content as one item
             if (empty($html) && !empty($list_content)) {
-                error_log('MPAI XML Parser: No list items found via parsing, using entire content as one item');
+                mpai_log_debug('No list items found via parsing, using entire content as one item', 'xml-parser');
                 $html = '<li>' . esc_html(trim($list_content)) . '</li>';
             }
         } catch (Exception $e) {
-            error_log('MPAI XML Parser: Error processing list items: ' . $e->getMessage());
+            mpai_log_error('Error processing list items: ' . $e->getMessage(), 'xml-parser', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             // Fallback - use the entire content as one list item
             $html = '<li>' . esc_html(trim($list_content)) . '</li>';
         }
