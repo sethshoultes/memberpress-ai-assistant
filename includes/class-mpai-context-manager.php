@@ -432,7 +432,7 @@ class MPAI_Context_Manager {
             
             // For page creation commands
             if (preg_match('/wp post create --post_type=page --post_title=[\'"]?([^\'"]*)/', $command, $matches)) {
-                error_log('MPAI: Detected page create command, using WordPress API');
+                mpai_log_debug('Detected page create command, using WordPress API', 'context-manager');
                 $title = isset($matches[1]) ? $matches[1] : 'New Page';
                 
                 // Extract content if provided
@@ -460,14 +460,18 @@ class MPAI_Context_Manager {
                         return "Page created successfully.\nID: {$result['post_id']}\nTitle: {$title}\nStatus: {$status}\nURL: {$result['post_url']}";
                     }
                 } catch (Exception $e) {
-                    error_log('MPAI: Error creating page: ' . $e->getMessage());
+                    mpai_log_error('Error creating page: ' . $e->getMessage(), 'context-manager', array(
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ));
                     return 'Error creating page: ' . $e->getMessage();
                 }
             }
             
             // For user creation commands
             if (preg_match('/wp user create ([^\s]+) ([^\s]+)/', $command, $matches)) {
-                error_log('MPAI: Detected user create command, using WordPress API');
+                mpai_log_debug('Detected user create command, using WordPress API', 'context-manager');
                 $username = isset($matches[1]) ? $matches[1] : '';
                 $email = isset($matches[2]) ? $matches[2] : '';
                 
@@ -490,7 +494,11 @@ class MPAI_Context_Manager {
                         return "User created successfully.\nID: {$result['user_id']}\nUsername: {$username}\nEmail: {$email}\nRole: {$role}";
                     }
                 } catch (Exception $e) {
-                    error_log('MPAI: Error creating user: ' . $e->getMessage());
+                    mpai_log_error('Error creating user: ' . $e->getMessage(), 'context-manager', array(
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ));
                     return 'Error creating user: ' . $e->getMessage();
                 }
             }
@@ -512,12 +520,16 @@ class MPAI_Context_Manager {
                                 $roles = isset($user['roles']) ? implode(', ', $user['roles']) : '';
                                 $output .= $user['ID'] . "\t" . $user['user_login'] . "\t" . $user['display_name'] . "\t" . $user['user_email'] . "\t" . $roles . "\n";
                             }
-                            error_log('MPAI: Returning simulated output for wp user list using WP API Tool');
+                            mpai_log_debug('Returning simulated output for wp user list using WP API Tool', 'context-manager');
                             return $this->format_tabular_output($command, $output);
                         }
                     }
                 } catch (Exception $e) {
-                    error_log('MPAI: Error using WP API Tool for user list: ' . $e->getMessage());
+                    mpai_log_error('Error using WP API Tool for user list: ' . $e->getMessage(), 'context-manager', array(
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ));
                 }
                 
                 // Fallback to direct WordPress API
@@ -526,7 +538,7 @@ class MPAI_Context_Manager {
                 foreach ($users as $user) {
                     $output .= $user->ID . "\t" . $user->user_login . "\t" . $user->display_name . "\t" . $user->user_email . "\t" . implode(', ', $user->roles) . "\n";
                 }
-                error_log('MPAI: Returning simulated output for wp user list');
+                mpai_log_debug('Returning simulated output for wp user list', 'context-manager');
                 return $this->format_tabular_output($command, $output);
             }
             
@@ -537,19 +549,19 @@ class MPAI_Context_Manager {
                 foreach ($posts as $post) {
                     $output .= $post->ID . "\t" . $post->post_title . "\t" . $post->post_date . "\t" . $post->post_status . "\n";
                 }
-                error_log('MPAI: Returning simulated output for wp post list');
+                mpai_log_debug('Returning simulated output for wp post list', 'context-manager');
                 return $this->format_tabular_output($command, $output);
             }
             
             if (strpos($command, 'wp plugin list') === 0) {
-                error_log('MPAI: Detected wp plugin list command - using WP API Tool: v' . self::VERSION);
+                mpai_log_debug('Detected wp plugin list command - using WP API Tool: v' . self::VERSION, 'context-manager');
                 
                 try {
                     // Use the WP API Tool to get plugin list with activity data
                     if (isset($this->wp_api_tool)) {
                         // Get current time for verification
                         $current_time = date('H:i:s');
-                        error_log('MPAI_Context_Manager: wp plugin list called at ' . $current_time);
+                        mpai_log_debug('wp plugin list called at ' . $current_time, 'context-manager');
                         
                         // Call the enhanced get_plugins method from our WP API Tool
                         $result = $this->wp_api_tool->execute(array(
@@ -558,18 +570,22 @@ class MPAI_Context_Manager {
                         ));
                         
                         if (is_array($result) && isset($result['table_data'])) {
-                            error_log('MPAI: Received formatted plugin table data');
+                            mpai_log_debug('Received formatted plugin table data', 'context-manager');
                             return $this->format_tabular_output($command, $result['table_data']);
                         } else {
-                            error_log('MPAI: WP API Tool returned unexpected result format');
+                            mpai_log_warning('WP API Tool returned unexpected result format', 'context-manager');
                             throw new Exception('Unexpected result format from WP API Tool');
                         }
                     } else {
-                        error_log('MPAI: WP API Tool not initialized');
+                        mpai_log_warning('WP API Tool not initialized', 'context-manager');
                         throw new Exception('WP API Tool not initialized');
                     }
                 } catch (Exception $e) {
-                    error_log('MPAI: Error using WP API Tool for plugin list: ' . $e->getMessage());
+                    mpai_log_error('Error using WP API Tool for plugin list: ' . $e->getMessage(), 'context-manager', array(
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ));
                     // Let it fall through to the next handler
                 }
             }
