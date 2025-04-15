@@ -68,40 +68,8 @@ class MPAI_Admin_Menu {
      * @return bool Whether MemberPress is active
      */
     private function detect_memberpress() {
-        // Check for MemberPress core classes
-        $core_classes = [
-            'MeprAppCtrl',
-            'MeprOptions',
-            'MeprUser',
-            'MeprProduct'
-        ];
-        
-        foreach ($core_classes as $class) {
-            if (class_exists($class)) {
-                return true;
-            }
-        }
-        
-        // Check for MemberPress constants
-        $core_constants = [
-            'MEPR_VERSION',
-            'MEPR_PLUGIN_NAME',
-            'MEPR_PATH'
-        ];
-        
-        foreach ($core_constants as $constant) {
-            if (defined($constant)) {
-                return true;
-            }
-        }
-        
-        // Check if the plugin is active
-        if (function_exists('is_plugin_active') && is_plugin_active('memberpress/memberpress.php')) {
-            return true;
-        }
-        
-        // Not detected
-        return false;
+        // Use the centralized MemberPress detection system
+        return mpai_is_memberpress_active();
     }
 
     /**
@@ -185,7 +153,7 @@ class MPAI_Admin_Menu {
             );
         }
         
-        // Add settings page
+        // Legacy settings page
         add_submenu_page(
             $this->parent_slug,
             __('Settings', 'memberpress-ai-assistant'),
