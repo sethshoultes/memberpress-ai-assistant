@@ -135,23 +135,22 @@ class MPAI_Agent_Orchestrator {
 	 * @return object Default logger
 	 */
 	private function get_default_logger() {
-		// Create a simple logger class instead of using stdClass with function properties
-		// This is safer across PHP versions
+		// Create a simple logger class that forwards to our standardized logging system
 		$logger = new class {
 			public function info($message, $context = []) {
-				error_log('MPAI ORCHESTRATOR INFO: ' . $message);
+				mpai_log_info($message, 'orchestrator', $context);
 			}
 			
 			public function warning($message, $context = []) {
-				error_log('MPAI ORCHESTRATOR WARNING: ' . $message);
+				mpai_log_warning($message, 'orchestrator', $context);
 			}
 			
 			public function error($message, $context = []) {
-				error_log('MPAI ORCHESTRATOR ERROR: ' . $message);
+				mpai_log_error($message, 'orchestrator', $context);
 			}
 			
 			public function debug($message, $context = []) {
-				error_log('MPAI ORCHESTRATOR DEBUG: ' . $message);
+				mpai_log_debug($message, 'orchestrator', $context);
 			}
 		};
 		
@@ -308,7 +307,7 @@ class MPAI_Agent_Orchestrator {
 			$adapter_path = plugin_dir_path( dirname( __FILE__ ) ) . 'commands/class-mpai-command-adapter.php';
 			
 			if ( ! file_exists( $adapter_path ) ) {
-				error_log( 'MPAI: New command system not available: ' . $adapter_path );
+				mpai_log_debug( 'New command system not available: ' . $adapter_path, 'orchestrator' );
 				return false;
 			}
 			
@@ -317,17 +316,17 @@ class MPAI_Agent_Orchestrator {
 			
 			// Check if adapter class is available
 			if ( ! class_exists( 'MPAI_Command_Adapter' ) ) {
-				error_log( 'MPAI: Command adapter class not found' );
+				mpai_log_warning( 'Command adapter class not found', 'orchestrator' );
 				return false;
 			}
 			
 			// Initialize the command adapter
 			$this->command_adapter = new MPAI_Command_Adapter( $this->tool_registry );
-			error_log( 'MPAI: Initialized command adapter' );
+			mpai_log_info( 'Initialized command adapter', 'orchestrator' );
 			
 			// Register the adapter as a tool for WP-CLI commands
 			if ( $this->command_adapter->register_as_tool( $this->tool_registry ) ) {
-				error_log( 'MPAI: Registered command adapter as tool' );
+				mpai_log_info( 'Registered command adapter as tool', 'orchestrator' );
 				
 				// Replace the standard WP-CLI tool with our new implementation
 				// Get the new implementation and register it as the primary tools
@@ -336,9 +335,9 @@ class MPAI_Agent_Orchestrator {
 					$this->tool_registry->register_tool( 'wpcli', $wpcli_new_tool );
 					// For backward compatibility, also register under the wp_cli name
 					$this->tool_registry->register_tool( 'wp_cli', $wpcli_new_tool );
-					error_log( 'MPAI: Replaced standard WP-CLI tools with new implementation' );
+					mpai_log_info( 'Replaced standard WP-CLI tools with new implementation', 'orchestrator' );
 				} else {
-					error_log( 'MPAI: Could not get wpcli_new tool' );
+					mpai_log_warning( 'Could not get wpcli_new tool', 'orchestrator' );
 				}
 				
 				return true;
@@ -346,7 +345,11 @@ class MPAI_Agent_Orchestrator {
 			
 			return false;
 		} catch ( Exception $e ) {
-			error_log( 'MPAI: Error initializing command system: ' . $e->getMessage() );
+			mpai_log_error( 'Error initializing command system: ' . $e->getMessage(), 'orchestrator', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			return false;
 		}
 	}
@@ -361,7 +364,7 @@ class MPAI_Agent_Orchestrator {
 			// Check if SDK files exist
 			$sdk_path = plugin_dir_path( __FILE__ ) . 'sdk/class-mpai-sdk-integration.php';
 			if ( ! file_exists( $sdk_path ) ) {
-				error_log( 'MPAI: Warning - SDK integration file not found: ' . $sdk_path );
+				mpai_log_warning( 'SDK integration file not found: ' . $sdk_path, 'orchestrator' );
 				return false;
 			}
 			
@@ -387,17 +390,21 @@ class MPAI_Agent_Orchestrator {
 							$this->sdk_integration->register_agent( $agent_id, $agent_instance );
 						}
 					} else {
-						error_log( 'MPAI: Warning - SDK integration failed to initialize: ' . $this->sdk_integration->get_error() );
+						mpai_log_warning( 'SDK integration failed to initialize: ' . $this->sdk_integration->get_error(), 'orchestrator' );
 					}
 					
 					return $this->sdk_initialized;
 				} else {
-					error_log( 'MPAI: Warning - SDK integration class not found' );
+					mpai_log_warning( 'SDK integration class not found', 'orchestrator' );
 					return false;
 				}
 			}
 		} catch ( Exception $e ) {
-			error_log( 'MPAI: Error initializing SDK: ' . $e->getMessage() );
+			mpai_log_error( 'Error initializing SDK: ' . $e->getMessage(), 'orchestrator', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			return false;
 		}
 	}
@@ -411,7 +418,7 @@ class MPAI_Agent_Orchestrator {
 	 */
 	public function register_agent( $agent_id, $agent_instance ) {
 		if ( isset( $this->agents[$agent_id] ) ) {
-			error_log( "MPAI: Warning - Agent with ID {$agent_id} already registered" );
+			mpai_log_warning( "Agent with ID {$agent_id} already registered", 'orchestrator' );
 			return false;
 		}
 		
@@ -423,7 +430,10 @@ class MPAI_Agent_Orchestrator {
 				$this->sdk_integration->register_agent( $agent_id, $agent_instance );
 				// Agent registered with SDK
 			} catch ( Exception $e ) {
-				error_log( "MPAI: Warning - Failed to register agent {$agent_id} with SDK: " . $e->getMessage() );
+				mpai_log_warning( "Failed to register agent {$agent_id} with SDK: " . $e->getMessage(), 'orchestrator', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine()
+				));
 			}
 		}
 		
@@ -446,7 +456,7 @@ class MPAI_Agent_Orchestrator {
 				$user_context = $this->get_user_context( $user_id );
 				
 				// Log the request
-				error_log( "MPAI: Processing request - User ID: " . $user_id . ", Using SDK: " . ($this->sdk_initialized ? "Yes" : "No"));
+				mpai_log_info( "Processing request - User ID: " . $user_id . ", Using SDK: " . ($this->sdk_initialized ? "Yes" : "No"), 'orchestrator' );
 				
 				// If SDK is initialized, use it for processing
 				if ( $this->sdk_initialized && $this->sdk_integration ) {
@@ -460,7 +470,7 @@ class MPAI_Agent_Orchestrator {
 			// Define fallback processing function that uses traditional method
 			$fallback_func = function() use ($user_message, $user_id) {
 				$user_context = $this->get_user_context( $user_id );
-				error_log("MPAI: Fallback processing with traditional method");
+				mpai_log_info("Fallback processing with traditional method", 'orchestrator' );
 				return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
 			};
 			
@@ -484,7 +494,7 @@ class MPAI_Agent_Orchestrator {
 			
 			// If result is a WP_Error, format it appropriately for the user
 			if (is_wp_error($result)) {
-				error_log("MPAI: Error recovery failed, returning formatted error");
+				mpai_log_warning("Error recovery failed, returning formatted error", 'orchestrator' );
 				$error_message = $this->error_recovery->format_error_for_display($result);
 				return [
 					'success' => false,
@@ -501,7 +511,7 @@ class MPAI_Agent_Orchestrator {
 				$user_context = $this->get_user_context( $user_id );
 				
 				// Log the request
-				error_log( "MPAI: Processing request - User ID: " . $user_id . ", Using SDK: " . ($this->sdk_initialized ? "Yes" : "No"));
+				mpai_log_info( "Processing request - User ID: " . $user_id . ", Using SDK: " . ($this->sdk_initialized ? "Yes" : "No"), 'orchestrator' );
 				
 				// If SDK is initialized, use it for processing
 				if ( $this->sdk_initialized && $this->sdk_integration ) {
@@ -511,7 +521,11 @@ class MPAI_Agent_Orchestrator {
 				// Otherwise use the traditional processing method
 				return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
 			} catch ( Exception $e ) {
-				error_log( "MPAI: Error processing request: " . $e->getMessage() );
+				mpai_log_error( "Error processing request: " . $e->getMessage(), 'orchestrator', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 				
 				return [
 					'success' => false,
@@ -546,12 +560,12 @@ class MPAI_Agent_Orchestrator {
 			$intent_data['system_info'] = $this->get_enhanced_system_info();
 			
 			// Log all tools being passed to SDK
-			error_log("MPAI: Passing " . count($this->tool_registry->get_available_tools()) . " tools to SDK integration");
+			mpai_log_debug("Passing " . count($this->tool_registry->get_available_tools()) . " tools to SDK integration", 'orchestrator' );
 			
 			// Make sure the SDK integration has the updated tool_registry
 			if (method_exists($this->sdk_integration, 'update_tool_registry')) {
 				$this->sdk_integration->update_tool_registry($this->tool_registry);
-				error_log("MPAI: Updated tool registry in SDK integration");
+				mpai_log_debug("Updated tool registry in SDK integration", 'orchestrator' );
 			}
 			
 			// Add a pre-processing step for specific queries to improve handling
@@ -564,14 +578,14 @@ class MPAI_Agent_Orchestrator {
 			if (is_array($sdk_result) && isset($sdk_result['success']) && !$sdk_result['success'] && 
 				isset($sdk_result['error']) && strpos($sdk_result['error'], 'Tool') !== false) {
 				
-				error_log("MPAI: SDK response indicates tool access issue, attempting recovery");
+				mpai_log_warning("SDK response indicates tool access issue, attempting recovery", 'orchestrator' );
 				
 				// Refresh the tool registry and try again
 				$this->ensure_tool_registry(true); // Force refresh
 				
 				if (method_exists($this->sdk_integration, 'update_tool_registry')) {
 					$this->sdk_integration->update_tool_registry($this->tool_registry);
-					error_log("MPAI: Re-updated tool registry in SDK integration during recovery");
+					mpai_log_debug("Re-updated tool registry in SDK integration during recovery", 'orchestrator' );
 				}
 				
 				// Try again with refreshed tools
@@ -582,14 +596,18 @@ class MPAI_Agent_Orchestrator {
 			$this->update_memory( $user_id, ['original_message' => $user_message], $sdk_result );
 			
 			// Log the successful completion
-			error_log( "MPAI: Successfully processed request with SDK" );
+			mpai_log_info( "Successfully processed request with SDK", 'orchestrator' );
 			
 			return $sdk_result;
 		} catch ( Exception $e ) {
-			error_log( "MPAI: Error processing with SDK: " . $e->getMessage() );
+			mpai_log_error( "Error processing with SDK: " . $e->getMessage(), 'orchestrator', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			
 			// Fall back to traditional method if SDK processing fails
-			error_log( "MPAI: Falling back to traditional processing method" );
+			mpai_log_info( "Falling back to traditional processing method", 'orchestrator' );
 			return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
 		}
 	}
@@ -1568,17 +1586,21 @@ class MPAI_Agent_Orchestrator {
 				// Execute the handoff using the SDK
 				$handoff_result = $this->sdk_integration->handle_handoff( $from_agent_id, $to_agent_id, $handoff_data, $user_id );
 				
-				error_log( "MPAI: Successfully handled handoff with SDK from {$from_agent_id} to {$to_agent_id}" );
+				mpai_log_info( "Successfully handled handoff with SDK from {$from_agent_id} to {$to_agent_id}", 'orchestrator' );
 				
 				return $handoff_result;
 			} catch ( Exception $e ) {
-				error_log( "MPAI: Error handling handoff with SDK: " . $e->getMessage() );
+				mpai_log_error( "Error handling handoff with SDK: " . $e->getMessage(), 'orchestrator', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 				// Fall back to traditional handoff if SDK fails
 			}
 		}
 		
 		// Traditional handoff using the agent message format
-		error_log( "MPAI: Performing traditional handoff from {$from_agent_id} to {$to_agent_id}" );
+		mpai_log_info( "Performing traditional handoff from {$from_agent_id} to {$to_agent_id}", 'orchestrator' );
 		
 		// Get user context
 		$user_context = $this->get_user_context( $user_id );
@@ -1660,11 +1682,15 @@ class MPAI_Agent_Orchestrator {
 				// Execute the agent run using the SDK
 				$run_result = $this->sdk_integration->run_agent( $agent_id, $params, $user_id );
 				
-				error_log( "MPAI: Successfully started running agent with SDK: {$agent_id}" );
+				mpai_log_info( "Successfully started running agent with SDK: {$agent_id}", 'orchestrator' );
 				
 				return $run_result;
 			} catch ( Exception $e ) {
-				error_log( "MPAI: Error starting running agent with SDK: " . $e->getMessage() );
+				mpai_log_error( "Error starting running agent with SDK: " . $e->getMessage(), 'orchestrator', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 				// Fall back to traditional processing
 			}
 		}

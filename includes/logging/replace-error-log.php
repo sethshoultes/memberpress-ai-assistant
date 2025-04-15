@@ -1,360 +1,289 @@
 <?php
 /**
- * MemberPress AI Assistant - Replace error_log Utility
+ * Error Log Replacement Script
  *
- * This file provides utility functions to replace direct error_log calls
- * with our unified logger system
- *
- * @package MemberPress AI Assistant
+ * This script helps convert direct error_log() calls to standardized mpai_log_* functions.
+ * It can be used both manually or through WP-CLI.
  */
 
-// If this file is called directly, abort.
-if ( ! defined( 'WPINC' ) ) {
-    die;
+// Make sure we're in WordPress
+if (!defined('ABSPATH')) {
+    die('This script must be run within WordPress');
 }
 
 /**
- * Replace all error_log calls in a specific file
+ * Convert an error_log call to an mpai_log call
  *
- * @param string $file_path        Path to the file to modify.
- * @param bool   $create_backup    Whether to create a backup of the original file.
- * @param bool   $use_regex        Whether to use regex for replacement (more accurate but slower).
- * @return array Result information: success status and counts.
+ * @param string $file_path Path to the file
+ * @param bool $dry_run Whether to actually make changes or just report
+ * @param string $component Optional component name to use for all logs
+ * @return array Statistics about conversions
  */
-function mpai_replace_error_logs_in_file( $file_path, $create_backup = true, $use_regex = true ) {
-    if ( ! file_exists( $file_path ) ) {
-        return array(
+function mpai_convert_error_logs($file_path, $dry_run = true, $component = '') {
+    // Validate the file exists
+    if (!file_exists($file_path)) {
+        return [
             'success' => false,
-            'message' => "File does not exist: $file_path",
-            'count' => 0,
-        );
+            'message' => "File does not exist: {$file_path}",
+            'file' => $file_path,
+            'converted' => 0,
+            'skipped' => 0,
+        ];
     }
 
-    // Read file contents
-    $content = file_get_contents( $file_path );
-    if ( false === $content ) {
-        return array(
+    // Read the file content
+    $content = file_get_contents($file_path);
+    if ($content === false) {
+        return [
             'success' => false,
-            'message' => "Could not read file: $file_path",
-            'count' => 0,
-        );
+            'message' => "Could not read file: {$file_path}",
+            'file' => $file_path,
+            'converted' => 0,
+            'skipped' => 0,
+        ];
     }
 
-    // Create backup if requested
-    if ( $create_backup ) {
-        $backup_path = $file_path . '.bak';
-        if ( ! file_put_contents( $backup_path, $content ) ) {
-            return array(
-                'success' => false,
-                'message' => "Could not create backup file: $backup_path",
-                'count' => 0,
-            );
+    // Initialize statistics
+    $stats = [
+        'success' => true,
+        'message' => '',
+        'file' => $file_path,
+        'converted' => 0,
+        'skipped' => 0,
+    ];
+
+    // Process the file line by line
+    $lines = explode("\n", $content);
+    $new_lines = [];
+    $in_block_comment = false;
+
+    foreach ($lines as $line) {
+        // Check if we're in a block comment
+        if (strpos($line, '/*') !== false && strpos($line, '*/') === false) {
+            $in_block_comment = true;
         }
-    }
+        if (strpos($line, '*/') !== false) {
+            $in_block_comment = false;
+        }
 
-    $count = 0;
-    $new_content = $content;
+        // Skip if in comment
+        if ($in_block_comment || preg_match('/^\s*\/\//', $line) || preg_match('/^\s*\*/', $line)) {
+            $new_lines[] = $line;
+            continue;
+        }
 
-    if ( $use_regex ) {
-        // Use regex replacement for better accuracy
-        // This pattern matches error_log calls with different parameter styles
-        // 1. error_log('string');
-        // 2. error_log("string");
-        // 3. error_log("string" . $var);
-        // 4. error_log(sprintf(...));
-        $pattern = '/error_log\s*\(\s*(([\'"])((?:MPAI: )?.*?)\2|([^\)]+))\s*\)\s*;/';
-        
-        $new_content = preg_replace_callback(
-            $pattern,
-            function( $matches ) use ( &$count ) {
-                $count++;
+        // Check for error_log
+        if (preg_match('/error_log\s*\(\s*[\'"]MPAI(?:[:\s]+)?(.*?)[\'"](?:\s*\.\s*(.*?))?\s*\)/', $line, $matches)) {
+            // Determine log level based on message content
+            $log_level = 'debug'; // Default level
+            $message = isset($matches[1]) ? $matches[1] : '';
+            $context = isset($matches[2]) ? $matches[2] : '';
+
+            // Try to determine log level from message
+            $message_lower = strtolower($message);
+            if (strpos($message_lower, 'error') !== false || strpos($message_lower, 'fatal') !== false || 
+                strpos($message_lower, 'exception') !== false || strpos($message_lower, 'fail') !== false) {
+                $log_level = 'error';
+            } elseif (strpos($message_lower, 'warn') !== false) {
+                $log_level = 'warning';
+            } elseif (strpos($message_lower, 'info') !== false || strpos($message_lower, 'init') !== false || 
+                      strpos($message_lower, 'success') !== false) {
+                $log_level = 'info';
+            }
+
+            // Determine component name
+            $extracted_component = '';
+            if (empty($component)) {
+                // Extract component from file path
+                $path_parts = explode('/', $file_path);
+                $file_name = end($path_parts);
+                $file_parts = explode('.', $file_name);
                 
-                // Extract the log message
-                if ( ! empty( $matches[3] ) ) {
-                    // Direct string in quotes
-                    $message = $matches[3];
-                    $has_prefix = ( strpos( $message, 'MPAI: ' ) === 0 );
+                // Try to get a sensible component name
+                if (count($file_parts) > 1) {
+                    $extracted_component = str_replace(['class-mpai-', 'mpai-'], '', $file_parts[0]);
                     
-                    if ( $has_prefix ) {
-                        // Remove the MPAI: prefix since the logger adds it
-                        $message = substr( $message, 6 );
+                    // Remove 'class' prefix if it exists
+                    $extracted_component = str_replace('class-', '', $extracted_component);
+                    
+                    // Try to clean up common patterns
+                    if (strpos($extracted_component, '-') !== false) {
+                        $components = explode('-', $extracted_component);
+                        $extracted_component = $components[0];
                     }
-                    
-                    // Use the same quote style as the original
-                    $quote = $matches[2];
-                    return "mpai_log_info($quote$message$quote);";
-                } else {
-                    // Complex expression (like sprintf or concatenation)
-                    $message = $matches[1];
-                    return "mpai_log_info($message);";
                 }
-            },
-            $content,
-            -1,
-            $replaced_count
-        );
-        
-        $count = $replaced_count;
+            }
+            
+            $component_name = !empty($component) ? $component : $extracted_component;
+            
+            // Handle different syntax patterns
+            if (!empty($context)) {
+                // For cases where there's concatenation
+                $new_line = str_replace(
+                    "error_log('MPAI" . (strpos($message, ':') === 0 ? '' : ': ') . "$message' . $context)",
+                    "mpai_log_$log_level('$message' . $context, '$component_name')",
+                    $line
+                );
+            } else {
+                // For simple cases
+                $new_line = str_replace(
+                    "error_log('MPAI" . (strpos($message, ':') === 0 ? '' : ': ') . "$message')",
+                    "mpai_log_$log_level('$message', '$component_name')",
+                    $line
+                );
+            }
+            
+            if ($new_line !== $line) {
+                $stats['converted']++;
+                $new_lines[] = $new_line;
+            } else {
+                $stats['skipped']++;
+                $new_lines[] = $line;
+            }
+        } else {
+            $new_lines[] = $line;
+        }
+    }
+
+    // Update the file if not in dry run mode
+    if (!$dry_run && $stats['converted'] > 0) {
+        file_put_contents($file_path, implode("\n", $new_lines));
+        $stats['message'] = "Converted {$stats['converted']} error_log calls in {$file_path}";
+    } else if ($dry_run && $stats['converted'] > 0) {
+        $stats['message'] = "Would convert {$stats['converted']} error_log calls in {$file_path} (dry run)";
     } else {
-        // Simple string replacement (less accurate but faster)
-        $new_content = str_replace( 'error_log(', 'mpai_log_info(', $content, $count );
+        $stats['message'] = "No error_log calls converted in {$file_path}";
     }
 
-    // Write modified content if there were changes
-    if ( $count > 0 ) {
-        if ( ! file_put_contents( $file_path, $new_content ) ) {
-            return array(
-                'success' => false,
-                'message' => "Could not write to file: $file_path",
-                'count' => $count,
-            );
-        }
-    }
-
-    return array(
-        'success' => true,
-        'message' => "Replaced $count error_log calls in $file_path",
-        'count' => $count,
-    );
+    return $stats;
 }
 
 /**
- * Replace error_log calls in all PHP files in a directory
+ * Process a directory recursively to convert error_log calls
  *
- * @param string $directory       Directory to process.
- * @param bool   $recursive       Whether to recursively process subdirectories.
- * @param bool   $create_backups  Whether to create backups of original files.
- * @param bool   $use_regex       Whether to use regex for replacement.
- * @param array  $exclude_dirs    Directories to exclude.
- * @param array  $exclude_files   Files to exclude.
- * @return array Result information: success status, counts and list of processed files.
+ * @param string $dir_path Path to the directory
+ * @param bool $dry_run Whether to actually make changes or just report
+ * @param string $component Optional component name to use for all logs
+ * @return array Statistics about conversions
  */
-function mpai_replace_error_logs_in_directory( $directory, $recursive = true, $create_backups = true, $use_regex = true, $exclude_dirs = array(), $exclude_files = array() ) {
-    if ( ! is_dir( $directory ) ) {
-        return array(
+function mpai_convert_error_logs_in_dir($dir_path, $dry_run = true, $component = '') {
+    // Validate the directory exists
+    if (!is_dir($dir_path)) {
+        return [
             'success' => false,
-            'message' => "Directory does not exist: $directory",
-            'total_count' => 0,
+            'message' => "Directory does not exist: {$dir_path}",
+            'converted_total' => 0,
+            'skipped_total' => 0,
             'files_processed' => 0,
-            'files_with_changes' => 0,
-            'details' => array(),
-        );
+            'files_with_error_logs' => 0,
+        ];
     }
 
-    $details = array();
-    $total_count = 0;
-    $files_with_changes = 0;
-
-    // Get PHP files in the directory
-    $files = glob( rtrim( $directory, '/' ) . '/*.php' );
-    
-    // Process each file
-    foreach ( $files as $file ) {
-        // Skip excluded files
-        $filename = basename( $file );
-        if ( in_array( $filename, $exclude_files ) ) {
-            continue;
-        }
-        
-        // Process the file
-        $result = mpai_replace_error_logs_in_file( $file, $create_backups, $use_regex );
-        $details[ $file ] = $result;
-        
-        if ( $result['success'] && $result['count'] > 0 ) {
-            $total_count += $result['count'];
-            $files_with_changes++;
-        }
-    }
-    
-    // Process subdirectories if recursive
-    if ( $recursive ) {
-        $subdirectories = glob( rtrim( $directory, '/' ) . '/*', GLOB_ONLYDIR );
-        
-        foreach ( $subdirectories as $subdir ) {
-            // Skip excluded directories
-            $dirname = basename( $subdir );
-            if ( in_array( $dirname, $exclude_dirs ) ) {
-                continue;
-            }
-            
-            // Process the subdirectory
-            $subdir_result = mpai_replace_error_logs_in_directory( $subdir, true, $create_backups, $use_regex, $exclude_dirs, $exclude_files );
-            
-            if ( $subdir_result['success'] ) {
-                $total_count += $subdir_result['total_count'];
-                $files_with_changes += $subdir_result['files_with_changes'];
-                $details = array_merge( $details, $subdir_result['details'] );
-            }
-        }
-    }
-    
-    return array(
+    // Initialize statistics
+    $stats = [
         'success' => true,
-        'message' => "Replaced $total_count error_log calls in $files_with_changes files",
-        'total_count' => $total_count,
-        'files_processed' => count( $details ),
-        'files_with_changes' => $files_with_changes,
-        'details' => $details,
+        'message' => '',
+        'converted_total' => 0,
+        'skipped_total' => 0,
+        'files_processed' => 0,
+        'files_with_error_logs' => 0,
+        'file_stats' => [],
+    ];
+
+    // Get all PHP files in directory
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir_path, RecursiveDirectoryIterator::SKIP_DOTS)
     );
-}
 
-/**
- * Restore backups of files modified by the error_log replacement function
- *
- * @param string $directory    Directory to process.
- * @param bool   $recursive    Whether to recursively process subdirectories.
- * @return array Result information: success status and counts.
- */
-function mpai_restore_error_log_backups( $directory, $recursive = true ) {
-    if ( ! is_dir( $directory ) ) {
-        return array(
-            'success' => false,
-            'message' => "Directory does not exist: $directory",
-            'restored' => 0,
-        );
-    }
-
-    $restored = 0;
-    $details = array();
-
-    // Find backup files in the directory
-    $backup_files = glob( rtrim( $directory, '/' ) . '/*.php.bak' );
-    
-    // Process each backup file
-    foreach ( $backup_files as $backup_file ) {
-        $original_file = substr( $backup_file, 0, -4 ); // Remove .bak extension
-        
-        // Read backup content
-        $content = file_get_contents( $backup_file );
-        if ( false === $content ) {
-            $details[ $backup_file ] = "Could not read backup file";
-            continue;
-        }
-        
-        // Restore original file
-        if ( ! file_put_contents( $original_file, $content ) ) {
-            $details[ $backup_file ] = "Could not restore original file";
-            continue;
-        }
-        
-        // Remove backup file
-        if ( ! unlink( $backup_file ) ) {
-            $details[ $backup_file ] = "Original file restored but could not remove backup file";
-            continue;
-        }
-        
-        $details[ $backup_file ] = "Successfully restored";
-        $restored++;
-    }
-    
-    // Process subdirectories if recursive
-    if ( $recursive ) {
-        $subdirectories = glob( rtrim( $directory, '/' ) . '/*', GLOB_ONLYDIR );
-        
-        foreach ( $subdirectories as $subdir ) {
-            $subdir_result = mpai_restore_error_log_backups( $subdir, true );
+    foreach ($iterator as $file) {
+        if ($file->isFile() && $file->getExtension() === 'php') {
+            $file_path = $file->getRealPath();
+            $file_stats = mpai_convert_error_logs($file_path, $dry_run, $component);
             
-            if ( $subdir_result['success'] ) {
-                $restored += $subdir_result['restored'];
-                $details = array_merge( $details, $subdir_result['details'] );
+            $stats['files_processed']++;
+            $stats['converted_total'] += $file_stats['converted'];
+            $stats['skipped_total'] += $file_stats['skipped'];
+            
+            if ($file_stats['converted'] > 0) {
+                $stats['files_with_error_logs']++;
+                $stats['file_stats'][$file_path] = $file_stats;
             }
         }
     }
-    
-    return array(
-        'success' => true,
-        'message' => "Restored $restored files from backups",
-        'restored' => $restored,
-        'details' => $details,
-    );
+
+    // Update summary message
+    if ($dry_run) {
+        $stats['message'] = "Would convert {$stats['converted_total']} error_log calls in {$stats['files_with_error_logs']} files (dry run)";
+    } else {
+        $stats['message'] = "Converted {$stats['converted_total']} error_log calls in {$stats['files_with_error_logs']} files";
+    }
+
+    return $stats;
 }
 
-/**
- * Register a WP-CLI command to replace error_log calls
- */
-function mpai_register_replace_error_log_cli_command() {
-    if ( defined( 'WP_CLI' ) && WP_CLI ) {
-        WP_CLI::add_command( 'mpai replace-error-logs', function( $args, $assoc_args ) {
-            $directory = isset( $args[0] ) ? $args[0] : MPAI_PLUGIN_DIR;
-            $recursive = isset( $assoc_args['recursive'] ) ? (bool) $assoc_args['recursive'] : true;
-            $create_backups = isset( $assoc_args['backup'] ) ? (bool) $assoc_args['backup'] : true;
-            $use_regex = isset( $assoc_args['regex'] ) ? (bool) $assoc_args['regex'] : true;
-            
-            WP_CLI::log( "Replacing error_log calls in $directory..." );
-            
-            $result = mpai_replace_error_logs_in_directory( $directory, $recursive, $create_backups, $use_regex );
-            
-            if ( $result['success'] ) {
-                WP_CLI::success( $result['message'] );
+// Add functions for WP-CLI usage
+if (defined('WP_CLI') && WP_CLI) {
+    /**
+     * WP-CLI command to convert error_log calls
+     */
+    class MPAI_Error_Log_Conversion_Command {
+        /**
+         * Convert error_log calls to standardized mpai_log_* functions
+         *
+         * ## OPTIONS
+         *
+         * [--file=<file>]
+         * : Process a specific file
+         *
+         * [--dir=<dir>]
+         * : Process a directory recursively
+         *
+         * [--component=<component>]
+         * : Optional component name to use for all logs
+         *
+         * [--dry-run]
+         * : Don't make any changes, just report what would be done
+         *
+         * ## EXAMPLES
+         *
+         * wp mpai convert_error_logs --dir=includes --dry-run
+         * wp mpai convert_error_logs --file=includes/class-mpai-admin.php --component=admin
+         */
+        public function convert_error_logs($args, $assoc_args) {
+            $dry_run = isset($assoc_args['dry-run']);
+            $component = isset($assoc_args['component']) ? $assoc_args['component'] : '';
+
+            if (isset($assoc_args['file'])) {
+                $file_path = $assoc_args['file'];
+                $stats = mpai_convert_error_logs($file_path, $dry_run, $component);
+                
+                if ($stats['success']) {
+                    WP_CLI::success($stats['message']);
+                } else {
+                    WP_CLI::error($stats['message']);
+                }
+            } else if (isset($assoc_args['dir'])) {
+                $dir_path = $assoc_args['dir'];
+                $stats = mpai_convert_error_logs_in_dir($dir_path, $dry_run, $component);
+                
+                if ($stats['success']) {
+                    WP_CLI::success($stats['message']);
+                    
+                    if ($stats['files_with_error_logs'] > 0) {
+                        WP_CLI::line("\nFiles with error_log calls:");
+                        foreach ($stats['file_stats'] as $file_path => $file_stats) {
+                            WP_CLI::line("- {$file_path}: {$file_stats['converted']} converted");
+                        }
+                    }
+                } else {
+                    WP_CLI::error($stats['message']);
+                }
             } else {
-                WP_CLI::error( $result['message'] );
+                WP_CLI::error('You must specify either --file or --dir');
             }
-        }, array(
-            'shortdesc' => 'Replace error_log calls with mpai_log_info.',
-            'synopsis' => array(
-                array(
-                    'type'        => 'positional',
-                    'name'        => 'directory',
-                    'description' => 'Directory to process.',
-                    'optional'    => true,
-                ),
-                array(
-                    'type'        => 'assoc',
-                    'name'        => 'recursive',
-                    'description' => 'Whether to recursively process subdirectories.',
-                    'optional'    => true,
-                    'default'     => true,
-                ),
-                array(
-                    'type'        => 'assoc',
-                    'name'        => 'backup',
-                    'description' => 'Whether to create backups of original files.',
-                    'optional'    => true,
-                    'default'     => true,
-                ),
-                array(
-                    'type'        => 'assoc',
-                    'name'        => 'regex',
-                    'description' => 'Whether to use regex for replacement.',
-                    'optional'    => true,
-                    'default'     => true,
-                ),
-            ),
-        ) );
-        
-        WP_CLI::add_command( 'mpai restore-error-log-backups', function( $args, $assoc_args ) {
-            $directory = isset( $args[0] ) ? $args[0] : MPAI_PLUGIN_DIR;
-            $recursive = isset( $assoc_args['recursive'] ) ? (bool) $assoc_args['recursive'] : true;
-            
-            WP_CLI::log( "Restoring files from backups in $directory..." );
-            
-            $result = mpai_restore_error_log_backups( $directory, $recursive );
-            
-            if ( $result['success'] ) {
-                WP_CLI::success( $result['message'] );
-            } else {
-                WP_CLI::error( $result['message'] );
-            }
-        }, array(
-            'shortdesc' => 'Restore files from backups created by replace-error-logs.',
-            'synopsis' => array(
-                array(
-                    'type'        => 'positional',
-                    'name'        => 'directory',
-                    'description' => 'Directory to process.',
-                    'optional'    => true,
-                ),
-                array(
-                    'type'        => 'assoc',
-                    'name'        => 'recursive',
-                    'description' => 'Whether to recursively process subdirectories.',
-                    'optional'    => true,
-                    'default'     => true,
-                ),
-            ),
-        ) );
+        }
     }
-}
 
-// Register WP-CLI commands if WP-CLI is available
-add_action( 'init', 'mpai_register_replace_error_log_cli_command' );
+    // Register the command
+    WP_CLI::add_command('mpai convert_error_logs', 'MPAI_Error_Log_Conversion_Command');
+}
