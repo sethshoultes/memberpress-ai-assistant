@@ -226,45 +226,47 @@ class MPAI_Error_Recovery {
         );
         
         // Log with appropriate method based on severity
-        error_log($log_message);
-        
-        // Add to plugin logger if available
-        if ($this->logger) {
-            // Convert our severity to logger actions
-            switch ($severity) {
-                case self::SEVERITY_CRITICAL:
-                    // Log critical errors using public methods only
-                    $error_log_data = [
-                        'error_id' => $data['error_id'],
-                        'type' => $type,
-                        'code' => $code,
-                        'message' => $message,
-                        'severity' => $severity,
-                        'context' => isset($data['context']) ? $data['context'] : [],
-                    ];
-                    
-                    // Use error_log instead of trying to access the private method
-                    error_log('MPAI Critical Error: ' . json_encode($error_log_data));
-                    break;
-                    
-                case self::SEVERITY_ERROR:
-                    // Log error using public methods only
-                    $error_log_data = [
-                        'error_id' => $data['error_id'],
-                        'type' => $type,
-                        'code' => $code,
-                        'message' => $message,
-                        'context' => isset($data['context']) ? $data['context'] : [],
-                    ];
-                    
-                    // Use error_log instead of trying to access the private method
-                    error_log('MPAI Error: ' . json_encode($error_log_data));
-                    break;
-                    
-                default:
-                    // Log warnings and info as regular events
-                    break;
-            }
+        switch ($severity) {
+            case self::SEVERITY_CRITICAL:
+                mpai_log_error($log_message, 'error-recovery', [
+                    'error_id' => $data['error_id'],
+                    'type' => $type,
+                    'code' => $code,
+                    'message' => $message,
+                    'severity' => $severity,
+                    'context' => isset($data['context']) ? $data['context'] : []
+                ]);
+                break;
+                
+            case self::SEVERITY_ERROR:
+                mpai_log_error($log_message, 'error-recovery', [
+                    'error_id' => $data['error_id'],
+                    'type' => $type,
+                    'code' => $code,
+                    'message' => $message,
+                    'context' => isset($data['context']) ? $data['context'] : []
+                ]);
+                break;
+                
+            case self::SEVERITY_WARNING:
+                mpai_log_warning($log_message, 'error-recovery', [
+                    'error_id' => $data['error_id'],
+                    'type' => $type,
+                    'code' => $code
+                ]);
+                break;
+                
+            case self::SEVERITY_INFO:
+                mpai_log_info($log_message, 'error-recovery', [
+                    'error_id' => $data['error_id'],
+                    'type' => $type,
+                    'code' => $code
+                ]);
+                break;
+                
+            default:
+                mpai_log_debug($log_message, 'error-recovery');
+                break;
         }
     }
     
@@ -290,7 +292,7 @@ class MPAI_Error_Recovery {
         // Check if circuit breaker is tripped
         if ($this->is_circuit_breaker_tripped($error_type, $component)) {
             $fallback_message = "Circuit breaker tripped for {$component}, using fallback";
-            error_log('MPAI: ' . $fallback_message);
+            mpai_log_warning($fallback_message, 'error-recovery');
             
             // Skip retry and go straight to fallback
             if ($fallback_callback && is_callable($fallback_callback)) {
@@ -312,7 +314,7 @@ class MPAI_Error_Recovery {
             
             for ($retry = 1; $retry <= $max_retries; $retry++) {
                 // Log retry attempt
-                error_log("MPAI: Retrying {$component} after error (attempt {$retry}/{$max_retries})");
+                mpai_log_info("Retrying {$component} after error (attempt {$retry}/{$max_retries})", 'error-recovery');
                 
                 // Add delay if specified
                 if ($retry_delay > 0) {
@@ -333,7 +335,7 @@ class MPAI_Error_Recovery {
         
         // Retry failed or not available, try fallback if enabled and callback provided
         if (isset($strategy['fallback_available']) && $strategy['fallback_available'] && $fallback_callback && is_callable($fallback_callback)) {
-            error_log("MPAI: Using fallback for {$component} after retry failure");
+            mpai_log_info("Using fallback for {$component} after retry failure", 'error-recovery');
             return call_user_func_array($fallback_callback, $fallback_args);
         }
         
@@ -490,7 +492,7 @@ class MPAI_Error_Recovery {
             'reset_at' => time() + $reset_time,
         ];
         
-        error_log("MPAI: Circuit breaker tripped for {$component} of type {$type}, will reset in {$reset_time} seconds");
+        mpai_log_warning("Circuit breaker tripped for {$component} of type {$type}, will reset in {$reset_time} seconds", 'error-recovery');
     }
     
     /**
@@ -527,7 +529,7 @@ class MPAI_Error_Recovery {
         
         if (isset($this->circuit_breakers[$key])) {
             $this->circuit_breakers[$key]['tripped'] = false;
-            error_log("MPAI: Circuit breaker reset for {$component} of type {$type}");
+            mpai_log_info("Circuit breaker reset for {$component} of type {$type}", 'error-recovery');
         }
     }
     
