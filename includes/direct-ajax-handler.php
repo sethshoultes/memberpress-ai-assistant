@@ -318,8 +318,8 @@ switch ($action) {
                     $parsed_data = $xml_parser->parse_xml_blog_post($content);
                     
                     if ($parsed_data) {
-                        error_log('MPAI Direct AJAX: Successfully parsed XML content');
-                        error_log('MPAI Direct AJAX: Parsed data: ' . print_r($parsed_data, true));
+                        mpai_log_debug('Successfully parsed XML content', 'direct-ajax');
+                        mpai_log_debug('Parsed data: ' . print_r($parsed_data, true), 'direct-ajax');
                         
                         // Use the parsed data for post creation
                         $title = isset($parsed_data['title']) ? $parsed_data['title'] : 'New ' . ucfirst($content_type);
@@ -854,10 +854,10 @@ switch ($action) {
     case 'mpai_create_post':
         // Direct post/page creation handler without XML parsing
         try {
-            error_log('MPAI Direct AJAX: Handler called for mpai_create_post action');
+            mpai_log_debug('Handler called for mpai_create_post action', 'direct-ajax');
             
             // Log all POST data for debugging
-            error_log('MPAI Direct AJAX: POST data: ' . print_r($_POST, true));
+            mpai_log_debug('POST data: ' . print_r($_POST, true), 'direct-ajax');
             
             // Get parameters with defaults
             $post_type = isset($_POST['post_type']) ? sanitize_text_field($_POST['post_type']) : 'post';
@@ -866,12 +866,12 @@ switch ($action) {
             $excerpt = isset($_POST['excerpt']) ? sanitize_textarea_field($_POST['excerpt']) : '';
             $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'draft';
             
-            error_log('MPAI Direct AJAX: Creating ' . $post_type . ' with title: ' . $title);
-            error_log('MPAI Direct AJAX: Content length: ' . strlen($content));
+            mpai_log_info('Creating ' . $post_type . ' with title: ' . $title, 'direct-ajax');
+            mpai_log_debug('Content length: ' . strlen($content), 'direct-ajax');
             
             // Ensure content has Gutenberg blocks if it's just plain text
             if (!empty($content) && strpos($content, '<!-- wp:') === false) {
-                error_log('MPAI Direct AJAX: Content does not contain Gutenberg blocks, adding paragraph blocks');
+                mpai_log_debug('Content does not contain Gutenberg blocks, adding paragraph blocks', 'direct-ajax');
                 
                 // Convert plain text to Gutenberg paragraph blocks
                 $paragraphs = explode("\n\n", $content);
@@ -900,13 +900,15 @@ switch ($action) {
                 'post_excerpt' => $excerpt,
             );
             
-            error_log('MPAI Direct AJAX: Inserting post with data: ' . print_r($post_data, true));
+            mpai_log_debug('Inserting post with data: ' . print_r($post_data, true), 'direct-ajax');
             
             // Insert the post
             $post_id = wp_insert_post($post_data);
             
             if (is_wp_error($post_id)) {
-                error_log('MPAI Direct AJAX: Error inserting post: ' . $post_id->get_error_message());
+                mpai_log_error('Error inserting post: ' . $post_id->get_error_message(), 'direct-ajax', array(
+                    'error_data' => $post_id->get_error_data()
+                ));
                 echo json_encode(array(
                     'success' => false,
                     'message' => 'Failed to create post: ' . $post_id->get_error_message(),
@@ -919,9 +921,9 @@ switch ($action) {
             $post_url = get_permalink($post_id);
             $edit_url = get_edit_post_link($post_id, 'raw');
             
-            error_log('MPAI Direct AJAX: Post created successfully with ID: ' . $post_id);
-            error_log('MPAI Direct AJAX: Post URL: ' . $post_url);
-            error_log('MPAI Direct AJAX: Edit URL: ' . $edit_url);
+            mpai_log_info('Post created successfully with ID: ' . $post_id, 'direct-ajax');
+            mpai_log_debug('Post URL: ' . $post_url, 'direct-ajax');
+            mpai_log_debug('Edit URL: ' . $edit_url, 'direct-ajax');
             
             echo json_encode(array(
                 'success' => true,
@@ -971,11 +973,11 @@ switch ($action) {
             // Check if the tool registry class is loaded
             if (!class_exists('MPAI_Tool_Registry')) {
                 $tool_registry_path = dirname(__FILE__) . '/tools/class-mpai-tool-registry.php';
-                error_log('MPAI Phase One Test: Loading tool registry from: ' . $tool_registry_path);
+                mpai_log_debug('Phase One Test: Loading tool registry from: ' . $tool_registry_path, 'direct-ajax');
                 if (file_exists($tool_registry_path)) {
                     require_once($tool_registry_path);
                 } else {
-                    error_log('MPAI Phase One Test: Tool registry file not found at: ' . $tool_registry_path);
+                    mpai_log_error('Phase One Test: Tool registry file not found at: ' . $tool_registry_path, 'direct-ajax');
                 }
             }
             
