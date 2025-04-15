@@ -32,8 +32,8 @@ function mpai_init_logger() {
 // Initialize the logging system
 mpai_init_logger();
 
-// Register logging settings when the unified settings manager is available
-add_action( 'mpai_after_settings_manager_init', 'mpai_register_logging_settings' );
+// Register logging settings
+mpai_register_logging_settings();
 
 // Add logging cleanup hook
 add_action( 'mpai_daily_maintenance', function() {
