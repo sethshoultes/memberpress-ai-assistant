@@ -352,7 +352,7 @@ class MPAI_Logger_Manager {
         } else {
             // Fallback to error_log if no logger found
             $formatted_message = $this->format_message( $level, $message, $context );
-            error_log( 'MPAI: ' . $formatted_message );
+            mpai_log_debug( $formatted_message, 'logger-manager' );
         }
     }
 

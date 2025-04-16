@@ -56,7 +56,7 @@ class MPAI_Command_Handler {
      * Constructor
      */
     public function __construct() {
-        error_log('MPAI COMMAND: Initializing Command Handler');
+        mpai_log_debug('Initializing Command Handler', 'command-handler');
 
         // Load dependencies
         $this->load_dependencies();
@@ -98,14 +98,18 @@ class MPAI_Command_Handler {
      * Initialize components
      */
     private function initialize_components() {
-        error_log('MPAI COMMAND: Initializing components');
+        mpai_log_debug('Initializing components', 'command-handler');
         
         // Initialize command sanitizer with error handling
         try {
             $this->sanitizer = new MPAI_Command_Sanitizer();
-            error_log('MPAI COMMAND: Successfully initialized Command Sanitizer');
+            mpai_log_debug('Successfully initialized Command Sanitizer', 'command-handler');
         } catch (Exception $e) {
-            error_log('MPAI COMMAND ERROR: Failed to initialize Command Sanitizer: ' . $e->getMessage());
+            mpai_log_error('Failed to initialize Command Sanitizer: ' . $e->getMessage(), 'command-handler', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             // Create a minimal fallback sanitizer
             $this->sanitizer = new class {
                 public function sanitize($command) {
@@ -117,9 +121,13 @@ class MPAI_Command_Handler {
         // Initialize security filter with error handling
         try {
             $this->security = new MPAI_Command_Security();
-            error_log('MPAI COMMAND: Successfully initialized Command Security filter');
+            mpai_log_debug('Successfully initialized Command Security filter', 'command-handler');
         } catch (Exception $e) {
-            error_log('MPAI COMMAND ERROR: Failed to initialize Command Security filter: ' . $e->getMessage());
+            mpai_log_error('Failed to initialize Command Security filter: ' . $e->getMessage(), 'command-handler', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             // Create a minimal fallback security filter
             $this->security = new class {
                 public function is_dangerous($command) {
@@ -138,10 +146,13 @@ class MPAI_Command_Handler {
         // Initialize WP-CLI executor with enhanced error handling
         try {
             $this->wp_cli_executor = new MPAI_WP_CLI_Executor();
-            error_log('MPAI COMMAND: Successfully initialized WP-CLI executor');
+            mpai_log_debug('Successfully initialized WP-CLI executor', 'command-handler');
         } catch (Throwable $e) {
-            error_log('MPAI COMMAND ERROR: Failed to initialize WP-CLI executor: ' . $e->getMessage());
-            error_log('MPAI COMMAND ERROR: ' . $e->getTraceAsString());
+            mpai_log_error('Failed to initialize WP-CLI executor: ' . $e->getMessage(), 'command-handler', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             
             // Create a fallback executor that handles the wp plugin list special case
             $this->wp_cli_executor = new class {
@@ -193,10 +204,13 @@ class MPAI_Command_Handler {
         // Initialize PHP executor with enhanced error handling
         try {
             $this->php_executor = new MPAI_PHP_Executor();
-            error_log('MPAI COMMAND: Successfully initialized PHP executor');
+            mpai_log_debug('Successfully initialized PHP executor', 'command-handler');
         } catch (Throwable $e) {
-            error_log('MPAI COMMAND ERROR: Failed to initialize PHP executor: ' . $e->getMessage());
-            error_log('MPAI COMMAND ERROR: ' . $e->getTraceAsString());
+            mpai_log_error('Failed to initialize PHP executor: ' . $e->getMessage(), 'command-handler', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             
             // Create a fallback executor
             $this->php_executor = new class {
@@ -223,10 +237,13 @@ class MPAI_Command_Handler {
         // Initialize command detector with error handling
         try {
             $this->detector = new MPAI_Command_Detector();
-            error_log('MPAI COMMAND: Successfully initialized Command Detector');
+            mpai_log_debug('Successfully initialized Command Detector', 'command-handler');
         } catch (Throwable $e) {
-            error_log('MPAI COMMAND ERROR: Failed to initialize Command Detector: ' . $e->getMessage());
-            error_log('MPAI COMMAND ERROR: ' . $e->getTraceAsString());
+            mpai_log_error('Failed to initialize Command Detector: ' . $e->getMessage(), 'command-handler', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             
             // Create a minimal fallback detector
             $this->detector = new class {
@@ -234,10 +251,10 @@ class MPAI_Command_Handler {
                 
                 public function __construct() {
                     $this->logger = new class() {
-                        public function info($msg) { error_log('FALLBACK DETECTOR: ' . $msg); }
-                        public function warning($msg) { error_log('FALLBACK DETECTOR WARNING: ' . $msg); }
-                        public function error($msg) { error_log('FALLBACK DETECTOR ERROR: ' . $msg); }
-                        public function debug($msg) { error_log('FALLBACK DETECTOR DEBUG: ' . $msg); }
+                        public function info($msg) { mpai_log_info($msg, 'fallback-detector'); }
+                        public function warning($msg) { mpai_log_warning($msg, 'fallback-detector'); }
+                        public function error($msg) { mpai_log_error($msg, 'fallback-detector'); }
+                        public function debug($msg) { mpai_log_debug($msg, 'fallback-detector'); }
                     };
                 }
                 
@@ -267,7 +284,7 @@ class MPAI_Command_Handler {
             };
         }
         
-        error_log('MPAI COMMAND: Component initialization complete');
+        mpai_log_debug('Component initialization complete', 'command-handler');
     }
 
     /**
@@ -279,13 +296,13 @@ class MPAI_Command_Handler {
      */
     public function execute_command($command, $parameters = []) {
         try {
-            error_log('MPAI COMMAND: Executing command: ' . (is_string($command) ? $command : json_encode($command)));
+            mpai_log_debug('Executing command: ' . (is_string($command) ? $command : json_encode($command)), 'command-handler');
             
             // If command is a string and seems to be a natural language query, parse it
             if (is_string($command) && !$this->is_direct_command($command)) {
                 $detected = $this->detector->detect_command($command);
                 if ($detected) {
-                    error_log('MPAI COMMAND: Detected command: ' . $detected['command'] . ' (type: ' . $detected['type'] . ')');
+                    mpai_log_debug('Detected command: ' . $detected['command'] . ' (type: ' . $detected['type'] . ')', 'command-handler');
                     $command = $detected['command'];
                     // Merge any detected parameters
                     if (isset($detected['parameters'])) {
@@ -310,11 +327,11 @@ class MPAI_Command_Handler {
             
             // Sanitize the command
             $sanitized_command = $this->sanitizer->sanitize($command);
-            error_log('MPAI COMMAND: Sanitized command: ' . $sanitized_command);
+            mpai_log_debug('Sanitized command: ' . $sanitized_command, 'command-handler');
             
             // Check if command is dangerous
             if ($this->security->is_dangerous($sanitized_command)) {
-                error_log('MPAI COMMAND ERROR: Dangerous command blocked: ' . $sanitized_command);
+                mpai_log_error('Dangerous command blocked: ' . $sanitized_command, 'command-handler');
                 return [
                     'success' => false,
                     'output' => 'Command blocked for security reasons',
@@ -330,7 +347,11 @@ class MPAI_Command_Handler {
                 return $this->wp_cli_executor->execute($sanitized_command, $parameters);
             }
         } catch (Exception $e) {
-            error_log('MPAI COMMAND ERROR: Command execution error: ' . $e->getMessage());
+            mpai_log_error('Command execution error: ' . $e->getMessage(), 'command-handler', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             return [
                 'success' => false,
                 'output' => 'Error executing command: ' . $e->getMessage(),
@@ -369,13 +390,13 @@ class MPAI_Command_Handler {
      */
     public function process_request($message, $context = []) {
         try {
-            error_log('MPAI COMMAND: Processing request: ' . $message);
+            mpai_log_debug('Processing request: ' . $message, 'command-handler');
             
             // Detect command from message
             $detected = $this->detector->detect_command($message);
             
             if (!$detected) {
-                error_log('MPAI COMMAND WARNING: No command detected in message');
+                mpai_log_warning('No command detected in message', 'command-handler');
                 return [
                     'success' => false,
                     'output' => 'I couldn\'t determine what command to run for that request.',
@@ -383,7 +404,7 @@ class MPAI_Command_Handler {
                 ];
             }
             
-            error_log('MPAI COMMAND: Detected command: ' . $detected['command'] . ' (type: ' . $detected['type'] . ')');
+            mpai_log_debug('Detected command: ' . $detected['command'] . ' (type: ' . $detected['type'] . ')', 'command-handler');
             
             // Execute the detected command
             $result = $this->execute_command($detected['command'], $detected['parameters'] ?? []);
@@ -394,7 +415,11 @@ class MPAI_Command_Handler {
             
             return $result;
         } catch (Exception $e) {
-            error_log('MPAI COMMAND ERROR: Request processing error: ' . $e->getMessage());
+            mpai_log_error('Request processing error: ' . $e->getMessage(), 'command-handler', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             return [
                 'success' => false,
                 'output' => 'Error processing request: ' . $e->getMessage(),
