@@ -1470,9 +1470,15 @@ class MemberPress_AI_Assistant {
         }
         
         try {
-            // Ensure the Edge Case Test Suite file is included
-            if (!function_exists('mpai_display_all_edge_case_tests')) {
-                require_once MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php';
+            // Load the Edge Case Test Suite file only when explicitly requested
+            mpai_log_debug('Loading edge case test suite for AJAX request', 'edge-case-tests');
+            $test_file = MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php';
+            if (file_exists($test_file)) {
+                require_once $test_file;
+            } else {
+                mpai_log_error('Edge case test file not found at: ' . $test_file, 'edge-case-tests');
+                wp_send_json_error('Test file not found');
+                return;
             }
             
             if (function_exists('mpai_display_all_edge_case_tests')) {
@@ -1939,11 +1945,9 @@ class MemberPress_AI_Assistant {
             }
         }
         
-        // Load Edge Case Test Suite in admin
-        if (is_admin() && file_exists(MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php')) {
-            require_once MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php';
-            
-            // Register AJAX handler for running edge case tests
+        // Only register the AJAX handler for edge case tests
+        // The actual test suite will be loaded only when the AJAX handler is called
+        if (is_admin()) {
             add_action('wp_ajax_mpai_run_edge_case_tests', array($this, 'run_edge_case_tests_ajax'));
         }
     }   
