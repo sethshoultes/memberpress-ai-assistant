@@ -54,11 +54,11 @@ class MPAI_Command_Adapter {
         // Load and initialize command handler
         if (!class_exists('MPAI_Command_Handler')) {
             include_once $base_path . '/class-mpai-command-handler.php';
-            error_log('MPAI ADAPTER: Loaded MPAI_Command_Handler class');
+            mpai_log_debug('Loaded MPAI_Command_Handler class', 'command-adapter');
         }
         
         $this->command_handler = new MPAI_Command_Handler();
-        error_log('MPAI ADAPTER: Initialized command handler');
+        mpai_log_debug('Initialized command handler', 'command-adapter');
     }
 
     /**
@@ -70,7 +70,7 @@ class MPAI_Command_Adapter {
      * @throws Exception If command execution fails
      */
     public function execute_tool($tool_id, $parameters) {
-        error_log('MPAI ADAPTER: Executing tool through adapter: ' . $tool_id);
+        mpai_log_debug('Executing tool through adapter: ' . $tool_id, 'command-adapter');
         
         switch ($tool_id) {
             case 'wpcli':
@@ -120,7 +120,7 @@ class MPAI_Command_Adapter {
      * @return array Processing result
      */
     public function process_request($message, $context = []) {
-        error_log('MPAI ADAPTER: Processing request through adapter: ' . $message);
+        mpai_log_debug('Processing request through adapter: ' . $message, 'command-adapter');
         
         // Process the request using the command handler
         $result = $this->command_handler->process_request($message, $context);
@@ -141,7 +141,7 @@ class MPAI_Command_Adapter {
      */
     public function register_as_tool($tool_registry) {
         if (!$tool_registry) {
-            error_log('MPAI ADAPTER ERROR: Cannot register as tool: Tool registry not provided');
+            mpai_log_error('Cannot register as tool: Tool registry not provided', 'command-adapter');
             return false;
         }
         
@@ -191,7 +191,7 @@ class MPAI_Command_Adapter {
         
         // Register the tool
         $tool_registry->register_tool('wpcli_new', $wpcli_tool);
-        error_log('MPAI ADAPTER: Registered command adapter as wpcli_new tool');
+        mpai_log_debug('Registered command adapter as wpcli_new tool', 'command-adapter');
         
         return true;
     }

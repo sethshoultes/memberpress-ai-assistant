@@ -93,16 +93,16 @@ class MPAI_WP_CLI_Executor {
         // Create a simple logger class
         $this->logger = new class() {
             public function info($message) {
-                error_log('MPAI WP-CLI: ' . $message);
+                mpai_log_info($message, 'wp-cli');
             }
             
             public function error($message) {
-                error_log('MPAI WP-CLI ERROR: ' . $message);
+                mpai_log_error($message, 'wp-cli');
             }
             
             public function debug($message) {
                 if (defined('WP_DEBUG') && WP_DEBUG) {
-                    error_log('MPAI WP-CLI DEBUG: ' . $message);
+                    mpai_log_debug($message, 'wp-cli');
                 }
             }
         };
@@ -130,7 +130,7 @@ class MPAI_WP_CLI_Executor {
             ];
         }
         try {
-            error_log('MPAI WP-CLI: Executing command: ' . $command);
+            mpai_log_info('Executing command: ' . $command, 'wp-cli');
             
             // Set custom timeout if provided
             if (isset($parameters['timeout'])) {
@@ -174,7 +174,7 @@ class MPAI_WP_CLI_Executor {
             
             // Handle the result
             if ($return_var !== 0) {
-                error_log('MPAI WP-CLI ERROR: Command failed with code ' . $return_var . ': ' . implode("\n", $output));
+                mpai_log_error('Command failed with code ' . $return_var . ': ' . implode("\n", $output), 'wp-cli');
                 return [
                     'success' => false,
                     'output' => implode("\n", $output),

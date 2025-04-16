@@ -83,7 +83,7 @@ class MPAI_SDK_Integration {
 			$this->openai = new MPAI_OpenAI();
 		} else {
 			$this->error = 'OpenAI API class not found';
-			error_log('MPAI SDK ERROR: ' . $this->error);
+			mpai_log_error($this->error, 'sdk-integration');
 			return;
 		}
 		
@@ -99,8 +99,8 @@ class MPAI_SDK_Integration {
 	private function get_default_logger() {
 		return (object) [
 			'info'    => function( $message, $context = [] ) { /* Silent info logging */ },
-			'warning' => function( $message, $context = [] ) { error_log( 'MPAI SDK WARNING: ' . $message ); },
-			'error'   => function( $message, $context = [] ) { error_log( 'MPAI SDK ERROR: ' . $message ); },
+			'warning' => function( $message, $context = [] ) { mpai_log_warning( $message, 'sdk-integration', $context ); },
+			'error'   => function( $message, $context = [] ) { mpai_log_error( $message, 'sdk-integration', $context ); },
 		];
 	}
 	
@@ -114,7 +114,7 @@ class MPAI_SDK_Integration {
 			return $this->initialize();
 		} catch (Exception $e) {
 			$this->error = 'SDK initialization failed: ' . $e->getMessage();
-			error_log("MPAI SDK ERROR: " . $this->error);
+			mpai_log_error($this->error, 'sdk-integration');
 			return false;
 		}
 	}
@@ -135,7 +135,7 @@ class MPAI_SDK_Integration {
 			return true;
 		} catch ( Exception $e ) {
 			$this->error = 'SDK initialization failed: ' . $e->getMessage();
-			error_log("MPAI SDK ERROR: " . $this->error);
+			mpai_log_error($this->error, 'sdk-integration');
 			return false;
 		}
 	}
@@ -221,13 +221,13 @@ class MPAI_SDK_Integration {
 	 */
 	public function register_agent( $agent_id, $agent_instance ) {
 		if ( ! $this->initialized ) {
-			error_log("MPAI SDK WARNING: " . 'Cannot register agent, SDK not initialized' );
+			mpai_log_warning('Cannot register agent, SDK not initialized', 'sdk-integration');
 			return false;
 		}
 		
 		// Check if agent already registered
 		if ( isset( $this->registered_agents[$agent_id] ) ) {
-			error_log("MPAI SDK WARNING: " . "Agent {$agent_id} already registered" );
+			mpai_log_warning("Agent {$agent_id} already registered", 'sdk-integration');
 			return false;
 		}
 		
@@ -259,7 +259,11 @@ class MPAI_SDK_Integration {
 			// SDK info log (removed)
 			return true;
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . "Failed to register agent {$agent_id}: " . $e->getMessage() );
+			mpai_log_error("Failed to register agent {$agent_id}: " . $e->getMessage(), 'sdk-integration', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			return false;
 		}
 	}
@@ -339,7 +343,7 @@ class MPAI_SDK_Integration {
 			
 			// Handle response
 			if ( is_wp_error( $response ) ) {
-				error_log("MPAI SDK ERROR: " . 'Failed to create assistant: ' . $response->get_error_message() );
+				mpai_log_error('Failed to create assistant: ' . $response->get_error_message(), 'sdk-integration');
 				return false;
 			}
 			
@@ -350,11 +354,15 @@ class MPAI_SDK_Integration {
 				return $body['id'];
 			} else {
 				$error = isset( $body['error'] ) ? $body['error']['message'] : 'Unknown error';
-				error_log("MPAI SDK ERROR: " . "Failed to create assistant: " . $error );
+				mpai_log_error("Failed to create assistant: " . $error, 'sdk-integration');
 				return false;
 			}
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . 'Error creating assistant: ' . $e->getMessage() );
+			mpai_log_error('Error creating assistant: ' . $e->getMessage(), 'sdk-integration', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			return false;
 		}
 	}
@@ -416,7 +424,7 @@ class MPAI_SDK_Integration {
 		$system_info = isset($intent_data['system_info']) ? $intent_data['system_info'] : [];
 		
 		// Log the received intent data for debugging
-		error_log("MPAI SDK: Processing request with intent data. Message: " . substr($user_message, 0, 50) . "...");
+		mpai_log_debug("Processing request with intent data. Message: " . substr($user_message, 0, 50) . "...", 'sdk-integration');
 		
 		// Determine which agent to use
 		$agent_id = $this->determine_agent_for_message( $user_message, $user_context );
@@ -445,7 +453,7 @@ class MPAI_SDK_Integration {
 				
 				// Add system info as a system message
 				$this->add_message_to_thread( $thread_id, $system_info_message, 'system' );
-				error_log("MPAI SDK: Added system info to thread");
+				mpai_log_debug("Added system info to thread", 'sdk-integration');
 			}
 			
 			// Add the user message to the thread
@@ -471,7 +479,11 @@ class MPAI_SDK_Integration {
 				]
 			];
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . "Error processing request: " . $e->getMessage() );
+			mpai_log_error("Error processing request: " . $e->getMessage(), 'sdk-integration', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			
 			return [
 				'success' => false,
@@ -489,7 +501,7 @@ class MPAI_SDK_Integration {
 	 */
 	public function update_tool_registry($tool_registry) {
 		if (!$tool_registry) {
-			error_log("MPAI SDK: Received empty tool registry in update_tool_registry");
+			mpai_log_warning("Received empty tool registry in update_tool_registry", 'sdk-integration');
 			return false;
 		}
 		
@@ -503,7 +515,7 @@ class MPAI_SDK_Integration {
 		// Log available tools for debugging
 		$available_tools = $tool_registry->get_available_tools();
 		$tool_ids = array_keys($available_tools);
-		error_log("MPAI SDK: Updated tool registry with " . count($tool_ids) . " tools: " . implode(', ', $tool_ids));
+		mpai_log_debug("Updated tool registry with " . count($tool_ids) . " tools: " . implode(', ', $tool_ids), 'sdk-integration');
 		
 		// Update available tools
 		$this->prepare_available_tools();
@@ -528,7 +540,7 @@ class MPAI_SDK_Integration {
 	 */
 	private function validate_essential_tools() {
 		if (!$this->tool_registry) {
-			error_log("MPAI SDK: No tool registry available for validation");
+			mpai_log_warning("No tool registry available for validation", 'sdk-integration');
 			return ['wpcli', 'wp_api', 'plugin_logs'];
 		}
 		
@@ -539,7 +551,7 @@ class MPAI_SDK_Integration {
 		foreach ($essential_tools as $tool_id) {
 			if (!isset($available_tools[$tool_id])) {
 				$missing_tools[] = $tool_id;
-				error_log("MPAI SDK: Essential tool {$tool_id} missing, attempting recovery");
+				mpai_log_warning("Essential tool {$tool_id} missing, attempting recovery", 'sdk-integration');
 				
 				// Try to load directly
 				$this->load_tool_directly($tool_id);
@@ -558,12 +570,12 @@ class MPAI_SDK_Integration {
 			}
 			
 			if (!empty($still_missing)) {
-				error_log("MPAI SDK: Essential tools still missing after recovery: " . implode(', ', $still_missing));
+				mpai_log_warning("Essential tools still missing after recovery: " . implode(', ', $still_missing), 'sdk-integration');
 				return $still_missing;
 			}
 		}
 		
-		error_log("MPAI SDK: All essential tools available");
+		mpai_log_debug("All essential tools available", 'sdk-integration');
 		return [];
 	}
 	
@@ -592,10 +604,14 @@ class MPAI_SDK_Integration {
 			try {
 				$tool = new $class_name();
 				$this->tool_registry->register_tool($tool_id, $tool);
-				error_log("MPAI SDK: Directly registered tool {$tool_id} from existing class");
+				mpai_log_debug("Directly registered tool {$tool_id} from existing class", 'sdk-integration');
 				return true;
 			} catch (Exception $e) {
-				error_log("MPAI SDK: Error creating tool instance for {$tool_id}: " . $e->getMessage());
+				mpai_log_error("Error creating tool instance for {$tool_id}: " . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 				return false;
 			}
 		}
@@ -614,18 +630,26 @@ class MPAI_SDK_Integration {
 			if (file_exists($file_path)) {
 				try {
 					require_once $file_path;
-					error_log("MPAI SDK: Loaded tool file from: {$file_path}");
+					mpai_log_debug("Loaded tool file from: {$file_path}", 'sdk-integration');
 					break;
 				} catch (Exception $e) {
-					error_log("MPAI SDK: Error loading tool file {$file_path}: " . $e->getMessage());
+					mpai_log_error("Error loading tool file {$file_path}: " . $e->getMessage(), 'sdk-integration', array(
+						'file' => $e->getFile(),
+						'line' => $e->getLine(),
+						'trace' => $e->getTraceAsString()
+					));
 				}
 			} elseif (file_exists($alt_file_path)) {
 				try {
 					require_once $alt_file_path;
-					error_log("MPAI SDK: Loaded tool file from: {$alt_file_path}");
+					mpai_log_debug("Loaded tool file from: {$alt_file_path}", 'sdk-integration');
 					break;
 				} catch (Exception $e) {
-					error_log("MPAI SDK: Error loading tool file {$alt_file_path}: " . $e->getMessage());
+					mpai_log_error("Error loading tool file {$alt_file_path}: " . $e->getMessage(), 'sdk-integration', array(
+						'file' => $e->getFile(),
+						'line' => $e->getLine(),
+						'trace' => $e->getTraceAsString()
+					));
 				}
 			}
 		}
@@ -635,10 +659,14 @@ class MPAI_SDK_Integration {
 			try {
 				$tool = new $class_name();
 				$this->tool_registry->register_tool($tool_id, $tool);
-				error_log("MPAI SDK: Directly registered tool {$tool_id} after loading class file");
+				mpai_log_debug("Directly registered tool {$tool_id} after loading class file", 'sdk-integration');
 				return true;
 			} catch (Exception $e) {
-				error_log("MPAI SDK: Error creating tool instance for {$tool_id} after loading: " . $e->getMessage());
+				mpai_log_error("Error creating tool instance for {$tool_id} after loading: " . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 				return false;
 			}
 		}
@@ -729,7 +757,11 @@ class MPAI_SDK_Integration {
 				throw new Exception( "Failed to create thread: " . $error );
 			}
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . 'Error creating thread: ' . $e->getMessage() );
+			mpai_log_error('Error creating thread: ' . $e->getMessage(), 'sdk-integration', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			throw $e;
 		}
 	}
@@ -776,7 +808,11 @@ class MPAI_SDK_Integration {
 				throw new Exception( "Failed to add message: " . $error );
 			}
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . 'Error adding message: ' . $e->getMessage() );
+			mpai_log_error('Error adding message: ' . $e->getMessage(), 'sdk-integration', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			throw $e;
 		}
 	}
@@ -821,7 +857,11 @@ class MPAI_SDK_Integration {
 				throw new Exception( "Failed to start run: " . $error );
 			}
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . 'Error starting run: ' . $e->getMessage() );
+			mpai_log_error('Error starting run: ' . $e->getMessage(), 'sdk-integration', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			throw $e;
 		}
 	}
@@ -865,7 +905,11 @@ class MPAI_SDK_Integration {
 				sleep( 5 );
 				$retries++;
 			} catch ( Exception $e ) {
-				error_log("MPAI SDK ERROR: " . 'Error processing run: ' . $e->getMessage() );
+				mpai_log_error('Error processing run: ' . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 				throw $e;
 			}
 		}
@@ -909,7 +953,11 @@ class MPAI_SDK_Integration {
 				throw new Exception( "Failed to get run status: " . $error );
 			}
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . 'Error getting run status: ' . $e->getMessage() );
+			mpai_log_error('Error getting run status: ' . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 			throw $e;
 		}
 	}
@@ -952,7 +1000,11 @@ class MPAI_SDK_Integration {
 			// Submit tool outputs
 			$this->submit_tool_outputs( $thread_id, $run_id, $tool_outputs );
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . 'Error handling tool calls: ' . $e->getMessage() );
+			mpai_log_error('Error handling tool calls: ' . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 			throw $e;
 		}
 	}
@@ -1000,7 +1052,7 @@ class MPAI_SDK_Integration {
 						return $this->use_wp_api_tool('get_subscriptions', $args);
 					}
 				} catch (Exception $e) {
-					$error_log('MPAI SDK WARNING: ' .'Failed to use WordPress API tool: ' . $e->getMessage());
+					mpai_log_warning('Failed to use WordPress API tool: ' . $e->getMessage(), 'sdk-integration');
 					// Fall back to direct implementations below
 				}
 				
@@ -1034,7 +1086,11 @@ class MPAI_SDK_Integration {
 			
 			return $result;
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . "Error executing tool {$tool_name}: " . $e->getMessage() );
+			mpai_log_error("Error executing tool {$tool_name}: " . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 			return "Error executing tool: " . $e->getMessage();
 		}
 	}
@@ -1424,7 +1480,11 @@ class MPAI_SDK_Integration {
 				throw new Exception( "Failed to submit tool outputs: " . $error );
 			}
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . 'Error submitting tool outputs: ' . $e->getMessage() );
+			mpai_log_error('Error submitting tool outputs: ' . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 			throw $e;
 		}
 	}
@@ -1474,7 +1534,11 @@ class MPAI_SDK_Integration {
 				throw new Exception( "Failed to get messages: " . $error );
 			}
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . 'Error getting assistant response: ' . $e->getMessage() );
+			mpai_log_error('Error getting assistant response: ' . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 			throw $e;
 		}
 	}
@@ -1535,7 +1599,11 @@ class MPAI_SDK_Integration {
 				]
 			];
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . "Error handling agent handoff: " . $e->getMessage() );
+			mpai_log_error("Error handling agent handoff: " . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 			
 			return [
 				'success' => false,
@@ -1611,7 +1679,11 @@ class MPAI_SDK_Integration {
 				'thread_id' => $thread_id,
 			];
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . "Error starting running agent: " . $e->getMessage() );
+			mpai_log_error("Error starting running agent: " . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 			
 			return [
 				'success' => false,
@@ -1663,7 +1735,11 @@ class MPAI_SDK_Integration {
 			
 			// SDK info log (removed)
 		} catch ( Exception $e ) {
-			error_log("MPAI SDK ERROR: " . "Error executing background task: " . $e->getMessage() );
+			mpai_log_error("Error executing background task: " . $e->getMessage(), 'sdk-integration', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 			
 			// Update task status with error
 			$task_info = get_option( "mpai_task_{$task_id}", [] );
@@ -1690,7 +1766,7 @@ class MPAI_SDK_Integration {
 // Add an action hook to handle background task execution
 add_action( 'mpai_run_background_task', function( $args ) {
 	if ( ! is_array( $args ) ) {
-		error_log( 'MPAI SDK ERROR: Invalid arguments for background task' );
+		mpai_log_error('Invalid arguments for background task', 'sdk-integration');
 		return;
 	}
 	
@@ -1700,7 +1776,7 @@ add_action( 'mpai_run_background_task', function( $args ) {
 	$user_id = isset( $args['user_id'] ) ? $args['user_id'] : 0;
 	
 	if ( empty( $thread_id ) || empty( $assistant_id ) || empty( $task_id ) ) {
-		error_log( 'MPAI SDK ERROR: Missing required arguments for background task' );
+		mpai_log_error('Missing required arguments for background task', 'sdk-integration');
 		return;
 	}
 	

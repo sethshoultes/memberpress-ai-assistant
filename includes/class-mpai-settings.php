@@ -19,7 +19,7 @@ class MPAI_Settings {
      */
     public function __construct() {
         // Add log to track constructor execution
-        error_log('MPAI_Settings: Constructor running, setting up filters');
+        mpai_log_debug('Constructor running, setting up filters', 'settings');
         
         // Register all settings during admin_init
         add_action('admin_init', array($this, 'register_settings'));
@@ -36,7 +36,7 @@ class MPAI_Settings {
         // Make sure the hooks for special fields are registered on init too 
         add_action('admin_init', function() {
                 // No special handling needed since we're using the direct save method
-            error_log('MPAI: Using direct save method');
+            mpai_log_debug('Using direct save method', 'settings');
         }, 20); // Run after settings are registered
         
         // Temporarily keep the nonce bypass for backward compatibility
@@ -47,7 +47,7 @@ class MPAI_Settings {
                 function mpai_bypass_referer_check_for_options($check, $action) {
                     // Only bypass for our options page
                     if (isset($_POST['option_page']) && $_POST['option_page'] === 'mpai_options') {
-                        error_log('MPAI CRITICAL FIX: Bypassing nonce check for mpai_options');
+                        mpai_log_warning('Bypassing nonce check for mpai_options', 'settings');
                         return true;  // Bypass all nonce checks for our options
                     }
                     return $check;
@@ -62,11 +62,11 @@ class MPAI_Settings {
         // Debugging for options.php
         if (defined('WP_DEBUG') && WP_DEBUG) {
             if (strpos($_SERVER['PHP_SELF'], 'options.php') !== false && $_SERVER['REQUEST_METHOD'] === 'POST') {
-                error_log('MPAI_Settings: POST to options.php detected, option_page: ' . 
-                    (isset($_POST['option_page']) ? $_POST['option_page'] : 'not set'));
+                mpai_log_debug('POST to options.php detected, option_page: ' . 
+                    (isset($_POST['option_page']) ? $_POST['option_page'] : 'not set'), 'settings');
                 
                 // Log POST data for debugging
-                error_log('MPAI_Settings: POST data keys: ' . implode(', ', array_keys($_POST)));
+                mpai_log_debug('POST data keys: ' . implode(', ', array_keys($_POST)), 'settings');
             }
         }
     }
@@ -226,7 +226,7 @@ class MPAI_Settings {
                 )
             );
             
-            error_log('MPAI: Registered setting: ' . $setting_name);
+            mpai_log_debug('Registered setting: ' . $setting_name, 'settings');
         }
     }
     
@@ -244,7 +244,7 @@ class MPAI_Settings {
         // Add our options to the whitelist
         $whitelist['mpai_options'] = $mpai_options;
         
-        error_log('MPAI_Settings: Legacy whitelist_options filter applied with ' . count($mpai_options) . ' settings');
+        mpai_log_debug('Legacy whitelist_options filter applied with ' . count($mpai_options) . ' settings', 'settings');
         return $whitelist;
     }
     
@@ -268,13 +268,13 @@ class MPAI_Settings {
      */
     public function whitelist_options($allowed_options) {
         // Debug output to understand what's happening
-        error_log('MPAI: whitelist_options filter running with ' . count($allowed_options) . ' existing allowed option groups');
+        mpai_log_debug('whitelist_options filter running with ' . count($allowed_options) . ' existing allowed option groups', 'settings');
         
         // Get all option names from our central definitions
         $mpai_options = array_keys($this->get_settings_definitions());
         
         // Debug the whitelist options for troubleshooting
-        error_log('MPAI: Whitelisting ' . count($mpai_options) . ' options for mpai_options page');
+        mpai_log_debug('Whitelisting ' . count($mpai_options) . ' options for mpai_options page', 'settings');
         
         // Add our options to the allowed list for our option page
         $allowed_options['mpai_options'] = $mpai_options;
@@ -282,13 +282,13 @@ class MPAI_Settings {
         // Also add them individually to the WordPress built-in options
         // This is the most reliable approach for WordPress 5.5+
         if (isset($allowed_options['options'])) {
-            error_log('MPAI: Adding options to WordPress core options page too');
+            mpai_log_debug('Adding options to WordPress core options page too', 'settings');
             $allowed_options['options'] = array_merge($allowed_options['options'], $mpai_options);
         }
         
         // No special handling needed for options.php since we use direct save
         
-        error_log('MPAI: Using direct save method for all options');
+        mpai_log_debug('Using direct save method for all options', 'settings');
         
         return $allowed_options;
     }
@@ -302,23 +302,23 @@ class MPAI_Settings {
      * @return mixed The filtered value
      */
     public function pre_update_api_key($value, $old_value, $option) {
-        error_log('MPAI CRITICAL HANDLER: Processing API key update for ' . $option);
+        mpai_log_debug('Processing API key update for ' . $option, 'settings-handler');
         
         // If value is empty but not intentionally cleared, keep the old value
         if (empty($value) && !isset($_POST[$option]) && !empty($old_value)) {
-            error_log('MPAI CRITICAL HANDLER: Empty value detected but not intentionally cleared, keeping old value');
+            mpai_log_debug('Empty value detected but not intentionally cleared, keeping old value', 'settings-handler');
             return $old_value;
         }
         
         // If the value is empty and was intentionally cleared, clear it
         if (empty($value) && isset($_POST[$option]) && $_POST[$option] === '') {
-            error_log('MPAI CRITICAL HANDLER: API key intentionally cleared');
+            mpai_log_debug('API key intentionally cleared', 'settings-handler');
             return '';
         }
         
         // Check for backup fields
         if (isset($_POST[$option . '_backup']) && !empty($_POST[$option . '_backup']) && empty($value)) {
-            error_log('MPAI CRITICAL HANDLER: Using backup field for ' . $option);
+            mpai_log_debug('Using backup field for ' . $option, 'settings-handler');
             $value = $_POST[$option . '_backup'];
         }
         
@@ -338,7 +338,7 @@ class MPAI_Settings {
             )
         );
         
-        error_log('MPAI CRITICAL HANDLER: Saved ' . $option . ' directly to database');
+        mpai_log_debug('Saved ' . $option . ' directly to database', 'settings-handler');
         
         return $value;
     }
@@ -352,18 +352,18 @@ class MPAI_Settings {
      * @return mixed The filtered value
      */
     public function pre_update_welcome_message($value, $old_value, $option) {
-        error_log('MPAI CRITICAL HANDLER: Processing welcome message update');
+        mpai_log_debug('Processing welcome message update', 'settings-handler');
         
         // If the value is empty but not intentionally cleared, keep the old value
         if (empty($value) && !isset($_POST[$option]) && !empty($old_value)) {
-            error_log('MPAI CRITICAL HANDLER: Empty value detected but not intentionally cleared, keeping old value');
+            mpai_log_debug('Empty value detected but not intentionally cleared, keeping old value', 'settings-handler');
             return $old_value;
         }
         
         // Process welcome message from POST data directly if available
         if (isset($_POST[$option])) {
             $value = wp_kses_post($_POST[$option]);
-            error_log('MPAI CRITICAL HANDLER: Got welcome message from POST data: ' . substr($value, 0, 30) . '...');
+            mpai_log_debug('Got welcome message from POST data: ' . substr($value, 0, 30) . '...', 'settings-handler');
         }
         
         // Ensure it's properly saved in the database
@@ -382,7 +382,7 @@ class MPAI_Settings {
             )
         );
         
-        error_log('MPAI CRITICAL HANDLER: Saved welcome message directly to database');
+        mpai_log_debug('Saved welcome message directly to database', 'settings-handler');
         
         return $value;
     }
@@ -565,7 +565,7 @@ class MPAI_Settings {
     public function render_password_field($name, $value, $args) {
         // Output debugging info for critical fields
         if ($name === 'mpai_api_key' || $name === 'mpai_anthropic_api_key') {
-            error_log('MPAI API KEY DEBUG: Rendering ' . $name . ' with value length: ' . strlen($value));
+            mpai_log_debug('Rendering ' . $name . ' with value length: ' . strlen($value), 'settings-api-keys');
         }
         
         // Add debugging comment for critical fields
@@ -616,7 +616,7 @@ class MPAI_Settings {
     public function render_textarea_field($name, $value, $args) {
         // Special handling for welcome message
         if ($name === 'mpai_welcome_message') {
-            error_log('MPAI WELCOME MESSAGE DEBUG: Current value from database: ' . substr($value, 0, 30) . '... (' . strlen($value) . ' chars)');
+            mpai_log_debug('Current value from database: ' . substr($value, 0, 30) . '... (' . strlen($value) . ' chars)', 'settings-welcome-msg');
             
             // Add debugging comment for this critical field
             echo '<!-- IMPORTANT FIELD: mpai_welcome_message with current length ' . strlen($value) . ' -->';

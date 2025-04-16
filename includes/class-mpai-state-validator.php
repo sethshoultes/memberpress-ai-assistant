@@ -285,7 +285,7 @@ class MPAI_State_Validator {
         
         // Log any failed invariants
         if (!empty($failed_invariants)) {
-            error_log('MPAI: System invariants violated: ' . implode(', ', $failed_invariants));
+            mpai_log_error('System invariants violated: ' . implode(', ', $failed_invariants), 'state-validator');
             
             // Log to plugin logger if available
             if ($this->logger) {
@@ -333,7 +333,7 @@ class MPAI_State_Validator {
         // Check if any rules failed
         if (!empty($failed_rules)) {
             $message = "Component {$component_type} failed validation: " . implode(', ', $failed_rules);
-            error_log('MPAI: ' . $message);
+            mpai_log_error($message, 'state-validator');
             
             // Create error through error recovery if available
             if ($this->error_recovery) {
@@ -455,7 +455,7 @@ class MPAI_State_Validator {
         // Check if any pre-conditions failed
         if (!empty($failed_conditions)) {
             $message = "Pre-conditions not met for {$component}.{$operation}: " . implode(', ', $failed_conditions);
-            error_log('MPAI: ' . $message);
+            mpai_log_error($message, 'state-validator');
             
             // Create error through error recovery if available
             if ($this->error_recovery) {
@@ -507,7 +507,7 @@ class MPAI_State_Validator {
         // Check if any post-conditions failed
         if (!empty($failed_conditions)) {
             $message = "Post-conditions not met for {$component}.{$operation}: " . implode(', ', $failed_conditions);
-            error_log('MPAI: ' . $message);
+            mpai_log_error($message, 'state-validator');
             
             // Create error through error recovery if available
             if ($this->error_recovery) {
@@ -581,7 +581,7 @@ class MPAI_State_Validator {
         
         // Log inconsistencies if any found
         if (!empty($inconsistencies)) {
-            error_log('MPAI: State inconsistencies detected for ' . $component . ': ' . implode(', ', $inconsistencies));
+            mpai_log_error('State inconsistencies detected for ' . $component . ': ' . implode(', ', $inconsistencies), 'state-validator');
             
             // Log to plugin logger if available
             if ($this->logger) {
@@ -653,7 +653,7 @@ class MPAI_State_Validator {
      */
     public function assert($condition, $message, $context = []) {
         if (!$condition) {
-            error_log('MPAI: Assertion failed: ' . $message);
+            mpai_log_error('Assertion failed: ' . $message, 'state-validator', $context);
             
             // Log to plugin logger if available
             if ($this->logger) {

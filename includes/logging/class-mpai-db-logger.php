@@ -74,7 +74,11 @@ class MPAI_DB_Logger extends MPAI_Abstract_Logger {
             // Table doesn't exist, try to create it
             return $this->create_table();
         } catch ( \Exception $e ) {
-            error_log( 'MPAI: Error checking log table: ' . $e->getMessage() );
+            mpai_log_error( 'Error checking log table: ' . $e->getMessage(), 'db-logger', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ) );
             return false;
         }
     }
@@ -112,7 +116,11 @@ class MPAI_DB_Logger extends MPAI_Abstract_Logger {
             
             return $this->table_exists;
         } catch ( \Exception $e ) {
-            error_log( 'MPAI: Error creating log table: ' . $e->getMessage() );
+            mpai_log_error( 'Error creating log table: ' . $e->getMessage(), 'db-logger', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ) );
             return false;
         }
     }
@@ -133,7 +141,7 @@ class MPAI_DB_Logger extends MPAI_Abstract_Logger {
         // If table doesn't exist, fallback to error_log
         if ( ! $this->table_exists ) {
             $formatted_message = $this->format_message( $level, $message, $context );
-            error_log( 'MPAI: ' . $formatted_message );
+            mpai_log_debug( $formatted_message, 'db-logger' );
             return;
         }
         
@@ -160,13 +168,17 @@ class MPAI_DB_Logger extends MPAI_Abstract_Logger {
             // If insert failed, fallback to error_log
             if ( false === $result ) {
                 $formatted_message = $this->format_message( $level, $message, $context );
-                error_log( 'MPAI: DB Log insert failed. ' . $formatted_message );
-                error_log( 'MPAI: DB error: ' . $wpdb->last_error );
+                mpai_log_error( 'DB Log insert failed. ' . $formatted_message, 'db-logger' );
+                mpai_log_error( 'DB error: ' . $wpdb->last_error, 'db-logger' );
             }
         } catch ( \Exception $e ) {
             $formatted_message = $this->format_message( $level, $message, $context );
-            error_log( 'MPAI: Exception in DB logger: ' . $e->getMessage() );
-            error_log( 'MPAI: ' . $formatted_message );
+            mpai_log_error( 'Exception in DB logger: ' . $e->getMessage(), 'db-logger', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ) );
+            mpai_log_debug( $formatted_message, 'db-logger' );
         }
     }
 
@@ -287,7 +299,11 @@ class MPAI_DB_Logger extends MPAI_Abstract_Logger {
             
             return $results;
         } catch ( \Exception $e ) {
-            error_log( 'MPAI: Error retrieving logs: ' . $e->getMessage() );
+            mpai_log_error( 'Error retrieving logs: ' . $e->getMessage(), 'db-logger', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ) );
             return array();
         }
     }
@@ -363,7 +379,11 @@ class MPAI_DB_Logger extends MPAI_Abstract_Logger {
             
             return (int) $count;
         } catch ( \Exception $e ) {
-            error_log( 'MPAI: Error counting logs: ' . $e->getMessage() );
+            mpai_log_error( 'Error counting logs: ' . $e->getMessage(), 'db-logger', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ) );
             return 0;
         }
     }
@@ -397,7 +417,11 @@ class MPAI_DB_Logger extends MPAI_Abstract_Logger {
             
             return $result;
         } catch ( \Exception $e ) {
-            error_log( 'MPAI: Error deleting old logs: ' . $e->getMessage() );
+            mpai_log_error( 'Error deleting old logs: ' . $e->getMessage(), 'db-logger', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ) );
             return false;
         }
     }

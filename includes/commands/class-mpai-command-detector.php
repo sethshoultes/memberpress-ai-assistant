@@ -41,21 +41,19 @@ class MPAI_Command_Detector {
         // Create a simple logger class
         return new class() {
             public function info($message) {
-                error_log('MPAI DETECTOR: ' . $message);
+                mpai_log_info($message, 'command-detector');
             }
             
             public function warning($message) {
-                error_log('MPAI DETECTOR WARNING: ' . $message);
+                mpai_log_warning($message, 'command-detector');
             }
             
             public function error($message) {
-                error_log('MPAI DETECTOR ERROR: ' . $message);
+                mpai_log_error($message, 'command-detector');
             }
             
             public function debug($message) {
-                if (defined('WP_DEBUG') && WP_DEBUG) {
-                    error_log('MPAI DETECTOR DEBUG: ' . $message);
-                }
+                mpai_log_debug($message, 'command-detector');
             }
         };
     }

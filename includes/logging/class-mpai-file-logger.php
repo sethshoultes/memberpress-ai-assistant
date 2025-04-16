@@ -129,8 +129,8 @@ class MPAI_File_Logger extends MPAI_Abstract_Logger {
         
         // If we couldn't write to the file, fallback to error_log
         if ( false === $result ) {
-            error_log( 'MPAI: Failed to write to log file: ' . $this->log_file );
-            error_log( 'MPAI: ' . $formatted_message );
+            mpai_log_error( 'Failed to write to log file: ' . $this->log_file, 'file-logger' );
+            mpai_log_debug( $formatted_message, 'file-logger' );
         }
     }
 }

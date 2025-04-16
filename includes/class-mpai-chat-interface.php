@@ -161,8 +161,8 @@ class MPAI_Chat_Interface {
         );
 
         // Get logger settings with debug info
-        error_log('MPAI: Getting logger settings for chat interface');
-        error_log('MPAI: mpai_enable_console_logging = ' . get_option('mpai_enable_console_logging', '1'));
+        mpai_log_debug('Getting logger settings for chat interface', 'chat-interface');
+        mpai_log_debug('mpai_enable_console_logging = ' . get_option('mpai_enable_console_logging', '1'), 'chat-interface');
         
         // Ensure we're providing consistent string values for all boolean options
         $logger_settings = array(
@@ -178,7 +178,7 @@ class MPAI_Chat_Interface {
         );
         
         // Log the settings for debugging
-        error_log('MPAI: Chat interface logger settings: ' . json_encode($logger_settings));
+        mpai_log_debug('Chat interface logger settings: ' . json_encode($logger_settings), 'chat-interface');
         
         wp_localize_script(
             $this->plugin_name . '-chat',
@@ -291,7 +291,7 @@ class MPAI_Chat_Interface {
                         );
                     }
                     
-                    error_log('MPAI: Cleared database messages for user ' . $user_id);
+                    mpai_log_debug('Cleared database messages for user ' . $user_id, 'chat-interface');
                 }
             }
             
@@ -300,18 +300,22 @@ class MPAI_Chat_Interface {
                 $chat = new MPAI_Chat();
                 if (method_exists($chat, 'reset_conversation')) {
                     $chat->reset_conversation();
-                    error_log('MPAI: Reset conversation in chat class');
+                    mpai_log_debug('Reset conversation in chat class', 'chat-interface');
                 }
             }
             
-            error_log('MPAI: Chat history fully cleared from all storage locations');
+            mpai_log_debug('Chat history fully cleared from all storage locations', 'chat-interface');
             
             wp_send_json_success(array(
                 'message' => __('Chat history cleared', 'memberpress-ai-assistant'),
             ));
             
         } catch (Exception $e) {
-            error_log('MPAI: Error clearing chat history: ' . $e->getMessage());
+            mpai_log_error('Error clearing chat history: ' . $e->getMessage(), 'chat-interface', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             wp_send_json_error('Error clearing chat history: ' . $e->getMessage());
         }
     }

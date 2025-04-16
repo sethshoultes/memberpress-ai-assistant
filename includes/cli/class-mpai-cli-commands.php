@@ -15,28 +15,30 @@ if (!defined('WP_CLI') || !WP_CLI) {
     return;
 }
 
-// Initialize CLI logging with minimal error_log overhead
+// Initialize CLI logging with standardized log functions
 function mpai_cli_log($message, $level = 'info') {
-    // Only log errors and warnings to error_log to reduce overhead
-    if ($level === 'error' || $level === 'warning') {
-        error_log('MPAI CLI: ' . $message);
-    }
-    
-    // Always output to console
+    // Log to standard logging system
     if ($level === 'error') {
+        mpai_log_error($message, 'cli');
         WP_CLI::error($message);
     } elseif ($level === 'warning') {
+        mpai_log_warning($message, 'cli');
         WP_CLI::warning($message);
     } elseif ($level === 'success') {
+        mpai_log_debug($message, 'cli');
         WP_CLI::success($message);
+    } elseif ($level === 'debug') {
+        mpai_log_debug($message, 'cli');
+        WP_CLI::debug($message);
     } else {
+        mpai_log_debug($message, 'cli');
         WP_CLI::log($message);
     }
 }
 
 // Minimal initialization log
 if (defined('WP_DEBUG') && WP_DEBUG) {
-    error_log('MPAI CLI: Initialized MemberPress AI Assistant CLI commands');
+    mpai_log_debug('Initialized MemberPress AI Assistant CLI commands', 'cli');
 }
 
 /**
@@ -666,12 +668,12 @@ class MPAI_CLI_Commands extends WP_CLI_Command {
 function mpai_initialize_cli_commands() {
     // Check if we're able to register commands
     if (!class_exists('WP_CLI')) {
-        error_log('MPAI CLI: WP_CLI class not available for command registration');
+        mpai_log_error('WP_CLI class not available for command registration', 'cli');
         return;
     }
     
     if (!class_exists('MPAI_CLI_Commands')) {
-        error_log('MPAI CLI: MPAI_CLI_Commands class not available for registration');
+        mpai_log_error('MPAI_CLI_Commands class not available for registration', 'cli');
         return;
     }
     
@@ -680,7 +682,11 @@ function mpai_initialize_cli_commands() {
         WP_CLI::add_command('mpai', 'MPAI_CLI_Commands');
         mpai_cli_log('Successfully registered MemberPress AI CLI commands', 'success');
     } catch (Exception $e) {
-        error_log('MPAI CLI: Error registering commands: ' . $e->getMessage());
+        mpai_log_error('Error registering commands: ' . $e->getMessage(), 'cli', array(
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
+        ));
     }
 }
 

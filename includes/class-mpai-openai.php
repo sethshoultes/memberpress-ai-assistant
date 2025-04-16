@@ -118,29 +118,33 @@ class MPAI_OpenAI {
     public function generate_chat_completion($messages) {
         // If no API key is set, return a dummy response for testing
         if (empty($this->api_key)) {
-            error_log('MPAI: No OpenAI API key configured, returning dummy response');
+            mpai_log_warning('No OpenAI API key configured, returning dummy response', 'openai');
             return "I'm sorry, but the OpenAI API key is not configured. Please add your API key in the settings page to use the AI assistant.";
         }
         
         // Only log a summary of the request, not the entire content
-        error_log('MPAI: Sending request to OpenAI API - ' . count($messages) . ' messages');
+        mpai_log_debug('Sending request to OpenAI API - ' . count($messages) . ' messages', 'openai');
         
         try {
             $response = $this->send_request($messages);
     
             if (is_wp_error($response)) {
-                error_log('MPAI: OpenAI API returned WP_Error: ' . $response->get_error_message());
+                mpai_log_error('OpenAI API returned WP_Error: ' . $response->get_error_message(), 'openai');
                 return $response;
             }
     
             if (empty($response['choices'][0]['message']['content'])) {
-                error_log('MPAI: OpenAI returned empty response');
+                mpai_log_warning('OpenAI returned empty response', 'openai');
                 return new WP_Error('empty_response', 'OpenAI returned an empty response.');
             }
     
             return $response['choices'][0]['message']['content'];
         } catch (Exception $e) {
-            error_log('MPAI: Error in generate_chat_completion: ' . $e->getMessage());
+            mpai_log_error('Error in generate_chat_completion: ' . $e->getMessage(), 'openai', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             return new WP_Error('openai_error', 'Error generating completion: ' . $e->getMessage());
         }
     }

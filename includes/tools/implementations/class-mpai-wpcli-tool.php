@@ -44,16 +44,16 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 			$executor_file = dirname(dirname(dirname(__FILE__))) . '/commands/class-mpai-wp-cli-executor.php';
 			if (file_exists($executor_file)) {
 				require_once $executor_file;
-				error_log('MPAI_WP_CLI_Tool (Wrapper): Loaded WP-CLI Executor class');
+				mpai_log_debug('Loaded WP-CLI Executor class', 'wpcli-tool-wrapper');
 			} else {
-				error_log('MPAI_WP_CLI_Tool (Wrapper): Could not find WP-CLI Executor file');
+				mpai_log_error('Could not find WP-CLI Executor file', 'wpcli-tool-wrapper');
 				return;
 			}
 		}
 		
 		// Initialize the executor
 		$this->executor = new MPAI_WP_CLI_Executor();
-		error_log('MPAI_WP_CLI_Tool (Wrapper): Initialized WP-CLI Executor');
+		mpai_log_debug('Initialized WP-CLI Executor', 'wpcli-tool-wrapper');
 	}
 	
 	/**
@@ -106,44 +106,44 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 	 * @throws Exception If command validation fails or execution error
 	 */
 	protected function execute_tool( $parameters ) {
-		error_log('MPAI_WP_CLI_Tool: Executing tool with command: ' . $parameters['command']);
+		mpai_log_debug('Executing tool with command: ' . $parameters['command'], 'wpcli-tool');
 		
 		// Make sure the executor is initialized
 		if (!$this->executor) {
-			error_log('MPAI_WP_CLI_Tool: Executor not initialized, initializing now');
+			mpai_log_debug('Executor not initialized, initializing now', 'wpcli-tool');
 			$this->init_executor();
 			
 			// If still not initialized, throw an exception
 			if (!$this->executor) {
-				error_log('MPAI_WP_CLI_Tool: Failed to initialize executor');
+				mpai_log_error('Failed to initialize executor', 'wpcli-tool');
 				throw new Exception('Failed to initialize WP-CLI executor');
 			}
 		}
 		
 		try {
 			// Execute the command using the executor
-			error_log('MPAI_WP_CLI_Tool: Calling executor->execute()');
+			mpai_log_debug('Calling executor->execute()', 'wpcli-tool');
 			$result = $this->executor->execute($parameters['command'], $parameters);
-			error_log('MPAI_WP_CLI_Tool: Executed command, result type: ' . gettype($result));
+			mpai_log_debug('Executed command, result type: ' . gettype($result), 'wpcli-tool');
 			
 			// Special case for wp plugin list command - enhance logging
 			if (trim($parameters['command']) === 'wp plugin list') {
-				error_log('MPAI_WP_CLI_Tool: wp plugin list command handled, raw result: ' . substr(json_encode($result), 0, 200) . '...');
+				mpai_log_debug('wp plugin list command handled, raw result: ' . substr(json_encode($result), 0, 200) . '...', 'wpcli-tool');
 			}
 			
 			// Handle the result format
 			if (is_array($result) && isset($result['output'])) {
-				error_log('MPAI_WP_CLI_Tool: Result has output field, type: ' . gettype($result['output']));
+				mpai_log_debug('Result has output field, type: ' . gettype($result['output']), 'wpcli-tool');
 				
 				// Check if output is a string to avoid strlen() errors
 				if (!is_string($result['output'])) {
 					// If output is an array or object, convert to string
 					if (is_array($result['output']) || is_object($result['output'])) {
-						error_log('MPAI_WP_CLI_Tool: Converting array/object output to JSON string');
+						mpai_log_debug('Converting array/object output to JSON string', 'wpcli-tool');
 						$result['output'] = json_encode($result['output']);
 					} else {
 						// For any other non-string type, convert to string
-						error_log('MPAI_WP_CLI_Tool: Converting non-string output to string: ' . gettype($result['output']));
+						mpai_log_debug('Converting non-string output to string: ' . gettype($result['output']), 'wpcli-tool');
 						$result['output'] = (string)$result['output'];
 					}
 				}
@@ -152,11 +152,15 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 				return $result['output'];
 			} else {
 				// For non-array results or missing output, return as is
-				error_log('MPAI_WP_CLI_Tool: Returning result directly, type: ' . gettype($result));
+				mpai_log_debug('Returning result directly, type: ' . gettype($result), 'wpcli-tool');
 				return $result;
 			}
 		} catch (Exception $e) {
-			error_log('MPAI_WP_CLI_Tool ERROR: Exception in execute_tool: ' . $e->getMessage());
+			mpai_log_error('Exception in execute_tool: ' . $e->getMessage(), 'wpcli-tool', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
 			throw $e; // Re-throw to be handled by the caller
 		}
 	}

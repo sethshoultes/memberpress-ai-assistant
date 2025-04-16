@@ -194,7 +194,7 @@ class MPAI_Anthropic {
     public function generate_completion($messages, $tools = array(), $options = []) {
         // If no API key is set, return a dummy response for testing
         if (empty($this->api_key)) {
-            error_log('MPAI: No Anthropic API key configured, returning dummy response');
+            mpai_log_warning('No Anthropic API key configured, returning dummy response', 'anthropic');
             return "I'm sorry, but the Anthropic API key is not configured. Please add your API key in the settings page to use the Claude AI assistant.";
         }
         
@@ -202,7 +202,7 @@ class MPAI_Anthropic {
         $skip_cache = false;
         if (isset($options['type']) && $options['type'] === 'content_creation') {
             $skip_cache = true;
-            error_log('MPAI: Skipping cache for content creation request');
+            mpai_log_debug('Skipping cache for content creation request', 'anthropic');
         }
         
         if (!$skip_cache && isset($this->cache)) {
@@ -212,31 +212,31 @@ class MPAI_Anthropic {
             // Check cache
             $cached_response = $this->cache->get($cache_key);
             if ($cached_response !== null) {
-                error_log('MPAI: Using cached response for request');
+                mpai_log_debug('Using cached response for request', 'anthropic');
                 return $cached_response;
             }
         }
         
         // Only log a summary of the request, not the entire content
-        error_log('MPAI: Sending request to Anthropic API - ' . count($messages) . ' messages');
+        mpai_log_debug('Sending request to Anthropic API - ' . count($messages) . ' messages', 'anthropic');
         
         try {
             $response = $this->send_request($messages, $tools);
     
             if (is_wp_error($response)) {
-                error_log('MPAI: Anthropic API returned WP_Error: ' . $response->get_error_message());
+                mpai_log_error('Anthropic API returned WP_Error: ' . $response->get_error_message(), 'anthropic');
                 return $response;
             }
     
             if (empty($response['content'][0]['text'])) {
-                error_log('MPAI: Anthropic returned empty response');
+                mpai_log_warning('Anthropic returned empty response', 'anthropic');
                 return new WP_Error('empty_response', 'Anthropic returned an empty response.');
             }
             
             // Extract tool calls if present
             if (!empty($response['tool_outputs'])) {
                 // Process tool calls - don't cache tool call responses
-                error_log('MPAI: Tool outputs found in Anthropic response');
+                mpai_log_debug('Tool outputs found in Anthropic response', 'anthropic');
                 $result = array(
                     'message' => $response['content'][0]['text'],
                     'tool_outputs' => $response['tool_outputs']
@@ -249,12 +249,16 @@ class MPAI_Anthropic {
             // Cache the successful response if not skipped
             if (!$skip_cache && isset($this->cache)) {
                 $this->cache->set($cache_key, $result);
-                error_log('MPAI: Cached response for future use');
+                mpai_log_debug('Cached response for future use', 'anthropic');
             }
     
             return $result;
         } catch (Exception $e) {
-            error_log('MPAI: Error in generate_completion: ' . $e->getMessage());
+            mpai_log_error('Error in generate_completion: ' . $e->getMessage(), 'anthropic', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             return new WP_Error('anthropic_error', 'Error generating completion: ' . $e->getMessage());
         }
     }

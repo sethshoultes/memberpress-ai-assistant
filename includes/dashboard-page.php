@@ -11,7 +11,7 @@ if (!defined('WPINC')) {
 }
 
 // Log page load for debugging
-error_log('MPAI DEBUG: Dashboard page is being loaded');
+mpai_log_debug('Dashboard page is being loaded', 'dashboard-page');
 
 // Check if terms have been accepted - check both options and user meta
 $consent_given = false;
@@ -26,7 +26,7 @@ if (!$global_consent && is_user_logged_in()) {
     $consent_given = !empty($user_consent);
     
     // For debugging
-    error_log('MPAI DEBUG: User consent status - User ID: ' . $user_id . ', Has consented: ' . ($consent_given ? 'Yes' : 'No'));
+    mpai_log_debug('User consent status - User ID: ' . $user_id . ', Has consented: ' . ($consent_given ? 'Yes' : 'No'), 'dashboard-page');
 } else {
     $consent_given = $global_consent;
 }

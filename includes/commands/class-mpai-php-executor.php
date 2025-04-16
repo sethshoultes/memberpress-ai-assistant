@@ -41,7 +41,7 @@ class MPAI_PHP_Executor {
      */
     public function execute($command, $parameters = []) {
         try {
-            error_log('MPAI PHP: Executing command: ' . $command);
+            mpai_log_debug('Executing command: ' . $command, 'php-executor');
             
             // Set custom timeout if provided
             if (isset($parameters['timeout'])) {
@@ -79,7 +79,11 @@ class MPAI_PHP_Executor {
                 'command' => $command
             ];
         } catch (Exception $e) {
-            error_log('MPAI PHP ERROR: Command execution error: ' . $e->getMessage());
+            mpai_log_error('Command execution error: ' . $e->getMessage(), 'php-executor', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             return [
                 'success' => false,
                 'output' => 'Error executing command: ' . $e->getMessage(),

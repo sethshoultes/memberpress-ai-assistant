@@ -44,7 +44,7 @@ class MPAI_API_Router {
      */
     public function __construct() {
         // Load dependencies if not already loaded
-        error_log('MPAI API Router: Constructor started');
+        mpai_log_debug('API Router constructor started', 'api-router');
         if (!class_exists('MPAI_OpenAI')) {
             require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-openai.php';
         }
@@ -72,13 +72,13 @@ class MPAI_API_Router {
      * @return mixed The API response
      */
     public function process_request($messages, $tools = array(), $context = array()) {
-        error_log('MPAI: Processing request using API Router with primary API: ' . $this->primary_api);
+        mpai_log_debug('Processing request using API Router with primary API: ' . $this->primary_api, 'api-router');
         
         // Determine if we should force a specific API for this request
         $force_api = null;
         if (isset($context['force_api']) && in_array($context['force_api'], array('openai', 'anthropic'))) {
             $force_api = $context['force_api'];
-            error_log('MPAI: Forcing usage of ' . $force_api . ' API for this request');
+            mpai_log_debug('Forcing usage of ' . $force_api . ' API for this request', 'api-router');
         }
         
         // Default to primary API unless forced
@@ -93,7 +93,7 @@ class MPAI_API_Router {
             $result = null;
             
             if ($primary === 'openai') {
-                error_log('MPAI: Trying OpenAI API first');
+                mpai_log_debug('Trying OpenAI API first', 'api-router');
                 
                 // For OpenAI, we need to format tools correctly
                 $openai_params = array();
@@ -115,7 +115,7 @@ class MPAI_API_Router {
                     
                     // Define retry callback for OpenAI
                     $retry_callback = function() use ($messages, $openai_params) {
-                        error_log('MPAI: Retrying OpenAI API');
+                        mpai_log_info('Retrying OpenAI API', 'api-router');
                         $retry_result = $this->openai->send_request($messages, $openai_params);
                         
                         if (is_wp_error($retry_result)) {
@@ -127,7 +127,7 @@ class MPAI_API_Router {
                     
                     // Define fallback callback for Anthropic
                     $fallback_callback = function() use ($messages, $tools) {
-                        error_log('MPAI: Using Anthropic API as fallback');
+                        mpai_log_info('Using Anthropic API as fallback', 'api-router');
                         $anthropic_tools = !empty($tools) ? $this->anthropic->convert_tools_to_anthropic_format($tools) : array();
                         $fallback_result = $this->anthropic->send_request($messages, $anthropic_tools);
                         
@@ -150,7 +150,7 @@ class MPAI_API_Router {
                 
                 return $this->format_openai_response($result);
             } else {
-                error_log('MPAI: Trying Anthropic API first');
+                mpai_log_debug('Trying Anthropic API first', 'api-router');
                 
                 // For Anthropic, we need to format tools correctly
                 $anthropic_tools = !empty($tools) ? $this->anthropic->convert_tools_to_anthropic_format($tools) : array();
@@ -168,7 +168,7 @@ class MPAI_API_Router {
                     
                     // Define retry callback for Anthropic
                     $retry_callback = function() use ($messages, $anthropic_tools) {
-                        error_log('MPAI: Retrying Anthropic API');
+                        mpai_log_info('Retrying Anthropic API', 'api-router');
                         $retry_result = $this->anthropic->send_request($messages, $anthropic_tools);
                         
                         if (is_wp_error($retry_result)) {
@@ -180,7 +180,7 @@ class MPAI_API_Router {
                     
                     // Define fallback callback for OpenAI
                     $fallback_callback = function() use ($messages, $tools) {
-                        error_log('MPAI: Using OpenAI API as fallback');
+                        mpai_log_info('Using OpenAI API as fallback', 'api-router');
                         $openai_params = array();
                         if (!empty($tools)) {
                             $openai_tools = $this->format_tools_for_openai($tools);
@@ -209,7 +209,11 @@ class MPAI_API_Router {
                 return $this->format_anthropic_response($result);
             }
         } catch (Exception $e) {
-            error_log("MPAI: Exception in process_request for $primary API: " . $e->getMessage());
+            mpai_log_error("Exception in process_request for $primary API: " . $e->getMessage(), 'api-router', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             
             // Create standardized exception error
             $error = $this->error_recovery->create_api_error(
@@ -230,7 +234,7 @@ class MPAI_API_Router {
             // Define fallback callback for the other API
             $fallback_callback = function() use ($fallback, $messages, $tools) {
                 try {
-                    error_log("MPAI: Using $fallback API as fallback after exception");
+                    mpai_log_info("Using $fallback API as fallback after exception", 'api-router');
                     
                     if ($fallback === 'openai') {
                         $openai_params = array();
@@ -258,7 +262,11 @@ class MPAI_API_Router {
                         return $this->format_anthropic_response($result);
                     }
                 } catch (Exception $e2) {
-                    error_log("MPAI: Fallback API ($fallback) also failed: " . $e2->getMessage());
+                    mpai_log_error("Fallback API ($fallback) also failed: " . $e2->getMessage(), 'api-router', array(
+                        'file' => $e2->getFile(),
+                        'line' => $e2->getLine(),
+                        'trace' => $e2->getTraceAsString()
+                    ));
                     
                     // Create combined error
                     return $this->error_recovery->create_api_error(
@@ -390,40 +398,40 @@ class MPAI_API_Router {
      * This clears any cached data and reinitializes API connections.
      */
     public function reset_state() {
-        error_log('MPAI API Router: Resetting state');
+        mpai_log_debug('API Router: Resetting state', 'api-router');
         
         // Reset OpenAI instance if it exists
         if (isset($this->openai) && method_exists($this->openai, 'reset')) {
             $this->openai->reset();
-            error_log('MPAI API Router: Reset OpenAI instance');
+            mpai_log_debug('Reset OpenAI instance', 'api-router');
         } else {
             // If no reset method, recreate the instance
             $this->openai = new MPAI_OpenAI();
-            error_log('MPAI API Router: Recreated OpenAI instance');
+            mpai_log_debug('Recreated OpenAI instance', 'api-router');
         }
         
         // Reset Anthropic instance if it exists
         if (isset($this->anthropic) && method_exists($this->anthropic, 'reset')) {
             $this->anthropic->reset();
-            error_log('MPAI API Router: Reset Anthropic instance');
+            mpai_log_debug('Reset Anthropic instance', 'api-router');
         } else {
             // If no reset method, recreate the instance  
             $this->anthropic = new MPAI_Anthropic();
-            error_log('MPAI API Router: Recreated Anthropic instance');
+            mpai_log_debug('Recreated Anthropic instance', 'api-router');
         }
         
         // Reload primary API setting from database
         $this->primary_api = get_option('mpai_primary_api', 'openai');
-        error_log('MPAI API Router: Reloaded primary API setting: ' . $this->primary_api);
+        mpai_log_debug('Reloaded primary API setting: ' . $this->primary_api, 'api-router');
         
         // Force refresh WordPress plugins cache
         wp_cache_delete('plugins', 'plugins');
         if (function_exists('get_plugins')) {
             get_plugins('', true); // Force refresh
-            error_log('MPAI API Router: Refreshed WordPress plugins cache');
+            mpai_log_debug('Refreshed WordPress plugins cache', 'api-router');
         }
         
-        error_log('MPAI API Router: State reset complete');
+        mpai_log_debug('State reset complete', 'api-router');
     }
 
     /**
