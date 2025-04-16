@@ -776,7 +776,7 @@ class MPAI_Diagnostics_Page {
         
         try {
             // Enhanced error logging for debugging
-            error_log('MPAI: Running diagnostic test: ' . $test_id);
+            mpai_log_debug('Running diagnostic test: ' . $test_id, 'diagnostics');
             
             // Start timing
             $start_time = microtime(true);
@@ -799,11 +799,11 @@ class MPAI_Diagnostics_Page {
             $result['test_id'] = $test_id;
             $result['test_name'] = $test['name'];
             
-            error_log('MPAI: Test completed successfully: ' . $test_id);
+            mpai_log_debug('Test completed successfully: ' . $test_id, 'diagnostics');
             wp_send_json_success($result);
         } catch (\Throwable $e) {
-            error_log('MPAI: Error running test ' . $test_id . ': ' . $e->getMessage());
-            error_log('MPAI: Error stack trace: ' . $e->getTraceAsString());
+            mpai_log_error('Error running test ' . $test_id . ': ' . $e->getMessage(), 'diagnostics', array('file' => $e->getFile(), 'line' => $e->getLine()));
+            // Error trace is now included in the context array
             
             wp_send_json_error([
                 'message' => __('Error running test:', 'memberpress-ai-assistant') . ' ' . $e->getMessage(),
@@ -840,7 +840,7 @@ class MPAI_Diagnostics_Page {
         }
         
         // Log the start of category tests
-        error_log('MPAI: Running all tests in category: ' . $category_id);
+        mpai_log_debug('Running all tests in category: ' . $category_id, 'diagnostics');
         
         // Get all tests in this category
         $tests = $this->get_tests_by_category($category_id);
@@ -850,7 +850,7 @@ class MPAI_Diagnostics_Page {
             if (isset($test['callback']) && is_callable($test['callback'])) {
                 try {
                     // Log the test being run
-                    error_log('MPAI: Running test in category ' . $category_id . ': ' . $test_id);
+                    mpai_log_debug('Running test in category ' . $category_id . ': ' . $test_id, 'diagnostics');
                     
                     // Start timing
                     $start_time = microtime(true);
@@ -874,10 +874,10 @@ class MPAI_Diagnostics_Page {
                     $result['test_name'] = $test['name'];
                     
                     $results[$test_id] = $result;
-                    error_log('MPAI: Test completed successfully: ' . $test_id);
+                    mpai_log_debug('Test completed successfully: ' . $test_id, 'diagnostics');
                 } catch (\Throwable $e) {
-                    error_log('MPAI: Error running test ' . $test_id . ' in category ' . $category_id . ': ' . $e->getMessage());
-                    error_log('MPAI: Error stack trace: ' . $e->getTraceAsString());
+                    mpai_log_error('Error running test ' . $test_id . ' in category ' . $category_id . ': ' . $e->getMessage(), 'diagnostics', array('file' => $e->getFile(), 'line' => $e->getLine(), 'trace' => $e->getTraceAsString()));
+                    // Error trace is now included in the context array
                     
                     $results[$test_id] = [
                         'success' => false,
@@ -891,7 +891,7 @@ class MPAI_Diagnostics_Page {
             }
         }
         
-        error_log('MPAI: Completed all tests in category: ' . $category_id);
+        mpai_log_debug('Completed all tests in category: ' . $category_id, 'diagnostics');
         wp_send_json_success([
             'category_id' => $category_id,
             'category_name' => $categories[$category_id]['name'],
@@ -911,7 +911,7 @@ class MPAI_Diagnostics_Page {
             return;
         }
         
-        error_log('MPAI: Starting to run all diagnostic tests');
+        mpai_log_debug('Starting to run all diagnostic tests', 'diagnostics');
         
         $tests = $this->get_available_tests();
         $results = [];
@@ -920,7 +920,7 @@ class MPAI_Diagnostics_Page {
             if (isset($test['callback']) && is_callable($test['callback'])) {
                 try {
                     // Log the test being run
-                    error_log('MPAI: Running test: ' . $test_id);
+                    mpai_log_debug('Running test: ' . $test_id, 'diagnostics');
                     
                     // Start timing
                     $start_time = microtime(true);
@@ -945,10 +945,10 @@ class MPAI_Diagnostics_Page {
                     $result['category'] = $test['category'];
                     
                     $results[$test_id] = $result;
-                    error_log('MPAI: Test completed successfully: ' . $test_id);
+                    mpai_log_debug('Test completed successfully: ' . $test_id, 'diagnostics');
                 } catch (\Throwable $e) {
-                    error_log('MPAI: Error running test ' . $test_id . ': ' . $e->getMessage());
-                    error_log('MPAI: Error stack trace: ' . $e->getTraceAsString());
+                    mpai_log_error('Error running test ' . $test_id . ': ' . $e->getMessage(), 'diagnostics', array('file' => $e->getFile(), 'line' => $e->getLine()));
+                    // Error trace is now included in the context array
                     
                     $results[$test_id] = [
                         'success' => false,
@@ -963,7 +963,7 @@ class MPAI_Diagnostics_Page {
             }
         }
         
-        error_log('MPAI: All tests completed, grouping results by category');
+        mpai_log_debug('All tests completed, grouping results by category', 'diagnostics');
         
         // Group results by category
         $grouped_results = [];
@@ -994,7 +994,7 @@ class MPAI_Diagnostics_Page {
             }
         }
         
-        error_log('MPAI: Sending test results to client');
+        mpai_log_debug('Sending test results to client', 'diagnostics');
         wp_send_json_success([
             'all_results' => $results,
             'grouped_results' => $grouped_results,
@@ -1452,7 +1452,7 @@ class MPAI_Diagnostics_Page {
         
         // Run the tests
         try {
-            error_log("MPAI: Running comprehensive error recovery tests");
+            mpai_log_debug('Running comprehensive error recovery tests', 'diagnostics');
             $result = mpai_test_error_recovery();
             
             // Format test results 
@@ -1505,7 +1505,7 @@ class MPAI_Diagnostics_Page {
                 ]
             ];
         } catch (Exception $e) {
-            error_log("MPAI: Error running error recovery tests: " . $e->getMessage());
+            mpai_log_error('Error running error recovery tests: ' . $e->getMessage(), 'diagnostics', array('file' => $e->getFile(), 'line' => $e->getLine(), 'trace' => $e->getTraceAsString()));
             return [
                 'success' => false,
                 'status' => 'error',
@@ -1638,7 +1638,7 @@ class MPAI_Diagnostics_Page {
         
         // WP-CLI is always enabled now (settings were removed from UI)
         $wpcli_enabled = true;
-        error_log('MPAI: WP-CLI is always enabled in diagnostics');
+        mpai_log_debug('WP-CLI is always enabled in diagnostics', 'diagnostics');
         
         if (!$tool_registered) {
             return [
@@ -1707,7 +1707,7 @@ class MPAI_Diagnostics_Page {
         
         // Plugin Logs is always enabled now (settings were removed from UI)
         $plugin_logs_enabled = true;
-        error_log('MPAI: Plugin Logs is always enabled in diagnostics');
+        mpai_log_debug('Plugin Logs is always enabled in diagnostics', 'diagnostics');
         
         if (!$tool_registered) {
             return [
