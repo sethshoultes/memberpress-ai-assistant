@@ -338,7 +338,7 @@ if (!function_exists('mpai_bypass_referer_check_for_options')) {
 
 // Settings are now registered in MPAI_Settings class, 
 // so we don't need to register them here anymore
-error_log('MPAI: Using centralized settings registration from MPAI_Settings class');
+mpai_log_debug('Using centralized settings registration from MPAI_Settings class', 'settings-page');
 
 // Create sections based on the current tab
 if ($current_tab === 'general') {

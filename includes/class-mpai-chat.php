@@ -794,7 +794,7 @@ class MPAI_Chat {
                                 $modified_content = $this->add_content_marker($message_content, 'blog-post');
                                 mpai_log_debug('Added blog-post marker to XML-formatted response', 'chat');
                             } else {
-                                error_log('MPAI Chat: add_content_marker method not available');
+                                mpai_log_warning('add_content_marker method not available', 'chat');
                             }
                         }
                         // Check for traditional blog post content patterns as fallback
@@ -805,9 +805,9 @@ class MPAI_Chat {
                             // This looks like a traditional blog post or article
                             if (method_exists($this, 'add_content_marker')) {
                                 $modified_content = $this->add_content_marker($message_content, 'blog-post');
-                                error_log('MPAI Chat: Added blog-post marker to traditional response');
+                                mpai_log_debug('Added blog-post marker to traditional response', 'chat');
                             } else {
-                                error_log('MPAI Chat: add_content_marker method not available');
+                                mpai_log_warning('add_content_marker method not available', 'chat');
                             }
                         }
                         
@@ -819,9 +819,9 @@ class MPAI_Chat {
                             // This looks like a page
                             if (method_exists($this, 'add_content_marker')) {
                                 $modified_content = $this->add_content_marker($message_content, 'page');
-                                error_log('MPAI Chat: Added page marker to response');
+                                mpai_log_debug('Added page marker to response', 'chat');
                             } else {
-                                error_log('MPAI Chat: add_content_marker method not available for page');
+                                mpai_log_warning('add_content_marker method not available for page', 'chat');
                             }
                         }
                         
@@ -833,13 +833,13 @@ class MPAI_Chat {
                             // This looks like a membership
                             if (method_exists($this, 'add_content_marker')) {
                                 $modified_content = $this->add_content_marker($message_content, 'membership');
-                                error_log('MPAI Chat: Added membership marker to response');
+                                mpai_log_debug('Added membership marker to response', 'chat');
                             } else {
-                                error_log('MPAI Chat: add_content_marker method not available for membership');
+                                mpai_log_warning('add_content_marker method not available for membership', 'chat');
                             }
                         }
                     } catch (Throwable $pattern_e) {
-                        error_log('MPAI Chat: Error checking content patterns: ' . $pattern_e->getMessage());
+                        mpai_log_error('Error checking content patterns: ' . $pattern_e->getMessage(), 'chat');
                         // Continue without adding marker
                     }
                     
@@ -1033,7 +1033,7 @@ class MPAI_Chat {
                 // Clean up any escaped slashes in plugin paths
                 if (isset($parameters['plugin'])) {
                     $parameters['plugin'] = str_replace('\\/', '/', $parameters['plugin']);
-                    error_log('MPAI: Unescaped plugin path for structured tool call: ' . $parameters['plugin']);
+                    mpai_log_debug('Unescaped plugin path for structured tool call: ' . $parameters['plugin'], 'chat');
                 }
                 
                 $tool_request = array(
@@ -1191,7 +1191,7 @@ class MPAI_Chat {
             // Clean up any escaped slashes in plugin paths
             if (isset($tool_call['parameters']) && isset($tool_call['parameters']['plugin'])) {
                 $tool_call['parameters']['plugin'] = str_replace('\\/', '/', $tool_call['parameters']['plugin']);
-                error_log('MPAI: Unescaped plugin path for tool call: ' . $tool_call['parameters']['plugin']);
+                mpai_log_debug('Unescaped plugin path for tool call: ' . $tool_call['parameters']['plugin'], 'chat');
             }
             
             $tool_request = array(
@@ -1273,7 +1273,7 @@ class MPAI_Chat {
      */
     public function get_latest_assistant_message() {
         if (empty($this->conversation)) {
-            error_log('MPAI: No conversation history available');
+            mpai_log_debug('No conversation history available', 'chat');
             return null;
         }
         
@@ -1283,12 +1283,12 @@ class MPAI_Chat {
         foreach ($messages_copy as $message) {
             if (isset($message['role']) && $message['role'] === 'assistant' && 
                 isset($message['content']) && !empty($message['content'])) {
-                error_log('MPAI: Found latest assistant message with length ' . strlen($message['content']));
+                mpai_log_debug('Found latest assistant message with length ' . strlen($message['content']), 'chat');
                 return $message;
             }
         }
         
-        error_log('MPAI: No assistant messages found in conversation history');
+        mpai_log_debug('No assistant messages found in conversation history', 'chat');
         return null;
     }
     
@@ -1301,7 +1301,7 @@ class MPAI_Chat {
      */
     public function get_previous_assistant_message() {
         if (empty($this->conversation)) {
-            error_log('MPAI: No conversation history available');
+            mpai_log_debug('No conversation history available', 'chat');
             return null;
         }
         
@@ -1318,7 +1318,7 @@ class MPAI_Chat {
                 
                 // We want the second assistant message (the previous one)
                 if ($found_assistant_messages == 2) {
-                    error_log('MPAI: Found previous assistant message with length ' . strlen($message['content']));
+                    mpai_log_debug('Found previous assistant message with length ' . strlen($message['content']), 'chat');
                     return $message;
                 }
             }
@@ -1326,11 +1326,11 @@ class MPAI_Chat {
         
         // If only one assistant message was found, just return that
         if ($found_assistant_messages == 1) {
-            error_log('MPAI: Only one assistant message found, returning it');
+            mpai_log_debug('Only one assistant message found, returning it', 'chat');
             return $this->get_latest_assistant_message();
         }
         
-        error_log('MPAI: No previous assistant message found in conversation history');
+        mpai_log_debug('No previous assistant message found in conversation history', 'chat');
         return null;
     }
     
@@ -1343,7 +1343,7 @@ class MPAI_Chat {
      */
     public function find_message_with_content_marker($type) {
         if (empty($this->conversation)) {
-            error_log('MPAI: No conversation history available');
+            mpai_log_debug('No conversation history available', 'chat');
             return null;
         }
         
@@ -1358,7 +1358,7 @@ class MPAI_Chat {
                 
                 // Check if this message has the marker we're looking for
                 if (preg_match($marker_pattern, $message['content'])) {
-                    error_log('MPAI: Found message with ' . $type . ' marker, length: ' . strlen($message['content']));
+                    mpai_log_debug('Found message with ' . $type . ' marker, length: ' . strlen($message['content']), 'chat');
                     
                     // Create a copy of the message
                     $cleaned_message = $message;
@@ -1369,13 +1369,13 @@ class MPAI_Chat {
                     // Trim any extra whitespace that might be left
                     $cleaned_message['content'] = trim($cleaned_message['content']);
                     
-                    error_log('MPAI: Cleaned marker from content, new length: ' . strlen($cleaned_message['content']));
+                    mpai_log_debug('Cleaned marker from content, new length: ' . strlen($cleaned_message['content']), 'chat');
                     return $cleaned_message;
                 }
             }
         }
         
-        error_log('MPAI: No message with ' . $type . ' marker found in conversation history');
+        mpai_log_debug('No message with ' . $type . ' marker found in conversation history', 'chat');
         return null;
     }
     
@@ -1517,17 +1517,17 @@ class MPAI_Chat {
             // Try to parse the result
             if (is_string($result['result'])) {
                 try {
-                    error_log('MPAI Chat: Processing memberpress_info tool result');
+                    mpai_log_debug('Processing memberpress_info tool result', 'chat');
                     $parsed = json_decode($result['result'], true);
                     
                     if (json_last_error() == JSON_ERROR_NONE) {
                         if (isset($parsed['result'])) {
                             // Return just the actual result data
-                            error_log('MPAI Chat: Found standard result structure in memberpress_info tool');
+                            mpai_log_debug('Found standard result structure in memberpress_info tool', 'chat');
                             return $parsed['result'];
                         } else if (isset($parsed['command_type']) && $parsed['command_type'] == 'system_info') {
                             // Handle system_info case specifically
-                            error_log('MPAI Chat: Found system_info command type in memberpress_info tool');
+                            mpai_log_debug('Found system_info command type in memberpress_info tool', 'chat');
                             
                             // Format the system info into a readable text format
                             $output = "### System Information Summary\n\n";
