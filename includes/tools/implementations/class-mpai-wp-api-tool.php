@@ -107,7 +107,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	protected function execute_tool( $parameters ) {
 		try {
 			// Log all incoming parameters for debugging
-			error_log('MPAI WP_API: Full parameters received by execute: ' . json_encode($parameters));
+			mpai_log_debug('Full parameters received by execute: ' . json_encode($parameters), 'wp-api-tool');
 			
 			// Validate action parameter
 			if (!isset($parameters['action']) || empty($parameters['action'])) {
@@ -116,19 +116,19 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				$caller_file = isset($debug_trace[1]['file']) ? basename($debug_trace[1]['file']) : 'unknown';
 				$caller_line = isset($debug_trace[1]['line']) ? $debug_trace[1]['line'] : 'unknown';
 				
-				error_log('MPAI WP_API: Missing action parameter. Called from ' . $caller_file . ':' . $caller_line . ' in ' . $caller);
+				mpai_log_error('Missing action parameter. Called from ' . $caller_file . ':' . $caller_line . ' in ' . $caller, 'wp-api-tool');
 				throw new Exception('Action parameter is required but was missing or empty.');
 			}
 			
 			$action = $parameters['action'];
-			error_log('MPAI WP_API: Processing action: ' . $action);
+			mpai_log_debug('Processing action: ' . $action);
 			
 			// Validate specific action parameters
 			switch ($action) {
 				case 'activate_plugin':
 				case 'deactivate_plugin':
 					if (!isset($parameters['plugin']) || empty($parameters['plugin'])) {
-						error_log('MPAI WP_API: Missing plugin parameter for ' . $action . ' action');
+						mpai_log_error('Missing plugin parameter for ' . $action . ' action');
 						throw new Exception('Plugin parameter is required for ' . $action . ' action');
 					}
 					break;
@@ -136,18 +136,18 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				case 'update_post':
 				case 'get_post':
 					if (!isset($parameters['post_id']) || empty($parameters['post_id'])) {
-						error_log('MPAI WP_API: Missing post_id parameter for ' . $action . ' action');
+						mpai_log_error('Missing post_id parameter for ' . $action . ' action');
 						throw new Exception('Post ID parameter is required for ' . $action . ' action');
 					}
 					break;
 					
 				case 'create_user':
 					if (!isset($parameters['username']) || empty($parameters['username'])) {
-						error_log('MPAI WP_API: Missing username parameter for create_user action');
+						mpai_log_error('Missing username parameter for create_user action');
 						throw new Exception('Username parameter is required for create_user action');
 					}
 					if (!isset($parameters['email']) || empty($parameters['email'])) {
-						error_log('MPAI WP_API: Missing email parameter for create_user action');
+						mpai_log_error('Missing email parameter for create_user action');
 						throw new Exception('Email parameter is required for create_user action');
 					}
 					break;
@@ -158,10 +158,10 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				case 'create_post':
 					// Check required parameters for create_post action
 					if (!isset($parameters['title']) || empty($parameters['title'])) {
-						error_log('MPAI WP_API: Missing title for create_post action');
+						mpai_log_warning('Missing title for create_post action');
 					}
 					if (!isset($parameters['content']) || empty($parameters['content'])) {
-						error_log('MPAI WP_API: Missing content for create_post action');
+						mpai_log_warning('Missing content for create_post action');
 					}
 					return $this->create_post( $parameters );
 				case 'update_post':
@@ -210,11 +210,11 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	 */
 	private function create_post( $parameters ) {
 	    // Log the incoming parameters for debugging
-	    error_log('MPAI: Create post parameters: ' . json_encode($parameters));
+	    mpai_log_debug('Create post parameters: ' . json_encode($parameters), 'wp-api-tool');
 	    
 	    // Check if content is in XML format
 	    if (isset($parameters['content']) && strpos($parameters['content'], '<wp-post>') !== false) {
-	        error_log('MPAI: Detected XML formatted blog post');
+	        mpai_log_debug('Detected XML formatted blog post', 'wp-api-tool');
 	        
 	        // Include the XML parser class
 	        if (!class_exists('MPAI_XML_Content_Parser')) {
@@ -225,7 +225,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	        $parsed_data = $xml_parser->parse_xml_blog_post($parameters['content']);
 	        
 	        if ($parsed_data) {
-	            error_log('MPAI: Successfully parsed XML blog post format');
+	            mpai_log_debug('Successfully parsed XML blog post format', 'wp-api-tool');
 	            // Override parameters with parsed data
 	            foreach ($parsed_data as $key => $value) {
 	                $parameters[$key] = $value;
@@ -233,14 +233,14 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	            
 	            // Make sure we have required parameters
 	            if (empty($parameters['title'])) {
-	                error_log('MPAI: XML parsed but title is missing, using default');
+	                mpai_log_debug('XML parsed but title is missing, using default', 'wp-api-tool');
 	                $parameters['title'] = 'New ' . (isset($parameters['post_type']) && $parameters['post_type'] === 'page' ? 'Page' : 'Post');
 	            }
 	            
 	            // Log the parsed parameters for debugging
-	            error_log('MPAI: Parsed parameters: ' . json_encode(array_keys($parameters)));
+	            mpai_log_debug('Parsed parameters: ' . json_encode(array_keys($parameters)), 'wp-api-tool');
 	        } else {
-	            error_log('MPAI: Failed to parse XML blog post format');
+	            mpai_log_warning('Failed to parse XML blog post format', 'wp-api-tool');
 	            // Instead of failing silently, set a default title and content for better UX
 	            if (empty($parameters['title'])) {
 	                $parameters['title'] = 'New ' . (isset($parameters['post_type']) && $parameters['post_type'] === 'page' ? 'Page' : 'Post');
@@ -262,7 +262,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 		// If content is empty, check if there's a message parameter that might contain content
 		if (empty($post_data['post_content']) && isset($parameters['message'])) {
 		    $post_data['post_content'] = $parameters['message'];
-		    error_log('MPAI: Using message parameter as post content');
+		    mpai_log_debug('Using message parameter as post content', 'wp-api-tool');
 		}
 
 		// Add excerpt if provided
@@ -865,7 +865,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 		        $plugin_logger = mpai_init_plugin_logger();
 		        
 		        if ($plugin_logger) {
-		            error_log('MPAI_WP_API_Tool: Plugin logger initialized');
+		            mpai_log_debug('Plugin logger initialized', 'wp-api-tool');
 		            
 		            // Test database connection by checking if the table exists
 		            global $wpdb;
@@ -873,7 +873,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 		            $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
 		            
 		            if ($table_exists) {
-		                error_log('MPAI_WP_API_Tool: Plugin logs table exists');
+		                mpai_log_debug('Plugin logs table exists', 'wp-api-tool');
 		                
 		                // Get activity summary for last 30 days
 		                $activity_summary = $plugin_logger->get_activity_summary(30);
@@ -888,28 +888,28 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 		                        );
 		                    }
 		                    $plugin_logger_working = true;
-		                    error_log('MPAI_WP_API_Tool: Retrieved activity data for ' . count($activity_data) . ' plugins');
+		                    mpai_log_debug('Retrieved activity data for ' . count($activity_data) . ' plugins', 'wp-api-tool');
 		                } else {
-		                    error_log('MPAI_WP_API_Tool: No active plugins found in logs');
+		                    mpai_log_debug('No active plugins found in logs', 'wp-api-tool');
 		                }
 		            } else {
-		                error_log('MPAI_WP_API_Tool: Plugin logs table does not exist');
+		                mpai_log_debug('Plugin logs table does not exist', 'wp-api-tool');
 		                // Try to create the table
 		                if (method_exists($plugin_logger, 'maybe_create_table')) {
-		                    error_log('MPAI_WP_API_Tool: Attempting to create plugin logs table');
+		                    mpai_log_debug('Attempting to create plugin logs table', 'wp-api-tool');
 		                    $table_created = $plugin_logger->maybe_create_table(true); // Force table creation
 		                    if ($table_created) {
-		                        error_log('MPAI_WP_API_Tool: Successfully created plugin logs table');
+		                        mpai_log_debug('Successfully created plugin logs table', 'wp-api-tool');
 		                    } else {
-		                        error_log('MPAI_WP_API_Tool: Failed to create plugin logs table');
+		                        mpai_log_warning('Failed to create plugin logs table', 'wp-api-tool');
 		                    }
 		                }
 		            }
 		        } else {
-		            error_log('MPAI_WP_API_Tool: Failed to initialize plugin logger');
+		            mpai_log_warning('Failed to initialize plugin logger', 'wp-api-tool');
 		        }
 		    } else {
-		        error_log('MPAI_WP_API_Tool: Plugin logger function does not exist');
+		        mpai_log_debug('Plugin logger function does not exist', 'wp-api-tool');
 		    }
 		} catch (Exception $e) {
 		    mpai_log_error('Exception in plugin logger initialization: ' . $e->getMessage(), 'wp-api-tool', array(
@@ -985,7 +985,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 		
 		// Format for tabular display if requested
 		if (isset($parameters['format']) && $parameters['format'] === 'table') {
-			error_log('MPAI_WP_API_Tool: Formatting plugins as table');
+			mpai_log_debug('Formatting plugins as table', 'wp-api-tool');
 			$table_output = "Name\tStatus\tVersion\tLast Activity (Generated at $current_time)\n";
 			
 			foreach ($result as $plugin) {
@@ -1041,15 +1041,15 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					require_once $plugin_php_path;
 					mpai_log_debug('Successfully loaded plugin.php', 'wp-api-tool');
 				} else {
-					error_log('MPAI WP_API: plugin.php not found at expected path, trying alternative');
+					mpai_log_debug('plugin.php not found at expected path, trying alternative', 'wp-api-tool');
 					// Try alternative method to find the file
 					$alt_path = WP_PLUGIN_DIR . '/../../../wp-admin/includes/plugin.php';
 					
 					if (file_exists($alt_path)) {
 						require_once $alt_path;
-						error_log('MPAI WP_API: Successfully loaded plugin.php from alternative path');
+						mpai_log_debug('Successfully loaded plugin.php from alternative path', 'wp-api-tool');
 					} else {
-						error_log('MPAI WP_API: Failed to load plugin.php');
+						mpai_log_error('Failed to load plugin.php', 'wp-api-tool');
 						throw new Exception('Required WordPress plugin functions not available');
 					}
 				}
@@ -1062,8 +1062,8 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				$caller_file = isset($debug_trace[1]['file']) ? basename($debug_trace[1]['file']) : 'unknown';
 				$caller_line = isset($debug_trace[1]['line']) ? $debug_trace[1]['line'] : 'unknown';
 				
-				error_log('MPAI WP_API: Missing plugin parameter. Called from ' . $caller_file . ':' . $caller_line . ' in ' . $caller);
-				error_log('MPAI WP_API: Full parameters: ' . json_encode($parameters));
+				mpai_log_error('Missing plugin parameter. Called from ' . $caller_file . ':' . $caller_line . ' in ' . $caller);
+				mpai_log_debug('Full parameters: ' . json_encode($parameters), 'wp-api-tool');
 				
 				throw new Exception( 'Plugin parameter is required but was missing or empty. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
 			}
@@ -1072,27 +1072,27 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			$plugin = $parameters['plugin'];
 			$plugin = str_replace('\\/', '/', $plugin); // Replace escaped slashes
 			
-			error_log('MPAI WP_API: Cleaned plugin path: ' . $plugin);
+			mpai_log_debug('Cleaned plugin path: ' . $plugin, 'wp-api-tool');
 			
 			// Get available plugins
 			$all_plugins = get_plugins();
 			
 			// Debug
-			error_log('MPAI WP_API: Attempting to activate plugin: ' . $plugin);
-			error_log('MPAI WP_API: Available plugins: ' . implode(', ', array_keys($all_plugins)));
+			mpai_log_debug('Attempting to activate plugin: ' . $plugin, 'wp-api-tool');
+			mpai_log_debug('Available plugins: ' . implode(', ', array_keys($all_plugins)), 'wp-api-tool');
 			
 			// Check if plugin exists exactly as specified
 			if ( ! isset( $all_plugins[ $plugin ] ) ) {
-				error_log('MPAI WP_API: Plugin not found directly, trying to find match');
+				mpai_log_debug('Plugin not found directly, trying to find match', 'wp-api-tool');
 				
 				// Try to find the plugin by partial matching - similar to what validation agent does
 				$matching_plugin = $this->find_plugin_path($plugin, $all_plugins);
 				
 				if ($matching_plugin) {
-					error_log('MPAI WP_API: Found matching plugin: ' . $matching_plugin);
+					mpai_log_debug('Found matching plugin: ' . $matching_plugin, 'wp-api-tool');
 					$plugin = $matching_plugin;
 				} else {
-					error_log('MPAI WP_API: No matching plugin found');
+					mpai_log_warning('No matching plugin found', 'wp-api-tool');
 					throw new Exception( "Plugin '{$plugin}' does not exist. Available plugins include: " . 
 						implode(', ', array_slice(array_keys($all_plugins), 0, 5)) );
 				}
@@ -1100,7 +1100,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			
 			// Check if plugin is already active
 			if ( is_plugin_active( $plugin ) ) {
-				error_log('MPAI WP_API: Plugin already active: ' . $plugin);
+				mpai_log_debug('Plugin already active: ' . $plugin, 'wp-api-tool');
 				return array(
 					'success' => true,
 					'plugin' => $plugin,
@@ -1110,16 +1110,16 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			}
 			
 			// Activate the plugin
-			error_log('MPAI WP_API: Activating plugin: ' . $plugin);
+			mpai_log_debug('Activating plugin: ' . $plugin, 'wp-api-tool');
 			$result = activate_plugin( $plugin );
 			
 			// Check for errors
 			if ( is_wp_error( $result ) ) {
-				error_log('MPAI WP_API: Plugin activation failed: ' . $result->get_error_message());
+				mpai_log_error('Plugin activation failed: ' . $result->get_error_message(), 'wp-api-tool');
 				throw new Exception( "Failed to activate plugin: " . $result->get_error_message() );
 			}
 			
-			error_log('MPAI WP_API: Plugin activated successfully: ' . $plugin);
+			mpai_log_debug('Plugin activated successfully: ' . $plugin, 'wp-api-tool');
 			return array(
 				'success' => true,
 				'plugin' => $plugin,
@@ -1148,15 +1148,15 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 		try {
 			// Bail early if plugin_slug is empty
 			if (empty($plugin_slug) || empty($available_plugins)) {
-				error_log('MPAI WP_API: Empty plugin slug or plugins list');
+				mpai_log_warning('Empty plugin slug or plugins list', 'wp-api-tool');
 				return false;
 			}
 			
-			error_log('MPAI WP_API: Finding plugin path for: ' . $plugin_slug);
+			mpai_log_debug('Finding plugin path for: ' . $plugin_slug, 'wp-api-tool');
 			
 			// Check for direct matches first
 			if (isset($available_plugins[$plugin_slug])) {
-				error_log('MPAI WP_API: Direct match found');
+				mpai_log_debug('Direct match found', 'wp-api-tool');
 				return $plugin_slug;
 			}
 			
@@ -1167,7 +1167,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			
 			// Handle special case for MemberPress plugins by name
 			if (stripos($plugin_slug, 'memberpress') !== false) {
-				error_log('MPAI WP_API: MemberPress plugin detected');
+				mpai_log_debug('MemberPress plugin detected', 'wp-api-tool');
 				
 				// Extract specific addon name
 				$memberpress_addon = '';
@@ -1185,13 +1185,13 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					$memberpress_addon = trim($memberpress_addon);
 				}
 				
-				error_log('MPAI WP_API: Extracted MemberPress addon: ' . $memberpress_addon);
+				mpai_log_debug('Extracted MemberPress addon: ' . $memberpress_addon, 'wp-api-tool');
 				
 				// Check for exact matches first
 				foreach ($available_plugins as $path => $plugin_data) {
 					// Check folder name
 					if (!empty($memberpress_addon) && strpos($path, 'memberpress-' . strtolower($memberpress_addon)) === 0) {
-						error_log('MPAI WP_API: Found exact MemberPress addon match: ' . $path);
+						mpai_log_debug('Found exact MemberPress addon match: ' . $path, 'wp-api-tool');
 						return $path;
 					}
 					
@@ -1199,7 +1199,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					if (!empty($memberpress_addon) && isset($plugin_data['Name']) && 
 						(stripos($plugin_data['Name'], 'memberpress ' . $memberpress_addon) !== false || 
 						 stripos($plugin_data['Name'], 'memberpress-' . $memberpress_addon) !== false)) {
-						error_log('MPAI WP_API: Found MemberPress addon by name: ' . $path);
+						mpai_log_debug('Found MemberPress addon by name: ' . $path, 'wp-api-tool');
 						return $path;
 					}
 				}
@@ -1209,7 +1209,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					foreach ($available_plugins as $path => $plugin_data) {
 						// Check if the path has memberpress and the addon name
 						if (strpos($path, 'memberpress-') === 0 && stripos($path, $memberpress_addon) !== false) {
-							error_log('MPAI WP_API: Found partial MemberPress match in path: ' . $path);
+							mpai_log_debug('Found partial MemberPress match in path: ' . $path, 'wp-api-tool');
 							return $path;
 						}
 						
@@ -1217,7 +1217,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 						if (isset($plugin_data['Name']) && 
 							stripos($plugin_data['Name'], 'memberpress') !== false && 
 							stripos($plugin_data['Name'], $memberpress_addon) !== false) {
-							error_log('MPAI WP_API: Found partial MemberPress match in name: ' . $path);
+							mpai_log_debug('Found partial MemberPress match in name: ' . $path, 'wp-api-tool');
 							return $path;
 						}
 					}
@@ -1226,12 +1226,12 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				// Last resort - return any MemberPress plugin
 				foreach ($available_plugins as $path => $plugin_data) {
 					if (strpos($path, 'memberpress') === 0) {
-						error_log('MPAI WP_API: Falling back to first MemberPress plugin in path: ' . $path);
+						mpai_log_debug('Falling back to first MemberPress plugin in path: ' . $path, 'wp-api-tool');
 						return $path;
 					}
 					
 					if (isset($plugin_data['Name']) && stripos($plugin_data['Name'], 'memberpress') !== false) {
-						error_log('MPAI WP_API: Falling back to first MemberPress plugin by name: ' . $path);
+						mpai_log_debug('Falling back to first MemberPress plugin by name: ' . $path, 'wp-api-tool');
 						return $path;
 					}
 				}
@@ -1239,13 +1239,13 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			
 			// Case where plugin path is partially correct (correct folder, wrong main file)
 			if (strpos($plugin_slug, '/') !== false) {
-				error_log('MPAI WP_API: Plugin path contains slash, checking folder');
+				mpai_log_debug('Plugin path contains slash, checking folder', 'wp-api-tool');
 				list($folder, $file) = explode('/', $plugin_slug, 2);
 				
 				// Check if any plugin has this folder
 				foreach (array_keys($available_plugins) as $plugin_path) {
 					if (strpos($plugin_path, $folder . '/') === 0) {
-						error_log('MPAI WP_API: Found plugin with matching folder: ' . $plugin_path);
+						mpai_log_debug('Found plugin with matching folder: ' . $plugin_path, 'wp-api-tool');
 						return $plugin_path;
 					}
 				}
@@ -1258,7 +1258,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			foreach ($available_plugins as $path => $plugin_data) {
 				// Check plugin name
 				if (isset($plugin_data['Name']) && strtolower($plugin_data['Name']) === $plugin_slug_lower) {
-					error_log('MPAI WP_API: Found exact name match: ' . $path);
+					mpai_log_debug('Found exact name match: ' . $path, 'wp-api-tool');
 					return $path;
 				}
 				
@@ -1266,7 +1266,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				if (strpos($path, '/') !== false) {
 					list($folder, $file) = explode('/', $path, 2);
 					if (strtolower($folder) === $plugin_slug_lower) {
-						error_log('MPAI WP_API: Found folder match: ' . $path);
+						mpai_log_debug('Found folder match: ' . $path, 'wp-api-tool');
 						return $path;
 					}
 				}
@@ -1276,22 +1276,22 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			foreach ($available_plugins as $path => $plugin_data) {
 				// Check if slug is in the plugin name
 				if (isset($plugin_data['Name']) && stripos($plugin_data['Name'], $plugin_slug) !== false) {
-					error_log('MPAI WP_API: Found partial name match: ' . $path);
+					mpai_log_debug('Found partial name match: ' . $path, 'wp-api-tool');
 					return $path;
 				}
 				
 				// Check if slug is in the path
 				if (stripos($path, $plugin_slug) !== false) {
-					error_log('MPAI WP_API: Found partial path match: ' . $path);
+					mpai_log_debug('Found partial path match: ' . $path, 'wp-api-tool');
 					return $path;
 				}
 			}
 			
 			// No matches found
-			error_log('MPAI WP_API: No matching plugin found for: ' . $plugin_slug);
+			mpai_log_warning('No matching plugin found for: ' . $plugin_slug, 'wp-api-tool');
 			return false;
 		} catch (Exception $e) {
-			error_log('MPAI WP_API find_plugin_path exception: ' . $e->getMessage());
+			mpai_log_error('find_plugin_path exception: ' . $e->getMessage(), 'wp-api-tool');
 			return false;
 		}
 	}
@@ -1305,7 +1305,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	private function deactivate_plugin( $parameters ) {
 		try {
 			// Debug log inputs
-			error_log('MPAI WP_API deactivate_plugin: Starting with parameters: ' . json_encode($parameters));
+			mpai_log_debug('deactivate_plugin: Starting with parameters: ' . json_encode($parameters), 'wp-api-tool');
 			
 			// Check user capabilities
 			if ( ! current_user_can( 'activate_plugins' ) ) {
@@ -1322,15 +1322,15 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					require_once $plugin_php_path;
 					mpai_log_debug('Successfully loaded plugin.php', 'wp-api-tool');
 				} else {
-					error_log('MPAI WP_API: plugin.php not found at expected path, trying alternative');
+					mpai_log_debug('plugin.php not found at expected path, trying alternative', 'wp-api-tool');
 					// Try alternative method to find the file
 					$alt_path = WP_PLUGIN_DIR . '/../../../wp-admin/includes/plugin.php';
 					
 					if (file_exists($alt_path)) {
 						require_once $alt_path;
-						error_log('MPAI WP_API: Successfully loaded plugin.php from alternative path');
+						mpai_log_debug('Successfully loaded plugin.php from alternative path', 'wp-api-tool');
 					} else {
-						error_log('MPAI WP_API: Failed to load plugin.php');
+						mpai_log_error('Failed to load plugin.php', 'wp-api-tool');
 						throw new Exception('Required WordPress plugin functions not available');
 					}
 				}
@@ -1343,8 +1343,8 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				$caller_file = isset($debug_trace[1]['file']) ? basename($debug_trace[1]['file']) : 'unknown';
 				$caller_line = isset($debug_trace[1]['line']) ? $debug_trace[1]['line'] : 'unknown';
 				
-				error_log('MPAI WP_API: Missing plugin parameter. Called from ' . $caller_file . ':' . $caller_line . ' in ' . $caller);
-				error_log('MPAI WP_API: Full parameters: ' . json_encode($parameters));
+				mpai_log_error('Missing plugin parameter. Called from ' . $caller_file . ':' . $caller_line . ' in ' . $caller);
+				mpai_log_debug('Full parameters: ' . json_encode($parameters), 'wp-api-tool');
 				
 				throw new Exception( 'Plugin parameter is required but was missing or empty. This should be the plugin path (e.g. "memberpress-coachkit/memberpress-coachkit.php")' );
 			}
@@ -1353,27 +1353,27 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			$plugin = $parameters['plugin'];
 			$plugin = str_replace('\\/', '/', $plugin); // Replace escaped slashes
 			
-			error_log('MPAI WP_API: Cleaned plugin path: ' . $plugin);
+			mpai_log_debug('Cleaned plugin path: ' . $plugin, 'wp-api-tool');
 			
 			// Get available plugins
 			$all_plugins = get_plugins();
 			
 			// Debug
-			error_log('MPAI WP_API: Attempting to deactivate plugin: ' . $plugin);
-			error_log('MPAI WP_API: Available plugins: ' . implode(', ', array_keys($all_plugins)));
+			mpai_log_debug('Attempting to deactivate plugin: ' . $plugin, 'wp-api-tool');
+			mpai_log_debug('Available plugins: ' . implode(', ', array_keys($all_plugins)), 'wp-api-tool');
 			
 			// Check if plugin exists exactly as specified
 			if ( ! isset( $all_plugins[ $plugin ] ) ) {
-				error_log('MPAI WP_API: Plugin not found directly, trying to find match');
+				mpai_log_debug('Plugin not found directly, trying to find match', 'wp-api-tool');
 				
 				// Try to find the plugin by partial matching
 				$matching_plugin = $this->find_plugin_path($plugin, $all_plugins);
 				
 				if ($matching_plugin) {
-					error_log('MPAI WP_API: Found matching plugin: ' . $matching_plugin);
+					mpai_log_debug('Found matching plugin: ' . $matching_plugin, 'wp-api-tool');
 					$plugin = $matching_plugin;
 				} else {
-					error_log('MPAI WP_API: No matching plugin found');
+					mpai_log_warning('No matching plugin found', 'wp-api-tool');
 					throw new Exception( "Plugin '{$plugin}' does not exist. Available plugins include: " . 
 						implode(', ', array_slice(array_keys($all_plugins), 0, 5)) );
 				}
@@ -1381,7 +1381,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			
 			// Check if plugin is already inactive
 			if ( ! is_plugin_active( $plugin ) ) {
-				error_log('MPAI WP_API: Plugin already inactive: ' . $plugin);
+				mpai_log_debug('Plugin already inactive: ' . $plugin, 'wp-api-tool');
 				return array(
 					'success' => true,
 					'plugin' => $plugin,
@@ -1391,10 +1391,10 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			}
 			
 			// Deactivate the plugin
-			error_log('MPAI WP_API: Deactivating plugin: ' . $plugin);
+			mpai_log_debug('Deactivating plugin: ' . $plugin, 'wp-api-tool');
 			deactivate_plugins( $plugin );
 			
-			error_log('MPAI WP_API: Plugin deactivated successfully: ' . $plugin);
+			mpai_log_debug('Plugin deactivated successfully: ' . $plugin, 'wp-api-tool');
 			return array(
 				'success' => true,
 				'plugin' => $plugin,

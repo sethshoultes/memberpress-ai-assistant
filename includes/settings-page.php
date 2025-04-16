@@ -24,31 +24,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
     // Security check - only admin users can use direct save
     if (current_user_can('manage_options')) {
         // Debug the entire POST array
-        error_log('MPAI DEBUG: POST data keys: ' . print_r(array_keys($_POST), true));
-        error_log('MPAI DEBUG: RAW POST data: ' . print_r($_POST, true));
+        mpai_log_debug('POST data keys: ' . print_r(array_keys($_POST), true), 'settings-page');
+        mpai_log_debug('RAW POST data: ' . print_r($_POST, true), 'settings-page');
         
         // Specifically check for the two problematic fields
-        error_log('MPAI DEBUG: API key exists in POST: ' . (isset($_POST['mpai_api_key']) ? 'YES' : 'NO'));
-        error_log('MPAI DEBUG: Welcome message exists in POST: ' . (isset($_POST['mpai_welcome_message']) ? 'YES' : 'NO'));
+        mpai_log_debug('API key exists in POST: ' . (isset($_POST['mpai_api_key']) ? 'YES' : 'NO'), 'settings-page');
+        mpai_log_debug('Welcome message exists in POST: ' . (isset($_POST['mpai_welcome_message']) ? 'YES' : 'NO'), 'settings-page');
         
         // Output variables from the POST request
-        error_log('MPAI DEBUG: post_max_size = ' . ini_get('post_max_size'));
-        error_log('MPAI DEBUG: PHP_SELF = ' . $_SERVER['PHP_SELF']);
-        error_log('MPAI DEBUG: REQUEST_URI = ' . $_SERVER['REQUEST_URI']);
-        error_log('MPAI DEBUG: HTTP_USER_AGENT = ' . $_SERVER['HTTP_USER_AGENT']);
+        mpai_log_debug('post_max_size = ' . ini_get('post_max_size'), 'settings-page');
+        mpai_log_debug('PHP_SELF = ' . $_SERVER['PHP_SELF'], 'settings-page');
+        mpai_log_debug('REQUEST_URI = ' . $_SERVER['REQUEST_URI'], 'settings-page');
+        mpai_log_debug('HTTP_USER_AGENT = ' . $_SERVER['HTTP_USER_AGENT'], 'settings-page');
         
         if (isset($_POST['mpai_api_key'])) {
-            error_log('MPAI DEBUG: API key value: ' . substr($_POST['mpai_api_key'], 0, 5) . '... (Length: ' . strlen($_POST['mpai_api_key']) . ')');
+            mpai_log_debug('API key value: ' . substr($_POST['mpai_api_key'], 0, 5) . '... (Length: ' . strlen($_POST['mpai_api_key']) . ')', 'settings-page');
         }
         
         if (isset($_POST['mpai_welcome_message'])) {
-            error_log('MPAI DEBUG: Welcome message value: ' . substr($_POST['mpai_welcome_message'], 0, 30) . '... (Length: ' . strlen($_POST['mpai_welcome_message']) . ')');
+            mpai_log_debug('Welcome message value: ' . substr($_POST['mpai_welcome_message'], 0, 30) . '... (Length: ' . strlen($_POST['mpai_welcome_message']) . ')', 'settings-page');
         }
         
         // Additional direct form data debugging
         foreach ($_POST as $key => $value) {
             if (strpos($key, 'mpai_') === 0 && ($key === 'mpai_api_key' || $key === 'mpai_welcome_message' || $key === 'mpai_anthropic_api_key')) {
-                error_log('MPAI DEBUG: CRITICAL FIELD: ' . $key . ' = ' . substr($value, 0, 10) . '... (Length: ' . strlen($value) . ')');
+                mpai_log_debug('CRITICAL FIELD: ' . $key . ' = ' . substr($value, 0, 10) . '... (Length: ' . strlen($value) . ')', 'settings-page');
             }
         }
         
@@ -63,9 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                 
                 // Extra debug for problematic fields
                 if ($key === 'mpai_api_key' || $key === 'mpai_welcome_message') {
-                    error_log('MPAI DEBUG: Processing ' . $key . ' with type: ' . gettype($value));
+                    mpai_log_debug('Processing ' . $key . ' with type: ' . gettype($value), 'settings-page');
                     if (is_string($value)) {
-                        error_log('MPAI DEBUG: Value length: ' . strlen($value) . ', First chars: ' . substr($value, 0, 30) . '...');
+                        mpai_log_debug('Value length: ' . strlen($value) . ', First chars: ' . substr($value, 0, 30) . '...', 'settings-page');
                     }
                 }
                 
@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                 
                 // Handle backup field for API key
                 if ($key === 'mpai_api_key_backup') {
-                    error_log('MPAI CRITICAL FIX: Found API key backup field!');
+                    mpai_log_debug('Found API key backup field!', 'settings-page');
                     
                     // Get the value of the backup field
                     $api_key = $value;
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                 // SPECIAL HANDLING FOR THE TWO FIELDS THAT WON'T SAVE
                 if ($key === 'mpai_api_key') {
                     // Hard-coded special handling for API key and welcome message
-                    error_log('MPAI CRITICAL FIX: Forcing direct DB update for OpenAI API key');
+                    mpai_log_debug('Forcing direct DB update for OpenAI API key', 'settings-page');
                     global $wpdb;
                     
                     // First delete the option completely to ensure no conflicting data
@@ -120,11 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                     // Additional backup approach
                     $GLOBALS['wp_options']['mpai_api_key'] = $value;
                     
-                    error_log('MPAI CRITICAL FIX: OpenAI API key set to: ' . substr($value, 0, 5) . '...');
+                    mpai_log_debug('OpenAI API key set to: ' . substr($value, 0, 5) . '...', 'settings-page');
                 } 
                 else if ($key === 'mpai_welcome_message') {
                     // Hard-coded special handling for welcome message
-                    error_log('MPAI CRITICAL FIX: Forcing direct DB update for welcome message');
+                    mpai_log_debug('Forcing direct DB update for welcome message', 'settings-page');
                     global $wpdb;
                     
                     // First delete the option completely
@@ -146,11 +146,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                     // Additional backup approach
                     $GLOBALS['wp_options']['mpai_welcome_message'] = $value;
                     
-                    error_log('MPAI CRITICAL FIX: Welcome message set to: ' . substr($value, 0, 30) . '...');
+                    mpai_log_debug('Welcome message set to: ' . substr($value, 0, 30) . '...', 'settings-page');
                 }
                 else if ($key === 'mpai_anthropic_api_key') {
                     // Hard-coded special handling for Anthropic API key
-                    error_log('MPAI CRITICAL FIX: Forcing direct DB update for Anthropic API key');
+                    mpai_log_debug('Forcing direct DB update for Anthropic API key', 'settings-page');
                     global $wpdb;
                     
                     // First delete the option completely
@@ -172,25 +172,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                     // Additional backup approach
                     $GLOBALS['wp_options']['mpai_anthropic_api_key'] = $value;
                     
-                    error_log('MPAI CRITICAL FIX: Anthropic API key set to: ' . substr($value, 0, 5) . '...');
+                    mpai_log_debug('Anthropic API key set to: ' . substr($value, 0, 5) . '...', 'settings-page');
                 }
                 else {
                     // Update the option normally for other fields
                     update_option($key, $value);
                 }
                 
-                error_log('MPAI DIRECT SAVE: Saved ' . $key . ' = ' . (is_bool($value) ? ($value ? 'true' : 'false') : $value));
+                mpai_log_debug('DIRECT SAVE: Saved ' . $key . ' = ' . (is_bool($value) ? ($value ? 'true' : 'false') : $value), 'settings-page');
                 $saved_count++;
             }
         }
         
         // Set a transient to show settings saved message
         set_transient('mpai_settings_saved', true, 30);
-        error_log('MPAI DIRECT SAVE: Saved ' . $saved_count . ' settings successfully');
+        mpai_log_debug('DIRECT SAVE: Saved ' . $saved_count . ' settings successfully', 'settings-page');
         
         // Process backup API key if we found it
         if (isset($api_key) && !empty($api_key)) {
-            error_log('MPAI CRITICAL FIX: Processing backup API key: ' . substr($api_key, 0, 5) . '...');
+            mpai_log_debug('Processing backup API key: ' . substr($api_key, 0, 5) . '...', 'settings-page');
             
             // Set the API key with all available methods
             update_option('mpai_api_key', $api_key);
@@ -207,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
                 )
             );
             
-            error_log('MPAI CRITICAL FIX: Successfully saved API key from backup field');
+            mpai_log_debug('Successfully saved API key from backup field', 'settings-page');
         }
         
         // Get the tab - look at both mpai_active_tab (hidden field) and tab query param
@@ -223,11 +223,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
             $tab = sanitize_key($_GET['tab']);
         }
         
-        error_log('MPAI DIRECT SAVE: Detected active tab: ' . $tab);
+        mpai_log_debug('DIRECT SAVE: Detected active tab: ' . $tab, 'settings-page');
         
         // Redirect to the settings page
         $redirect_url = admin_url('admin.php?page=memberpress-ai-assistant-settings&tab=' . $tab . '&settings-updated=true');
-        error_log('MPAI DIRECT SAVE: Redirecting to ' . $redirect_url);
+        mpai_log_debug('DIRECT SAVE: Redirecting to ' . $redirect_url, 'settings-page');
         
         // Perform redirect using JavaScript for maximum compatibility
         echo '<!DOCTYPE html>
@@ -245,7 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
         </html>';
         exit;
     } else {
-        error_log('MPAI DIRECT SAVE: Security check failed - not an admin user');
+        mpai_log_warning('DIRECT SAVE: Security check failed - not an admin user', 'settings-page');
     }
 }
 
@@ -255,9 +255,9 @@ if (!defined('WPINC')) {
 }
 
 // Force debug output for troubleshooting
-error_log('MPAI: Loading enhanced settings page with WordPress Settings API');
-error_log('MPAI: Current user: ' . wp_get_current_user()->user_login . ' (' . wp_get_current_user()->ID . ')');
-error_log('MPAI: User can manage_options: ' . (current_user_can('manage_options') ? 'yes' : 'no'));
+mpai_log_debug('Loading enhanced settings page with WordPress Settings API', 'settings-page');
+mpai_log_debug('Current user: ' . wp_get_current_user()->user_login . ' (' . wp_get_current_user()->ID . ')', 'settings-page');
+mpai_log_debug('User can manage_options: ' . (current_user_can('manage_options') ? 'yes' : 'no'), 'settings-page');
 
 // Check if the settings class exists
 if (!class_exists('MPAI_Settings')) {
@@ -283,9 +283,9 @@ $submenu_file = 'memberpress-ai-assistant-settings';
 
 // Debug settings submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    error_log('MPAI: POST request detected in settings page');
-    error_log('MPAI: option_page: ' . (isset($_POST['option_page']) ? $_POST['option_page'] : 'not set'));
-    error_log('MPAI: _wpnonce: ' . (isset($_POST['_wpnonce']) ? 'set (first 5 chars: ' . substr($_POST['_wpnonce'], 0, 5) . ')' : 'not set'));
+    mpai_log_debug('POST request detected in settings page', 'settings-page');
+    mpai_log_debug('option_page: ' . (isset($_POST['option_page']) ? $_POST['option_page'] : 'not set'), 'settings-page');
+    mpai_log_debug('_wpnonce: ' . (isset($_POST['_wpnonce']) ? 'set (first 5 chars: ' . substr($_POST['_wpnonce'], 0, 5) . ')' : 'not set'), 'settings-page');
 }
 
 // Get settings instance
@@ -297,23 +297,23 @@ if (!function_exists('mpai_bypass_referer_check_for_options')) {
     // Define a function that will bypass the nonce check for our settings page only
     function mpai_bypass_referer_check_for_options($action, $result) {
         // Debug information - essential for troubleshooting
-        error_log('MPAI: check_admin_referer called with action: ' . $action);
-        error_log('MPAI: PHP_SELF: ' . $_SERVER['PHP_SELF']);
-        error_log('MPAI: option_page: ' . (isset($_POST['option_page']) ? $_POST['option_page'] : 'not set'));
+        mpai_log_debug('check_admin_referer called with action: ' . $action, 'settings-page');
+        mpai_log_debug('PHP_SELF: ' . $_SERVER['PHP_SELF'], 'settings-page');
+        mpai_log_debug('option_page: ' . (isset($_POST['option_page']) ? $_POST['option_page'] : 'not set'), 'settings-page');
         
         // If we're on options.php and the option_page is set to mpai_options
         if (strpos($_SERVER['PHP_SELF'], 'options.php') !== false && 
             isset($_POST['option_page']) && $_POST['option_page'] === 'mpai_options') {
             
             // Log the bypass attempt
-            error_log('MPAI: Nonce bypass check triggered for mpai_options');
+            mpai_log_debug('Nonce bypass check triggered for mpai_options', 'settings-page');
             
             // For security, only allow this bypass for admins
             if (current_user_can('manage_options')) {
-                error_log('MPAI: Nonce bypass ALLOWED - user has manage_options capability');
+                mpai_log_debug('Nonce bypass ALLOWED - user has manage_options capability', 'settings-page');
                 return true; // This bypasses the nonce check!
             } else {
-                error_log('MPAI: Nonce bypass DENIED - user does NOT have manage_options capability');
+                mpai_log_warning('Nonce bypass DENIED - user does NOT have manage_options capability', 'settings-page');
             }
         }
         
@@ -323,12 +323,12 @@ if (!function_exists('mpai_bypass_referer_check_for_options')) {
     
     // Apply the filter with the highest possible priority to ensure it runs last
     add_filter('check_admin_referer', 'mpai_bypass_referer_check_for_options', 9999, 2);
-    error_log('MPAI: Nonce bypass filter registered with priority 9999');
+    mpai_log_debug('Nonce bypass filter registered with priority 9999', 'settings-page');
     
     // Also add a backup filter to handle more cases
     add_filter('nonce_user_logged_out', function($uid, $action) {
         if ($action === 'mpai_options-options') {
-            error_log('MPAI: nonce_user_logged_out filter activated for mpai_options');
+            mpai_log_debug('nonce_user_logged_out filter activated for mpai_options', 'settings-page');
             // Return current user ID instead of 0
             return get_current_user_id();
         }

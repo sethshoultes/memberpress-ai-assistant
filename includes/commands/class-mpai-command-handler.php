@@ -159,7 +159,7 @@ class MPAI_Command_Handler {
                 public function execute($command, $parameters = []) {
                     // Special handling for wp plugin list
                     if (trim($command) === 'wp plugin list') {
-                        error_log('MPAI COMMAND: Using fallback wp plugin list handler');
+                        mpai_log_debug('Using fallback wp plugin list handler', 'command-handler');
                         
                         // Load plugin functions if needed
                         if (!function_exists('get_plugins')) {

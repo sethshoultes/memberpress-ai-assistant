@@ -83,7 +83,7 @@ class MPAI_Plugin_Logger {
      */
     public function register_settings() {
         // Settings are now registered in the centralized MPAI_Settings class
-        error_log('MPAI: Plugin logger settings are now managed by MPAI_Settings class');
+        mpai_log_debug('Plugin logger settings are now managed by MPAI_Settings class', 'plugin-logger');
     }
 
     /**
@@ -142,7 +142,7 @@ class MPAI_Plugin_Logger {
                 $wpdb->query("DROP TABLE IF EXISTS {$this->table_name}");
                 mpai_log_debug('Dropped existing plugin logger table', 'plugin-logger');
             } catch (Exception $e) {
-                error_log('MPAI: Error dropping table: ' . $e->getMessage());
+                mpai_log_error('Error dropping table: ' . $e->getMessage(), 'plugin-logger');
                 return false;
             }
         }
@@ -151,10 +151,10 @@ class MPAI_Plugin_Logger {
         try {
             $check_drop = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
             if ($check_drop && $force) {
-                error_log('MPAI: Failed to drop table even though drop query executed');
+                mpai_log_warning('Failed to drop table even though drop query executed', 'plugin-logger');
             }
         } catch (Exception $e) {
-            error_log('MPAI: Error checking table status after drop: ' . $e->getMessage());
+            mpai_log_error('Error checking table status after drop: ' . $e->getMessage(), 'plugin-logger');
         }
         
         $charset_collate = $wpdb->get_charset_collate();
@@ -182,7 +182,7 @@ class MPAI_Plugin_Logger {
         try {
             // Execute the SQL with dbDelta
             $result = dbDelta($sql);
-            error_log('MPAI: dbDelta executed for plugin logger table: ' . json_encode($result));
+            mpai_log_debug('dbDelta executed for plugin logger table: ' . json_encode($result), 'plugin-logger');
             
             // Check if table was created successfully
             $table_created = false;
@@ -190,14 +190,14 @@ class MPAI_Plugin_Logger {
             try {
                 $table_created = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
             } catch (Exception $e) {
-                error_log('MPAI: Error checking if table was created: ' . $e->getMessage());
+                mpai_log_error('Error checking if table was created: ' . $e->getMessage(), 'plugin-logger');
                 // Create a recovery file
                 $this->create_recovery_file('table_creation_check_error');
                 return false;
             }
             
             if ($table_created) {
-                error_log('MPAI: Plugin logger table created successfully');
+                mpai_log_debug('Plugin logger table created successfully', 'plugin-logger');
                 // Remove any recovery files since we succeeded
                 $this->clear_recovery_file();
                 
@@ -208,14 +208,14 @@ class MPAI_Plugin_Logger {
                 
                 return true;
             } else {
-                error_log('MPAI: Error creating plugin logger table: ' . json_encode($result));
+                mpai_log_error('Error creating plugin logger table: ' . json_encode($result), 'plugin-logger');
                 // Try more direct method as a fallback
                 $this->create_recovery_file('dbdelta_failed');
                 $this->try_direct_table_creation();
                 return false;
             }
         } catch (Exception $e) {
-            error_log('MPAI: Exception creating plugin logger table: ' . $e->getMessage());
+            mpai_log_error('Exception creating plugin logger table: ' . $e->getMessage(), 'plugin-logger');
             $this->create_recovery_file('table_creation_exception');
             return false;
         }
@@ -230,7 +230,7 @@ class MPAI_Plugin_Logger {
         global $wpdb;
         
         try {
-            error_log('MPAI: Attempting direct table creation as fallback');
+            mpai_log_debug('Attempting direct table creation as fallback', 'plugin-logger');
             
             $charset_collate = $wpdb->get_charset_collate();
             
@@ -252,7 +252,7 @@ class MPAI_Plugin_Logger {
             $result = $wpdb->query($sql);
             
             if ($result === false) {
-                error_log('MPAI: Direct table creation failed: ' . $wpdb->last_error);
+                mpai_log_error('Direct table creation failed: ' . $wpdb->last_error, 'plugin-logger');
                 return false;
             }
             
@@ -260,16 +260,16 @@ class MPAI_Plugin_Logger {
             $table_created = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
             
             if ($table_created) {
-                error_log('MPAI: Direct table creation successful');
+                mpai_log_debug('Direct table creation successful', 'plugin-logger');
                 // Add indexes separately
                 $this->add_table_indexes();
                 return true;
             } else {
-                error_log('MPAI: Direct table creation failed - table still does not exist');
+                mpai_log_error('Direct table creation failed - table still does not exist', 'plugin-logger');
                 return false;
             }
         } catch (Exception $e) {
-            error_log('MPAI: Exception in direct table creation: ' . $e->getMessage());
+            mpai_log_error('Exception in direct table creation: ' . $e->getMessage(), 'plugin-logger');
             return false;
         }
     }
@@ -294,13 +294,13 @@ class MPAI_Plugin_Logger {
                 $result = $wpdb->query($sql);
                 
                 if ($result === false) {
-                    error_log('MPAI: Failed to add index: ' . $index . ' - ' . $wpdb->last_error);
+                    mpai_log_warning('Failed to add index: ' . $index . ' - ' . $wpdb->last_error, 'plugin-logger');
                 } else {
-                    error_log('MPAI: Successfully added index: ' . $index);
+                    mpai_log_debug('Successfully added index: ' . $index, 'plugin-logger');
                 }
             }
         } catch (Exception $e) {
-            error_log('MPAI: Exception adding indexes: ' . $e->getMessage());
+            mpai_log_error('Exception adding indexes: ' . $e->getMessage(), 'plugin-logger');
         }
     }
     
@@ -321,9 +321,9 @@ class MPAI_Plugin_Logger {
             ];
             
             file_put_contents($recovery_file, json_encode($data));
-            error_log('MPAI: Created database recovery file: ' . $recovery_file);
+            mpai_log_debug('Created database recovery file: ' . $recovery_file, 'plugin-logger');
         } catch (Exception $e) {
-            error_log('MPAI: Failed to create recovery file: ' . $e->getMessage());
+            mpai_log_error('Failed to create recovery file: ' . $e->getMessage(), 'plugin-logger');
         }
     }
     
@@ -336,9 +336,9 @@ class MPAI_Plugin_Logger {
         if (file_exists($recovery_file)) {
             try {
                 unlink($recovery_file);
-                error_log('MPAI: Removed database recovery file');
+                mpai_log_debug('Removed database recovery file', 'plugin-logger');
             } catch (Exception $e) {
-                error_log('MPAI: Failed to remove recovery file: ' . $e->getMessage());
+                mpai_log_error('Failed to remove recovery file: ' . $e->getMessage(), 'plugin-logger');
             }
         }
     }
@@ -422,7 +422,7 @@ class MPAI_Plugin_Logger {
             }
         }
         
-        error_log('MPAI: Seeded plugin logs with ' . count($plugins) . ' records');
+        mpai_log_debug('Seeded plugin logs with ' . count($plugins) . ' records', 'plugin-logger');
     }
 
     /**
@@ -738,14 +738,14 @@ class MPAI_Plugin_Logger {
             }, 99 );
         }
         
-        // Write to PHP error log as well
-        error_log( sprintf( 
-            'MPAI: Plugin %s: %s v%s by user %s', 
+        // Write to logs
+        mpai_log_info( sprintf(
+            'Plugin %s: %s v%s by user %s', 
             $action, 
             $plugin_name, 
             $plugin_version, 
-            $user_login 
-        ));
+            $user_login
+        ), 'plugin-logger');
         
         try {
             return $wpdb->insert(
@@ -764,7 +764,7 @@ class MPAI_Plugin_Logger {
                 array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s' )
             );
         } catch (Exception $e) {
-            error_log('MPAI: Error inserting plugin log: ' . $e->getMessage());
+            mpai_log_error('Error inserting plugin log: ' . $e->getMessage(), 'plugin-logger');
             return false;
         }
     }
@@ -783,7 +783,7 @@ class MPAI_Plugin_Logger {
             $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
             
             if (!$table_exists) {
-                error_log('MPAI: Plugin logs table does not exist in get_logs');
+                mpai_log_warning('Plugin logs table does not exist in get_logs', 'plugin-logger');
                 // Try to create the table
                 $this->maybe_create_table(true);
                 
@@ -791,12 +791,12 @@ class MPAI_Plugin_Logger {
                 $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
                 
                 if (!$table_exists) {
-                    error_log('MPAI: Failed to create plugin logs table in get_logs');
+                    mpai_log_error('Failed to create plugin logs table in get_logs', 'plugin-logger');
                     return array();
                 }
             }
         } catch (Exception $e) {
-            error_log('MPAI: Error checking plugin logs table in get_logs: ' . $e->getMessage());
+            mpai_log_error('Error checking plugin logs table in get_logs: ' . $e->getMessage(), 'plugin-logger');
             return array();
         }
         
@@ -880,12 +880,12 @@ class MPAI_Plugin_Logger {
             $results = $wpdb->get_results( $query, ARRAY_A );
             
             if ($results === false) {
-                error_log('MPAI: Query error in get_logs: ' . $wpdb->last_error);
+                mpai_log_error('Query error in get_logs: ' . $wpdb->last_error, 'plugin-logger');
                 return array();
             }
             
             if (empty($results) && $wpdb->last_error) {
-                error_log('MPAI: Empty results with error in get_logs: ' . $wpdb->last_error);
+                mpai_log_error('Empty results with error in get_logs: ' . $wpdb->last_error, 'plugin-logger');
                 return array();
             }
             
@@ -895,7 +895,7 @@ class MPAI_Plugin_Logger {
                 $count = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}");
                 
                 if ($count == 0) {
-                    error_log('MPAI: Plugin logs table is empty in get_logs');
+                    mpai_log_debug('Plugin logs table is empty in get_logs', 'plugin-logger');
                     // Seed the table with initial data
                     $this->seed_initial_data();
                     
@@ -927,7 +927,7 @@ class MPAI_Plugin_Logger {
             
             return $results;
         } catch (Exception $e) {
-            error_log('MPAI: Error in get_logs: ' . $e->getMessage());
+            mpai_log_error('Error in get_logs: ' . $e->getMessage(), 'plugin-logger');
             return array();
         }
     }
@@ -946,11 +946,11 @@ class MPAI_Plugin_Logger {
             $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
             
             if (!$table_exists) {
-                error_log('MPAI: Plugin logs table does not exist in count_logs');
+                mpai_log_warning('Plugin logs table does not exist in count_logs', 'plugin-logger');
                 return 0;
             }
         } catch (Exception $e) {
-            error_log('MPAI: Error checking plugin logs table in count_logs: ' . $e->getMessage());
+            mpai_log_error('Error checking plugin logs table in count_logs: ' . $e->getMessage(), 'plugin-logger');
             return 0;
         }
         
@@ -1011,13 +1011,13 @@ class MPAI_Plugin_Logger {
             $count = $wpdb->get_var($query);
             
             if ($count === null && $wpdb->last_error) {
-                error_log('MPAI: Error in count_logs query: ' . $wpdb->last_error);
+                mpai_log_error('Error in count_logs query: ' . $wpdb->last_error, 'plugin-logger');
                 return 0;
             }
             
             return (int) $count;
         } catch (Exception $e) {
-            error_log('MPAI: Error in count_logs: ' . $e->getMessage());
+            mpai_log_error('Error in count_logs: ' . $e->getMessage(), 'plugin-logger');
             return 0;
         }
     }
@@ -1045,9 +1045,9 @@ class MPAI_Plugin_Logger {
         ) );
         
         if ( $result !== false ) {
-            error_log( "MPAI: Cleaned up {$result} old plugin log entries (older than {$days_to_keep} days)" );
+            mpai_log_info("Cleaned up {$result} old plugin log entries (older than {$days_to_keep} days)", 'plugin-logger');
         } else {
-            error_log( "MPAI: Error cleaning up old plugin logs" );
+            mpai_log_error("Error cleaning up old plugin logs", 'plugin-logger');
         }
         
         return $result;
@@ -1089,7 +1089,7 @@ class MPAI_Plugin_Logger {
             $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
             
             if (!$table_exists) {
-                error_log('MPAI: Plugin logs table does not exist in get_activity_summary');
+                mpai_log_warning('Plugin logs table does not exist in get_activity_summary', 'plugin-logger');
                 
                 // Try to create the table
                 $this->maybe_create_table(true);
@@ -1098,7 +1098,7 @@ class MPAI_Plugin_Logger {
                 $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'") === $this->table_name;
                 
                 if (!$table_exists) {
-                    error_log('MPAI: Failed to create plugin logs table in get_activity_summary');
+                    mpai_log_error('Failed to create plugin logs table in get_activity_summary', 'plugin-logger');
                     return $this->get_fallback_summary();
                 }
             }
@@ -1107,12 +1107,12 @@ class MPAI_Plugin_Logger {
             $count = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}");
             
             if ($count == 0) {
-                error_log('MPAI: Plugin logs table is empty in get_activity_summary');
+                mpai_log_debug('Plugin logs table is empty in get_activity_summary', 'plugin-logger');
                 // Seed the table with initial data
                 $this->seed_initial_data();
             }
         } catch (Exception $e) {
-            error_log('MPAI: Error checking plugin logs table in get_activity_summary: ' . $e->getMessage());
+            mpai_log_error('Error checking plugin logs table in get_activity_summary: ' . $e->getMessage(), 'plugin-logger');
             return $this->get_fallback_summary();
         }
         
@@ -1164,7 +1164,7 @@ class MPAI_Plugin_Logger {
                 'recent_activity'      => $recent_activity,
             );
         } catch (Exception $e) {
-            error_log('MPAI: Error getting activity summary: ' . $e->getMessage());
+            mpai_log_error('Error getting activity summary: ' . $e->getMessage(), 'plugin-logger');
             return $this->get_fallback_summary();
         }
     }
@@ -1175,7 +1175,7 @@ class MPAI_Plugin_Logger {
      * @return array Fallback summary data
      */
     private function get_fallback_summary() {
-        error_log('MPAI: Using fallback plugin summary data');
+        mpai_log_warning('Using fallback plugin summary data', 'plugin-logger');
         
         // Get installed plugins
         if (!function_exists('get_plugins')) {
