@@ -619,26 +619,30 @@ class MPAI_Agent_Orchestrator {
 	 */
 	private function ensure_tool_registry($force_refresh = false) {
 		if (!isset($this->tool_registry) || empty($this->tool_registry) || $force_refresh) {
-			error_log("MPAI: " . ($force_refresh ? "Forcing refresh of" : "Initializing") . " tool registry");
+			mpai_log_debug(($force_refresh ? "Forcing refresh of" : "Initializing") . " tool registry", 'agent-orchestrator');
 			
 			// Create a new registry if needed
 			if (!isset($this->tool_registry) || $force_refresh) {
 				try {
 					$this->tool_registry = new MPAI_Tool_Registry();
-					error_log("MPAI: Created new tool registry instance");
+					mpai_log_debug("Created new tool registry instance", 'agent-orchestrator');
 					
 					// Store in global variable for emergency recovery
 					global $mpai_tool_registry;
 					$mpai_tool_registry = $this->tool_registry;
 					
 				} catch (Exception $e) {
-					error_log("MPAI: Error creating tool registry: " . $e->getMessage());
+					mpai_log_error("Error creating tool registry: " . $e->getMessage(), 'agent-orchestrator', array(
+						'file' => $e->getFile(),
+						'line' => $e->getLine(),
+						'trace' => $e->getTraceAsString()
+					));
 					
 					// Try to recover from existing global registry
 					global $mpai_tool_registry;
 					if ($mpai_tool_registry && $mpai_tool_registry instanceof MPAI_Tool_Registry) {
 						$this->tool_registry = $mpai_tool_registry;
-						error_log("MPAI: Recovered tool registry from global variable");
+						mpai_log_debug("Recovered tool registry from global variable", 'agent-orchestrator');
 					}
 				}
 			}
@@ -671,13 +675,13 @@ class MPAI_Agent_Orchestrator {
 				}
 				
 				if (!empty($still_missing)) {
-					error_log("MPAI: Warning - Essential tools still missing after recovery: " . implode(', ', $still_missing));
+					mpai_log_warning("Essential tools still missing after recovery: " . implode(', ', $still_missing), 'agent-orchestrator');
 				} else {
-					error_log("MPAI: Successfully recovered all missing tools");
+					mpai_log_debug("Successfully recovered all missing tools", 'agent-orchestrator');
 				}
 			}
 			
-			error_log("MPAI: Tool registry contains " . count($available_tools) . " tools");
+			mpai_log_debug("Tool registry contains " . count($available_tools) . " tools", 'agent-orchestrator');
 		}
 	}
 	
@@ -706,10 +710,14 @@ class MPAI_Agent_Orchestrator {
 			try {
 				$tool = new $class_name();
 				$this->tool_registry->register_tool($tool_id, $tool);
-				error_log("MPAI: Directly registered tool {$tool_id} from existing class");
+				mpai_log_debug("Directly registered tool {$tool_id} from existing class", 'agent-orchestrator');
 				return true;
 			} catch (Exception $e) {
-				error_log("MPAI: Error creating tool instance for {$tool_id}: " . $e->getMessage());
+				mpai_log_error("Error creating tool instance for {$tool_id}: " . $e->getMessage(), 'agent-orchestrator', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 				return false;
 			}
 		}
@@ -728,18 +736,26 @@ class MPAI_Agent_Orchestrator {
 			if (file_exists($file_path)) {
 				try {
 					require_once $file_path;
-					error_log("MPAI: Loaded tool file from: {$file_path}");
+					mpai_log_debug("Loaded tool file from: {$file_path}", 'agent-orchestrator');
 					break;
 				} catch (Exception $e) {
-					error_log("MPAI: Error loading tool file {$file_path}: " . $e->getMessage());
+					mpai_log_error("Error loading tool file {$file_path}: " . $e->getMessage(), 'agent-orchestrator', array(
+						'file' => $e->getFile(),
+						'line' => $e->getLine(),
+						'trace' => $e->getTraceAsString()
+					));
 				}
 			} elseif (file_exists($alt_file_path)) {
 				try {
 					require_once $alt_file_path;
-					error_log("MPAI: Loaded tool file from: {$alt_file_path}");
+					mpai_log_debug("Loaded tool file from: {$alt_file_path}", 'agent-orchestrator');
 					break;
 				} catch (Exception $e) {
-					error_log("MPAI: Error loading tool file {$alt_file_path}: " . $e->getMessage());
+					mpai_log_error("Error loading tool file {$alt_file_path}: " . $e->getMessage(), 'agent-orchestrator', array(
+						'file' => $e->getFile(),
+						'line' => $e->getLine(),
+						'trace' => $e->getTraceAsString()
+					));
 				}
 			}
 		}
@@ -749,10 +765,14 @@ class MPAI_Agent_Orchestrator {
 			try {
 				$tool = new $class_name();
 				$this->tool_registry->register_tool($tool_id, $tool);
-				error_log("MPAI: Directly registered tool {$tool_id} after loading class file");
+				mpai_log_debug("Directly registered tool {$tool_id} after loading class file", 'agent-orchestrator');
 				return true;
 			} catch (Exception $e) {
-				error_log("MPAI: Error creating tool instance for {$tool_id} after loading: " . $e->getMessage());
+				mpai_log_error("Error creating tool instance for {$tool_id} after loading: " . $e->getMessage(), 'agent-orchestrator', array(
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString()
+				));
 				return false;
 			}
 		}
@@ -799,7 +819,11 @@ class MPAI_Agent_Orchestrator {
 						}
 					}
 				} catch (Exception $e) {
-					error_log("MPAI: Error getting recent plugin logs for system info: " . $e->getMessage());
+					mpai_log_error("Error getting recent plugin logs for system info: " . $e->getMessage(), 'agent-orchestrator', array(
+							'file' => $e->getFile(),
+							'line' => $e->getLine(),
+							'trace' => $e->getTraceAsString()
+						));
 				}
 			}
 		}
@@ -883,7 +907,7 @@ class MPAI_Agent_Orchestrator {
 		}
 		
 		if ($is_php_query) {
-			error_log("MPAI: Detected PHP version query, using new command system if available");
+			mpai_log_debug("Detected PHP version query, using new command system if available", 'agent-orchestrator');
 			
 			// Try to use the new command system if available
 			if ($this->command_adapter) {
@@ -894,14 +918,18 @@ class MPAI_Agent_Orchestrator {
 					if (is_array($result) && isset($result['output'])) {
 						// Use the result from the new command system
 						$php_info = $result['output'];
-						error_log("MPAI: Used new command system for PHP version query");
+						mpai_log_debug("Used new command system for PHP version query", 'agent-orchestrator');
 					} else {
 						// Fall back to direct PHP info if result is unexpected
 						$php_info = $result;
 					}
 				} catch (Exception $e) {
 					// Fall back to direct PHP info on error
-					error_log("MPAI: Error using new command system: " . $e->getMessage());
+					mpai_log_error("Error using new command system: " . $e->getMessage(), 'agent-orchestrator', array(
+						'file' => $e->getFile(),
+						'line' => $e->getLine(),
+						'trace' => $e->getTraceAsString()
+					));
 					$php_info = $this->get_php_info_directly();
 				}
 			} else {
@@ -953,7 +981,7 @@ class MPAI_Agent_Orchestrator {
 		}
 		
 		if ($is_plugin_query) {
-			error_log("MPAI: Detected plugin-related query, gathering plugin information");
+			mpai_log_debug("Detected plugin-related query, gathering plugin information", 'agent-orchestrator');
 			
 			// Ensure plugin functions are available
 			if (!function_exists('get_plugins')) {
@@ -1021,7 +1049,11 @@ class MPAI_Agent_Orchestrator {
 							}
 						}
 					} catch (Exception $e) {
-						error_log("MPAI: Error accessing plugin logs: " . $e->getMessage());
+						mpai_log_error("Error accessing plugin logs: " . $e->getMessage(), 'agent-orchestrator', array(
+							'file' => $e->getFile(),
+							'line' => $e->getLine(),
+							'trace' => $e->getTraceAsString()
+						));
 					}
 				}
 			}
@@ -1088,7 +1120,7 @@ class MPAI_Agent_Orchestrator {
 			$this->update_memory( $user_id, $intent_data, $result );
 			
 			// Log the successful completion
-			error_log( "MPAI: Successfully processed request for agent {$primary_agent_id}" );
+			mpai_log_info( "Successfully processed request for agent {$primary_agent_id}", 'agent-orchestrator' );
 			
 			return [
 				'success' => true,
@@ -1097,7 +1129,11 @@ class MPAI_Agent_Orchestrator {
 				'agent' => $primary_agent_id,
 			];
 		} catch ( Exception $e ) {
-			error_log( "MPAI: Error processing with traditional method: " . $e->getMessage() );
+			mpai_log_error( "Error processing with traditional method: " . $e->getMessage(), 'agent-orchestrator', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			
 			throw $e; // Re-throw to be caught by the main process_request method
 		}
@@ -1217,8 +1253,8 @@ class MPAI_Agent_Orchestrator {
 		$primary_agent = $this->select_agent_with_confidence($agent_scores, $message);
 		
 		// Log detailed scoring results for debugging
-		error_log("MPAI: Agent scores: " . json_encode($agent_scores));
-		error_log("MPAI: Selected primary agent: {$primary_agent} with score: {$agent_scores[$primary_agent]}");
+		mpai_log_debug("Agent scores: " . json_encode($agent_scores), 'agent-orchestrator');
+		mpai_log_debug("Selected primary agent: {$primary_agent} with score: {$agent_scores[$primary_agent]}", 'agent-orchestrator');
 		
 		return $primary_agent;
 	}
@@ -1319,7 +1355,7 @@ class MPAI_Agent_Orchestrator {
 		
 		if ($highest_score < $confidence_threshold) {
 			// No agent is confident enough, use default memberpress agent
-			error_log("MPAI: No agent met confidence threshold of {$confidence_threshold}, falling back to default");
+			mpai_log_debug("No agent met confidence threshold of {$confidence_threshold}, falling back to default", 'agent-orchestrator');
 			return 'memberpress';
 		}
 		
@@ -1336,7 +1372,7 @@ class MPAI_Agent_Orchestrator {
 		// If multiple agents have similar high scores, apply tiebreakers
 		if (count($close_scores) > 1) {
 			// Log tied agents
-			error_log("MPAI: Multiple agents with similar scores: " . json_encode($close_scores));
+			mpai_log_debug("Multiple agents with similar scores: " . json_encode($close_scores), 'agent-orchestrator');
 			
 			// Tiebreaker 1: Prefer specialized agents over general ones
 			if (isset($close_scores['memberpress']) && count($close_scores) > 1) {
@@ -1409,9 +1445,9 @@ class MPAI_Agent_Orchestrator {
 				// Apply security validation
 				if ($this->validate_agent($agent_id, $agent)) {
 					$this->register_agent($agent_id, $agent);
-					error_log("MPAI: Discovered and registered agent: " . $agent_id);
+					mpai_log_debug("Discovered and registered agent: " . $agent_id, 'agent-orchestrator');
 				} else {
-					error_log("MPAI: Agent failed security validation: " . $agent_id);
+					mpai_log_warning("Agent failed security validation: " . $agent_id, 'agent-orchestrator');
 				}
 			}
 		}
@@ -1472,7 +1508,7 @@ class MPAI_Agent_Orchestrator {
 			$this->register_agent('command_validation', $validation_agent);
 			// Command Validation Agent registered
 		} else {
-			error_log('MPAI: Warning - Command Validation Agent class not found');
+			mpai_log_warning('Command Validation Agent class not found', 'agent-orchestrator');
 		}
 	}
 	
@@ -1527,7 +1563,7 @@ class MPAI_Agent_Orchestrator {
 	 */
 	public function execute_background_task( $thread_id, $assistant_id, $task_id, $user_id = 0 ) {
 		if ( ! $this->sdk_initialized || ! $this->sdk_integration ) {
-			error_log( "MPAI: Cannot execute background task: SDK not initialized" );
+			mpai_log_error( "Cannot execute background task: SDK not initialized", 'agent-orchestrator' );
 			return false;
 		}
 		
@@ -1536,7 +1572,11 @@ class MPAI_Agent_Orchestrator {
 			$this->sdk_integration->execute_background_task( $thread_id, $assistant_id, $task_id, $user_id );
 			return true;
 		} catch ( Exception $e ) {
-			error_log( "MPAI: Error executing background task: " . $e->getMessage() );
+			mpai_log_error( "Error executing background task: " . $e->getMessage(), 'agent-orchestrator', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			
 			// Update task status with error
 			$task_info = get_option( "mpai_task_{$task_id}", [] );
@@ -1570,7 +1610,7 @@ class MPAI_Agent_Orchestrator {
 		
 		// Security validation of the message
 		if (!$this->validate_agent_message($message)) {
-			error_log("MPAI: Agent message failed security validation during handoff");
+			mpai_log_warning("Agent message failed security validation during handoff", 'agent-orchestrator');
 			throw new Exception("Security validation failed for agent message");
 		}
 		

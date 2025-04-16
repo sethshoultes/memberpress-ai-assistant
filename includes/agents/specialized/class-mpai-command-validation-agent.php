@@ -102,16 +102,16 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             // Create a default logger class that uses error_log
             $this->logger = new class {
                 public function info($message) { 
-                    error_log('MPAI INFO: ' . $message); 
+                    mpai_log_info($message, 'command-validation-agent'); 
                 }
                 public function error($message) { 
-                    error_log('MPAI ERROR: ' . $message); 
+                    mpai_log_error($message, 'command-validation-agent'); 
                 }
                 public function warning($message) { 
-                    error_log('MPAI WARNING: ' . $message); 
+                    mpai_log_warning($message, 'command-validation-agent'); 
                 }
             };
-            error_log('MPAI: Command validation agent initialized with fallback logger');
+            mpai_log_debug('Command validation agent initialized with fallback logger', 'command-validation-agent');
         }
     }
 
