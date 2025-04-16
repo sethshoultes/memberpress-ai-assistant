@@ -883,14 +883,14 @@ class MPAI_MemberPress_API {
             // Check if the table exists
             $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
             if (!$table_exists) {
-                error_log('MPAI: mepr_transactions table does not exist');
+                mpai_log_warning('mepr_transactions table does not exist', 'memberpress-api');
                 return $this->get_fallback_membership_data($formatted);
             }
             
             // Check if the table has any records
             $record_count = $wpdb->get_var("SELECT COUNT(*) FROM {$table_name} LIMIT 1");
             if (empty($record_count) || $record_count == 0) {
-                error_log('MPAI: mepr_transactions table exists but is empty');
+                mpai_log_debug('mepr_transactions table exists but is empty', 'memberpress-api');
                 return $this->get_fallback_membership_data($formatted);
             }
             
@@ -922,7 +922,7 @@ class MPAI_MemberPress_API {
             }
             
             if (empty($best_sellers)) {
-                error_log('MPAI: No completed transactions found in mepr_transactions table');
+                mpai_log_debug('No completed transactions found in mepr_transactions table', 'memberpress-api');
                 return $this->get_fallback_membership_data($formatted);
             }
             
@@ -964,7 +964,11 @@ class MPAI_MemberPress_API {
             
             return $results;
         } catch (Exception $e) {
-            error_log('MPAI: Error in get_best_selling_membership: ' . $e->getMessage());
+            mpai_log_error('Error in get_best_selling_membership: ' . $e->getMessage(), 'memberpress-api', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             return $this->get_fallback_membership_data($formatted);
         }
     }
@@ -1156,9 +1160,9 @@ class MPAI_MemberPress_API {
                 }
                 // Successfully retrieved members data
             } else {
-                error_log('MPAI: Failed to retrieve members data');
+                mpai_log_warning('Failed to retrieve members data', 'memberpress-api');
                 if (is_wp_error($members)) {
-                    error_log('MPAI: Error: ' . $members->get_error_message());
+                    mpai_log_error('Error retrieving members: ' . $members->get_error_message(), 'memberpress-api');
                 }
             }
     
@@ -1176,9 +1180,9 @@ class MPAI_MemberPress_API {
                 }
                 // Successfully retrieved memberships data
             } else {
-                error_log('MPAI: Failed to retrieve memberships data');
+                mpai_log_warning('Failed to retrieve memberships data', 'memberpress-api');
                 if (is_wp_error($memberships)) {
-                    error_log('MPAI: Error: ' . $memberships->get_error_message());
+                    mpai_log_error('Error retrieving memberships: ' . $memberships->get_error_message(), 'memberpress-api');
                 }
             }
     
@@ -1189,9 +1193,9 @@ class MPAI_MemberPress_API {
                 $summary['transaction_count'] = $summary['total_transactions'];
                 // Successfully retrieved transactions data
             } else {
-                error_log('MPAI: Failed to retrieve transactions data');
+                mpai_log_warning('Failed to retrieve transactions data', 'memberpress-api');
                 if (is_wp_error($transactions)) {
-                    error_log('MPAI: Error: ' . $transactions->get_error_message());
+                    mpai_log_error('Error retrieving transactions: ' . $transactions->get_error_message(), 'memberpress-api');
                 }
             }
     
@@ -1202,15 +1206,19 @@ class MPAI_MemberPress_API {
                 $summary['subscription_count'] = $summary['total_subscriptions'];
                 // Successfully retrieved subscriptions data
             } else {
-                error_log('MPAI: Failed to retrieve subscriptions data');
+                mpai_log_warning('Failed to retrieve subscriptions data', 'memberpress-api');
                 if (is_wp_error($subscriptions)) {
-                    error_log('MPAI: Error: ' . $subscriptions->get_error_message());
+                    mpai_log_error('Error retrieving subscriptions: ' . $subscriptions->get_error_message(), 'memberpress-api');
                 }
             }
     
             return $summary;
         } catch (Exception $e) {
-            error_log('MPAI: Error in MemberPress API get_data_summary: ' . $e->getMessage());
+            mpai_log_error('Error in MemberPress API get_data_summary: ' . $e->getMessage(), 'memberpress-api', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             
             // Return minimal data summary on error
             return array(

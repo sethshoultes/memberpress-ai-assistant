@@ -99,7 +99,11 @@ class MPAI_Plugin_Logger {
         try {
             $wpdb->query("SELECT 1");
         } catch (Exception $e) {
-            error_log('MPAI: Database connection error in plugin logger: ' . $e->getMessage());
+            mpai_log_error('Database connection error in plugin logger: ' . $e->getMessage(), 'plugin-logger', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             // Create a recovery file to indicate tables need creation
             $this->create_recovery_file('database_connection_error');
             return false;
@@ -115,7 +119,11 @@ class MPAI_Plugin_Logger {
                 $table_exists = false;
             }
         } catch (Exception $e) {
-            error_log('MPAI: Error checking if table exists: ' . $e->getMessage());
+            mpai_log_error('Error checking if table exists: ' . $e->getMessage(), 'plugin-logger', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
             // Create a recovery file to indicate tables need checking
             $this->create_recovery_file('table_check_error');
             // Continue with table creation attempt
@@ -124,7 +132,7 @@ class MPAI_Plugin_Logger {
         
         if ($table_exists && !$force) {
             // Table exists and no force flag, so return early
-            error_log('MPAI: Plugin logger table already exists');
+            mpai_log_debug('Plugin logger table already exists', 'plugin-logger');
             return true;
         }
         
@@ -132,7 +140,7 @@ class MPAI_Plugin_Logger {
             // Force flag set, drop existing table
             try {
                 $wpdb->query("DROP TABLE IF EXISTS {$this->table_name}");
-                error_log('MPAI: Dropped existing plugin logger table');
+                mpai_log_debug('Dropped existing plugin logger table', 'plugin-logger');
             } catch (Exception $e) {
                 error_log('MPAI: Error dropping table: ' . $e->getMessage());
                 return false;

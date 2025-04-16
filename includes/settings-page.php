@@ -8,7 +8,7 @@
 // Debug load count
 static $settings_page_load_count = 0;
 $settings_page_load_count++;
-error_log('MPAI LOADING: Settings page loaded ' . $settings_page_load_count . ' times. Called from: ' . debug_backtrace()[0]['file']);
+mpai_log_debug('Settings page loaded ' . $settings_page_load_count . ' times. Called from: ' . debug_backtrace()[0]['file'], 'settings-page');
 
 // Fallback direct save functionality for backward compatibility
 // Used only if the normal WordPress Settings API flow fails
@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mpai_direct_save']) &
         die;
     }
     
-    error_log('MPAI: DIRECT SAVE MODE ACTIVATED');
+    mpai_log_debug('DIRECT SAVE MODE ACTIVATED', 'settings-page');
     
     // Security check - only admin users can use direct save
     if (current_user_can('manage_options')) {

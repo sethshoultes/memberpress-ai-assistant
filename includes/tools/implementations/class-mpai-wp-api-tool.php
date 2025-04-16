@@ -193,7 +193,11 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					throw new Exception( 'Unsupported action: ' . $action );
 			}
 		} catch (Exception $e) {
-			error_log('MPAI WP_API execute_tool exception: ' . $e->getMessage());
+			mpai_log_error('execute_tool exception: ' . $e->getMessage(), 'wp-api-tool', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			throw $e;
 		}
 	}
@@ -833,9 +837,9 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	 * @return array List of plugins with activity data
 	 */
 	private function get_plugins( $parameters ) {
-		error_log('MPAI_WP_API_Tool: get_plugins called with parameters: ' . json_encode($parameters));
+		mpai_log_debug('get_plugins called with parameters: ' . json_encode($parameters), 'wp-api-tool');
 		$current_time = date('H:i:s');
-		error_log('MPAI_WP_API_Tool: Current time ' . $current_time);
+		mpai_log_debug('Current time ' . $current_time, 'wp-api-tool');
 		
 		if ( ! function_exists( 'get_plugins' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -855,7 +859,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 		
 		try {
 		    if (function_exists('mpai_init_plugin_logger')) {
-		        error_log('MPAI_WP_API_Tool: Plugin logger function exists');
+		        mpai_log_debug('Plugin logger function exists', 'wp-api-tool');
 		        
 		        // Try to initialize the plugin logger
 		        $plugin_logger = mpai_init_plugin_logger();
@@ -908,7 +912,11 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 		        error_log('MPAI_WP_API_Tool: Plugin logger function does not exist');
 		    }
 		} catch (Exception $e) {
-		    error_log('MPAI_WP_API_Tool: Exception in plugin logger initialization: ' . $e->getMessage());
+		    mpai_log_error('Exception in plugin logger initialization: ' . $e->getMessage(), 'wp-api-tool', array(
+			    'file' => $e->getFile(),
+			    'line' => $e->getLine(),
+			    'trace' => $e->getTraceAsString()
+			));
 		}
 		
 		// Get last activation dates for plugins from wp_options
@@ -1016,22 +1024,22 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	private function activate_plugin( $parameters ) {
 		try {
 			// Debug log inputs
-			error_log('MPAI WP_API activate_plugin: Starting with parameters: ' . json_encode($parameters));
+			mpai_log_debug('activate_plugin: Starting with parameters: ' . json_encode($parameters), 'wp-api-tool');
 			
 			// Check user capabilities
 			if ( ! current_user_can( 'activate_plugins' ) ) {
-				error_log('MPAI WP_API: User does not have activate_plugins capability');
+				mpai_log_error('User does not have activate_plugins capability', 'wp-api-tool');
 				throw new Exception( 'You do not have sufficient permissions to activate plugins' );
 			}
 			
 			// Load plugin functions if needed
 			if ( ! function_exists( 'activate_plugin' ) || ! function_exists( 'get_plugins' ) ) {
 				$plugin_php_path = ABSPATH . 'wp-admin/includes/plugin.php';
-				error_log('MPAI WP_API: Loading plugin.php from: ' . $plugin_php_path);
+				mpai_log_debug('Loading plugin.php from: ' . $plugin_php_path, 'wp-api-tool');
 				
 				if (file_exists($plugin_php_path)) {
 					require_once $plugin_php_path;
-					error_log('MPAI WP_API: Successfully loaded plugin.php');
+					mpai_log_debug('Successfully loaded plugin.php', 'wp-api-tool');
 				} else {
 					error_log('MPAI WP_API: plugin.php not found at expected path, trying alternative');
 					// Try alternative method to find the file
@@ -1120,7 +1128,11 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				'status' => 'active',
 			);
 		} catch (Exception $e) {
-			error_log('MPAI WP_API activate_plugin exception: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+			mpai_log_error('activate_plugin exception: ' . $e->getMessage(), 'wp-api-tool', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			throw $e;
 		}
 	}
@@ -1297,18 +1309,18 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			
 			// Check user capabilities
 			if ( ! current_user_can( 'activate_plugins' ) ) {
-				error_log('MPAI WP_API: User does not have activate_plugins capability');
+				mpai_log_error('User does not have activate_plugins capability', 'wp-api-tool');
 				throw new Exception( 'You do not have sufficient permissions to deactivate plugins' );
 			}
 			
 			// Load plugin functions if needed
 			if ( ! function_exists( 'deactivate_plugins' ) || ! function_exists( 'get_plugins' ) ) {
 				$plugin_php_path = ABSPATH . 'wp-admin/includes/plugin.php';
-				error_log('MPAI WP_API: Loading plugin.php from: ' . $plugin_php_path);
+				mpai_log_debug('Loading plugin.php from: ' . $plugin_php_path, 'wp-api-tool');
 				
 				if (file_exists($plugin_php_path)) {
 					require_once $plugin_php_path;
-					error_log('MPAI WP_API: Successfully loaded plugin.php');
+					mpai_log_debug('Successfully loaded plugin.php', 'wp-api-tool');
 				} else {
 					error_log('MPAI WP_API: plugin.php not found at expected path, trying alternative');
 					// Try alternative method to find the file
@@ -1391,7 +1403,11 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				'status' => 'inactive',
 			);
 		} catch (Exception $e) {
-			error_log('MPAI WP_API deactivate_plugin exception: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+			mpai_log_error('deactivate_plugin exception: ' . $e->getMessage(), 'wp-api-tool', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
 			throw $e;
 		}
 	}

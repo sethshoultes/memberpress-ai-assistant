@@ -68,9 +68,9 @@ abstract class MPAI_Base_Agent implements MPAI_Agent {
 	 */
 	protected function get_default_logger() {
 		return (object) [
-			'info'    => function( $message, $context = [] ) { error_log( 'MPAI INFO: ' . $message ); },
-			'warning' => function( $message, $context = [] ) { error_log( 'MPAI WARNING: ' . $message ); },
-			'error'   => function( $message, $context = [] ) { error_log( 'MPAI ERROR: ' . $message ); },
+			'info'    => function( $message, $context = [] ) { mpai_log_debug( $message, 'base-agent', $context ); },
+			'warning' => function( $message, $context = [] ) { mpai_log_warning( $message, 'base-agent', $context ); },
+			'error'   => function( $message, $context = [] ) { mpai_log_error( $message, 'base-agent', $context ); },
 		];
 	}
 	
@@ -236,7 +236,7 @@ abstract class MPAI_Base_Agent implements MPAI_Agent {
 			'keywords' => array_keys($this->keywords)
 		];
 		
-		error_log('MPAI SCORING: ' . json_encode($log_data));
+		mpai_log_debug('Agent scoring details: ' . json_encode($log_data), 'agent-scoring');
 	}
 	
 	/**

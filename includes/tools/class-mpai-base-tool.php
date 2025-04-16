@@ -133,8 +133,12 @@ abstract class MPAI_Base_Tool {
 			return $this->execute_tool($validated_parameters);
 		} catch (Exception $e) {
 			// Log the error
-			if (function_exists('error_log')) {
-				error_log('MPAI Tool Error: ' . $e->getMessage());
+			if (function_exists('mpai_log_error')) {
+				mpai_log_error($e->getMessage(), 'base-tool', array(
+						'file' => $e->getFile(),
+						'line' => $e->getLine(),
+						'trace' => $e->getTraceAsString()
+					));
 			}
 			
 			// Return error information

@@ -262,9 +262,9 @@ class MPAI_Input_Validator {
             }
         }
         
-        // Log validation errors to error_log instead of using logger
-        if (!empty($errors) && function_exists('error_log')) {
-            error_log('MPAI Input Validator: Validation failed: ' . json_encode($errors));
+        // Log validation errors
+        if (!empty($errors) && function_exists('mpai_log_warning')) {
+            mpai_log_warning('Validation failed: ' . json_encode($errors), 'input-validator');
         }
         
         return [
