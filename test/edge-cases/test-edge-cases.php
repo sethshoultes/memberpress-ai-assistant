@@ -23,10 +23,10 @@ $missing_files = [];
 foreach ($test_files as $file) {
     $file_path = MPAI_PLUGIN_DIR . 'test/edge-cases/' . $file;
     if (file_exists($file_path)) {
-        error_log('MPAI DEBUG: Including test file: ' . $file_path);
+        mpai_log_debug('Including test file: ' . $file_path, 'edge-case-tests');
         require_once $file_path;
     } else {
-        error_log('MPAI ERROR: Missing test file: ' . $file_path);
+        mpai_log_error('Missing test file: ' . $file_path, 'edge-case-tests');
         $missing_files[] = $file;
     }
 }
