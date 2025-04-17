@@ -206,8 +206,7 @@ class MemberPress_AI_Assistant {
         // Special AI assistant plugin logs handler with no nonce check
         add_action('wp_ajax_mpai_ai_plugin_logs', array($this, 'get_ai_plugin_logs_ajax'));
         
-        // Error Recovery System test handler
-        add_action('wp_ajax_mpai_test_error_recovery', array($this, 'test_error_recovery_ajax'));
+        // Error Recovery System test handler was moved to diagnostics plugin
         
         // Register activation and deactivation hooks
         register_activation_hook(__FILE__, array($this, 'activate'));
@@ -390,16 +389,11 @@ class MemberPress_AI_Assistant {
             require_once MPAI_PLUGIN_DIR . 'test/integration/register-integration-tests.php';
         }
         
-        // Load the unified diagnostics system
+        // Load any non-diagnostic tests
         if (is_admin()) {
-            // Load the Diagnostics Page class
-            // Load the unified diagnostics system
+            // Diagnostics functionality has been moved to a separate plugin
             
-            // Load diagnostics page
-            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-diagnostics-page.php';
-            new MPAI_Diagnostics_Page();
-            
-            // Load test files if they exist
+            // Load test files if they exist (non-diagnostic tests)
             if (file_exists(MPAI_PLUGIN_DIR . 'includes/tests/load-tests.php')) {
                 require_once MPAI_PLUGIN_DIR . 'includes/tests/load-tests.php';
             }
@@ -595,10 +589,8 @@ class MemberPress_AI_Assistant {
         
         // Check current page and tab
         $is_settings_page = ($plugin_page === 'memberpress-ai-assistant-settings');
-        $is_diagnostic_tab = isset($_GET['tab']) && $_GET['tab'] === 'diagnostic';
-        
-        // Only run on our settings page (or diagnostic tab)
-        if (!$is_settings_page && !$is_diagnostic_tab) {
+        // Only run on our settings page
+        if (!$is_settings_page) {
             return;
         }
         
@@ -649,26 +641,7 @@ class MemberPress_AI_Assistant {
                 // Run again after a delay to ensure it applies
                 setTimeout(fixMenu, 100);
                 
-                // Special handling for diagnostic tab
-                " . ($is_diagnostic_tab ? "
-                // We're on the diagnostic tab, force it to be visible
-                $('.nav-tab[href=\"#tab-diagnostic\"]').click();
-                // Add a MutationObserver to detect tab display changes
-                var observer = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        if (mutation.attributeName === 'style') {
-                            fixMenu();
-                        }
-                    });
-                });
-                
-                // Start observing the tab content display changes
-                if (document.getElementById('tab-diagnostic')) {
-                    observer.observe(document.getElementById('tab-diagnostic'), {
-                        attributes: true
-                    });
-                }
-                " : "") . "
+                // Diagnostic tab handling has been moved to the diagnostics plugin
             });
         </script>";
     }
@@ -1414,86 +1387,7 @@ class MemberPress_AI_Assistant {
         }
     }
     
-    /**
-     * AJAX handler for testing the Error Recovery System
-     */
-    public function test_error_recovery_ajax() {
-        // Check nonce for security
-        check_ajax_referer('mpai_nonce', 'nonce');
-        
-        // Only allow logged-in users with appropriate capabilities
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error('Unauthorized access');
-            return;
-        }
-        
-        try {
-            // Include the test script
-            $test_file = MPAI_PLUGIN_DIR . 'test/test-error-recovery.php';
-            if (file_exists($test_file)) {
-                require_once($test_file);
-                
-                if (function_exists('mpai_test_error_recovery')) {
-                    $results = mpai_test_error_recovery();
-                    wp_send_json($results);
-                } else {
-                    wp_send_json_error(array(
-                        'message' => 'Error recovery test function not found',
-                        'success' => false
-                    ));
-                }
-            } else {
-                wp_send_json_error(array(
-                    'message' => 'Error recovery test file not found at: ' . $test_file,
-                    'success' => false
-                ));
-            }
-        } catch (Exception $e) {
-            wp_send_json_error(array(
-                'message' => 'Error running tests: ' . $e->getMessage(),
-                'success' => false
-            ));
-        }
-    }
-    
-    /**
-     * AJAX handler for running edge case tests
-     */
-    public function run_edge_case_tests_ajax() {
-        // Check nonce for security
-        check_ajax_referer('mpai_nonce', 'nonce');
-        
-        // Only allow logged-in users with appropriate capabilities
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error('Unauthorized access');
-            return;
-        }
-        
-        try {
-            // Load the Edge Case Test Suite file only when explicitly requested
-            mpai_log_debug('Loading edge case test suite for AJAX request', 'edge-case-tests');
-            $test_file = MPAI_PLUGIN_DIR . 'test/edge-cases/test-edge-cases.php';
-            if (file_exists($test_file)) {
-                require_once $test_file;
-            } else {
-                mpai_log_error('Edge case test file not found at: ' . $test_file, 'edge-case-tests');
-                wp_send_json_error('Test file not found');
-                return;
-            }
-            
-            if (function_exists('mpai_display_all_edge_case_tests')) {
-                ob_start();
-                mpai_display_all_edge_case_tests();
-                $output = ob_get_clean();
-                
-                wp_send_json_success($output);
-            } else {
-                wp_send_json_error('Edge Case Test Suite functions not found');
-            }
-        } catch (Exception $e) {
-            wp_send_json_error('Error running edge case tests: ' . $e->getMessage());
-        }
-    }
+    // Diagnostic and test handlers have been moved to the diagnostics plugin
 
     /**
      * Clear chat history via AJAX
@@ -1945,11 +1839,7 @@ class MemberPress_AI_Assistant {
             }
         }
         
-        // Only register the AJAX handler for edge case tests
-        // The actual test suite will be loaded only when the AJAX handler is called
-        if (is_admin()) {
-            add_action('wp_ajax_mpai_run_edge_case_tests', array($this, 'run_edge_case_tests_ajax'));
-        }
+        // Edge case tests have been moved to the diagnostics plugin
     }   
     private function set_default_options() {
         // Load the settings class to get centralized definitions
