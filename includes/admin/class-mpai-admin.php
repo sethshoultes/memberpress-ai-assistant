@@ -166,7 +166,7 @@ class MPAI_Admin {
      */
     public function test_api_connection_ajax() {
         // Logging for debugging
-        error_log('MPAI: test_api_connection_ajax called');
+        mpai_log_debug('test_api_connection_ajax called', 'admin');
         
         // Check nonce
         check_ajax_referer('mpai_nonce', 'nonce');
@@ -179,7 +179,7 @@ class MPAI_Admin {
         
         // Get API provider from request
         $provider = isset($_POST['provider']) ? sanitize_text_field($_POST['provider']) : '';
-        error_log('MPAI: Provider: ' . $provider);
+        mpai_log_debug('Provider: ' . $provider, 'admin');
         
         if (!in_array($provider, array('openai', 'anthropic'))) {
             wp_send_json_error('Invalid provider: ' . $provider);
@@ -188,16 +188,16 @@ class MPAI_Admin {
         
         // Make sure the API class files are loaded
         if (!class_exists('MPAI_OpenAI') || !class_exists('MPAI_Anthropic')) {
-            error_log('MPAI: API classes not loaded, attempting to load them');
+            mpai_log_debug('API classes not loaded, attempting to load them', 'admin');
             
             // Load API Integration Classes if not already loaded
             if (!class_exists('MPAI_OpenAI')) {
                 $openai_file = MPAI_PLUGIN_DIR . 'includes/class-mpai-openai.php';
                 if (file_exists($openai_file)) {
                     require_once $openai_file;
-                    error_log('MPAI: Loaded OpenAI class file');
+                    mpai_log_debug('Loaded OpenAI class file', 'admin');
                 } else {
-                    error_log('MPAI: OpenAI class file not found: ' . $openai_file);
+                    mpai_log_error('OpenAI class file not found: ' . $openai_file, 'admin');
                     wp_send_json_error('OpenAI API handler file not found');
                     return;
                 }
@@ -207,9 +207,9 @@ class MPAI_Admin {
                 $anthropic_file = MPAI_PLUGIN_DIR . 'includes/class-mpai-anthropic.php';
                 if (file_exists($anthropic_file)) {
                     require_once $anthropic_file;
-                    error_log('MPAI: Loaded Anthropic class file');
+                    mpai_log_debug('Loaded Anthropic class file', 'admin');
                 } else {
-                    error_log('MPAI: Anthropic class file not found: ' . $anthropic_file);
+                    mpai_log_error('Anthropic class file not found: ' . $anthropic_file, 'admin');
                     wp_send_json_error('Anthropic API handler file not found');
                     return;
                 }
@@ -222,8 +222,8 @@ class MPAI_Admin {
             $api_key = get_option('mpai_api_key', '');
             $model = get_option('mpai_model', 'gpt-4o');
             
-            error_log('MPAI: OpenAI API key exists: ' . (!empty($api_key) ? 'Yes (length: ' . strlen($api_key) . ')' : 'No'));
-            error_log('MPAI: OpenAI model: ' . $model);
+            mpai_log_debug('OpenAI API key exists: ' . (!empty($api_key) ? 'Yes (length: ' . strlen($api_key) . ')' : 'No'), 'admin');
+            mpai_log_debug('OpenAI model: ' . $model, 'admin');
             
             if (empty($api_key)) {
                 wp_send_json_error(__('API key is not set', 'memberpress-ai-assistant'));
@@ -233,13 +233,13 @@ class MPAI_Admin {
             // Create an instance of the OpenAI API handler
             if (class_exists('MPAI_OpenAI')) {
                 try {
-                    error_log('MPAI: Creating OpenAI instance');
+                    mpai_log_debug('Creating OpenAI instance', 'admin');
                     $openai = new MPAI_OpenAI($api_key);
                     
                     // Test the connection with a simple request
-                    error_log('MPAI: Testing OpenAI connection');
+                    mpai_log_debug('Testing OpenAI connection', 'admin');
                     $result = $openai->test_connection($model);
-                    error_log('MPAI: OpenAI test result: ' . json_encode($result));
+                    mpai_log_debug('OpenAI test result: ' . json_encode($result), 'admin');
                     
                     if (isset($result['success']) && $result['success']) {
                         // Send the actual API response content as the data payload
@@ -249,11 +249,11 @@ class MPAI_Admin {
                         wp_send_json_error(isset($result['error']) ? $result['error'] : __('Unknown error', 'memberpress-ai-assistant'));
                     }
                 } catch (Exception $e) {
-                    error_log('MPAI: Exception in OpenAI test: ' . $e->getMessage());
+                    mpai_log_error('Exception in OpenAI test: ' . $e->getMessage(), 'admin');
                     wp_send_json_error('Error: ' . $e->getMessage());
                 }
             } else {
-                error_log('MPAI: OpenAI class still not available after loading attempt');
+                mpai_log_error('OpenAI class still not available after loading attempt', 'admin');
                 wp_send_json_error(__('OpenAI API handler not available', 'memberpress-ai-assistant'));
             }
         } else {
@@ -261,8 +261,8 @@ class MPAI_Admin {
             $api_key = get_option('mpai_anthropic_api_key', '');
             $model = get_option('mpai_anthropic_model', 'claude-3-opus-20240229');
             
-            error_log('MPAI: Anthropic API key exists: ' . (!empty($api_key) ? 'Yes (length: ' . strlen($api_key) . ')' : 'No'));
-            error_log('MPAI: Anthropic model: ' . $model);
+            mpai_log_debug('Anthropic API key exists: ' . (!empty($api_key) ? 'Yes (length: ' . strlen($api_key) . ')' : 'No'), 'admin');
+            mpai_log_debug('Anthropic model: ' . $model, 'admin');
             
             if (empty($api_key)) {
                 wp_send_json_error(__('API key is not set', 'memberpress-ai-assistant'));
@@ -272,13 +272,13 @@ class MPAI_Admin {
             // Create an instance of the Anthropic API handler
             if (class_exists('MPAI_Anthropic')) {
                 try {
-                    error_log('MPAI: Creating Anthropic instance');
+                    mpai_log_debug('Creating Anthropic instance', 'admin');
                     $anthropic = new MPAI_Anthropic($api_key);
                     
                     // Test the connection with a simple request
-                    error_log('MPAI: Testing Anthropic connection');
+                    mpai_log_debug('Testing Anthropic connection', 'admin');
                     $result = $anthropic->test_connection($model);
-                    error_log('MPAI: Anthropic test result: ' . json_encode($result));
+                    mpai_log_debug('Anthropic test result: ' . json_encode($result), 'admin');
                     
                     if (isset($result['success']) && $result['success']) {
                         // Send the actual API response content as the data payload
@@ -288,11 +288,11 @@ class MPAI_Admin {
                         wp_send_json_error(isset($result['error']) ? $result['error'] : __('Unknown error', 'memberpress-ai-assistant'));
                     }
                 } catch (Exception $e) {
-                    error_log('MPAI: Exception in Anthropic test: ' . $e->getMessage());
+                    mpai_log_error('Exception in Anthropic test: ' . $e->getMessage(), 'admin');
                     wp_send_json_error('Error: ' . $e->getMessage());
                 }
             } else {
-                error_log('MPAI: Anthropic class still not available after loading attempt');
+                mpai_log_error('Anthropic class still not available after loading attempt', 'admin');
                 wp_send_json_error(__('Anthropic API handler not available', 'memberpress-ai-assistant'));
             }
         }
