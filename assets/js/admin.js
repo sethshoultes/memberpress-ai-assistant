@@ -575,6 +575,7 @@
     function initApiTests() {
         $('#mpai-test-openai-api').on('click', function() {
             var apiKey = $('#mpai_api_key').val();
+            var $resultContainer = $('#mpai-openai-test-result');
             var $statusIcon = $('#openai-api-status .mpai-api-status-icon');
             var $statusText = $('#openai-api-status .mpai-api-status-text');
             

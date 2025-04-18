@@ -241,10 +241,20 @@ class MPAI_Admin {
                     $result = $openai->test_connection($model);
                     error_log('MPAI: OpenAI test result: ' . json_encode($result));
                     
+                    // Add debug logging for the response content
+                    if (isset($result['response'])) {
+                        error_log('MPAI: OpenAI response content: ' . $result['response']);
+                    }
+                    
                     if (isset($result['success']) && $result['success']) {
-                        // Send the actual API response content as the data payload
+                        // Send the actual API response content directly
                         $response_content = isset($result['response']) ? $result['response'] : 'Connection successful';
-                        wp_send_json_success($response_content);
+                        error_log('MPAI: Sending response content: ' . $response_content);
+                        echo json_encode(array(
+                            'success' => true,
+                            'data' => $response_content
+                        ));
+                        wp_die();
                     } else {
                         wp_send_json_error(isset($result['error']) ? $result['error'] : __('Unknown error', 'memberpress-ai-assistant'));
                     }
