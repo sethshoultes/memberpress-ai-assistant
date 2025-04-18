@@ -1192,6 +1192,8 @@
                     success: function(response) {
                         if (response.success) {
                             alert('Chat history cleared successfully!');
+                            // Refresh the page to ensure UI is updated
+                            window.location.reload();
                         } else {
                             alert('Error clearing chat history: ' + (response.data || 'Unknown error'));
                         }
