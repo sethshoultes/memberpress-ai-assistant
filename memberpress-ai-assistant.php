@@ -1393,8 +1393,9 @@ class MemberPress_AI_Assistant {
     public function clear_chat_history_ajax() {
         global $wpdb;
         
-        // Check nonce for security
-        check_ajax_referer('mpai_chat_nonce', 'nonce');
+        // Check nonce for security 
+        // Using mpai_nonce instead of mpai_chat_nonce to match what's in admin.js
+        check_ajax_referer('mpai_nonce', 'nonce');
 
         // Only allow logged-in users with appropriate capabilities
         if (!current_user_can('edit_posts')) {
@@ -1442,6 +1443,16 @@ class MemberPress_AI_Assistant {
                 if (method_exists($chat, 'reset_conversation')) {
                     $chat->reset_conversation();
                     mpai_log_debug('Reset conversation in chat class', 'chat');
+                }
+            }
+            
+            // 4. Also clear conversations table
+            if ($conversations_exists) {
+                foreach ($conversations as $conversation_id) {
+                    $wpdb->delete(
+                        $table_conversations,
+                        array('conversation_id' => $conversation_id)
+                    );
                 }
             }
             

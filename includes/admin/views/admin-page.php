@@ -127,39 +127,8 @@ jQuery(document).ready(function($) {
         }
     });
     
-    // Handle "Clear Chat History" button click
-    $('#mpai-clear-chat-history').on('click', function(e) {
-        e.preventDefault();
-        
-        if (confirm('Are you sure you want to clear your chat history? This cannot be undone.')) {
-            // Show loading state
-            $(this).addClass('updating-message').prop('disabled', true);
-            
-            // Make AJAX request to clear history
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'mpai_clear_chat_history',
-                    nonce: $('#mpai_chat_nonce').val() || $('input[name="mpai_nonce"]').val()
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert('Chat history cleared successfully!');
-                    } else {
-                        alert('Error clearing chat history: ' + (response.data || 'Unknown error'));
-                    }
-                },
-                error: function() {
-                    alert('Network error occurred while clearing chat history.');
-                },
-                complete: function() {
-                    // Remove loading state
-                    $('#mpai-clear-chat-history').removeClass('updating-message').prop('disabled', false);
-                }
-            });
-        }
-    });
+    // Note: Clear Chat History button is now handled in assets/js/admin.js
+    // Removing duplicate handler here to prevent double alerts
 });
 </script>
 
