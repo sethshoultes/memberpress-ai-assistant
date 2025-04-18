@@ -44,7 +44,7 @@ var MPAI_History = (function($) {
             type: 'POST',
             data: {
                 action: 'mpai_get_chat_history',
-                nonce: mpai_chat_data.nonce,
+                nonce: mpai_chat_data.mpai_nonce,
                 cache_buster: new Date().getTime() // Add timestamp to prevent caching
             },
             success: function(response) {
@@ -123,7 +123,7 @@ var MPAI_History = (function($) {
             type: 'POST',
             data: {
                 action: 'mpai_clear_chat_history',
-                nonce: mpai_chat_data.nonce
+                nonce: mpai_chat_data.mpai_nonce
             },
             success: function(response) {
                 if (response.success) {
