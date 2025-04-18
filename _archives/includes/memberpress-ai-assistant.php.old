@@ -220,8 +220,9 @@ class MemberPress_AI_Assistant {
         // Set flag to disable legacy menu
         $this->use_new_menu_system = true;
         
-        // Create admin instance using the new class
-        new MPAI_Admin();
+        // Create admin menu instance
+        global $mpai_admin_menu;
+        $mpai_admin_menu = new MPAI_Admin_Menu();
         
         // Add admin menu stylesheet
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_menu_styles'));
@@ -370,8 +371,14 @@ class MemberPress_AI_Assistant {
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-xml-content-parser.php';
         
-        // Admin functionality - new implementation in admin directory
-        require_once MPAI_PLUGIN_DIR . 'includes/admin/class-mpai-admin.php';
+        // New Admin Menu Class
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-admin-menu.php';
+        
+        // Admin functionality
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-admin.php';
+        
+        // Settings functionality - handled by unified dashboard now
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-settings.php';
         
         // Chat Interface
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-chat-interface.php';
@@ -529,15 +536,11 @@ class MemberPress_AI_Assistant {
     }
 
     /**
-     * Display main admin page - LEGACY METHOD
-     * @deprecated Use the new admin class instead
+     * Display main admin page
      */
     public function display_admin_page() {
-        mpai_log_debug('Legacy admin page method called - redirecting to new implementation', 'admin');
-        
-        // Redirect to new admin page
-        wp_safe_redirect(admin_url('admin.php?page=memberpress-ai-assistant'));
-        exit;
+        mpai_log_debug('Displaying main admin dashboard page', 'admin');
+        require_once MPAI_PLUGIN_DIR . 'includes/dashboard-page.php';
     }
     
     /**
@@ -646,8 +649,7 @@ class MemberPress_AI_Assistant {
     }
     
     /**
-     * Display settings page - LEGACY METHOD
-     * @deprecated Use the new admin class instead
+     * Display settings page
      */
     public function display_settings_page() {
         // Redirect to the new unified dashboard with the settings tab

@@ -5,53 +5,92 @@
 (function($) {
     'use strict';
     
-    // Output debug information about when admin.js is being loaded
-    console.log('MPAI DEBUG: admin.js file is being executed');
-    console.log('MPAI DEBUG: jQuery version:', typeof $ !== 'undefined' ? $.fn.jquery : 'jQuery not available');
-    console.log('MPAI DEBUG: mpai_data:', typeof mpai_data !== 'undefined' ? 'Available' : 'NOT AVAILABLE');
-    
-    // If mpai_data is defined, show its keys
-    if (typeof mpai_data !== 'undefined') {
-        console.log('MPAI DEBUG: mpai_data keys:', Object.keys(mpai_data));
-        console.log('MPAI DEBUG: mpai_data.ajax_url:', mpai_data.ajax_url);
-        console.log('MPAI DEBUG: mpai_data.nonce:', mpai_data.nonce ? mpai_data.nonce.substring(0, 5) + '...' : 'undefined');
-        console.log('MPAI DEBUG: mpai_data.plugin_url:', mpai_data.plugin_url);
-    }
-    
-    // Add a direct event listener to window load to make sure we see any errors
-    window.addEventListener('load', function() {
-        console.log('MPAI DEBUG: Window load event fired');
-        console.log('MPAI DEBUG: mpai_data on window load:', typeof mpai_data !== 'undefined' ? 'Available' : 'NOT AVAILABLE');
-    });
-    
-    // Check if mpai_data is available - with minimal logging
-    if (typeof mpai_data === 'undefined') {
-        console.error('MPAI ERROR: mpai_data is not available in admin.js - THIS WILL CAUSE UI FAILURES');
+    /**
+     * Test API connection
+     * 
+     * @param {string} provider - The provider to test (openai or anthropic)
+     */
+    function testApiConnection(provider) {
+        console.log('Testing API connection for', provider);
         
-        // Try to recover by creating a dummy mpai_data object if it doesn't exist
-        console.log('MPAI DEBUG: Attempting to create a fallback mpai_data object');
-        window.mpai_data = window.mpai_data || {
-            ajax_url: '/wp-admin/admin-ajax.php',
-            plugin_url: window.location.pathname.split('/wp-admin/')[0] + '/wp-content/plugins/memberpress-ai-assistant/',
-            nonce: '',
-            logger: {
-                enabled: true,
-                log_level: 'debug',
-                categories: {
-                    api_calls: true,
-                    tool_usage: true,
-                    agent_activity: true,
-                    timing: true,
-                    ui: true
-                }
-            }
-        };
-        console.log('MPAI DEBUG: Created fallback mpai_data:', window.mpai_data);
-    } else {
-        // Use the logger if available, but only if explicitly enabled
-        if (window.mpaiLogger && window.mpaiLogger.enabled === true) {
-            window.mpaiLogger.info('Admin script loaded', 'ui');
+        const $testButton = provider === 'openai' ? $('#mpai-test-openai-api') : $('#mpai-test-anthropic-api');
+        const $resultContainer = provider === 'openai' ? $('#mpai-openai-test-result') : $('#mpai-anthropic-test-result');
+        const $statusIcon = provider === 'openai' ? $('#openai-api-status .mpai-api-status-icon') : $('#anthropic-api-status .mpai-api-status-icon');
+        const $statusText = provider === 'openai' ? $('#openai-api-status .mpai-api-status-text') : $('#anthropic-api-status .mpai-api-status-text');
+        const apiKeyField = provider === 'openai' ? '#mpai_api_key' : '#mpai_anthropic_api_key';
+        const apiKey = $(apiKeyField).val();
+        
+        console.log('Button element exists:', $testButton.length > 0);
+        console.log('Result container exists:', $resultContainer.length > 0);
+        console.log('API key exists:', apiKey && apiKey.length > 0);
+        
+        if (!apiKey) {
+            $resultContainer.html('Please enter an API key first');
+            $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-success');
+            $resultContainer.show();
+            return;
         }
+        
+        // Show loading state
+        $testButton.prop('disabled', true);
+        $resultContainer.html('Testing connection...');
+        $resultContainer.removeClass('mpai-test-success mpai-test-error').addClass('mpai-test-loading');
+        $resultContainer.show();
+        
+        $statusIcon.removeClass('mpai-status-connected mpai-status-disconnected').addClass('mpai-status-unknown');
+        $statusText.text('Testing...');
+        
+        console.log('Making AJAX request to', mpai_data.ajax_url);
+        console.log('With nonce length:', mpai_data.nonce ? mpai_data.nonce.length : 0);
+        
+        // Make AJAX request
+        $.ajax({
+            url: mpai_data.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'mpai_test_api_connection',
+                nonce: mpai_data.nonce,
+                provider: provider
+            },
+            success: function(response) {
+                console.log('AJAX response:', response);
+                
+                if (response.success) {
+                    // Display the success message
+                    var displayText = 'Connection successful!';
+                    if (response.data) {
+                        displayText = 'Response: ' + response.data;
+                    }
+                    $resultContainer.html(displayText);
+                    $resultContainer.show();
+                    $resultContainer.addClass('mpai-test-success').removeClass('mpai-test-loading mpai-test-error');
+                    
+                    // Update the status indicator
+                    $statusIcon.removeClass('mpai-status-unknown mpai-status-disconnected').addClass('mpai-status-connected');
+                    $statusText.text('Connected');
+                } else {
+                    // Display the error message
+                    const errorMsg = response.data ? response.data : 'Unknown error occurred';
+                    $resultContainer.html('Connection failed: ' + errorMsg);
+                    $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
+                    
+                    // Update the status indicator
+                    $statusIcon.removeClass('mpai-status-unknown mpai-status-connected').addClass('mpai-status-disconnected');
+                    $statusText.text('Error');
+                }
+                $testButton.prop('disabled', false);
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error:', status, error);
+                
+                $resultContainer.html('Connection failed: ' + error);
+                $resultContainer.addClass('mpai-test-error').removeClass('mpai-test-loading mpai-test-success');
+                
+                $statusIcon.addClass('mpai-status-disconnected').removeClass('mpai-status-unknown mpai-status-connected');
+                $statusText.text('Error');
+                $testButton.prop('disabled', false);
+            }
+        });
     }
 
     /**
@@ -536,7 +575,6 @@
     function initApiTests() {
         $('#mpai-test-openai-api').on('click', function() {
             var apiKey = $('#mpai_api_key').val();
-            var $resultContainer = $('#mpai-openai-test-result');
             var $statusIcon = $('#openai-api-status .mpai-api-status-icon');
             var $statusText = $('#openai-api-status .mpai-api-status-text');
             
@@ -1112,94 +1150,60 @@
         });
     }
 
+    // Initialize the API test buttons
+    function initApiTestButtons() {
+        console.log('Initializing API test buttons');
+        console.log('OpenAI test button exists:', $('#mpai-test-openai-api').length > 0);
+        console.log('Anthropic test button exists:', $('#mpai-test-anthropic-api').length > 0);
+        
+        // Using event delegation to ensure the buttons work even if they're loaded later
+        $(document).on('click', '#mpai-test-openai-api', function(e) {
+            e.preventDefault();
+            console.log('OpenAI test button clicked');
+            testApiConnection('openai');
+        });
+        
+        $(document).on('click', '#mpai-test-anthropic-api', function(e) {
+            e.preventDefault();
+            console.log('Anthropic test button clicked');
+            testApiConnection('anthropic');
+        });
+    }
+    
     $(document).ready(function() {
-        console.log('MPAI DEBUG: Document ready fired in admin.js');
+        // Initialize API test buttons
+        initApiTestButtons();
         
-        // First fix tab navigation immediately since that's critical
-        console.log('MPAI DEBUG: Setting up tab navigation...');
-        
-        // Handle Standard WordPress settings tabs
-        try {
-            // Check if we're on a WordPress standard settings page using URL tab parameter
-            if ($('.nav-tab-wrapper').length > 0 && !$('.mpai-settings-wrap').length) {
-                console.log('MPAI DEBUG: WordPress standard settings page detected with URL-based tabs');
-                
-                // No need to set up click handlers as the links navigate directly to the correct URL
-                console.log('MPAI DEBUG: Using WordPress standard URL-based tab navigation');
-                
-                // Add a cleanup to remove any href attributes with full URLs
-                $('.nav-tab-wrapper a.nav-tab').each(function() {
-                    var href = $(this).attr('href');
-                    if (href && href.indexOf('http') === 0) {
-                        // This href contains a full URL which can cause jQuery errors
-                        // Extract just the tab parameter 
-                        var tabMatch = href.match(/[&?]tab=([^&]+)/);
-                        if (tabMatch && tabMatch[1]) {
-                            // Replace the full URL with just the tab parameter
-                            var newHref = 'admin.php?page=memberpress-ai-assistant-settings&tab=' + tabMatch[1];
-                            $(this).attr('href', newHref);
-                            console.log('MPAI DEBUG: Fixed tab URL:', href, ' -> ', newHref);
-                        }
-                    }
-                });
-            }
-            // Check if we're on a settings registry page with JavaScript tabs
-            else if ($('.mpai-settings-wrap').length > 0 && $('.mpai-tab-content').length > 0) {
-                console.log('MPAI DEBUG: Settings Registry page detected, skipping old tab navigation setup');
-                
-                // Add event listener for diagnostic tab
-                $('.mpai-tab-link[data-tab="debug"]').on('click', function() {
-                    console.log('MPAI DEBUG: Diagnostic tab clicked via registry, triggering plugin logs load');
-                    setTimeout(function() {
-                        $(document).trigger('mpai-load-plugin-logs');
-                    }, 100);
-                });
-            } 
-            // Fallback to old-style JavaScript tabs if needed
-            else if ($('.mpai-settings-tab').length > 0) {
-                // This is an old-style settings page with JavaScript tabs
-                console.log('MPAI DEBUG: Old-style JavaScript settings tabs detected');
-                
-                // Hide all tabs first except the first one
-                $('.mpai-settings-tab').hide();
-                $('.mpai-settings-tab:first').show();
-                
-                // Make sure the first tab is active
-                $('.nav-tab-wrapper a.nav-tab:first').addClass('nav-tab-active');
-                
-                // Setup tab click handler
-                $('.nav-tab-wrapper a.nav-tab').on('click', function(e) {
-                    e.preventDefault();
-                    console.log('MPAI DEBUG: Tab clicked:', $(this).attr('href'));
-                    
-                    // Hide all tabs
-                    $('.mpai-settings-tab').hide();
-                    
-                    // Remove active class from all tabs
-                    $('.nav-tab').removeClass('nav-tab-active');
-                    
-                    // Show the selected tab
-                    $($(this).attr('href')).show();
-                    
-                    // Add active class to clicked tab
-                    $(this).addClass('nav-tab-active');
-                    
-                    // Dispatch a custom event that other parts of the code can listen for
-                    $(document).trigger('mpai-tab-shown', [$(this).attr('href')]);
-                    
-                    // For diagnostic tab specifically, trigger plugin logs loading
-                    if ($(this).attr('href') === '#tab-diagnostic') {
-                        console.log('MPAI DEBUG: Diagnostic tab clicked, triggering plugin logs load');
-                        // Trigger a custom event that the logs section can listen for
-                        $(document).trigger('mpai-load-plugin-logs');
-                    }
-                });
-            }
+        // Clear existing chat history button
+        $('#mpai-clear-chat-history').on('click', function(e) {
+            e.preventDefault();
             
-            console.log('MPAI DEBUG: Tab navigation setup successfully');
-        } catch (e) {
-            console.error('MPAI ERROR: Failed to set up tab navigation:', e);
-        }
+            if (confirm('Are you sure you want to clear your chat history? This cannot be undone.')) {
+                $(this).addClass('updating-message').prop('disabled', true);
+                
+                $.ajax({
+                    url: mpai_data.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'mpai_clear_chat_history',
+                        nonce: mpai_data.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Chat history cleared successfully!');
+                        } else {
+                            alert('Error clearing chat history: ' + (response.data || 'Unknown error'));
+                        }
+                    },
+                    error: function() {
+                        alert('Network error occurred while clearing chat history.');
+                    },
+                    complete: function() {
+                        $('#mpai-clear-chat-history').removeClass('updating-message').prop('disabled', false);
+                    }
+                });
+            }
+        });
         
         // Verify direct-ajax-handler.php URL (for debugging)
         if (typeof mpai_data !== 'undefined' && mpai_data.plugin_url) {

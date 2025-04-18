@@ -15,50 +15,9 @@ if (!defined('WPINC')) {
 // Log page load for debugging
 mpai_log_debug('Unified dashboard page is being loaded', 'unified-dashboard');
 
-// Process form submission for settings tabs
-if (isset($_POST['mpai_direct_save']) && $_POST['mpai_direct_save'] === '1') {
-    // Verify nonce
-    if (isset($_POST['mpai_nonce']) && wp_verify_nonce($_POST['mpai_nonce'], 'mpai_direct_save')) {
-        // Get settings class instance
-        if (!class_exists('MPAI_Settings')) {
-            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-settings.php';
-        }
-        $settings = new MPAI_Settings();
-        $definitions = $settings->get_settings_definitions();
-        
-        // Process each setting
-        foreach ($definitions as $option_name => $args) {
-            if (isset($_POST[$option_name])) {
-                $value = $_POST[$option_name];
-                
-                // Apply sanitization callback
-                if (isset($args['sanitize_callback'])) {
-                    if (is_callable($args['sanitize_callback'])) {
-                        $value = call_user_func($args['sanitize_callback'], $value);
-                    }
-                }
-                
-                // Update option
-                update_option($option_name, $value);
-                mpai_log_debug('Updated setting: ' . $option_name, 'settings');
-            }
-        }
-        
-        // Get the current tab for redirect
-        $tab = isset($_POST['mpai_active_tab']) ? sanitize_key($_POST['mpai_active_tab']) : 'general';
-        
-        // Redirect to prevent form resubmission
-        wp_redirect(add_query_arg(array(
-            'page' => 'memberpress-ai-assistant',
-            'tab' => $tab,
-            'settings-updated' => 'true'
-        ), admin_url('admin.php')));
-        exit;
-    } else {
-        mpai_log_error('Nonce verification failed for settings save', 'settings');
-        wp_die(__('Security check failed.', 'memberpress-ai-assistant'));
-    }
-}
+// Direct save method has been replaced by the WordPress Settings API
+// Settings are now saved via options.php and redirected back to the appropriate tab
+// using the settings_redirect filter in the MPAI_Settings class
 
 // Check if terms have been accepted - check both options and user meta
 $consent_given = false;
@@ -104,73 +63,78 @@ if ($current_tab !== 'dashboard' && !class_exists('MPAI_Settings')) {
 }
 
 // Create sections based on the current tab if we're on a settings tab
-if ($current_tab === 'general') {
-    // API Providers - OpenAI Section
-    add_settings_section(
-        'general_openai',
-        __('OpenAI Settings', 'memberpress-ai-assistant'),
-        function() {},
-        'mpai_options'
-    );
+if ($current_tab !== 'dashboard') {
+    // Register all settings manually
+    $settings->register_settings();
     
-    // API Providers - Anthropic Section
-    add_settings_section(
-        'general_anthropic',
-        __('Anthropic Settings', 'memberpress-ai-assistant'),
-        function() {},
-        'mpai_options'
-    );
-    
-    // API Provider Selection
-    add_settings_section(
-        'general_provider',
-        __('AI Provider', 'memberpress-ai-assistant'),
-        function() {},
-        'mpai_options'
-    );
-    
-    // Register settings fields
-    $settings->register_settings_fields('general');
-    
-} elseif ($current_tab === 'chat') {
-    // Chat Interface Settings
-    add_settings_section(
-        'chat_interface',
-        __('Chat Interface Settings', 'memberpress-ai-assistant'),
-        function() {},
-        'mpai_options'
-    );
-    
-    // Register settings fields
-    $settings->register_settings_fields('chat');
-    
-} elseif ($current_tab === 'debug') {
-    // Console Logging
-    add_settings_section(
-        'debug_logging',
-        __('Console Logging', 'memberpress-ai-assistant'),
-        function() {},
-        'mpai_options'
-    );
-    
-    // Register settings fields
-    $settings->register_settings_fields('debug');
-    
-    // Add special console test control
-    add_settings_field(
-        'mpai_console_test_control',
-        __('Test Console Logging', 'memberpress-ai-assistant'),
-        function() {
-            $value = get_option('mpai_enable_console_logging', false);
-            echo '<div class="mpai-debug-control">
-                <span id="mpai-console-logging-status" class="' . ($value ? 'active' : 'inactive') . '">' . ($value ? 'ENABLED' : 'DISABLED') . '</span>
-                <button type="button" id="mpai-test-console-logging" class="button button-secondary">Test Console Logging</button>
-                <div id="mpai-console-test-result" class="mpai-test-result" style="display:none;"></div>
-            </div>';
-        },
-        'mpai_options',
-        'debug_logging'
-    );
+    if ($current_tab === 'general') {
+        // API Providers - OpenAI Section
+        add_settings_section(
+            'general_openai',
+            __('OpenAI Settings', 'memberpress-ai-assistant'),
+            function() {},
+            'mpai_options'
+        );
+        
+        // API Providers - Anthropic Section
+        add_settings_section(
+            'general_anthropic',
+            __('Anthropic Settings', 'memberpress-ai-assistant'),
+            function() {},
+            'mpai_options'
+        );
+        
+        // API Provider Selection
+        add_settings_section(
+            'general_provider',
+            __('AI Provider', 'memberpress-ai-assistant'),
+            function() {},
+            'mpai_options'
+        );
+        
+        // Register settings fields
+        $settings->register_settings_fields('general');
+        
+    } elseif ($current_tab === 'chat') {
+        // Chat Interface Settings
+        add_settings_section(
+            'chat_interface',
+            __('Chat Interface Settings', 'memberpress-ai-assistant'),
+            function() {},
+            'mpai_options'
+        );
+        
+        // Register settings fields
+        $settings->register_settings_fields('chat');
+        
+    } elseif ($current_tab === 'debug') {
+        // Console Logging
+        add_settings_section(
+            'debug_logging',
+            __('Console Logging', 'memberpress-ai-assistant'),
+            function() {},
+            'mpai_options'
+        );
+        
+        // Register settings fields
+        $settings->register_settings_fields('debug');
+        
+        // Add special console test control
+        add_settings_field(
+            'mpai_console_test_control',
+            __('Test Console Logging', 'memberpress-ai-assistant'),
+            function() {
+                $value = get_option('mpai_enable_console_logging', false);
+                echo '<div class="mpai-debug-control">
+                    <span id="mpai-console-logging-status" class="' . ($value ? 'active' : 'inactive') . '">' . ($value ? 'ENABLED' : 'DISABLED') . '</span>
+                    <button type="button" id="mpai-test-console-logging" class="button button-secondary">Test Console Logging</button>
+                    <div id="mpai-console-test-result" class="mpai-test-result" style="display:none;"></div>
+                </div>';
+            },
+            'mpai_options',
+            'debug_logging'
+        );
+    }
 }
 ?>
 
@@ -352,25 +316,32 @@ if ($current_tab === 'general') {
             </div>
             <?php endif; ?>
             
-            <form method="post" action="<?php echo admin_url('admin.php?page=memberpress-ai-assistant&tab=' . $current_tab); ?>" id="mpai-settings-form" enctype="multipart/form-data">
+            <form method="post" action="options.php" id="mpai-settings-form">
                 <?php
-                // Add nonce and direct save fields
-                wp_nonce_field('mpai_direct_save', 'mpai_nonce');
-                echo '<input type="hidden" name="mpai_direct_save" value="1">';
+                // Debug info
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    echo '<!-- Current tab: ' . esc_html($current_tab) . ' -->';
+                    global $wp_settings_sections, $wp_settings_fields;
+                    echo '<!-- Available sections: ' . 
+                        (isset($wp_settings_sections['mpai_options']) ? 
+                        implode(', ', array_keys($wp_settings_sections['mpai_options'])) : 'none') . ' -->';
+                    
+                    echo '<!-- Available fields: ' . 
+                        (isset($wp_settings_fields['mpai_options']) ? 
+                        implode(', ', array_keys($wp_settings_fields['mpai_options'])) : 'none') . ' -->';
+                }
                 
-                // Output security fields for the settings API
+                // Output security fields for the registered settings
                 settings_fields('mpai_options');
                 
                 // Output settings sections
                 do_settings_sections('mpai_options');
                 
-                // Add hidden field for active tab
+                // Add hidden field for active tab (will be used for redirect after save)
                 echo '<input type="hidden" name="mpai_active_tab" id="mpai_active_tab" value="' . esc_attr($current_tab) . '">';
                 
                 // Save button
-                echo '<div class="submit-container">';
-                echo '<input type="submit" name="submit" id="mpai-save-settings" class="button button-primary" value="' . esc_attr__('Save Settings', 'memberpress-ai-assistant') . '">';
-                echo '</div>';
+                submit_button();
                 ?>
             </form>
         <?php endif; ?>

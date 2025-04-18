@@ -33,10 +33,12 @@ class MPAI_Settings {
         // Legacy WordPress approach
         add_filter('whitelist_options', array($this, 'legacy_whitelist_options'), 999);
         
+        // Redirect back to the right tab after saving settings
+        add_filter('wp_redirect', array($this, 'settings_redirect'), 10, 2);
+        
         // Make sure the hooks for special fields are registered on init too 
         add_action('admin_init', function() {
-                // No special handling needed since we're using the direct save method
-            mpai_log_debug('Using direct save method', 'settings');
+            mpai_log_debug('Initializing settings', 'settings');
         }, 20); // Run after settings are registered
         
         // Temporarily keep the nonce bypass for backward compatibility
@@ -286,9 +288,9 @@ class MPAI_Settings {
             $allowed_options['options'] = array_merge($allowed_options['options'], $mpai_options);
         }
         
-        // No special handling needed for options.php since we use direct save
+        // Using options.php for saving settings, which requires proper whitelisting
         
-        mpai_log_debug('Using direct save method for all options', 'settings');
+        mpai_log_debug('Using WordPress Settings API for all options', 'settings');
         
         return $allowed_options;
     }
@@ -491,12 +493,34 @@ class MPAI_Settings {
      */
     public function register_settings_fields($tab) {
         $definitions = $this->get_settings_definitions();
+        $registered_count = 0;
+        
+        mpai_log_debug('Registering settings fields for tab: ' . $tab, 'settings');
         
         foreach ($definitions as $setting_name => $args) {
             // Skip settings not in this tab or without a section
-            if (empty($args['section']) || strpos($args['section'], $tab . '_') !== 0) {
+            if (empty($args['section'])) {
+                mpai_log_debug('Skipping ' . $setting_name . ' - no section', 'settings');
                 continue;
             }
+            
+            // Match sections based on tab name
+            if ($tab === 'general' && strpos($args['section'], 'general_') === 0) {
+                // Good - this is a general tab section
+                mpai_log_debug('Including ' . $setting_name . ' in general tab', 'settings');
+            } else if ($tab === 'chat' && $args['section'] === 'chat_interface') {
+                // Good - this is a chat tab section
+                mpai_log_debug('Including ' . $setting_name . ' in chat tab', 'settings');
+            } else if ($tab === 'debug' && $args['section'] === 'debug_logging') {
+                // Good - this is a debug tab section
+                mpai_log_debug('Including ' . $setting_name . ' in debug tab', 'settings');
+            } else {
+                // Not for this tab
+                mpai_log_debug('Skipping ' . $setting_name . ' - section ' . $args['section'] . ' not for tab ' . $tab, 'settings');
+                continue;
+            }
+            
+            $registered_count++;
             
             // Register the field with WordPress
             add_settings_field(
@@ -511,18 +535,10 @@ class MPAI_Settings {
                 )
             );
             
-            add_settings_field(
-                $setting_name,
-                $args['title'],
-                array($this, 'render_field'),
-                'mpai_options',
-                $args['section'],
-                array(
-                    'name' => $setting_name,
-                    'args' => $args
-                )
-            );
+            mpai_log_debug('Added settings field ' . $setting_name . ' to section ' . $args['section'], 'settings');
         }
+        
+        mpai_log_debug('Registered ' . $registered_count . ' settings fields for tab: ' . $tab, 'settings');
     }
     
     /**
@@ -531,8 +547,11 @@ class MPAI_Settings {
      * @param array $args Field arguments
      */
     public function render_field($args) {
+        mpai_log_debug('Rendering field: ' . json_encode($args), 'settings-render');
+        
         if (!isset($args['name']) || !isset($args['args'])) {
             echo '<p class="description">' . __('Invalid field configuration', 'memberpress-ai-assistant') . '</p>';
+            mpai_log_error('Invalid field configuration in render_field', 'settings-render');
             return;
         }
         
@@ -541,12 +560,16 @@ class MPAI_Settings {
         $type = isset($field_args['type']) ? $field_args['type'] : 'text';
         $value = $this->get_setting($name);
         
+        mpai_log_debug('Rendering field ' . $name . ' of type ' . $type . ' with value: ' . (is_array($value) ? json_encode($value) : $value), 'settings-render');
+        
         // Render the field
         $method = 'render_' . $type . '_field';
         if (method_exists($this, $method)) {
             call_user_func(array($this, $method), $name, $value, $field_args);
+            mpai_log_debug('Rendered ' . $name . ' using ' . $method, 'settings-render');
         } else {
             $this->render_text_field($name, $value, $field_args);
+            mpai_log_debug('Rendered ' . $name . ' using default text field renderer', 'settings-render');
         }
         
         // Add any special elements 
@@ -827,5 +850,22 @@ class MPAI_Settings {
             <button type="button" id="mpai-test-anthropic-api" class="button button-secondary">Test Connection</button>
             <div id="mpai-anthropic-test-result" class="mpai-test-result" style="display:none;"></div>
         </div>';
+    }
+    
+    /**
+     * Redirect back to the unified dashboard with the correct tab after saving settings
+     * 
+     * @param string $location The redirect location
+     * @param int $status The redirect status code
+     * @return string The modified redirect location
+     */
+    public function settings_redirect($location, $status) {
+        // Only modify redirects from options.php
+        if (strpos($location, 'options.php') !== false && isset($_POST['mpai_active_tab'])) {
+            $tab = sanitize_key($_POST['mpai_active_tab']);
+            mpai_log_debug('Redirecting back to tab: ' . $tab, 'settings');
+            return admin_url('admin.php?page=memberpress-ai-assistant&tab=' . $tab . '&settings-updated=true');
+        }
+        return $location;
     }
 }

@@ -570,11 +570,7 @@ switch ($action) {
         
         echo json_encode(array(
             'success' => true,
-            'message' => 'OpenAI API connection successful!',
-            'data' => array(
-                'models_count' => count($data['data']),
-                'first_model' => !empty($data['data']) ? $data['data'][0]['id'] : 'none'
-            )
+            'data' => 'OpenAI API connection successful!'
         ));
         break;
         

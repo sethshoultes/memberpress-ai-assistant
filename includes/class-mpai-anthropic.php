@@ -48,9 +48,11 @@ class MPAI_Anthropic {
     
     /**
      * Constructor
+     * 
+     * @param string $api_key Optional API key to override the one from options
      */
-    public function __construct() {
-        $this->api_key = get_option('mpai_anthropic_api_key', '');
+    public function __construct($api_key = '') {
+        $this->api_key = !empty($api_key) ? $api_key : get_option('mpai_anthropic_api_key', '');
         $this->model = get_option('mpai_anthropic_model', 'claude-3-opus-20240229');
         $this->temperature = (float) get_option('mpai_anthropic_temperature', 0.7);
         $this->max_tokens = (int) get_option('mpai_anthropic_max_tokens', 2048);
@@ -64,6 +66,57 @@ class MPAI_Anthropic {
         
         if (class_exists('MPAI_Response_Cache')) {
             $this->cache = new MPAI_Response_Cache($cache_config);
+        }
+    }
+    
+    /**
+     * Test connection to Anthropic API
+     * 
+     * @param string $model Optional model to test
+     * @return array Success status and any error message
+     */
+    public function test_connection($model = '') {
+        if (empty($this->api_key)) {
+            return array(
+                'success' => false,
+                'error' => 'API key is not set'
+            );
+        }
+        
+        $test_model = !empty($model) ? $model : $this->model;
+        
+        // Simple test message
+        $messages = array(
+            array('role' => 'user', 'content' => 'Test connection. Respond with only "Connection successful".')
+        );
+        
+        try {
+            $response = $this->send_request($messages);
+            
+            if (is_wp_error($response)) {
+                return array(
+                    'success' => false,
+                    'error' => $response->get_error_message()
+                );
+            }
+            
+            if (empty($response['content'][0]['text'])) {
+                return array(
+                    'success' => false,
+                    'error' => 'Empty response from API'
+                );
+            }
+            
+            return array(
+                'success' => true,
+                'model' => $test_model,
+                'response' => $response['content'][0]['text']
+            );
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'error' => $e->getMessage()
+            );
         }
     }
 
