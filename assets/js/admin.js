@@ -132,7 +132,7 @@
                 dataType: 'json',
                 data: {
                     action: 'mpai_process_chat',
-                    mpai_nonce: mpai_data.nonce,
+                    nonce: mpai_data.nonce, // Just 'nonce', not 'mpai_nonce'
                     message: message
                 },
                 success: function(response) {
@@ -313,8 +313,9 @@
             });
         }
 
-        // Handle form submission
-        $chatForm.on('submit', function(e) {
+        // Handle form submission - we defer to the chat-interface-loader.js handler
+        // This handler has been removed to prevent duplication of handlers
+        /* $chatForm.on('submit', function(e) {
             e.preventDefault();
             
             // Early return if form exists but message input doesn't
@@ -326,10 +327,10 @@
             // Get message safely
             const message = $messageInput.val().trim();
             
-            if (message) {
+            if (message) { 
                 sendMessage(message);
             }
-        });
+        }); */
 
         // Handle suggested questions
         $('.mpai-suggestion').on('click', function(e) {
@@ -387,7 +388,7 @@
                 dataType: 'json',
                 data: {
                     action: 'mpai_run_command',
-                    mpai_nonce: mpai_data.nonce,
+                    nonce: mpai_data.nonce, // Just 'nonce', not 'mpai_nonce'
                     command: command,
                     context: context
                 },

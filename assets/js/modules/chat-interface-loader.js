@@ -34,6 +34,21 @@
             exportChat: $('#mpai-export-chat')
         };
         
+        // Log each element to verify it exists
+        console.log('Chat interface elements:', {
+            chatToggle: elements.chatToggle.length > 0,
+            chatContainer: elements.chatContainer.length > 0,
+            chatMessages: elements.chatMessages.length > 0,
+            chatInput: elements.chatInput.length > 0,
+            chatForm: elements.chatForm.length > 0,
+            chatExpand: elements.chatExpand.length > 0,
+            chatMinimize: elements.chatMinimize.length > 0,
+            chatClose: elements.chatClose.length > 0,
+            chatClear: elements.chatClear.length > 0,
+            chatSubmit: elements.chatSubmit.length > 0,
+            exportChat: elements.exportChat.length > 0
+        });
+        
         // Debug logging for element availability
         if (window.mpaiLogger) {
             window.mpaiLogger.debug('Chat toggle element found: ' + (elements.chatToggle.length > 0), 'ui');
@@ -184,12 +199,45 @@
         elements.chatForm.on('submit', function(e) {
             e.preventDefault();
             
+            if (!elements.chatInput || elements.chatInput.length === 0) {
+                console.error('MPAI: Message input not found, cannot process form submission');
+                return;
+            }
+            
             const message = elements.chatInput.val();
+            
+            if (!message || message.trim() === '') {
+                console.warn('MPAI: Empty message, not sending');
+                return;
+            }
             
             if (modules.MPAI_Messages) {
                 modules.MPAI_Messages.sendMessage(message);
+            } else {
+                console.error('MPAI: Messages module not available, cannot send message');
             }
         });
+        
+        // Log the available nonces for debugging
+        if (window.mpaiLogger) {
+            window.mpaiLogger.debug('Available nonces:', 'ui', {
+                mpai_nonce: !!mpai_chat_data.mpai_nonce,
+                chat_nonce: !!mpai_chat_data.nonce
+            });
+            
+            // Log more detailed information to help diagnose issues
+            console.log('Chat interface data:', {
+                ajax_url: mpai_chat_data.ajax_url,
+                mpai_nonce: mpai_chat_data.mpai_nonce ? 'exists' : 'missing',
+                chat_nonce: mpai_chat_data.nonce ? 'exists' : 'missing'
+            });
+        } else {
+            console.log('Chat interface data:', {
+                ajax_url: mpai_chat_data.ajax_url,
+                mpai_nonce: mpai_chat_data.mpai_nonce ? 'exists' : 'missing',
+                chat_nonce: mpai_chat_data.nonce ? 'exists' : 'missing'
+            });
+        }
         
         // Clear history button
         elements.chatClear.on('click', function() {

@@ -266,7 +266,7 @@ var MPAI_Messages = (function($) {
             data: {
                 action: 'mpai_process_chat',
                 message: message,
-                nonce: mpai_chat_data.nonce,
+                nonce: mpai_chat_data.mpai_nonce,
             },
             success: function(response) {
                 // End timing for message processing

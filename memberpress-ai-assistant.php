@@ -992,7 +992,7 @@ class MemberPress_AI_Assistant {
     public function process_chat_ajax() {
         try {
             // Check nonce for security
-            check_ajax_referer('mpai_chat_nonce', 'nonce');
+            check_ajax_referer('mpai_nonce', 'nonce');
             
             mpai_log_debug('AJAX process_chat_ajax started', 'chat');
 
@@ -1477,7 +1477,7 @@ class MemberPress_AI_Assistant {
      */
     public function get_chat_history_ajax() {
         // Check nonce for security
-        check_ajax_referer('mpai_chat_nonce', 'nonce');
+        check_ajax_referer('mpai_nonce', 'nonce');
 
         // Only allow logged-in users with appropriate capabilities
         if (!current_user_can('edit_posts')) {
@@ -1503,7 +1503,7 @@ class MemberPress_AI_Assistant {
      */
     public function save_consent_ajax() {
         // Check nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_chat_nonce')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_nonce')) {
             wp_send_json_error('Invalid nonce');
             return;
         }
