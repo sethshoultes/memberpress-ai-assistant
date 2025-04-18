@@ -3,6 +3,7 @@
  * Admin Menu Class
  * 
  * Centralizes all admin menu registration to solve menu highlighting issues
+ * Provides a consolidated interface with tabbed navigation
  *
  * @package MemberPress AI Assistant
  */
@@ -151,40 +152,28 @@ class MPAI_Admin_Menu {
                 MPAI_PLUGIN_URL . 'assets/images/memberpress-logo.svg',
                 30
             );
+            
+            // Add dashboard as first submenu to match parent
+            add_submenu_page(
+                $this->main_slug,
+                __('Dashboard', 'memberpress-ai-assistant'),
+                __('Dashboard', 'memberpress-ai-assistant'),
+                'manage_options',
+                $this->main_slug,
+                [$this, 'render_main_page']
+            );
         }
         
-        // Settings page
-        add_submenu_page(
-            $this->parent_slug,
-            __('Settings', 'memberpress-ai-assistant'),
-            __('Settings', 'memberpress-ai-assistant'),
-            'manage_options',
-            'memberpress-ai-assistant-settings',
-            function() {
-                require_once MPAI_PLUGIN_DIR . 'includes/settings-page.php';
-            }
-        );
-        
-        // Diagnostics page
-        add_submenu_page(
-            $this->parent_slug,
-            __('Diagnostics', 'memberpress-ai-assistant'),
-            __('Diagnostics', 'memberpress-ai-assistant'),
-            'manage_options',
-            'memberpress-ai-assistant-diagnostics',
-            function() {
-                // This page is handled by the diagnostics plugin
-                do_action('mpai_render_diagnostics');
-            }
-        );
+        // Settings page integrated into dashboard with tabs - no longer needed
+        // as the unified dashboard now handles settings too
     }
 
     /**
      * Render the main plugin page
      */
     public function render_main_page() {
-        // Include the dashboard page file
-        require_once MPAI_PLUGIN_DIR . 'includes/dashboard-page.php';
+        // Include the unified dashboard page file
+        require_once MPAI_PLUGIN_DIR . 'includes/unified-dashboard.php';
     }
 
     /**

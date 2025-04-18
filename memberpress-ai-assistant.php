@@ -374,8 +374,10 @@ class MemberPress_AI_Assistant {
         // New Admin Menu Class
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-admin-menu.php';
         
-        // Legacy Admin and Settings (for backward compatibility)
+        // Admin functionality
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-admin.php';
+        
+        // Settings functionality - handled by unified dashboard now
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-settings.php';
         
         // Chat Interface
@@ -650,11 +652,9 @@ class MemberPress_AI_Assistant {
      * Display settings page
      */
     public function display_settings_page() {
-        // Make sure MemberPress status is checked
-        $this->check_memberpress();
-        
-        // Load the settings page with direct save functionality
-        require_once MPAI_PLUGIN_DIR . 'includes/settings-page.php';
+        // Redirect to the new unified dashboard with the settings tab
+        wp_redirect(admin_url('admin.php?page=memberpress-ai-assistant&tab=general'));
+        exit;
     }
 
     /**

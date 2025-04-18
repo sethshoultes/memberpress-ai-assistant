@@ -2,8 +2,8 @@
 /**
  * Settings Class
  *
- * Handles plugin settings utilities and provides methods for the standard WordPress
- * Settings API implementation in settings-page.php
+ * Handles plugin settings utilities and provides methods for the WordPress Settings API
+ * Used by the unified dashboard tabs for settings management
  */
 
 // If this file is called directly, abort.
@@ -497,6 +497,19 @@ class MPAI_Settings {
             if (empty($args['section']) || strpos($args['section'], $tab . '_') !== 0) {
                 continue;
             }
+            
+            // Register the field with WordPress
+            add_settings_field(
+                $setting_name,
+                isset($args['title']) ? $args['title'] : '',
+                array($this, 'render_field'),
+                'mpai_options',
+                $args['section'],
+                array(
+                    'name' => $setting_name,
+                    'args' => $args
+                )
+            );
             
             add_settings_field(
                 $setting_name,
