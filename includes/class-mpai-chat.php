@@ -711,18 +711,36 @@ class MPAI_Chat {
                     if (!empty($results)) {
                         $user_list = "Here are the WordPress users:\n\n";
                         
-                        // Create table header
-                        $user_list .= "| ID | Username | Email | Registration Date | Links |\n";
-                        $user_list .= "|:---|:---------|:------|:-----------------|:------|\n";
+                        // Create HTML table
+                        $user_list .= "<table border=\"1\" cellpadding=\"5\" cellspacing=\"0\" style=\"border-collapse: collapse;\">\n";
+                        $user_list .= "  <thead>\n";
+                        $user_list .= "    <tr style=\"background-color: #f2f2f2;\">\n";
+                        $user_list .= "      <th>ID</th>\n";
+                        $user_list .= "      <th>Username</th>\n";
+                        $user_list .= "      <th>Email</th>\n";
+                        $user_list .= "      <th>Registration Date</th>\n";
+                        $user_list .= "      <th>Links</th>\n";
+                        $user_list .= "    </tr>\n";
+                        $user_list .= "  </thead>\n";
+                        $user_list .= "  <tbody>\n";
                         
                         foreach ($results as $user) {
                             $edit_url = admin_url('user-edit.php?user_id=' . $user->ID);
                             $author_url = get_author_posts_url($user->ID);
                             $reg_date = date('Y-m-d', strtotime($user->user_registered));
                             
-                            // Format with markdown table rows
-                            $user_list .= "| {$user->ID} | {$user->user_login} | {$user->user_email} | {$reg_date} | [Edit]({$edit_url}) • [Posts]({$author_url}) |\n";
+                            // Format with HTML table rows
+                            $user_list .= "    <tr>\n";
+                            $user_list .= "      <td>{$user->ID}</td>\n";
+                            $user_list .= "      <td>{$user->user_login}</td>\n";
+                            $user_list .= "      <td>{$user->user_email}</td>\n";
+                            $user_list .= "      <td>{$reg_date}</td>\n";
+                            $user_list .= "      <td><a href=\"{$edit_url}\" target=\"_blank\">Edit</a> &bull; <a href=\"{$author_url}\" target=\"_blank\">Posts</a></td>\n";
+                            $user_list .= "    </tr>\n";
                         }
+                        
+                        $user_list .= "  </tbody>\n";
+                        $user_list .= "</table>";
                     } else {
                         $user_list = "No users found.";
                     }
@@ -747,18 +765,36 @@ class MPAI_Chat {
                     if (!empty($results)) {
                         $post_list = "Here are the latest posts:\n\n";
                         
-                        // Create table header
-                        $post_list .= "| ID | Title | Status | Date | Links |\n";
-                        $post_list .= "|:---|:------|:-------|:-----|:------|\n";
+                        // Create HTML table
+                        $post_list .= "<table border=\"1\" cellpadding=\"5\" cellspacing=\"0\" style=\"border-collapse: collapse;\">\n";
+                        $post_list .= "  <thead>\n";
+                        $post_list .= "    <tr style=\"background-color: #f2f2f2;\">\n";
+                        $post_list .= "      <th>ID</th>\n";
+                        $post_list .= "      <th>Title</th>\n";
+                        $post_list .= "      <th>Status</th>\n";
+                        $post_list .= "      <th>Date</th>\n";
+                        $post_list .= "      <th>Links</th>\n";
+                        $post_list .= "    </tr>\n";
+                        $post_list .= "  </thead>\n";
+                        $post_list .= "  <tbody>\n";
                         
                         foreach ($results as $post) {
                             $post_url = get_permalink($post->ID);
                             $edit_url = get_edit_post_link($post->ID, 'raw');
                             $date = date('Y-m-d', strtotime($post->post_date));
                             
-                            // Format with markdown table rows
-                            $post_list .= "| {$post->ID} | [{$post->post_title}]({$post_url}) | {$post->post_status} | {$date} | [Edit]({$edit_url}) |\n";
+                            // Format with HTML table rows
+                            $post_list .= "    <tr>\n";
+                            $post_list .= "      <td>{$post->ID}</td>\n";
+                            $post_list .= "      <td><a href=\"{$post_url}\" target=\"_blank\">{$post->post_title}</a></td>\n";
+                            $post_list .= "      <td>{$post->post_status}</td>\n";
+                            $post_list .= "      <td>{$date}</td>\n";
+                            $post_list .= "      <td><a href=\"{$edit_url}\" target=\"_blank\">Edit</a></td>\n";
+                            $post_list .= "    </tr>\n";
                         }
+                        
+                        $post_list .= "  </tbody>\n";
+                        $post_list .= "</table>";
                     } else {
                         $post_list = "No posts found.";
                     }
