@@ -2,473 +2,337 @@
  * MemberPress AI Assistant Admin Styles
  */
 
-/* Container layout */
-.mpai-container {
-    display: flex;
-    flex-wrap: wrap;
-    margin-top: 20px;
+/* Admin Page Layout */
+.mpai-admin-page {
+    max-width: 1200px;
+    margin: 20px auto;
+}
+
+/* Dashboard Grid Layout */
+.mpai-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 20px;
+    margin-bottom: 30px;
 }
 
-.mpai-sidebar {
-    flex: 0 0 250px;
+.mpai-dashboard-card {
     background: #fff;
-    border: 1px solid #ccd0d4;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    padding: 20px;
 }
 
-.mpai-chat-container {
-    flex: 1;
-    min-width: 500px;
-    display: flex;
-    flex-direction: column;
-    background: #fff;
-    border: 1px solid #ccd0d4;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
-    height: 600px;
+.mpai-card-primary {
+    border-top: 4px solid #2271b1;
 }
 
-.mpai-command-container {
-    flex: 1 0 100%;
-    margin-top: 0;
-    background: #fff;
-    border: 1px solid #ccd0d4;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
-}
-
-/* Sidebar styling */
-.mpai-sidebar-header,
-.mpai-chat-header,
-.mpai-command-header {
-    padding: 10px 15px;
-    border-bottom: 1px solid #ccd0d4;
-    background: #f5f5f5;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.mpai-sidebar-header h2,
-.mpai-chat-header h2,
-.mpai-command-header h2 {
-    margin: 0;
-    font-size: 16px;
-}
-
-.mpai-sidebar-content {
-    padding: 15px;
-}
-
-.mpai-stats,
-.mpai-suggestions,
-.mpai-commands {
-    margin-bottom: 20px;
-}
-
-.mpai-stats h3,
-.mpai-suggestions h3,
-.mpai-commands h3 {
-    margin-top: 0;
-    font-size: 14px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 8px;
-}
-
-.mpai-stats ul,
-.mpai-suggestions ul,
-.mpai-commands ul {
-    margin: 0;
-}
-
-.mpai-stats li {
-    margin-bottom: 5px;
-}
-
-.mpai-suggestion {
-    text-decoration: none;
-    color: #0073aa;
-    cursor: pointer;
-}
-
-.mpai-suggestion:hover {
-    text-decoration: underline;
-}
-
-/* Chat styling */
-.mpai-chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 15px;
-}
-
-.mpai-message {
-    margin-bottom: 15px;
-    display: flex;
-    flex-direction: column;
-}
-
-.mpai-message-user {
-    align-items: flex-end;
-}
-
-.mpai-message-assistant {
-    align-items: flex-start;
-}
-
-.mpai-message-content {
-    max-width: 80%;
-    padding: 10px 15px;
-    border-radius: 10px;
-    position: relative;
-}
-
-.mpai-message-user .mpai-message-content {
-    background: #e6f2fa;
-}
-
-.mpai-message-assistant .mpai-message-content {
-    background: #f0f0f0;
-}
-
-.mpai-message-content p {
-    margin: 0 0 10px 0;
-}
-
-.mpai-message-content p:last-child {
-    margin-bottom: 0;
-}
-
-.mpai-message-content pre,
-.mpai-message-content code {
-    background: rgba(0,0,0,0.05);
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: monospace;
-    font-size: 90%;
-}
-
-.mpai-message-content pre {
-    padding: 10px;
-    overflow-x: auto;
-    white-space: pre-wrap;
-}
-
-.mpai-chat-input {
-    padding: 15px;
-    border-top: 1px solid #ccd0d4;
-}
-
-.mpai-chat-input form {
-    display: flex;
-    gap: 10px;
-}
-
-.mpai-chat-input textarea {
-    flex: 1;
-    min-height: 80px;
-    resize: vertical;
-}
-
-/* Command styling */
-.mpai-command-input {
-    padding: 15px;
-    border-bottom: 1px solid #ccd0d4;
-}
-
-.mpai-command-input form {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.mpai-command-input input[type="text"] {
-    width: 100%;
-    padding: 10px;
-}
-
-.mpai-command-input textarea {
-    width: 100%;
-    min-height: 60px;
-    resize: vertical;
-}
-
-.mpai-command-input button {
-    align-self: flex-end;
-}
-
-.mpai-command-output {
+/* Action Buttons */
+.mpai-action-buttons {
+    list-style: none;
     padding: 0;
+    margin: 15px 0 5px;
 }
 
-.mpai-command-output-header,
-.mpai-command-insights-header {
-    padding: 10px 15px;
-    background: #f5f5f5;
-    border-bottom: 1px solid #ccd0d4;
+.mpai-action-buttons li {
+    margin-bottom: 12px;
 }
 
-.mpai-command-output-header h3,
-.mpai-command-insights-header h3 {
-    margin: 0;
-    font-size: 14px;
-}
-
-.mpai-command-output pre {
-    margin: 0;
-    padding: 15px;
-    font-family: monospace;
-    overflow-x: auto;
-    background: #f8f8f8;
-    border-bottom: 1px solid #ccd0d4;
-    white-space: pre-wrap;
-}
-
-#mpai-command-insights {
-    padding: 15px;
-}
-
-/* Settings page styles */
-.mpai-settings-page {
-    max-width: 800px;
-}
-
-.mpai-settings-container {
-    background: #fff;
-    border: 1px solid #ccd0d4;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
-    margin-top: 20px;
-}
-
-.mpai-settings-tab {
-    padding: 15px;
-}
-
-.mpai-command-row {
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Loading indicator */
-.mpai-loading:after {
-    content: " .";
-    animation: mpai-loading 1.5s infinite;
-    display: inline-block;
-}
-
-@keyframes mpai-loading {
-    0% { content: " ."; }
-    25% { content: " .."; }
-    50% { content: " ..."; }
-    75% { content: " ...."; }
-}
-
-/* Test Connection Results */
-.mpai-test-success {
-    color: #46b450;
-    font-weight: bold;
-}
-
-.mpai-test-error {
-    color: #dc3232;
-    font-weight: bold;
-}
-
-.mpai-test-loading {
-    color: #0073aa;
-    font-style: italic;
-}
-
-.mpai-key-field {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.mpai-test-result {
-    margin-left: 10px;
-    padding: 5px 10px;
-    border-radius: 3px;
-}
-
-/* API Status Icons */
-.mpai-api-status {
+.mpai-action-buttons .button {
     display: inline-flex;
     align-items: center;
-    margin-left: 10px;
+    min-width: 180px;
 }
 
-.mpai-api-status-icon {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    margin-right: 5px;
-}
-
-.mpai-status-connected {
-    background-color: #46b450;
-    box-shadow: 0 0 5px #46b450;
-}
-
-.mpai-status-disconnected {
-    background-color: #dc3232;
-    box-shadow: 0 0 5px #dc3232;
-}
-
-.mpai-status-unknown {
-    background-color: #dba617;
-    box-shadow: 0 0 5px #dba617;
-}
-
-/* Consent Mechanism Styles */
-.mpai-consent-container {
-    margin-top: 15px;
-    padding: 15px;
-    background-color: #f9f9f9;
-    border: 1px solid #e3e3e3;
-    border-radius: 4px;
-}
-
-.mpai-consent-checkbox {
+.mpai-action-buttons .dashicons {
     margin-right: 8px;
 }
 
-.mpai-consent-notice {
-    font-size: 13px;
-    color: #606060;
+/* Status Grid */
+.mpai-status-grid {
+    display: grid;
+    gap: 15px;
+}
+
+.mpai-status-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.mpai-status-item:last-child {
+    border-bottom: none;
+}
+
+.mpai-status-label {
+    font-weight: 500;
+}
+
+.mpai-status-value {
+    display: flex;
+    align-items: center;
+}
+
+.mpai-status-value .dashicons {
+    margin-right: 5px;
+}
+
+.mpai-status-value .dashicons-yes-alt {
+    color: #46b450;
+}
+
+.mpai-status-value .dashicons-warning {
+    color: #f56e28;
+}
+
+.mpai-status-good {
+    color: #46b450;
+}
+
+.mpai-status-warning {
+    color: #f56e28;
+}
+
+.mpai-status-bad {
+    color: #dc3232;
+}
+
+/* Settings Section */
+.mpai-settings-section {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    padding: 20px 25px;
     margin-top: 10px;
 }
 
-.mpai-consent-info {
-    font-size: 13px;
-    color: #135e96;
-    font-style: italic;
-    margin-top: 8px;
-    margin-bottom: 0;
+.mpai-settings-section h2 {
+    margin-top: 0;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
-.mpai-welcome-buttons.consent-required {
-    opacity: 0.5;
-    pointer-events: none;
+.form-table th {
+    padding: 20px 10px 20px 0;
 }
 
+/* API Settings */
+.mpai-api-status {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f8f8f8;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.mpai-api-status-icon {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #ccc;
+    margin-right: 6px;
+}
+
+.mpai-api-status-icon.success,
+.mpai-api-status-icon.mpai-status-connected {
+    background-color: #46b450;
+}
+
+.mpai-api-status-icon.error,
+.mpai-api-status-icon.mpai-status-disconnected {
+    background-color: #dc3232;
+}
+
+.mpai-api-status-icon.loading,
+.mpai-api-status-icon.mpai-status-unknown {
+    background-color: #ffb900;
+    animation: pulse 1.5s infinite;
+}
+
+.mpai-api-status-text {
+    margin-right: 10px;
+}
+
+.mpai-test-result {
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 4px;
+    width: 100%;
+    background-color: #f8f8f8;
+    border-left: 4px solid #dba617;
+    word-break: break-word; /* Handle long responses */
+}
+
+.mpai-test-result.success,
+.mpai-test-success {
+    background-color: #f0f9f0;
+    border-left: 4px solid #46b450;
+}
+
+.mpai-test-result.error,
+.mpai-test-error {
+    background-color: #fdf1f1;
+    border-left: 4px solid #dc3232;
+}
+
+.mpai-test-loading {
+    border-left-color: #dba617;
+}
+
+/* Provider Selection */
+.mpai-provider-selection {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+.mpai-provider-option {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    background: #f8f8f8;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mpai-provider-option:hover {
+    background: #f0f0f0;
+}
+
+.mpai-provider-option input[type="radio"] {
+    margin-right: 8px;
+}
+
+/* Status Badge */
+.mpai-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-right: 10px;
+}
+
+.mpai-status-badge.active,
+#mpai-console-logging-status.active {
+    background-color: #e6f2e8;
+    color: #2a8d46;
+}
+
+.mpai-status-badge.inactive,
+#mpai-console-logging-status.inactive {
+    background-color: #f1f1f1;
+    color: #666;
+}
+
+/* Debug Controls */
+.mpai-debug-control {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Form Styles */
+.radio-label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* Consent Form Styles */
+.mpai-welcome-section {
+    background: #fff;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+.mpai-terms-box {
+    background: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.mpai-consent-form {
+    margin-top: 25px;
+}
+
+#mpai-consent-label {
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.consent-required .button-primary {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Modal Styles */
 .mpai-terms-modal {
     display: none;
     position: fixed;
-    z-index: 99999;
+    z-index: 100000;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(0,0,0,0.5);
-    overflow: auto;
 }
 
 .mpai-terms-modal-content {
     background-color: #fff;
     margin: 10% auto;
-    padding: 20px 30px;
+    padding: 30px;
     border-radius: 5px;
     max-width: 600px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
 }
 
 .mpai-terms-content {
-    max-height: 400px;
-    overflow-y: auto;
-    margin: 15px 0;
-}
-
-/* Admin Menu Icon */
-.toplevel_page_memberpress-ai-assistant-settings .wp-menu-image img,
-.toplevel_page_memberpress-ai-assistant .wp-menu-image img {
-    width: 20px;
-    height: 20px;
-    padding: 6px 0 0 0 !important;
-    opacity: 1;
-}
-
-/* Utility classes */
-.mpai-hidden {
-    display: none !important;
-}
-
-/**
- * Settings Registry Styles - New Admin UI
- */
- 
-/* Settings Registry Layout */
-.mpai-settings-wrap {
-    margin: 20px 0;
-}
-
-.mpai-settings-wrap .nav-tab-wrapper {
     margin-bottom: 20px;
 }
 
-.mpai-tab-content {
-    background: #fff;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-top: 0;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+/* Animation */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
+    100% {
+        opacity: 1;
+    }
 }
 
-/* Settings Sections (Groups) */
-.mpai-settings-form h2 {
-    font-size: 1.3em;
-    margin-top: 2em;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
-}
-
-.mpai-settings-form h2:first-of-type {
-    margin-top: 0;
-}
-
-.mpai-settings-group h2 {
-    font-size: 1.3em;
-    margin-top: 0;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
-}
-
-/* Form Elements */
-.mpai-settings-form .form-table th {
-    width: 200px;
-    padding: 15px 10px 15px 0;
-}
-
-.mpai-settings-form .form-table td {
-    padding: 15px 10px;
-}
-
-.mpai-settings-form .description {
-    font-style: italic;
-    color: #666;
-    margin-top: 5px;
-}
-
-.mpai-color-picker {
-    width: 80px;
-}
-
-.mpai-settings-form input[type="text"],
-.mpai-settings-form input[type="number"],
-.mpai-settings-form select,
-.mpai-settings-form textarea {
-    border: 1px solid #ddd;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.07);
-    transition: border-color .15s ease-in-out;
-}
-
-.mpai-settings-form input[type="text"]:focus,
-.mpai-settings-form input[type="number"]:focus,
-.mpai-settings-form select:focus,
-.mpai-settings-form textarea:focus {
-    border-color: #2271b1;
-    box-shadow: 0 0 0 1px #2271b1;
+/* Responsive Adjustments */
+@media (max-width: 782px) {
+    .mpai-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .mpai-action-buttons {
+        flex-direction: column;
+    }
+    
+    .mpai-provider-selection {
+        flex-direction: column;
+        gap: 10px;
+    }
 }

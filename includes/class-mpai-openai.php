@@ -41,12 +41,67 @@ class MPAI_OpenAI {
 
     /**
      * Constructor
+     * 
+     * @param string $api_key Optional API key to override the one from options
      */
-    public function __construct() {
-        $this->api_key = get_option('mpai_api_key', '');
+    public function __construct($api_key = '') {
+        $this->api_key = !empty($api_key) ? $api_key : get_option('mpai_api_key', '');
         $this->model = get_option('mpai_model', 'gpt-4o');
         $this->temperature = (float) get_option('mpai_temperature', 0.7);
         $this->max_tokens = (int) get_option('mpai_max_tokens', 2048);
+    }
+    
+    /**
+     * Test connection to OpenAI API
+     * 
+     * @param string $model Optional model to test
+     * @return array Success status and any error message
+     */
+    public function test_connection($model = '') {
+        if (empty($this->api_key)) {
+            return array(
+                'success' => false,
+                'error' => 'API key is not set'
+            );
+        }
+        
+        $test_model = !empty($model) ? $model : $this->model;
+        
+        // Simple test message
+        $messages = array(
+            array('role' => 'user', 'content' => 'Test connection. Respond with only "Connection successful".')
+        );
+        
+        try {
+            // The send_request method expects additional_params as second argument, not model
+            $response = $this->send_request($messages);
+            
+            if (is_wp_error($response)) {
+                return array(
+                    'success' => false,
+                    'error' => $response->get_error_message()
+                );
+            }
+            
+            if (empty($response['choices'][0]['message']['content'])) {
+                return array(
+                    'success' => false,
+                    'error' => 'Empty response from API'
+                );
+            }
+            
+            // Include the response content in the success result
+            return array(
+                'success' => true,
+                'model' => $test_model,
+                'response' => $response['choices'][0]['message']['content']
+            );
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'error' => $e->getMessage()
+            );
+        }
     }
 
     /**
