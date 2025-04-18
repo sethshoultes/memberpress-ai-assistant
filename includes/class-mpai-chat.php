@@ -366,7 +366,7 @@ class MPAI_Chat {
         $system_prompt .= "When the user asks about WordPress data or MemberPress information that requires data access:\n";
         $system_prompt .= "1. PREFER the wp_api tool for browser context operations. Use this format:\n";
         $system_prompt .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Your Title\", \"content\": \"Your content\"}}\n   ```\n";
-        $system_prompt .= "2. When the wp_api tool fails or is unavailable, fall back to the wp_cli tool\n";
+        $system_prompt .= "2. When the wp_api tool fails or is unavailable, fall back to the wpcli tool\n";
         $system_prompt .= "3. ALWAYS use the memberpress_info tool to get MemberPress-specific data\n";
         $system_prompt .= "   - For new member data: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"new_members_this_month\"}}\n";
         $system_prompt .= "   - For best-selling memberships: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"best_selling\"}}\n";
@@ -386,19 +386,25 @@ class MPAI_Chat {
         $system_prompt .= "   - Activate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
         $system_prompt .= "   - Example for MemberPress CoachKit: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"memberpress-coachkit/main.php\"}}\n";
         $system_prompt .= "   - Deactivate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"deactivate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
-        $system_prompt .= "3. ██████ MOST IMPORTANT RULE ██████\n";
-        $system_prompt .= "   FOR ANY QUESTIONS ABOUT PLUGIN HISTORY, INSTALLED PLUGINS, OR ACTIVATED PLUGINS, YOU MUST CALL THE PLUGIN_LOGS TOOL.\n";
-        $system_prompt .= "   DO NOT provide generic advice or alternative methods when asked about plugin activity.\n";
-        $system_prompt .= "   FORMAT YOUR RESPONSE AS ONLY THE JSON TOOL CALL WITHOUT EXPLANATORY TEXT. For example:\n";
-        $system_prompt .= "   ```json\n";
-        $system_prompt .= "   {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n";
-        $system_prompt .= "   ```\n\n";
+        $system_prompt .= "3. ██████ MOST IMPORTANT RULE - PLUGIN TOOLS ██████\n";
+        $system_prompt .= "   For different plugin-related questions, use different tools:\n";
+        $system_prompt .= "   a) FOR QUESTIONS ABOUT PLUGIN HISTORY AND PAST ACTIVITY, YOU MUST CALL THE PLUGIN_LOGS TOOL.\n";
+        $system_prompt .= "      For example: \"What plugins were recently activated?\", \"When was X plugin installed?\"\n";
+        $system_prompt .= "      FORMAT YOUR RESPONSE AS ONLY THE JSON TOOL CALL WITHOUT EXPLANATORY TEXT. For example:\n";
+        $system_prompt .= "      ```json\n";
+        $system_prompt .= "      {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n";
+        $system_prompt .= "      ```\n";
+        $system_prompt .= "   b) FOR QUESTIONS ABOUT CURRENT USERS, ALWAYS USE THE WP_API TOOL WITH GET_USERS ACTION:\n";
+        $system_prompt .= "      For example: \"List all users\", \"Show me WordPress users\", \"Who are the site users?\"\n";
+        $system_prompt .= "      ```json\n";
+        $system_prompt .= "      {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_users\", \"limit\": 10}}\n";
+        $system_prompt .= "      ```\n\n";
         $system_prompt .= "   Examples of when to use plugin_logs tool:\n";
         $system_prompt .= "   - View recent plugin activity: {\"tool\": \"plugin_logs\", \"parameters\": {\"days\": 30}}\n";
         $system_prompt .= "   - View recently activated plugins: {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n";
         $system_prompt .= "   - View recently installed plugins: {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"installed\", \"days\": 30}}\n";
         $system_prompt .= "   - View plugin history for specific plugin: {\"tool\": \"plugin_logs\", \"parameters\": {\"plugin_name\": \"MemberPress\", \"days\": 90}}\n";
-        $system_prompt .= "4. Only fall back to wp_cli commands if a specific wp_api function isn't available\n\n";
+        $system_prompt .= "4. Only fall back to wpcli commands if a specific wp_api function isn't available\n\n";
         $system_prompt .= "CRITICAL: When the user asks to create a post/page, ALWAYS include the exact title and content they specified in your wp_api tool parameters.\n";
         $system_prompt .= "Examples:\n";
         $system_prompt .= "- If user asks: \"Create a post titled 'Hello World' with content 'This is my first post'\"\n";
@@ -432,7 +438,7 @@ class MPAI_Chat {
         $system_prompt .= "CRITICAL INSTRUCTION: When the user asks about plugin history, recently installed plugins, or recently activated plugins, ALWAYS use the plugin_logs tool to get accurate information from the database. ";
         $system_prompt .= "When responding to these plugin-related queries, FORMAT YOUR RESPONSE AS ONLY THE JSON TOOL CALL WITHOUT ANY OTHER TEXT - just provide the exact JSON format shown in the examples, e.g.:\n";
         $system_prompt .= "```json\n{\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n```\n\n";
-        $system_prompt .= "Only use wp_cli commands for operations not supported by wp_api. ";
+        $system_prompt .= "Only use wpcli commands for operations not supported by wp_api. ";
         $system_prompt .= "Keep your responses concise and focused on MemberPress functionality.";
         
         return $system_prompt;
@@ -451,6 +457,14 @@ class MPAI_Chat {
             // Check for plugin-related queries and add a guidance message
             $plugin_keywords = ['recently installed', 'recently activated', 'plugin history', 'plugin log', 'plugin activity', 'when was plugin', 'installed recently', 'activated recently', 'what plugins', 'which plugins'];
             $inject_plugin_guidance = false;
+
+            // Check for user-related queries and add a guidance message
+            $user_keywords = ['list users', 'get users', 'show users', 'all users', 'site users', 'wordpress users', 'wp users', 'user list'];
+            $inject_user_guidance = false;
+            
+            // Check for post-related queries and add a guidance message
+            $post_keywords = ['list posts', 'show posts', 'get posts', 'all posts', 'post list', 'wp post list', 'blog posts'];
+            $inject_post_guidance = false;
             
             // Special handling for common WP-CLI commands - enhanced for reliability
             $lower_message = strtolower(trim($message));
@@ -512,7 +526,7 @@ class MPAI_Chat {
                     
                     // Extract actual table data if it's a JSON string
                     if (is_string($plugin_list_output) && 
-                        strpos($plugin_list_output, '{"success":true,"tool":"wp_cli","command_type":"plugin_list","result":') === 0) {
+                        strpos($plugin_list_output, '{"success":true,"tool":"wpcli","command_type":"plugin_list","result":') === 0) {
                         mpai_log_debug('Plugin list is in JSON format, extracting tabular data', 'chat');
                         try {
                             $decoded = json_decode($plugin_list_output, true);
@@ -575,6 +589,22 @@ class MPAI_Chat {
                 if (stripos($message, $keyword) !== false) {
                     $inject_plugin_guidance = true;
                     mpai_log_debug('Detected plugin-related query, will inject guidance', 'chat');
+                    break;
+                }
+            }
+
+            foreach ($user_keywords as $keyword) {
+                if (stripos($message, $keyword) !== false) {
+                    $inject_user_guidance = true;
+                    mpai_log_debug('Detected user-related query, will inject guidance', 'chat');
+                    break;
+                }
+            }
+            
+            foreach ($post_keywords as $keyword) {
+                if (stripos($message, $keyword) !== false) {
+                    $inject_post_guidance = true;
+                    mpai_log_debug('Detected post-related query, will inject guidance', 'chat');
                     break;
                 }
             }
@@ -668,6 +698,65 @@ class MPAI_Chat {
                     $this->conversation[] = array('role' => 'system', 'content' => $active_subscriptions_guidance);
                     mpai_log_debug('Enhanced active subscriptions guidance message added', 'chat');
                 }
+
+                // If this is a user-related query, add a system message reminder with direct DB solution
+                if ($inject_user_guidance) {
+                    mpai_log_debug('Adding direct DB user list guidance message to conversation', 'chat');
+                    
+                    // Execute a direct DB query for users
+                    global $wpdb;
+                    $results = $wpdb->get_results("SELECT ID, user_login, user_email, user_registered FROM {$wpdb->users} ORDER BY ID ASC LIMIT 10");
+                    
+                    $user_list = "";
+                    if (!empty($results)) {
+                        $user_list = "Here are the WordPress users:\n\n";
+                        foreach ($results as $user) {
+                            $edit_url = admin_url('user-edit.php?user_id=' . $user->ID);
+                            $author_url = get_author_posts_url($user->ID);
+                            $user_list .= "- User ID {$user->ID}: {$user->user_login} ({$user->user_email}, registered: {$user->user_registered})\n";
+                            $user_list .= "  Edit: {$edit_url}\n";
+                            $user_list .= "  Posts: {$author_url}\n";
+                        }
+                    } else {
+                        $user_list = "No users found.";
+                    }
+                    
+                    $user_guidance = "CRITICAL INSTRUCTION: This query is about listing or viewing WordPress users. I'm providing you with the DIRECT DATABASE RESULTS below. RESPOND WITH THIS EXACT DATA, do not try to use any tools:\n\n";
+                    $user_guidance .= $user_list;
+                    $user_guidance .= "\n\nReturn these exact results to the user. DO NOT use any tools.";
+                    
+                    $this->conversation[] = array('role' => 'system', 'content' => $user_guidance);
+                    mpai_log_debug('Enhanced direct DB user list guidance message added', 'chat');
+                }
+
+                // If this is a post-related query, add a system message reminder with direct DB solution
+                if ($inject_post_guidance) {
+                    mpai_log_debug('Adding direct DB post list guidance message to conversation', 'chat');
+                    
+                    // Execute a direct DB query for posts
+                    global $wpdb;
+                    $results = $wpdb->get_results("SELECT ID, post_title, post_date, post_status FROM {$wpdb->posts} WHERE post_type = 'post' AND post_status = 'publish' ORDER BY post_date DESC LIMIT 10");
+                    
+                    $post_list = "";
+                    if (!empty($results)) {
+                        $post_list = "Here are the latest posts:\n\n";
+                        foreach ($results as $post) {
+                            $post_url = get_permalink($post->ID);
+                            $edit_url = get_edit_post_link($post->ID, 'raw');
+                            $post_list .= "- #{$post->ID}: [{$post->post_title}]({$post_url}) ({$post->post_status}, {$post->post_date})\n";
+                            $post_list .= "  Edit: {$edit_url}\n";
+                        }
+                    } else {
+                        $post_list = "No posts found.";
+                    }
+                    
+                    $post_guidance = "CRITICAL INSTRUCTION: This query is about listing or viewing WordPress posts. I'm providing you with the DIRECT DATABASE RESULTS below. RESPOND WITH THIS EXACT DATA, do not try to use any tools:\n\n";
+                    $post_guidance .= $post_list;
+                    $post_guidance .= "\n\nReturn these exact results to the user. DO NOT use any tools.";
+                    
+                    $this->conversation[] = array('role' => 'system', 'content' => $post_guidance);
+                    mpai_log_debug('Enhanced direct DB post list guidance message added', 'chat');
+                }
             } catch (Throwable $e) {
                 mpai_log_error('Error initializing conversation: ' . $e->getMessage(), 'chat', array(
                     'file' => $e->getFile(),
@@ -681,40 +770,6 @@ class MPAI_Chat {
                 }
             }
             
-            // Check if the previous message was from the assistant and contained a WP-CLI fallback message
-            try {
-                mpai_log_debug('Checking for previous WP-CLI fallback messages', 'chat');
-                $prev_assistant_message = null;
-                $has_wp_cli_fallback = false;
-                
-                if (count($this->conversation) >= 2) {
-                    $prev_assistant_index = count($this->conversation) - 1;
-                    if (isset($this->conversation[$prev_assistant_index]['role']) && $this->conversation[$prev_assistant_index]['role'] == 'assistant') {
-                        $prev_assistant_message = $this->conversation[$prev_assistant_index]['content'];
-                        if (is_string($prev_assistant_message) && strpos($prev_assistant_message, 'WP-CLI is not available in this browser environment') !== false) {
-                            $has_wp_cli_fallback = true;
-                            mpai_log_debug('Found WP-CLI fallback message', 'chat');
-                        }
-                    }
-                }
-                
-                // If the previous message had a WP-CLI fallback suggestion, add a system message
-                if ($has_wp_cli_fallback) {
-                    mpai_log_debug('Adding WP-CLI fallback reminder', 'chat');
-                    $system_reminder = "IMPORTANT: WP-CLI is not available in browser environment. You MUST use the wp_api tool instead of wp_cli for operations. ";
-                    $system_reminder .= "For example, to create a post use: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"...\", \"content\": \"...\"}}";
-                    
-                    $this->conversation[] = array('role' => 'system', 'content' => $system_reminder);
-                    mpai_log_debug('Added system reminder about WP-CLI fallback', 'chat');
-                }
-            } catch (Throwable $e) {
-                mpai_log_error('Error checking for WP-CLI fallback: ' . $e->getMessage(), 'chat', array(
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
-                ));
-                // Continue even if this fails
-            }
             
             // Add user message to conversation
             try {
@@ -1403,33 +1458,6 @@ class MPAI_Chat {
      * @return string Formatted content
      */
     private function format_result_content($result) {
-        // Check for WP-CLI fallback suggestions
-        if (isset($result['tool']) && $result['tool'] == 'wp_cli' && 
-            isset($result['result']) && is_string($result['result']) && 
-            strpos($result['result'], 'WP-CLI is not available in this browser environment') != false) {
-            
-            // This is a WP-CLI fallback suggestion
-            $modified_result = $result['result'] . "\n\n";
-            $modified_result .= "Please use the wp_api tool for this operation instead of wp_cli. For example:\n";
-            
-            // Try to detect what operation was attempted
-            if (strpos($result['result'], 'post operations') != false || strpos($result['result'], 'wp post') != false) {
-                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Your Title\", \"content\": \"Your content here\", \"status\": \"draft\"}}\n```";
-            } else if (strpos($result['result'], 'user operations') != false || strpos($result['result'], 'wp user') != false) {
-                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_users\", \"limit\": 10}}\n```";
-            } else if (strpos($result['result'], 'MemberPress operations') != false || strpos($result['result'], 'wp mepr') != false) {
-                $modified_result .= "```json\n{\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n```";
-            } else if (strpos($result['result'], 'plugin operations') != false || strpos($result['result'], 'wp plugin') != false || 
-                       strpos($result['result'], 'activate plugin') != false || strpos($result['result'], 'deactivate plugin') != false) {
-                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"memberpress-coachkit/main.php\"}}\n```";
-                $modified_result .= "\nOr to get a list of all plugins:\n";
-                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_plugins\"}}\n```";
-            } else {
-                $modified_result .= "```json\n{\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Your Title\", \"content\": \"Your content here\", \"status\": \"draft\"}}\n```";
-            }
-            
-            return $modified_result;
-        }
         
         // Check for wp_api tool results
         if (isset($result['tool']) && $result['tool'] == 'wp_api' && isset($result['action'])) {

@@ -168,6 +168,8 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					return $this->update_post( $parameters );
 				case 'get_post':
 					return $this->get_post( $parameters );
+				case 'get_posts':
+					return $this->get_posts( $parameters );
 				case 'create_page':
 					$parameters['post_type'] = 'page';
 					return $this->create_post( $parameters );
@@ -404,6 +406,104 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			'post'     => $post,
 			'post_url' => $post_url,
 			'edit_url' => $edit_url,
+		);
+	}
+	
+	/**
+	 * Get multiple posts
+	 *
+	 * @param array $parameters Parameters for retrieving posts
+	 * @return array Posts data
+	 */
+	private function get_posts( $parameters ) {
+		// Set up the query arguments
+		$args = array(
+			'post_type'      => isset( $parameters['post_type'] ) ? $parameters['post_type'] : 'post',
+			'post_status'    => isset( $parameters['status'] ) ? $parameters['status'] : 'publish',
+			'posts_per_page' => isset( $parameters['limit'] ) ? intval( $parameters['limit'] ) : 10,
+			'orderby'        => isset( $parameters['orderby'] ) ? $parameters['orderby'] : 'date',
+			'order'          => isset( $parameters['order'] ) ? $parameters['order'] : 'DESC',
+		);
+		
+		// Add category filter if provided
+		if ( isset( $parameters['category'] ) ) {
+			if ( is_numeric( $parameters['category'] ) ) {
+				$args['cat'] = intval( $parameters['category'] );
+			} else {
+				$args['category_name'] = $parameters['category'];
+			}
+		}
+		
+		// Add tag filter if provided
+		if ( isset( $parameters['tag'] ) ) {
+			$args['tag'] = $parameters['tag'];
+		}
+		
+		// Add author filter if provided
+		if ( isset( $parameters['author'] ) ) {
+			if ( is_numeric( $parameters['author'] ) ) {
+				$args['author'] = intval( $parameters['author'] );
+			} else {
+				$args['author_name'] = $parameters['author'];
+			}
+		}
+		
+		// Add search term if provided
+		if ( isset( $parameters['search'] ) ) {
+			$args['s'] = $parameters['search'];
+		}
+		
+		// Add date filters if provided
+		if ( isset( $parameters['date_after'] ) ) {
+			$args['date_query'][] = array(
+				'after' => $parameters['date_after'],
+				'inclusive' => true,
+			);
+		}
+		
+		if ( isset( $parameters['date_before'] ) ) {
+			$args['date_query'][] = array(
+				'before' => $parameters['date_before'],
+				'inclusive' => true,
+			);
+		}
+		
+		// Get posts
+		$query = new WP_Query( $args );
+		$posts = $query->posts;
+		$result = array();
+		
+		foreach ( $posts as $post ) {
+			$post_id = $post->ID;
+			$post_data = array(
+				'ID'           => $post_id,
+				'title'        => $post->post_title,
+				'date'         => $post->post_date,
+				'status'       => $post->post_status,
+				'type'         => $post->post_type,
+				'excerpt'      => $post->post_excerpt,
+				'author'       => get_the_author_meta( 'display_name', $post->post_author ),
+				'permalink'    => get_permalink( $post_id ),
+				'edit_url'     => get_edit_post_link( $post_id, 'raw' ),
+			);
+			
+			// Get categories
+			$categories = wp_get_post_categories( $post_id, array( 'fields' => 'names' ) );
+			$post_data['categories'] = $categories;
+			
+			// Get tags
+			$tags = wp_get_post_tags( $post_id, array( 'fields' => 'names' ) );
+			$post_data['tags'] = $tags;
+			
+			$result[] = $post_data;
+		}
+		
+		return array(
+			'success' => true,
+			'count'   => count( $result ),
+			'posts'   => $result,
+			'total'   => $query->found_posts,
+			'max_pages' => $query->max_num_pages,
 		);
 	}
 
