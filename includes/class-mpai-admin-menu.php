@@ -153,7 +153,7 @@ class MPAI_Admin_Menu {
             );
         }
         
-        // Legacy settings page
+        // Settings page
         add_submenu_page(
             $this->parent_slug,
             __('Settings', 'memberpress-ai-assistant'),
@@ -162,6 +162,19 @@ class MPAI_Admin_Menu {
             'memberpress-ai-assistant-settings',
             function() {
                 require_once MPAI_PLUGIN_DIR . 'includes/settings-page.php';
+            }
+        );
+        
+        // Diagnostics page
+        add_submenu_page(
+            $this->parent_slug,
+            __('Diagnostics', 'memberpress-ai-assistant'),
+            __('Diagnostics', 'memberpress-ai-assistant'),
+            'manage_options',
+            'memberpress-ai-assistant-diagnostics',
+            function() {
+                // This page is handled by the diagnostics plugin
+                do_action('mpai_render_diagnostics');
             }
         );
     }
