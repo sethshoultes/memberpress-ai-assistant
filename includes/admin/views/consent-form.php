@@ -28,18 +28,20 @@ if (!defined('WPINC')) {
         </div>
         
         <div class="mpai-consent-form">
-            <form method="post" action="">
+            <form method="post" action="<?php echo esc_url(admin_url('admin.php?page=memberpress-ai-assistant')); ?>">
                 <?php wp_nonce_field('mpai_consent_nonce', 'mpai_consent_nonce'); ?>
                 
-                <label id="mpai-consent-label">
-                    <input type="checkbox" name="mpai_consent" id="mpai-consent-checkbox" value="1">
-                    <?php _e('I agree to the terms and conditions of using the MemberPress AI Assistant', 'memberpress-ai-assistant'); ?>
-                </label>
+                <div class="mpai-consent-checkbox-wrapper">
+                    <label for="mpai-consent-checkbox" id="mpai-consent-label">
+                        <input type="checkbox" name="mpai_consent" id="mpai-consent-checkbox" value="1">
+                        <span class="mpai-checkbox-text"><?php _e('I agree to the terms and conditions of using the MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></span>
+                    </label>
+                </div>
                 
-                <p id="mpai-welcome-buttons" class="consent-required">
+                <div id="mpai-welcome-buttons" class="consent-required">
                     <input type="submit" name="mpai_save_consent" id="mpai-open-chat" class="button button-primary" value="<?php esc_attr_e('Get Started', 'memberpress-ai-assistant'); ?>" disabled>
                     <a href="#" id="mpai-terms-link" class="button"><?php _e('Review Full Terms', 'memberpress-ai-assistant'); ?></a>
-                </p>
+                </div>
             </form>
         </div>
     </div>
@@ -47,15 +49,43 @@ if (!defined('WPINC')) {
 
 <script>
 jQuery(document).ready(function($) {
-    // Handle consent checkbox changes
-    $('#mpai-consent-checkbox').on('change', function() {
-        if ($(this).is(':checked')) {
-            $('#mpai-open-chat').prop('disabled', false);
+    console.log('Consent form script loaded');
+    
+    // Function to update button state
+    function updateButtonState(isChecked) {
+        console.log('Updating button state. Checked:', isChecked);
+        if (isChecked) {
+            $('#mpai-open-chat').prop('disabled', false).removeClass('disabled');
             $('#mpai-welcome-buttons').removeClass('consent-required');
         } else {
-            $('#mpai-open-chat').prop('disabled', true);
+            $('#mpai-open-chat').prop('disabled', true).addClass('disabled');
             $('#mpai-welcome-buttons').addClass('consent-required');
         }
+    }
+    
+    // Handle consent checkbox changes
+    $('#mpai-consent-checkbox').on('change', function() {
+        updateButtonState($(this).is(':checked'));
+    });
+    
+    // Also handle clicks on the label
+    $('#mpai-consent-label').on('click', function(e) {
+        // Don't handle if the click was directly on the checkbox (it will trigger the change event)
+        if (e.target.id !== 'mpai-consent-checkbox') {
+            e.preventDefault();
+            var checkbox = $('#mpai-consent-checkbox');
+            checkbox.prop('checked', !checkbox.is(':checked')).trigger('change');
+        }
+    });
+    
+    // Handle form submission
+    $('form').on('submit', function(e) {
+        if (!$('#mpai-consent-checkbox').is(':checked')) {
+            e.preventDefault();
+            alert('<?php echo esc_js(__('Please agree to the terms and conditions before proceeding.', 'memberpress-ai-assistant')); ?>');
+            return false;
+        }
+        return true;
     });
     
     // Handle terms link click
@@ -126,9 +156,33 @@ jQuery(document).ready(function($) {
     margin-top: 25px;
 }
 
+.mpai-consent-checkbox-wrapper {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+}
+
 #mpai-consent-label {
+    display: flex;
+    align-items: center;
     font-size: 15px;
     font-weight: 500;
+    cursor: pointer;
+}
+
+#mpai-consent-checkbox {
+    margin-right: 10px;
+    transform: scale(1.2);
+}
+
+.mpai-checkbox-text {
+    flex: 1;
+}
+
+#mpai-welcome-buttons {
+    margin-top: 20px;
 }
 
 .consent-required .button-primary {

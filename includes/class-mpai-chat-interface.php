@@ -205,6 +205,16 @@ class MPAI_Chat_Interface {
     public function render() {
         include_once plugin_dir_path(dirname(__FILE__)) . 'includes/chat-interface.php';
     }
+    
+    /**
+     * Check if user has consented to terms
+     *
+     * @return bool
+     */
+    public function check_consent() {
+        $consent_manager = MPAI_Consent_Manager::get_instance();
+        return $consent_manager->has_user_consented();
+    }
 
     /**
      * Process a chat message via AJAX.
@@ -218,6 +228,11 @@ class MPAI_Chat_Interface {
         // Only allow logged-in users with appropriate capabilities
         if (!current_user_can('edit_posts')) {
             wp_send_json_error('Unauthorized access');
+        }
+        
+        // Check if user has consented to terms
+        if (!$this->check_consent()) {
+            wp_send_json_error('User has not consented to terms');
         }
 
         // Get the message from the request
@@ -258,6 +273,11 @@ class MPAI_Chat_Interface {
         // Only allow logged-in users with appropriate capabilities
         if (!current_user_can('edit_posts')) {
             wp_send_json_error('Unauthorized access');
+        }
+        
+        // Check if user has consented to terms
+        if (!$this->check_consent()) {
+            wp_send_json_error('User has not consented to terms');
         }
 
         try {
@@ -333,6 +353,11 @@ class MPAI_Chat_Interface {
         if (!current_user_can('edit_posts')) {
             wp_send_json_error('Unauthorized access');
         }
+        
+        // Check if user has consented to terms
+        if (!$this->check_consent()) {
+            wp_send_json_error('User has not consented to terms');
+        }
 
         // Get the conversation history
         $user_id = get_current_user_id();
@@ -354,37 +379,6 @@ class MPAI_Chat_Interface {
      * @param string $message The user message
      * @param string $response The AI response
      */
-    /**
-     * Save user consent via AJAX
-     */
-    public function save_consent_ajax() {
-        // Check nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_chat_nonce')) {
-            wp_send_json_error('Invalid nonce');
-            return;
-        }
-        
-        // Check if user is logged in
-        if (!is_user_logged_in()) {
-            wp_send_json_error('User not logged in');
-            return;
-        }
-        
-        // Get the consent value
-        $consent = isset($_POST['consent']) ? (bool) $_POST['consent'] : false;
-        
-        // Get current user ID
-        $user_id = get_current_user_id();
-        
-        // Update user meta
-        update_user_meta($user_id, 'mpai_has_consented', $consent);
-        
-        // Return success
-        wp_send_json_success(array(
-            'message' => 'Consent saved',
-            'consent' => $consent
-        ));
-    }
 
     private function save_message_to_history($message, $response) {
         $user_id = get_current_user_id();

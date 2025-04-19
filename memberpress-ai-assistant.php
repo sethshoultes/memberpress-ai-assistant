@@ -129,6 +129,9 @@ define('MPAI_PLUGIN_BASENAME', plugin_basename(__FILE__));
 // Load Hook and Filter Utilities first for documentation and registration
 require_once MPAI_PLUGIN_DIR . 'includes/utilities/class-mpai-hooks.php';
 
+// Load Consent Manager
+require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-consent-manager.php';
+
 // Initialize all hooks and filters
 MPAI_Hooks::init();
 
@@ -205,9 +208,6 @@ class MemberPress_AI_Assistant {
         // Fix menu highlighting for settings page
         add_action('admin_head', array($this, 'fix_global_menu_highlighting'));
         
-        // Process consent form submissions
-        add_action('admin_init', array($this, 'process_consent_form'));
-        
         // Handle redirection after plugin activation
         add_action('admin_init', array($this, 'maybe_redirect_after_activation'));
         
@@ -221,7 +221,6 @@ class MemberPress_AI_Assistant {
         add_action('wp_ajax_mpai_process_chat', array($this, 'process_chat_ajax'));
         add_action('wp_ajax_mpai_clear_chat_history', array($this, 'clear_chat_history_ajax'));
         add_action('wp_ajax_mpai_get_chat_history', array($this, 'get_chat_history_ajax'));
-        add_action('wp_ajax_mpai_save_consent', array($this, 'save_consent_ajax'));
         
         // Plugin Logger AJAX handlers
         add_action('wp_ajax_mpai_get_plugin_logs', array($this, 'get_plugin_logs_ajax'));
@@ -1534,46 +1533,6 @@ class MemberPress_AI_Assistant {
         ));
     }
 
-    /**
-     * Save user consent via AJAX
-     */
-    public function save_consent_ajax() {
-        // Check nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_nonce')) {
-            wp_send_json_error('Invalid nonce');
-            return;
-        }
-        
-        // Check if user is logged in
-        if (!is_user_logged_in()) {
-            wp_send_json_error('User not logged in');
-            return;
-        }
-        
-        // Get current user ID
-        $user_id = get_current_user_id();
-        
-        // Check if user has already consented
-        $has_consented = get_user_meta($user_id, 'mpai_has_consented', true);
-        
-        // Only allow setting consent to true, not revoking it
-        if (!$has_consented) {
-            // Update user meta - only allow setting to true
-            update_user_meta($user_id, 'mpai_has_consented', true);
-            
-            // Return success
-            wp_send_json_success(array(
-                'message' => 'Consent saved',
-                'consent' => true
-            ));
-        } else {
-            // User has already consented, cannot change
-            wp_send_json_success(array(
-                'message' => 'User has already consented',
-                'consent' => true
-            ));
-        }
-    }
 
     /**
      * Save message to conversation history
@@ -1846,15 +1805,7 @@ class MemberPress_AI_Assistant {
         flush_rewrite_rules();
         
         // Reset all user consents upon deactivation
-        global $wpdb;
-        
-        // Delete consent meta for all users
-        $wpdb->delete(
-            $wpdb->usermeta,
-            array('meta_key' => 'mpai_has_consented')
-        );
-        
-        mpai_log_info('All user consents have been reset upon plugin deactivation', 'consent');
+        MPAI_Consent_Manager::reset_all_consents();
     }
 
     /**
@@ -1876,6 +1827,9 @@ class MemberPress_AI_Assistant {
         
         // Initialize plugin logger
         mpai_init_plugin_logger();
+        
+        // Initialize the consent manager
+        MPAI_Consent_Manager::get_instance();
         
         // Initialize error recovery system
         if (function_exists('mpai_init_error_recovery')) {
