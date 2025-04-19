@@ -1032,6 +1032,9 @@ class MPAI_Plugin_Logger {
         
         $days_to_keep = get_option( 'mpai_plugin_logs_retention_days', 90 );
         
+        // Filter log retention period
+        $days_to_keep = apply_filters('MPAI_HOOK_FILTER_log_retention', $days_to_keep);
+        
         // Don't delete logs if retention is set to 0 (keep forever)
         if ( $days_to_keep <= 0 ) {
             return 0;

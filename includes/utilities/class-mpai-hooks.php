@@ -47,6 +47,9 @@ class MPAI_Hooks {
         self::register_content_hooks();
         self::register_tool_hooks();
         self::register_agent_hooks();
+        self::register_api_hooks();
+        self::register_error_hooks();
+        self::register_logging_hooks();
     }
     
     /**
@@ -229,6 +232,251 @@ class MPAI_Hooks {
             ['days' => ['type' => 'integer', 'description' => 'Number of days to retain history.']],
             '1.7.0',
             'history'
+        );
+    }
+    
+    /**
+     * Register API integration hooks
+     */
+    private static function register_api_hooks() {
+        // API Integration Hooks
+        self::register_hook(
+            'MPAI_HOOK_ACTION_before_api_request',
+            'Action before sending request to AI provider',
+            [
+                'api_name' => ['type' => 'string', 'description' => 'The name of the API provider.'],
+                'request_params' => ['type' => 'array', 'description' => 'The request parameters.'],
+                'context' => ['type' => 'array', 'description' => 'Additional context for the request.']
+            ],
+            '1.7.0',
+            'api'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_after_api_request',
+            'Action after receiving response from AI provider',
+            [
+                'api_name' => ['type' => 'string', 'description' => 'The name of the API provider.'],
+                'request_params' => ['type' => 'array', 'description' => 'The request parameters.'],
+                'response' => ['type' => 'mixed', 'description' => 'The API response.'],
+                'duration' => ['type' => 'float', 'description' => 'The request duration in seconds.']
+            ],
+            '1.7.0',
+            'api'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_api_request_params',
+            'Filter request parameters before sending',
+            [],
+            [
+                'params' => ['type' => 'array', 'description' => 'The request parameters.'],
+                'api_name' => ['type' => 'string', 'description' => 'The name of the API provider.']
+            ],
+            '1.7.0',
+            'api'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_api_response',
+            'Filter raw API response',
+            [],
+            [
+                'response' => ['type' => 'mixed', 'description' => 'The API response.'],
+                'api_name' => ['type' => 'string', 'description' => 'The name of the API provider.'],
+                'request_params' => ['type' => 'array', 'description' => 'The request parameters.']
+            ],
+            '1.7.0',
+            'api'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_api_provider',
+            'Filter which API provider to use',
+            'openai',
+            [
+                'provider' => ['type' => 'string', 'description' => 'The API provider to use.'],
+                'context' => ['type' => 'array', 'description' => 'Additional context for the request.']
+            ],
+            '1.7.0',
+            'api'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_api_rate_limit',
+            'Filter rate limiting behavior',
+            [],
+            [
+                'rate_limits' => ['type' => 'array', 'description' => 'The rate limiting configuration.'],
+                'api_name' => ['type' => 'string', 'description' => 'The name of the API provider.']
+            ],
+            '1.7.0',
+            'api'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_format_api_response',
+            'Filter response formatting for display',
+            '',
+            [
+                'formatted_response' => ['type' => 'string', 'description' => 'The formatted response.'],
+                'raw_response' => ['type' => 'mixed', 'description' => 'The raw API response.'],
+                'api_name' => ['type' => 'string', 'description' => 'The name of the API provider.']
+            ],
+            '1.7.0',
+            'api'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_cache_ttl',
+            'Filter cache time-to-live settings by request type',
+            3600,
+            [
+                'ttl' => ['type' => 'int', 'description' => 'The cache TTL in seconds.'],
+                'request_type' => ['type' => 'string', 'description' => 'The type of request.'],
+                'api_name' => ['type' => 'string', 'description' => 'The name of the API provider.']
+            ],
+            '1.7.0',
+            'api'
+        );
+    }
+    
+    /**
+     * Register error handling hooks
+     */
+    private static function register_error_hooks() {
+        // Error Handling Hooks
+        self::register_filter(
+            'MPAI_HOOK_FILTER_api_error_handling',
+            'Filter error handling behavior',
+            [],
+            [
+                'handling' => ['type' => 'array', 'description' => 'The error handling configuration.'],
+                'error' => ['type' => 'WP_Error', 'description' => 'The error object.'],
+                'api_name' => ['type' => 'string', 'description' => 'The name of the API provider.']
+            ],
+            '1.7.0',
+            'error'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_before_error_recovery',
+            'Action before error recovery attempted',
+            [
+                'error' => ['type' => 'WP_Error', 'description' => 'The error object.'],
+                'component' => ['type' => 'string', 'description' => 'The component that failed.'],
+                'recovery_strategy' => ['type' => 'array', 'description' => 'The recovery strategy.']
+            ],
+            '1.7.0',
+            'error'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_after_error_recovery',
+            'Action after error recovery completed',
+            [
+                'error' => ['type' => 'WP_Error', 'description' => 'The original error object.'],
+                'component' => ['type' => 'string', 'description' => 'The component that failed.'],
+                'recovery_result' => ['type' => 'mixed', 'description' => 'The result of recovery attempt.'],
+                'success' => ['type' => 'bool', 'description' => 'Whether recovery was successful.']
+            ],
+            '1.7.0',
+            'error'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_error_message',
+            'Filter user-facing error messages',
+            '',
+            [
+                'message' => ['type' => 'string', 'description' => 'The error message.'],
+                'error' => ['type' => 'WP_Error', 'description' => 'The error object.'],
+                'context' => ['type' => 'array', 'description' => 'Additional context.']
+            ],
+            '1.7.0',
+            'error'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_error_should_retry',
+            'Filter whether an error should trigger a retry',
+            true,
+            [
+                'should_retry' => ['type' => 'bool', 'description' => 'Whether to retry.'],
+                'error' => ['type' => 'WP_Error', 'description' => 'The error object.'],
+                'retry_count' => ['type' => 'int', 'description' => 'The current retry count.'],
+                'max_retries' => ['type' => 'int', 'description' => 'The maximum number of retries.']
+            ],
+            '1.7.0',
+            'error'
+        );
+    }
+    
+    /**
+     * Register logging system hooks
+     */
+    private static function register_logging_hooks() {
+        // Logging Hooks
+        self::register_filter(
+            'MPAI_HOOK_FILTER_log_entry',
+            'Filter log entry before writing',
+            [],
+            [
+                'entry' => ['type' => 'array', 'description' => 'The log entry.'],
+                'level' => ['type' => 'string', 'description' => 'The log level.'],
+                'component' => ['type' => 'string', 'description' => 'The component generating the log.']
+            ],
+            '1.7.0',
+            'logging'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_should_log',
+            'Filter whether to log a specific event',
+            true,
+            [
+                'should_log' => ['type' => 'bool', 'description' => 'Whether to log the event.'],
+                'level' => ['type' => 'string', 'description' => 'The log level.'],
+                'message' => ['type' => 'string', 'description' => 'The log message.'],
+                'component' => ['type' => 'string', 'description' => 'The component generating the log.']
+            ],
+            '1.7.0',
+            'logging'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_log_level',
+            'Filter log level for a specific event',
+            'info',
+            [
+                'level' => ['type' => 'string', 'description' => 'The log level.'],
+                'message' => ['type' => 'string', 'description' => 'The log message.'],
+                'component' => ['type' => 'string', 'description' => 'The component generating the log.']
+            ],
+            '1.7.0',
+            'logging'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_log_retention',
+            'Filter log retention period',
+            30,
+            ['days' => ['type' => 'int', 'description' => 'Number of days to retain logs.']],
+            '1.7.0',
+            'logging'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_sanitize_log_data',
+            'Filter to sanitize sensitive data in logs',
+            [],
+            [
+                'data' => ['type' => 'array', 'description' => 'The data to sanitize.'],
+                'level' => ['type' => 'string', 'description' => 'The log level.'],
+                'component' => ['type' => 'string', 'description' => 'The component generating the log.']
+            ],
+            '1.7.0',
+            'logging'
         );
     }
     

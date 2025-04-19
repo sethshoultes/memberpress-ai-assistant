@@ -591,6 +591,390 @@ add_filter('MPAI_HOOK_FILTER_agent_handoff', function($selected_agent_id, $agent
 }, 10, 4);
 ```
 
+## API Integration Hooks
+
+### `MPAI_HOOK_ACTION_before_api_request`
+
+**Description:** Action before sending request to AI provider.
+
+**Parameters:**
+- `$api_name` (string): The name of the API provider.
+- `$request_params` (array): The request parameters.
+- `$context` (array): Additional context for the request.
+
+**Example:**
+```php
+add_action('MPAI_HOOK_ACTION_before_api_request', function($api_name, $request_params, $context) {
+    // Code to run before API request
+    error_log('Sending request to ' . $api_name . ' API');
+    
+    // You could modify request parameters here if needed
+}, 10, 3);
+```
+
+### `MPAI_HOOK_ACTION_after_api_request`
+
+**Description:** Action after receiving response from AI provider.
+
+**Parameters:**
+- `$api_name` (string): The name of the API provider.
+- `$request_params` (array): The request parameters.
+- `$response` (mixed): The API response.
+- `$duration` (float): The request duration in seconds.
+
+**Example:**
+```php
+add_action('MPAI_HOOK_ACTION_after_api_request', function($api_name, $request_params, $response, $duration) {
+    // Code to run after API request
+    error_log('Received response from ' . $api_name . ' API in ' . $duration . ' seconds');
+    
+    // You could log API usage metrics here
+}, 10, 4);
+```
+
+### `MPAI_HOOK_FILTER_api_request_params` (Filter)
+
+**Description:** Filter request parameters before sending.
+
+**Parameters:**
+- `$params` (array): The request parameters.
+- `$api_name` (string): The name of the API provider.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_api_request_params', function($params, $api_name) {
+    // Modify request parameters
+    if ($api_name === 'openai') {
+        // Add custom parameters for OpenAI
+        $params['temperature'] = 0.5;
+    }
+    
+    return $params;
+}, 10, 2);
+```
+
+### `MPAI_HOOK_FILTER_api_response` (Filter)
+
+**Description:** Filter raw API response.
+
+**Parameters:**
+- `$response` (mixed): The API response.
+- `$api_name` (string): The name of the API provider.
+- `$request_params` (array): The request parameters.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_api_response', function($response, $api_name, $request_params) {
+    // Modify API response
+    if ($api_name === 'anthropic' && isset($response['content'][0]['text'])) {
+        // Add a footer to all responses
+        $response['content'][0]['text'] .= "\n\n---\nPowered by MemberPress AI";
+    }
+    
+    return $response;
+}, 10, 3);
+```
+
+### `MPAI_HOOK_FILTER_api_provider` (Filter)
+
+**Description:** Filter which API provider to use.
+
+**Parameters:**
+- `$provider` (string): The API provider to use.
+- `$context` (array): Additional context for the request.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_api_provider', function($provider, $context) {
+    // Modify API provider based on context
+    if (isset($context['request_type']) && $context['request_type'] === 'content_creation') {
+        // Use Anthropic for content creation
+        return 'anthropic';
+    }
+    
+    return $provider;
+}, 10, 2);
+```
+
+### `MPAI_HOOK_FILTER_api_rate_limit` (Filter)
+
+**Description:** Filter rate limiting behavior.
+
+**Parameters:**
+- `$rate_limits` (array): The rate limiting configuration.
+- `$api_name` (string): The name of the API provider.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_api_rate_limit', function($rate_limits, $api_name) {
+    // Modify rate limits
+    if ($api_name === 'openai') {
+        $rate_limits['requests_per_minute'] = 20;
+    }
+    
+    return $rate_limits;
+}, 10, 2);
+```
+
+### `MPAI_HOOK_FILTER_format_api_response` (Filter)
+
+**Description:** Filter response formatting for display.
+
+**Parameters:**
+- `$formatted_response` (string): The formatted response.
+- `$raw_response` (mixed): The raw API response.
+- `$api_name` (string): The name of the API provider.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_format_api_response', function($formatted_response, $raw_response, $api_name) {
+    // Modify formatted response
+    return $formatted_response . "\n\nResponse provided by " . ucfirst($api_name);
+}, 10, 3);
+```
+
+### `MPAI_HOOK_FILTER_cache_ttl` (Filter)
+
+**Description:** Filter cache time-to-live settings by request type.
+
+**Parameters:**
+- `$ttl` (int): The cache TTL in seconds.
+- `$request_type` (string): The type of request.
+- `$api_name` (string): The name of the API provider.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_cache_ttl', function($ttl, $request_type, $api_name) {
+    // Modify cache TTL
+    if ($request_type === 'chat_completion') {
+        // Cache chat completions for 1 hour
+        return 3600;
+    } else if ($request_type === 'content_creation') {
+        // Don't cache content creation requests
+        return 0;
+    }
+    
+    return $ttl;
+}, 10, 3);
+```
+
+## Error Handling Hooks
+
+### `MPAI_HOOK_FILTER_api_error_handling` (Filter)
+
+**Description:** Filter error handling behavior.
+
+**Parameters:**
+- `$handling` (array): The error handling configuration.
+- `$error` (WP_Error): The error object.
+- `$api_name` (string): The name of the API provider.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_api_error_handling', function($handling, $error, $api_name) {
+    // Modify error handling
+    if ($api_name === 'openai') {
+        // Increase max retries for OpenAI
+        $handling['max_retries'] = 5;
+    }
+    
+    return $handling;
+}, 10, 3);
+```
+
+### `MPAI_HOOK_ACTION_before_error_recovery`
+
+**Description:** Action before error recovery attempted.
+
+**Parameters:**
+- `$error` (WP_Error): The error object.
+- `$component` (string): The component that failed.
+- `$recovery_strategy` (array): The recovery strategy.
+
+**Example:**
+```php
+add_action('MPAI_HOOK_ACTION_before_error_recovery', function($error, $component, $recovery_strategy) {
+    // Code to run before error recovery
+    error_log('Attempting to recover from error in ' . $component);
+}, 10, 3);
+```
+
+### `MPAI_HOOK_ACTION_after_error_recovery`
+
+**Description:** Action after error recovery completed.
+
+**Parameters:**
+- `$error` (WP_Error): The original error object.
+- `$component` (string): The component that failed.
+- `$recovery_result` (mixed): The result of recovery attempt.
+- `$success` (bool): Whether recovery was successful.
+
+**Example:**
+```php
+add_action('MPAI_HOOK_ACTION_after_error_recovery', function($error, $component, $recovery_result, $success) {
+    // Code to run after error recovery
+    if ($success) {
+        error_log('Successfully recovered from error in ' . $component);
+    } else {
+        error_log('Failed to recover from error in ' . $component);
+    }
+}, 10, 4);
+```
+
+### `MPAI_HOOK_FILTER_error_message` (Filter)
+
+**Description:** Filter user-facing error messages.
+
+**Parameters:**
+- `$message` (string): The error message.
+- `$error` (WP_Error): The error object.
+- `$context` (array): Additional context.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_error_message', function($message, $error, $context) {
+    // Modify error message
+    if (strpos($message, 'API key') !== false) {
+        return 'The AI service is currently unavailable. Please try again later or contact support.';
+    }
+    
+    return $message;
+}, 10, 3);
+```
+
+### `MPAI_HOOK_FILTER_error_should_retry` (Filter)
+
+**Description:** Filter whether an error should trigger a retry.
+
+**Parameters:**
+- `$should_retry` (bool): Whether to retry.
+- `$error` (WP_Error): The error object.
+- `$retry_count` (int): The current retry count.
+- `$max_retries` (int): The maximum number of retries.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_error_should_retry', function($should_retry, $error, $retry_count, $max_retries) {
+    // Determine if we should retry
+    $error_data = $error->get_error_data();
+    
+    // Don't retry if it's a rate limit error and we've already tried once
+    if (isset($error_data['status']) && $error_data['status'] === 'rate_limit_exceeded' && $retry_count > 1) {
+        return false;
+    }
+    
+    return $should_retry;
+}, 10, 4);
+```
+
+## Logging Hooks
+
+### `MPAI_HOOK_FILTER_log_entry` (Filter)
+
+**Description:** Filter log entry before writing.
+
+**Parameters:**
+- `$entry` (array): The log entry.
+- `$level` (string): The log level.
+- `$component` (string): The component generating the log.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_log_entry', function($entry, $level, $component) {
+    // Modify log entry
+    // Add additional context
+    $entry['user_id'] = get_current_user_id();
+    
+    return $entry;
+}, 10, 3);
+```
+
+### `MPAI_HOOK_FILTER_should_log` (Filter)
+
+**Description:** Filter whether to log a specific event.
+
+**Parameters:**
+- `$should_log` (bool): Whether to log the event.
+- `$level` (string): The log level.
+- `$message` (string): The log message.
+- `$component` (string): The component generating the log.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_should_log', function($should_log, $level, $message, $component) {
+    // Determine if we should log
+    // For example, don't log debug messages in production
+    if ($level === 'debug' && wp_get_environment_type() === 'production') {
+        return false;
+    }
+    
+    return $should_log;
+}, 10, 4);
+```
+
+### `MPAI_HOOK_FILTER_log_level` (Filter)
+
+**Description:** Filter log level for a specific event.
+
+**Parameters:**
+- `$level` (string): The log level.
+- `$message` (string): The log message.
+- `$component` (string): The component generating the log.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_log_level', function($level, $message, $component) {
+    // Modify log level
+    // For example, upgrade certain warnings to errors
+    if ($level === 'warning' && strpos($message, 'API failure') !== false) {
+        return 'error';
+    }
+    
+    return $level;
+}, 10, 3);
+```
+
+### `MPAI_HOOK_FILTER_log_retention` (Filter)
+
+**Description:** Filter log retention period.
+
+**Parameters:**
+- `$days` (int): Number of days to retain logs.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_log_retention', function($days) {
+    // Modify retention period
+    // For example, keep logs for 60 days
+    return 60;
+});
+```
+
+### `MPAI_HOOK_FILTER_sanitize_log_data` (Filter)
+
+**Description:** Filter to sanitize sensitive data in logs.
+
+**Parameters:**
+- `$data` (array): The data to sanitize.
+- `$level` (string): The log level.
+- `$component` (string): The component generating the log.
+
+**Example:**
+```php
+add_filter('MPAI_HOOK_FILTER_sanitize_log_data', function($data, $level, $component) {
+    // Sanitize sensitive data
+    if (isset($data['api_key'])) {
+        $data['api_key'] = '***REDACTED***';
+    }
+    
+    if (isset($data['auth_token'])) {
+        $data['auth_token'] = '***REDACTED***';
+    }
+    
+    return $data;
+}, 10, 3);
+```
+
 ## Content and UI Hooks
 
 ### `MPAI_HOOK_FILTER_generated_content` (Filter)
