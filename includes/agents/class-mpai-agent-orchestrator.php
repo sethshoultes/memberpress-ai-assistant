@@ -422,6 +422,9 @@ class MPAI_Agent_Orchestrator {
 			return false;
 		}
 		
+		// Fire action when an agent is registered
+		do_action('MPAI_HOOK_ACTION_register_agent', $agent_id, $agent_instance, $this);
+		
 		$this->agents[$agent_id] = $agent_instance;
 		
 		// Register with SDK if available
@@ -1753,8 +1756,18 @@ class MPAI_Agent_Orchestrator {
 		// Get the agent
 		$agent = $this->agents[$agent_id];
 		
+		// Filter agent capabilities
+		$capabilities = $agent->get_capabilities();
+		$capabilities = apply_filters('MPAI_HOOK_FILTER_agent_capabilities', $capabilities, $agent_id, $agent, $this);
+		
+		// Fire action before agent processes request
+		do_action('MPAI_HOOK_ACTION_before_agent_process', $agent_id, $params, $user_id, $user_context, $this);
+		
 		// Process the request with the agent
 		$result = $agent->process_request( $intent_data, $user_context );
+		
+		// Fire action after agent processes request
+		do_action('MPAI_HOOK_ACTION_after_agent_process', $agent_id, $params, $user_id, $result, $this);
 		
 		// Update memory
 		$this->update_memory( $user_id, $intent_data, $result );
