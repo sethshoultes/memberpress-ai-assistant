@@ -20,6 +20,9 @@ class MPAI_XML_Content_Parser {
     public function parse_xml_blog_post($xml_content) {
         mpai_log_debug('Parsing XML blog post, content length: ' . strlen($xml_content), 'xml-parser');
         
+        // Filter the content before parsing
+        $xml_content = apply_filters('MPAI_HOOK_FILTER_generated_content', $xml_content, 'blog_post');
+        
         // Handle empty content
         if (empty($xml_content)) {
             mpai_log_warning('Empty XML content received', 'xml-parser');
@@ -81,9 +84,17 @@ class MPAI_XML_Content_Parser {
         
         $post_data = [];
         
+        // Filter content markers used in XML parsing
+        $markers = apply_filters('MPAI_HOOK_FILTER_content_marker', [
+            'title' => 'post-title',
+            'content' => 'post-content',
+            'excerpt' => 'post-excerpt',
+            'status' => 'post-status'
+        ]);
+        
         // Extract post components with more robust patterns
         // Title extraction - allowing for attributes in the tag
-        if (preg_match('/<post-title[^>]*>(.*?)<\/post-title>/s', $xml, $title_match)) {
+        if (preg_match('/<' . $markers['title'] . '[^>]*>(.*?)<\/' . $markers['title'] . '>/s', $xml, $title_match)) {
             $post_data['title'] = trim($title_match[1]);
             mpai_log_debug('Extracted title: ' . substr($post_data['title'], 0, 50) . (strlen($post_data['title']) > 50 ? '...' : ''), 'xml-parser');
         } else {
@@ -91,7 +102,7 @@ class MPAI_XML_Content_Parser {
         }
         
         // Content extraction - allowing for attributes in the tag
-        if (preg_match('/<post-content[^>]*>(.*?)<\/post-content>/s', $xml, $content_match)) {
+        if (preg_match('/<' . $markers['content'] . '[^>]*>(.*?)<\/' . $markers['content'] . '>/s', $xml, $content_match)) {
             $blocks_content = $content_match[1];
             mpai_log_debug('Extracted content blocks, length: ' . strlen($blocks_content), 'xml-parser');
             $post_data['content'] = $this->convert_xml_blocks_to_gutenberg($blocks_content);
@@ -105,13 +116,13 @@ class MPAI_XML_Content_Parser {
         }
         
         // Excerpt extraction - allowing for attributes in the tag
-        if (preg_match('/<post-excerpt[^>]*>(.*?)<\/post-excerpt>/s', $xml, $excerpt_match)) {
+        if (preg_match('/<' . $markers['excerpt'] . '[^>]*>(.*?)<\/' . $markers['excerpt'] . '>/s', $xml, $excerpt_match)) {
             $post_data['excerpt'] = trim($excerpt_match[1]);
             mpai_log_debug('Extracted excerpt: ' . substr($post_data['excerpt'], 0, 50) . (strlen($post_data['excerpt']) > 50 ? '...' : ''), 'xml-parser');
         }
         
         // Status extraction - allowing for attributes in the tag
-        if (preg_match('/<post-status[^>]*>(.*?)<\/post-status>/s', $xml, $status_match)) {
+        if (preg_match('/<' . $markers['status'] . '[^>]*>(.*?)<\/' . $markers['status'] . '>/s', $xml, $status_match)) {
             $post_data['status'] = trim($status_match[1]);
             mpai_log_debug('Extracted status: ' . $post_data['status'], 'xml-parser');
         }
@@ -132,6 +143,9 @@ class MPAI_XML_Content_Parser {
             mpai_log_info('Using default status: draft', 'xml-parser');
         }
         
+        // Filter the blog post content before returning
+        $post_data = apply_filters('MPAI_HOOK_FILTER_blog_post_content', $post_data, $xml_content);
+        
         return $post_data;
     }
 
@@ -146,6 +160,9 @@ class MPAI_XML_Content_Parser {
         
         // Log the original content for debugging
         mpai_log_debug('Processing block content: ' . substr($blocks_content, 0, 100) . '...', 'xml-parser');
+        
+        // Filter content templates before processing
+        $blocks_content = apply_filters('MPAI_HOOK_FILTER_content_template', $blocks_content);
         
         // Make sure blocks_content is a string
         if (!is_string($blocks_content)) {
@@ -242,11 +259,43 @@ class MPAI_XML_Content_Parser {
                     continue;
                 }
                 
+                // Get content formatting rules
+                $formatting_rules = apply_filters('MPAI_HOOK_FILTER_content_formatting', [
+                    'paragraph' => [
+                        'tag' => 'p',
+                        'wrapper' => '<!-- wp:paragraph --><p>%s</p><!-- /wp:paragraph -->'
+                    ],
+                    'heading' => [
+                        'tag' => 'h',
+                        'wrapper' => '<!-- wp:heading {"level":%d} --><h%d>%s</h%d><!-- /wp:heading -->'
+                    ],
+                    'list' => [
+                        'tag' => 'ul',
+                        'wrapper' => '<!-- wp:list --><ul>%s</ul><!-- /wp:list -->'
+                    ],
+                    'ordered-list' => [
+                        'tag' => 'ol',
+                        'wrapper' => '<!-- wp:list {"ordered":true} --><ol>%s</ol><!-- /wp:list -->'
+                    ],
+                    'quote' => [
+                        'tag' => 'blockquote',
+                        'wrapper' => '<!-- wp:quote --><blockquote class="wp-block-quote"><p>%s</p></blockquote><!-- /wp:quote -->'
+                    ],
+                    'code' => [
+                        'tag' => 'code',
+                        'wrapper' => '<!-- wp:code --><pre class="wp-block-code"><code>%s</code></pre><!-- /wp:code -->'
+                    ],
+                    'image' => [
+                        'tag' => 'img',
+                        'wrapper' => '<!-- wp:image {"src":"%s"} --><figure class="wp-block-image"><img src="%s" alt=""/></figure><!-- /wp:image -->'
+                    ]
+                ]);
+                
                 // Process based on block type
                 switch (strtolower($block_type)) {
                     case 'paragraph':
                     case 'p':
-                        $gutenberg_blocks[] = '<!-- wp:paragraph --><p>' . esc_html($block_content) . '</p><!-- /wp:paragraph -->';
+                        $gutenberg_blocks[] = sprintf($formatting_rules['paragraph']['wrapper'], esc_html($block_content));
                         break;
                         
                     case 'heading':
@@ -258,51 +307,58 @@ class MPAI_XML_Content_Parser {
                         
                         // Ensure level is between 1 and 6
                         $level = max(1, min(6, intval($block_level)));
-                        $gutenberg_blocks[] = '<!-- wp:heading {"level":' . $level . '} --><h' . $level . '>' . esc_html($block_content) . '</h' . $level . '><!-- /wp:heading -->';
+                        $gutenberg_blocks[] = sprintf($formatting_rules['heading']['wrapper'], $level, $level, esc_html($block_content), $level);
                         break;
                         
                     case 'list':
                     case 'ul':
                         // For unordered lists
                         $items = $this->process_list_items($block_content);
-                        $gutenberg_blocks[] = '<!-- wp:list --><ul>' . $items . '</ul><!-- /wp:list -->';
+                        $gutenberg_blocks[] = sprintf($formatting_rules['list']['wrapper'], $items);
                         break;
                     
                     case 'ordered-list':
                     case 'ol':
                         // For ordered lists
                         $items = $this->process_list_items($block_content);
-                        $gutenberg_blocks[] = '<!-- wp:list {"ordered":true} --><ol>' . $items . '</ol><!-- /wp:list -->';
+                        $gutenberg_blocks[] = sprintf($formatting_rules['ordered-list']['wrapper'], $items);
                         break;
                         
                     case 'quote':
                     case 'blockquote':
-                        $gutenberg_blocks[] = '<!-- wp:quote --><blockquote class="wp-block-quote"><p>' . esc_html($block_content) . '</p></blockquote><!-- /wp:quote -->';
+                        $gutenberg_blocks[] = sprintf($formatting_rules['quote']['wrapper'], esc_html($block_content));
                         break;
                         
                     case 'code':
                     case 'pre':
-                        $gutenberg_blocks[] = '<!-- wp:code --><pre class="wp-block-code"><code>' . htmlspecialchars($block_content) . '</code></pre><!-- /wp:code -->';
+                        $gutenberg_blocks[] = sprintf($formatting_rules['code']['wrapper'], htmlspecialchars($block_content));
                         break;
                         
                     case 'image':
                     case 'img':
                         // For image blocks - if content is a URL use it, otherwise check for src attribute
                         if (filter_var($block_content, FILTER_VALIDATE_URL)) {
-                            $gutenberg_blocks[] = '<!-- wp:image {"src":"' . esc_url($block_content) . '"} --><figure class="wp-block-image"><img src="' . esc_url($block_content) . '" alt=""/></figure><!-- /wp:image -->';
+                            $gutenberg_blocks[] = sprintf($formatting_rules['image']['wrapper'], esc_url($block_content), esc_url($block_content));
                         } elseif (preg_match('/src=([\'"]?)([^\'"]+)\\1/i', $block_content, $src_matches)) {
                             // Extract src from content that might contain an img tag
                             $src_url = $src_matches[2];
-                            $gutenberg_blocks[] = '<!-- wp:image {"src":"' . esc_url($src_url) . '"} --><figure class="wp-block-image"><img src="' . esc_url($src_url) . '" alt=""/></figure><!-- /wp:image -->';
+                            $gutenberg_blocks[] = sprintf($formatting_rules['image']['wrapper'], esc_url($src_url), esc_url($src_url));
                         } else {
                             // If not a URL, treat as a paragraph with the content
-                            $gutenberg_blocks[] = '<!-- wp:paragraph --><p>' . esc_html($block_content) . '</p><!-- /wp:paragraph -->';
+                            $gutenberg_blocks[] = sprintf($formatting_rules['paragraph']['wrapper'], esc_html($block_content));
                         }
                         break;
                         
                     default:
-                        // Default to paragraph for unknown types
-                        $gutenberg_blocks[] = '<!-- wp:paragraph --><p>' . esc_html($block_content) . '</p><!-- /wp:paragraph -->';
+                        // Filter content type detection
+                        $detected_type = apply_filters('MPAI_HOOK_FILTER_content_type', 'paragraph', $block_type, $block_content);
+                        
+                        // Use the detected type or default to paragraph
+                        if (isset($formatting_rules[$detected_type])) {
+                            $gutenberg_blocks[] = sprintf($formatting_rules[$detected_type]['wrapper'], esc_html($block_content));
+                        } else {
+                            $gutenberg_blocks[] = sprintf($formatting_rules['paragraph']['wrapper'], esc_html($block_content));
+                        }
                 }
             }
         } catch (Exception $e) {

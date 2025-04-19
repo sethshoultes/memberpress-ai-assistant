@@ -45,27 +45,62 @@ class MPAI_Admin {
         // Main page slug
         $main_page_slug = 'memberpress-ai-assistant';
         
+        // Define menu items
+        $menu_items = [];
+        
         if ($has_memberpress) {
             // If MemberPress is active, add as a submenu to MemberPress
-            add_submenu_page(
-                'memberpress', // Parent menu slug
-                __('AI Assistant', 'memberpress-ai-assistant'), // Page title
-                __('AI Assistant', 'memberpress-ai-assistant'), // Menu title
-                'manage_options', // Capability
-                $main_page_slug, // Menu slug
-                array($this, 'render_admin_page') // Callback
-            );
+            $menu_items[] = [
+                'type' => 'submenu',
+                'parent' => 'memberpress',
+                'page_title' => __('AI Assistant', 'memberpress-ai-assistant'),
+                'menu_title' => __('AI Assistant', 'memberpress-ai-assistant'),
+                'capability' => 'manage_options',
+                'menu_slug' => $main_page_slug,
+                'callback' => array($this, 'render_admin_page')
+            ];
         } else {
             // If MemberPress is not active, add as a top-level menu
-            add_menu_page(
-                __('MemberPress AI', 'memberpress-ai-assistant'), // Page title
-                __('MemberPress AI', 'memberpress-ai-assistant'), // Menu title
-                'manage_options', // Capability
-                $main_page_slug, // Menu slug
-                array($this, 'render_admin_page'), // Callback
-                MPAI_PLUGIN_URL . 'assets/images/memberpress-logo.svg', // Icon
-                30 // Position
-            );
+            $menu_items[] = [
+                'type' => 'menu',
+                'page_title' => __('MemberPress AI', 'memberpress-ai-assistant'),
+                'menu_title' => __('MemberPress AI', 'memberpress-ai-assistant'),
+                'capability' => 'manage_options',
+                'menu_slug' => $main_page_slug,
+                'callback' => array($this, 'render_admin_page'),
+                'icon' => MPAI_PLUGIN_URL . 'assets/images/memberpress-logo.svg',
+                'position' => 30
+            ];
+        }
+        
+        // Filter menu items
+        $menu_items = apply_filters('MPAI_HOOK_FILTER_admin_menu_items', $menu_items, $has_memberpress);
+        
+        // Register menu items
+        foreach ($menu_items as $item) {
+            // Filter capability
+            $capability = apply_filters('MPAI_HOOK_FILTER_admin_capabilities', $item['capability'], $item['menu_slug']);
+            
+            if ($item['type'] === 'submenu') {
+                add_submenu_page(
+                    $item['parent'],
+                    $item['page_title'],
+                    $item['menu_title'],
+                    $capability,
+                    $item['menu_slug'],
+                    $item['callback']
+                );
+            } else {
+                add_menu_page(
+                    $item['page_title'],
+                    $item['menu_title'],
+                    $capability,
+                    $item['menu_slug'],
+                    $item['callback'],
+                    $item['icon'],
+                    $item['position']
+                );
+            }
         }
     }
 
@@ -87,8 +122,14 @@ class MPAI_Admin {
             return;
         }
         
+        // Fire action before displaying settings page
+        do_action('MPAI_HOOK_ACTION_before_display_settings');
+        
         // User has consented, show the admin page
         require_once MPAI_PLUGIN_DIR . 'includes/admin/views/admin-page.php';
+        
+        // Fire action after displaying settings page
+        do_action('MPAI_HOOK_ACTION_after_display_settings');
     }
     
     /**

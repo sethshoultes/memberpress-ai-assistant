@@ -44,6 +44,7 @@ class MPAI_Hooks {
         self::register_core_hooks();
         self::register_chat_hooks();
         self::register_history_hooks();
+        self::register_content_hooks();
         self::register_tool_hooks();
         self::register_agent_hooks();
     }
@@ -228,6 +229,381 @@ class MPAI_Hooks {
             ['days' => ['type' => 'integer', 'description' => 'Number of days to retain history.']],
             '1.7.0',
             'history'
+        );
+    }
+    
+    /**
+     * Register content and UI hooks
+     */
+    private static function register_content_hooks() {
+        // Content Generation Hooks
+        self::register_filter(
+            'MPAI_HOOK_FILTER_generated_content',
+            'Filter any AI-generated content before use',
+            '',
+            [
+                'content' => ['type' => 'string', 'description' => 'The generated content.'],
+                'content_type' => ['type' => 'string', 'description' => 'The type of content being generated.']
+            ],
+            '1.7.0',
+            'content'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_content_template',
+            'Filter content templates before filling with data',
+            '',
+            ['template' => ['type' => 'string', 'description' => 'The content template.']],
+            '1.7.0',
+            'content'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_content_formatting',
+            'Filter content formatting rules',
+            [],
+            ['rules' => ['type' => 'array', 'description' => 'The formatting rules.']],
+            '1.7.0',
+            'content'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_blog_post_content',
+            'Filter blog post content before creation',
+            [],
+            [
+                'post_data' => ['type' => 'array', 'description' => 'The post data.'],
+                'xml_content' => ['type' => 'string', 'description' => 'The original XML content.']
+            ],
+            '1.7.0',
+            'content'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_before_content_save',
+            'Action before saving generated content',
+            [
+                'content' => ['type' => 'string', 'description' => 'The content to be saved.'],
+                'content_type' => ['type' => 'string', 'description' => 'The type of content being saved.']
+            ],
+            '1.7.0',
+            'content'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_after_content_save',
+            'Action after saving generated content',
+            [
+                'content' => ['type' => 'string', 'description' => 'The saved content.'],
+                'content_type' => ['type' => 'string', 'description' => 'The type of content that was saved.'],
+                'content_id' => ['type' => 'int', 'description' => 'The ID of the saved content.']
+            ],
+            '1.7.0',
+            'content'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_content_type',
+            'Filter the detected content type from AI responses',
+            'paragraph',
+            [
+                'detected_type' => ['type' => 'string', 'description' => 'The detected content type.'],
+                'block_type' => ['type' => 'string', 'description' => 'The original block type.'],
+                'content' => ['type' => 'string', 'description' => 'The content.']
+            ],
+            '1.7.0',
+            'content'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_content_marker',
+            'Filter content markers used in XML parsing',
+            [],
+            ['markers' => ['type' => 'array', 'description' => 'The content markers.']],
+            '1.7.0',
+            'content'
+        );
+        
+        // Admin Interface Hooks
+        self::register_filter(
+            'MPAI_HOOK_FILTER_admin_menu_items',
+            'Filter admin menu items before registration',
+            [],
+            [
+                'menu_items' => ['type' => 'array', 'description' => 'The menu items.'],
+                'has_memberpress' => ['type' => 'bool', 'description' => 'Whether MemberPress is active.']
+            ],
+            '1.7.0',
+            'admin'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_admin_capabilities',
+            'Filter capabilities required for admin functions',
+            'manage_options',
+            [
+                'capability' => ['type' => 'string', 'description' => 'The capability.'],
+                'menu_slug' => ['type' => 'string', 'description' => 'The menu slug.']
+            ],
+            '1.7.0',
+            'admin'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_settings_fields',
+            'Filter settings fields before display',
+            [],
+            ['fields' => ['type' => 'array', 'description' => 'The settings fields.']],
+            '1.7.0',
+            'admin'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_settings_tabs',
+            'Filter settings tabs before display',
+            [],
+            ['tabs' => ['type' => 'array', 'description' => 'The settings tabs.']],
+            '1.7.0',
+            'admin'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_before_display_settings',
+            'Action before displaying settings page',
+            [],
+            '1.7.0',
+            'admin'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_after_display_settings',
+            'Action after displaying settings page',
+            [],
+            '1.7.0',
+            'admin'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_dashboard_sections',
+            'Filter dashboard page sections',
+            [],
+            ['sections' => ['type' => 'array', 'description' => 'The dashboard sections.']],
+            '1.7.0',
+            'admin'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_chat_interface_render',
+            'Filter chat interface rendering',
+            '',
+            [
+                'content' => ['type' => 'string', 'description' => 'The chat interface HTML.'],
+                'position' => ['type' => 'string', 'description' => 'The chat position.'],
+                'welcome_message' => ['type' => 'string', 'description' => 'The welcome message.']
+            ],
+            '1.7.0',
+            'admin'
+        );
+    }
+    
+    /**
+     * Register tool and agent hooks
+     */
+    private static function register_tool_agent_hooks() {
+        // Tool Execution Hooks
+        self::register_hook(
+            'MPAI_HOOK_ACTION_tool_registry_init',
+            'Fires after tool registry initialization',
+            ['registry' => ['type' => 'MPAI_Tool_Registry', 'description' => 'The tool registry instance.']],
+            '1.7.0',
+            'tools'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_register_tool',
+            'Fires when a tool is registered to the system',
+            [
+                'tool_id' => ['type' => 'string', 'description' => 'The ID of the registered tool.'],
+                'tool' => ['type' => 'object', 'description' => 'The tool instance.'],
+                'registry' => ['type' => 'MPAI_Tool_Registry', 'description' => 'The tool registry instance.']
+            ],
+            '1.7.0',
+            'tools'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_before_tool_execution',
+            'Fires before any tool is executed with tool name and parameters',
+            [
+                'tool_name' => ['type' => 'string', 'description' => 'The name of the tool being executed.'],
+                'parameters' => ['type' => 'array', 'description' => 'The parameters for the tool execution.'],
+                'tool' => ['type' => 'MPAI_Base_Tool', 'description' => 'The tool instance.']
+            ],
+            '1.7.0',
+            'tools'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_after_tool_execution',
+            'Fires after tool execution with tool name, parameters, and result',
+            [
+                'tool_name' => ['type' => 'string', 'description' => 'The name of the tool that was executed.'],
+                'parameters' => ['type' => 'array', 'description' => 'The parameters used for the tool execution.'],
+                'result' => ['type' => 'mixed', 'description' => 'The result of the tool execution.'],
+                'tool' => ['type' => 'MPAI_Base_Tool', 'description' => 'The tool instance.']
+            ],
+            '1.7.0',
+            'tools'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_tool_parameters',
+            'Filters tool parameters before execution',
+            [],
+            [
+                'parameters' => ['type' => 'array', 'description' => 'The parameters to filter.'],
+                'tool_name' => ['type' => 'string', 'description' => 'The name of the tool.'],
+                'tool' => ['type' => 'MPAI_Base_Tool', 'description' => 'The tool instance.']
+            ],
+            '1.7.0',
+            'tools'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_tool_execution_result',
+            'Filters tool execution result',
+            null,
+            [
+                'result' => ['type' => 'mixed', 'description' => 'The result to filter.'],
+                'tool_name' => ['type' => 'string', 'description' => 'The name of the tool.'],
+                'parameters' => ['type' => 'array', 'description' => 'The parameters used for execution.'],
+                'tool' => ['type' => 'MPAI_Base_Tool', 'description' => 'The tool instance.']
+            ],
+            '1.7.0',
+            'tools'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_available_tools',
+            'Filters the list of available tools',
+            [],
+            [
+                'tools' => ['type' => 'array', 'description' => 'The tools array.'],
+                'registry' => ['type' => 'MPAI_Tool_Registry', 'description' => 'The tool registry instance.']
+            ],
+            '1.7.0',
+            'tools'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_tool_capability_check',
+            'Filters whether a user has capability to use a specific tool',
+            true,
+            [
+                'can_use' => ['type' => 'bool', 'description' => 'Whether the user can use the tool.'],
+                'tool_name' => ['type' => 'string', 'description' => 'The name of the tool.'],
+                'parameters' => ['type' => 'array', 'description' => 'The parameters for the tool execution.'],
+                'tool' => ['type' => 'MPAI_Base_Tool', 'description' => 'The tool instance.']
+            ],
+            '1.7.0',
+            'tools'
+        );
+        
+        // Agent System Hooks
+        self::register_hook(
+            'MPAI_HOOK_ACTION_register_agent',
+            'Fires when an agent is registered to the system',
+            [
+                'agent_id' => ['type' => 'string', 'description' => 'The ID of the registered agent.'],
+                'agent_instance' => ['type' => 'object', 'description' => 'The agent instance.'],
+                'orchestrator' => ['type' => 'MPAI_Agent_Orchestrator', 'description' => 'The agent orchestrator instance.']
+            ],
+            '1.7.0',
+            'agents'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_before_agent_process',
+            'Fires before agent processes a request',
+            [
+                'agent_id' => ['type' => 'string', 'description' => 'The ID of the agent.'],
+                'params' => ['type' => 'array', 'description' => 'The parameters for the agent.'],
+                'user_id' => ['type' => 'int', 'description' => 'The user ID.'],
+                'context' => ['type' => 'array', 'description' => 'The user context.'],
+                'orchestrator' => ['type' => 'MPAI_Agent_Orchestrator', 'description' => 'The agent orchestrator instance.']
+            ],
+            '1.7.0',
+            'agents'
+        );
+        
+        self::register_hook(
+            'MPAI_HOOK_ACTION_after_agent_process',
+            'Fires after agent processes a request',
+            [
+                'agent_id' => ['type' => 'string', 'description' => 'The ID of the agent.'],
+                'params' => ['type' => 'array', 'description' => 'The parameters for the agent.'],
+                'user_id' => ['type' => 'int', 'description' => 'The user ID.'],
+                'result' => ['type' => 'array', 'description' => 'The result of the agent processing.'],
+                'orchestrator' => ['type' => 'MPAI_Agent_Orchestrator', 'description' => 'The agent orchestrator instance.']
+            ],
+            '1.7.0',
+            'agents'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_agent_capabilities',
+            'Filters agent capabilities',
+            [],
+            [
+                'capabilities' => ['type' => 'array', 'description' => 'The agent capabilities.'],
+                'agent_id' => ['type' => 'string', 'description' => 'The ID of the agent.'],
+                'agent' => ['type' => 'object', 'description' => 'The agent instance.'],
+                'orchestrator' => ['type' => 'MPAI_Agent_Orchestrator', 'description' => 'The agent orchestrator instance.']
+            ],
+            '1.7.0',
+            'agents'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_agent_validation',
+            'Filters agent validation results',
+            true,
+            [
+                'is_valid' => ['type' => 'bool', 'description' => 'Whether the agent is valid.'],
+                'agent_id' => ['type' => 'string', 'description' => 'The ID of the agent.'],
+                'agent' => ['type' => 'object', 'description' => 'The agent instance.'],
+                'orchestrator' => ['type' => 'MPAI_Agent_Orchestrator', 'description' => 'The agent orchestrator instance.']
+            ],
+            '1.7.0',
+            'agents'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_agent_scoring',
+            'Filters confidence scores for agent selection',
+            [],
+            [
+                'scores' => ['type' => 'array', 'description' => 'The agent confidence scores.'],
+                'message' => ['type' => 'string', 'description' => 'The user message.'],
+                'context' => ['type' => 'array', 'description' => 'The user context.'],
+                'orchestrator' => ['type' => 'MPAI_Agent_Orchestrator', 'description' => 'The agent orchestrator instance.']
+            ],
+            '1.7.0',
+            'agents'
+        );
+        
+        self::register_filter(
+            'MPAI_HOOK_FILTER_agent_handoff',
+            'Filters agent handoff behavior',
+            '',
+            [
+                'selected_agent_id' => ['type' => 'string', 'description' => 'The ID of the selected agent.'],
+                'agent_scores' => ['type' => 'array', 'description' => 'The agent confidence scores.'],
+                'message' => ['type' => 'string', 'description' => 'The user message.'],
+                'orchestrator' => ['type' => 'MPAI_Agent_Orchestrator', 'description' => 'The agent orchestrator instance.']
+            ],
+            '1.7.0',
+            'agents'
         );
     }
     
