@@ -132,7 +132,37 @@ class MPAI_OpenAI {
             ),
             $additional_params
         );
-
+        
+        // Create request params for hooks
+        $request_params = [
+            'endpoint' => $endpoint,
+            'headers' => $headers,
+            'body' => $body,
+            'model' => $this->model,
+            'temperature' => $this->temperature,
+            'max_tokens' => $this->max_tokens,
+        ];
+        
+        // Context for hooks
+        $context = [
+            'request_type' => 'chat_completion',
+            'message_count' => count($messages),
+        ];
+        
+        // Filter request parameters
+        $request_params = apply_filters('MPAI_HOOK_FILTER_api_request_params', $request_params, 'openai');
+        
+        // Extract filtered values
+        $endpoint = $request_params['endpoint'];
+        $headers = $request_params['headers'];
+        $body = $request_params['body'];
+        
+        // Action before API request
+        do_action('MPAI_HOOK_ACTION_before_api_request', 'openai', $request_params, $context);
+        
+        // Track request time
+        $start_time = microtime(true);
+        
         $response = wp_remote_post(
             $endpoint,
             array(
@@ -141,8 +171,13 @@ class MPAI_OpenAI {
                 'timeout' => 60,
             )
         );
-
+        
+        // Calculate request duration
+        $duration = microtime(true) - $start_time;
+        
         if (is_wp_error($response)) {
+            // Action after API request (with error)
+            do_action('MPAI_HOOK_ACTION_after_api_request', 'openai', $request_params, $response, $duration);
             return $response;
         }
 
@@ -150,16 +185,28 @@ class MPAI_OpenAI {
         $data = json_decode($body, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return new WP_Error('json_error', 'Failed to parse OpenAI API response.');
+            $error = new WP_Error('json_error', 'Failed to parse OpenAI API response.');
+            // Action after API request (with error)
+            do_action('MPAI_HOOK_ACTION_after_api_request', 'openai', $request_params, $error, $duration);
+            return $error;
         }
 
         if (isset($data['error'])) {
-            return new WP_Error(
+            $error = new WP_Error(
                 'openai_error',
                 $data['error']['message'],
                 array('status' => $data['error']['type'])
             );
+            // Action after API request (with error)
+            do_action('MPAI_HOOK_ACTION_after_api_request', 'openai', $request_params, $error, $duration);
+            return $error;
         }
+        
+        // Filter API response
+        $data = apply_filters('MPAI_HOOK_FILTER_api_response', $data, 'openai', $request_params);
+        
+        // Action after API request (success)
+        do_action('MPAI_HOOK_ACTION_after_api_request', 'openai', $request_params, $data, $duration);
 
         return $data;
     }

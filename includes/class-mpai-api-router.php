@@ -83,6 +83,10 @@ class MPAI_API_Router {
         
         // Default to primary API unless forced
         $primary = $force_api ?: $this->primary_api;
+        
+        // Allow filtering of API provider
+        $primary = apply_filters('MPAI_HOOK_FILTER_api_provider', $primary, $context);
+        
         $fallback = ($primary === 'openai') ? 'anthropic' : 'openai';
         
         // Skip fallback if API is forced
@@ -274,8 +278,8 @@ class MPAI_API_Router {
                         'fallback_exception',
                         $e2->getMessage(),
                         [
-                            'primary_api' => $primary,
-                            'primary_error' => $e->getMessage(),
+                            'primary_api' => $fallback === 'openai' ? 'anthropic' : 'openai',
+                            'primary_error' => $e2->getMessage(),
                             'exception_class' => get_class($e2),
                             'exception_trace' => $e2->getTraceAsString()
                         ]
@@ -400,25 +404,12 @@ class MPAI_API_Router {
     public function reset_state() {
         mpai_log_debug('API Router: Resetting state', 'api-router');
         
-        // Reset OpenAI instance if it exists
-        if (isset($this->openai) && method_exists($this->openai, 'reset')) {
-            $this->openai->reset();
-            mpai_log_debug('Reset OpenAI instance', 'api-router');
-        } else {
-            // If no reset method, recreate the instance
-            $this->openai = new MPAI_OpenAI();
-            mpai_log_debug('Recreated OpenAI instance', 'api-router');
-        }
+        // Recreate API instances
+        $this->openai = new MPAI_OpenAI();
+        mpai_log_debug('Recreated OpenAI instance', 'api-router');
         
-        // Reset Anthropic instance if it exists
-        if (isset($this->anthropic) && method_exists($this->anthropic, 'reset')) {
-            $this->anthropic->reset();
-            mpai_log_debug('Reset Anthropic instance', 'api-router');
-        } else {
-            // If no reset method, recreate the instance  
-            $this->anthropic = new MPAI_Anthropic();
-            mpai_log_debug('Recreated Anthropic instance', 'api-router');
-        }
+        $this->anthropic = new MPAI_Anthropic();
+        mpai_log_debug('Recreated Anthropic instance', 'api-router');
         
         // Reload primary API setting from database
         $this->primary_api = get_option('mpai_primary_api', 'openai');

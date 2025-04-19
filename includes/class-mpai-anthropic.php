@@ -164,6 +164,38 @@ class MPAI_Anthropic {
         if (!empty($tools)) {
             $body['tools'] = $tools;
         }
+        
+        // Create request params for hooks
+        $request_params = [
+            'endpoint' => $endpoint,
+            'headers' => $headers,
+            'body' => $body,
+            'model' => $this->model,
+            'temperature' => $this->temperature,
+            'max_tokens' => $this->max_tokens,
+            'tools' => $tools,
+        ];
+        
+        // Context for hooks
+        $context = [
+            'request_type' => 'chat_completion',
+            'message_count' => count($messages),
+            'has_tools' => !empty($tools),
+        ];
+        
+        // Filter request parameters
+        $request_params = apply_filters('MPAI_HOOK_FILTER_api_request_params', $request_params, 'anthropic');
+        
+        // Extract filtered values
+        $endpoint = $request_params['endpoint'];
+        $headers = $request_params['headers'];
+        $body = $request_params['body'];
+        
+        // Action before API request
+        do_action('MPAI_HOOK_ACTION_before_api_request', 'anthropic', $request_params, $context);
+        
+        // Track request time
+        $start_time = microtime(true);
 
         $response = wp_remote_post(
             $endpoint,
@@ -173,25 +205,42 @@ class MPAI_Anthropic {
                 'timeout' => 60,
             )
         );
+        
+        // Calculate request duration
+        $duration = microtime(true) - $start_time;
 
         if (is_wp_error($response)) {
+            // Action after API request (with error)
+            do_action('MPAI_HOOK_ACTION_after_api_request', 'anthropic', $request_params, $response, $duration);
             return $response;
         }
 
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
+        $response_body = wp_remote_retrieve_body($response);
+        $data = json_decode($response_body, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return new WP_Error('json_error', 'Failed to parse Anthropic API response.');
+            $error = new WP_Error('json_error', 'Failed to parse Anthropic API response.');
+            // Action after API request (with error)
+            do_action('MPAI_HOOK_ACTION_after_api_request', 'anthropic', $request_params, $error, $duration);
+            return $error;
         }
 
         if (isset($data['error'])) {
-            return new WP_Error(
+            $error = new WP_Error(
                 'anthropic_error',
                 $data['error']['message'],
                 array('status' => $data['error']['type'])
             );
+            // Action after API request (with error)
+            do_action('MPAI_HOOK_ACTION_after_api_request', 'anthropic', $request_params, $error, $duration);
+            return $error;
         }
+        
+        // Filter API response
+        $data = apply_filters('MPAI_HOOK_FILTER_api_response', $data, 'anthropic', $request_params);
+        
+        // Action after API request (success)
+        do_action('MPAI_HOOK_ACTION_after_api_request', 'anthropic', $request_params, $data, $duration);
 
         return $data;
     }

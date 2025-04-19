@@ -289,6 +289,12 @@ class MPAI_Error_Recovery {
         $error_data = $error->get_error_data();
         $error_type = isset($error_data['type']) ? $error_data['type'] : self::ERROR_TYPE_SYSTEM;
         
+        // Get recovery strategy for this error type
+        $strategy = $this->get_recovery_strategy($error_type);
+        
+        // Filter error handling behavior
+        $strategy = apply_filters('MPAI_HOOK_FILTER_api_error_handling', $strategy, $error, $component);
+        
         // Check if circuit breaker is tripped
         if ($this->is_circuit_breaker_tripped($error_type, $component)) {
             $fallback_message = "Circuit breaker tripped for {$component}, using fallback";
@@ -304,8 +310,8 @@ class MPAI_Error_Recovery {
             return $error;
         }
         
-        // Get recovery strategy for this error type
-        $strategy = $this->get_recovery_strategy($error_type);
+        // Action before error recovery
+        do_action('MPAI_HOOK_ACTION_before_error_recovery', $error, $component, $strategy);
         
         // Try retry if enabled and callback provided
         if ($strategy['retry'] && $retry_callback && is_callable($retry_callback)) {
@@ -313,6 +319,14 @@ class MPAI_Error_Recovery {
             $retry_delay = isset($strategy['retry_delay']) ? $strategy['retry_delay'] : 0;
             
             for ($retry = 1; $retry <= $max_retries; $retry++) {
+                // Check if we should retry this error
+                $should_retry = apply_filters('MPAI_HOOK_FILTER_error_should_retry', true, $error, $retry, $max_retries);
+                
+                if (!$should_retry) {
+                    mpai_log_info("Skipping retry for {$component} based on filter", 'error-recovery');
+                    break;
+                }
+                
                 // Log retry attempt
                 mpai_log_info("Retrying {$component} after error (attempt {$retry}/{$max_retries})", 'error-recovery');
                 
@@ -328,6 +342,10 @@ class MPAI_Error_Recovery {
                 if (!is_wp_error($result)) {
                     // Success, reset error counter
                     $this->reset_error_counter($error_type, $component);
+                    
+                    // Action after successful error recovery
+                    do_action('MPAI_HOOK_ACTION_after_error_recovery', $error, $component, $result, true);
+                    
                     return $result;
                 }
             }
@@ -336,10 +354,18 @@ class MPAI_Error_Recovery {
         // Retry failed or not available, try fallback if enabled and callback provided
         if (isset($strategy['fallback_available']) && $strategy['fallback_available'] && $fallback_callback && is_callable($fallback_callback)) {
             mpai_log_info("Using fallback for {$component} after retry failure", 'error-recovery');
-            return call_user_func_array($fallback_callback, $fallback_args);
+            $fallback_result = call_user_func_array($fallback_callback, $fallback_args);
+            
+            // Action after fallback error recovery
+            do_action('MPAI_HOOK_ACTION_after_error_recovery', $error, $component, $fallback_result, !is_wp_error($fallback_result));
+            
+            return $fallback_result;
         }
         
         // No recovery possible, return the original error
+        // Action after failed error recovery
+        do_action('MPAI_HOOK_ACTION_after_error_recovery', $error, $component, $error, false);
+        
         return $error;
     }
     
@@ -551,6 +577,14 @@ class MPAI_Error_Recovery {
         
         // Basic error message
         $formatted = "Error: {$message}";
+        
+        // Filter user-facing error message
+        $context = [
+            'code' => $code,
+            'data' => $data,
+            'include_debug' => $include_debug
+        ];
+        $formatted = apply_filters('MPAI_HOOK_FILTER_error_message', $formatted, $error, $context);
         
         // Add user-friendly explanations based on error type
         if (isset($data['type'])) {
