@@ -126,6 +126,9 @@ define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MPAI_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
+// Load Hook and Filter Utilities first for documentation and registration
+require_once MPAI_PLUGIN_DIR . 'includes/utilities/class-mpai-hooks.php';
+
 /**
  * Class MemberPress_AI_Assistant
  * 
@@ -158,8 +161,28 @@ class MemberPress_AI_Assistant {
      * Initialize the plugin.
      */
     private function __construct() {
+        // Register and fire the before init hook
+        MPAI_Hooks::register_hook(
+            'MPAI_HOOK_ACTION_before_plugin_init',
+            'Fires before the plugin initialization begins',
+            [],
+            '1.7.0',
+            'core'
+        );
+        do_action('MPAI_HOOK_ACTION_before_plugin_init');
+        
         // Load required files
         $this->load_dependencies();
+        
+        // Register and fire the dependencies loaded hook
+        MPAI_Hooks::register_hook(
+            'MPAI_HOOK_ACTION_loaded_dependencies',
+            'Fires after all dependencies are loaded',
+            [],
+            '1.7.0',
+            'core'
+        );
+        do_action('MPAI_HOOK_ACTION_loaded_dependencies');
         
         // Initialize the new Admin Menu system (simpler approach)
         $this->init_admin_menu();
@@ -211,6 +234,16 @@ class MemberPress_AI_Assistant {
         // Register activation and deactivation hooks
         register_activation_hook(__FILE__, array($this, 'activate'));
         register_deactivation_hook(__FILE__, array($this, 'deactivate'));
+        
+        // Register and fire the after init hook
+        MPAI_Hooks::register_hook(
+            'MPAI_HOOK_ACTION_after_plugin_init',
+            'Fires after plugin is fully initialized',
+            [],
+            '1.7.0',
+            'core'
+        );
+        do_action('MPAI_HOOK_ACTION_after_plugin_init');
     }
     
     /**
@@ -344,7 +377,7 @@ class MemberPress_AI_Assistant {
      * Load required dependencies
      */
     private function load_dependencies() {
-        // Load Error Recovery System first for exception handling
+        // Load Error Recovery System for exception handling
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-error-recovery.php';
         
         // Load State Validation System for state consistency
@@ -1825,6 +1858,19 @@ class MemberPress_AI_Assistant {
      * Initialize plugin components
      */
     public function init_plugin_components() {
+        // Register the capabilities filter
+        MPAI_Hooks::register_filter(
+            'MPAI_HOOK_FILTER_plugin_capabilities',
+            'Filter capabilities needed for plugin operation',
+            ['manage_options'],
+            ['capabilities' => 'Array of capability strings'],
+            '1.7.0',
+            'core'
+        );
+        
+        // Apply the filter to get required capabilities
+        $capabilities = apply_filters('MPAI_HOOK_FILTER_plugin_capabilities', ['manage_options']);
+        
         // Initialize plugin logger
         mpai_init_plugin_logger();
         
@@ -1893,6 +1939,19 @@ class MemberPress_AI_Assistant {
                 // CLI commands
                 'mpai_allowed_cli_commands' => array('wp user list', 'wp post list', 'wp plugin list'),
             );
+            
+            // Register the default options filter
+            MPAI_Hooks::register_filter(
+                'MPAI_HOOK_FILTER_default_options',
+                'Filter default options when plugin is first initialized',
+                $additional_defaults,
+                ['default_options' => 'Array of default option values'],
+                '1.7.0',
+                'core'
+            );
+            
+            // Apply the filter
+            $additional_defaults = apply_filters('MPAI_HOOK_FILTER_default_options', $additional_defaults);
             
             foreach ($additional_defaults as $option => $value) {
                 if (get_option($option) === false) {

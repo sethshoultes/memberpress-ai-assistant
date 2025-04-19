@@ -191,10 +191,27 @@ class MPAI_Chat {
                 return;
             }
             
+            // Register the history retention filter
+            MPAI_Hooks::register_filter(
+                'MPAI_HOOK_FILTER_history_retention',
+                'Filter history retention settings',
+                30, // Default 30 days
+                ['days' => ['type' => 'integer', 'description' => 'Number of days to retain history']],
+                '1.7.0',
+                'history'
+            );
+            
+            // Apply the filter
+            $retention_days = apply_filters('MPAI_HOOK_FILTER_history_retention', 30);
+            
+            // Get messages with retention period
+            $retention_date = date('Y-m-d H:i:s', strtotime("-{$retention_days} days"));
+            
             $messages = $wpdb->get_results(
                 $wpdb->prepare(
-                    "SELECT message, response FROM $table_messages WHERE conversation_id = %s ORDER BY created_at ASC",
-                    $conversation_id
+                    "SELECT message, response FROM $table_messages WHERE conversation_id = %s AND created_at >= %s ORDER BY created_at ASC",
+                    $conversation_id,
+                    $retention_date
                 ),
                 ARRAY_A
             );
@@ -221,6 +238,19 @@ class MPAI_Chat {
             }
             
             mpai_log_debug('Loaded ' . count($messages) . ' messages from conversation', 'chat');
+            
+            // Register the conversation history filter
+            MPAI_Hooks::register_filter(
+                'MPAI_HOOK_FILTER_chat_conversation_history',
+                'Filter the conversation history',
+                $this->conversation,
+                ['conversation' => ['type' => 'array', 'description' => 'The conversation history array']],
+                '1.7.0',
+                'chat'
+            );
+            
+            // Apply the filter
+            $this->conversation = apply_filters('MPAI_HOOK_FILTER_chat_conversation_history', $this->conversation);
         } catch (Exception $e) {
             mpai_log_error('Error loading conversation: ' . $e->getMessage(), 'chat', array(
                 'file' => $e->getFile(),
@@ -441,6 +471,19 @@ class MPAI_Chat {
         $system_prompt .= "Only use wpcli commands for operations not supported by wp_api. ";
         $system_prompt .= "Keep your responses concise and focused on MemberPress functionality.";
         
+        // Register the system prompt filter
+        MPAI_Hooks::register_filter(
+            'MPAI_HOOK_FILTER_system_prompt',
+            'Filter to modify the system prompt',
+            $system_prompt,
+            ['system_prompt' => ['type' => 'string', 'description' => 'The system prompt to filter']],
+            '1.7.0',
+            'chat'
+        );
+        
+        // Apply the filter
+        $system_prompt = apply_filters('MPAI_HOOK_FILTER_system_prompt', $system_prompt);
+        
         return $system_prompt;
     }
 
@@ -453,6 +496,29 @@ class MPAI_Chat {
     public function process_message($message) {
         try {
             mpai_log_debug('process_message started with message: ' . $message, 'chat');
+            
+            // Register and fire the before process message hook
+            MPAI_Hooks::register_hook(
+                'MPAI_HOOK_ACTION_before_process_message',
+                'Fires before processing a user message',
+                ['message' => ['type' => 'string', 'description' => 'The user message being processed']],
+                '1.7.0',
+                'chat'
+            );
+            do_action('MPAI_HOOK_ACTION_before_process_message', $message);
+            
+            // Register the message content filter
+            MPAI_Hooks::register_filter(
+                'MPAI_HOOK_FILTER_message_content',
+                'Filter message content before sending to AI',
+                $message,
+                ['message' => ['type' => 'string', 'description' => 'The message content to filter']],
+                '1.7.0',
+                'chat'
+            );
+            
+            // Apply the filter to the message
+            $message = apply_filters('MPAI_HOOK_FILTER_message_content', $message);
             
             // Check for plugin-related queries and add a guidance message
             $plugin_keywords = ['recently installed', 'recently activated', 'plugin history', 'plugin log', 'plugin activity', 'when was plugin', 'installed recently', 'activated recently', 'what plugins', 'which plugins'];
@@ -838,6 +904,27 @@ class MPAI_Chat {
                 mpai_log_debug('Created new conversation with only user message', 'chat');
             }
             
+            // Create a user context array that can be filtered
+            $user_context = array(
+                'user_id' => get_current_user_id(),
+                'conversation_id' => $this->get_current_conversation_id(),
+                'timestamp' => current_time('timestamp'),
+                'is_admin' => current_user_can('manage_options')
+            );
+            
+            // Register the user context filter
+            MPAI_Hooks::register_filter(
+                'MPAI_HOOK_FILTER_user_context',
+                'Filter user context data sent with messages',
+                $user_context,
+                ['user_context' => ['type' => 'array', 'description' => 'The user context data']],
+                '1.7.0',
+                'chat'
+            );
+            
+            // Apply the filter
+            $user_context = apply_filters('MPAI_HOOK_FILTER_user_context', $user_context);
+            
             // Get response using the API Router
             try {
                 mpai_log_debug('Generating chat completion using API Router', 'chat');
@@ -1009,13 +1096,45 @@ class MPAI_Chat {
                         }
                     }
                     
+                    // Register the response content filter
+                    MPAI_Hooks::register_filter(
+                        'MPAI_HOOK_FILTER_response_content',
+                        'Filter AI response before returning to user',
+                        $processed_response,
+                        [
+                            'response' => ['type' => 'string', 'description' => 'The AI response content'],
+                            'message' => ['type' => 'string', 'description' => 'The original user message']
+                        ],
+                        '1.7.0',
+                        'chat'
+                    );
+                    
+                    // Apply the filter
+                    $processed_response = apply_filters('MPAI_HOOK_FILTER_response_content', $processed_response, $message);
+                    
                     mpai_log_debug('Returning successful response', 'chat');
-                    return array(
+                    
+                    $result = array(
                         'success' => true,
                         'message' => $processed_response,
                         'raw_response' => $message_content,
                         'api_used' => isset($response['api']) ? $response['api'] : 'unknown',
                     );
+                    
+                    // Register and fire the after process message hook
+                    MPAI_Hooks::register_hook(
+                        'MPAI_HOOK_ACTION_after_process_message',
+                        'Fires after message is processed',
+                        [
+                            'message' => ['type' => 'string', 'description' => 'The user message that was processed'],
+                            'response' => ['type' => 'array', 'description' => 'The AI response']
+                        ],
+                        '1.7.0',
+                        'chat'
+                    );
+                    do_action('MPAI_HOOK_ACTION_after_process_message', $message, $result);
+                    
+                    return $result;
                 } else {
                     mpai_log_debug('Response is not an array with message field', 'chat');
                 }
@@ -1079,12 +1198,44 @@ class MPAI_Chat {
                         // Continue with original response if processing fails
                     }
                     
+                    // Register the response content filter
+                    MPAI_Hooks::register_filter(
+                        'MPAI_HOOK_FILTER_response_content',
+                        'Filter AI response before returning to user',
+                        $processed_response,
+                        [
+                            'response' => ['type' => 'string', 'description' => 'The AI response content'],
+                            'message' => ['type' => 'string', 'description' => 'The original user message']
+                        ],
+                        '1.7.0',
+                        'chat'
+                    );
+                    
+                    // Apply the filter
+                    $processed_response = apply_filters('MPAI_HOOK_FILTER_response_content', $processed_response, $message);
+                    
                     mpai_log_debug('Returning successful string response', 'chat');
-                    return array(
+                    
+                    $result = array(
                         'success' => true,
                         'message' => $processed_response,
                         'raw_response' => $response,
                     );
+                    
+                    // Register and fire the after process message hook
+                    MPAI_Hooks::register_hook(
+                        'MPAI_HOOK_ACTION_after_process_message',
+                        'Fires after message is processed',
+                        [
+                            'message' => ['type' => 'string', 'description' => 'The user message that was processed'],
+                            'response' => ['type' => 'array', 'description' => 'The AI response']
+                        ],
+                        '1.7.0',
+                        'chat'
+                    );
+                    do_action('MPAI_HOOK_ACTION_after_process_message', $message, $result);
+                    
+                    return $result;
                 } else {
                     mpai_log_debug('Response is not a string: ' . gettype($response), 'chat');
                 }
@@ -1242,6 +1393,19 @@ class MPAI_Chat {
     private function save_message($message, $response) {
         global $wpdb;
         
+        // Register and fire the before save history hook
+        MPAI_Hooks::register_hook(
+            'MPAI_HOOK_ACTION_before_save_history',
+            'Action before saving chat history',
+            [
+                'message' => ['type' => 'string', 'description' => 'The user message'],
+                'response' => ['type' => 'string', 'description' => 'The AI response']
+            ],
+            '1.7.0',
+            'history'
+        );
+        do_action('MPAI_HOOK_ACTION_before_save_history', $message, $response);
+        
         $conversation_id = $this->get_current_conversation_id();
         
         if (empty($conversation_id)) {
@@ -1267,6 +1431,19 @@ class MPAI_Chat {
             array('updated_at' => current_time('mysql')),
             array('conversation_id' => $conversation_id)
         );
+        
+        // Register and fire the after save history hook
+        MPAI_Hooks::register_hook(
+            'MPAI_HOOK_ACTION_after_save_history',
+            'Action after saving chat history',
+            [
+                'message' => ['type' => 'string', 'description' => 'The user message'],
+                'response' => ['type' => 'string', 'description' => 'The AI response']
+            ],
+            '1.7.0',
+            'history'
+        );
+        do_action('MPAI_HOOK_ACTION_after_save_history', $message, $response);
     }
 
     /**
@@ -1774,6 +1951,19 @@ class MPAI_Chat {
     private function is_command_allowed($command) {
         $allowed_commands = get_option('mpai_allowed_cli_commands', array());
         
+        // Register the allowed commands filter
+        MPAI_Hooks::register_filter(
+            'MPAI_HOOK_FILTER_allowed_commands',
+            'Filter allowed commands in chat',
+            $allowed_commands,
+            ['allowed_commands' => ['type' => 'array', 'description' => 'Array of allowed command names']],
+            '1.7.0',
+            'chat'
+        );
+        
+        // Apply the filter
+        $allowed_commands = apply_filters('MPAI_HOOK_FILTER_allowed_commands', $allowed_commands);
+        
         if (empty($allowed_commands)) {
             return false;
         }
@@ -1799,6 +1989,16 @@ class MPAI_Chat {
         global $wpdb;
         
         mpai_log_debug('Starting complete conversation reset', 'chat');
+        
+        // Register and fire the before clear history hook
+        MPAI_Hooks::register_hook(
+            'MPAI_HOOK_ACTION_before_clear_history',
+            'Action before clearing chat history',
+            [],
+            '1.7.0',
+            'history'
+        );
+        do_action('MPAI_HOOK_ACTION_before_clear_history');
         
         try {
             // Reset internal conversation array first
@@ -1893,6 +2093,17 @@ class MPAI_Chat {
             }
             
             mpai_log_debug('Conversation reset completed successfully', 'chat');
+            
+            // Register and fire the after clear history hook
+            MPAI_Hooks::register_hook(
+                'MPAI_HOOK_ACTION_after_clear_history',
+                'Action after clearing chat history',
+                [],
+                '1.7.0',
+                'history'
+            );
+            do_action('MPAI_HOOK_ACTION_after_clear_history');
+            
             return true;
             
         } catch (Throwable $e) {
