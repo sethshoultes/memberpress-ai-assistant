@@ -1075,7 +1075,7 @@
                     dataType: 'json',
                     data: {
                         action: 'mpai_save_consent',
-                        nonce: mpai_chat_data.nonce, // Use the chat nonce
+                        nonce: mpai_data.nonce, // Use the admin nonce
                         consent: true // Always save as true
                     },
                     success: function(response) {

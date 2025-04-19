@@ -14,9 +14,8 @@ if (!defined('WPINC')) {
 // Chat interface is always enabled now (setting removed)
 
 // Check if user has consented to terms and conditions
-$user_id = get_current_user_id();
-$has_consented = get_user_meta($user_id, 'mpai_has_consented', true);
-if (!$has_consented) {
+$consent_manager = MPAI_Consent_Manager::get_instance();
+if (!$consent_manager->has_user_consented()) {
     // Don't render the chat interface, but output a message about consent if debug is enabled
     if (defined('WP_DEBUG') && WP_DEBUG) {
         ?>

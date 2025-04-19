@@ -28,9 +28,6 @@ class MPAI_Admin {
         require_once MPAI_PLUGIN_DIR . 'includes/admin/class-mpai-settings.php';
         new MPAI_Settings();
         
-        // Process consent form
-        add_action('admin_init', array($this, 'process_consent_form'));
-        
         // Add AJAX handlers
         add_action('wp_ajax_mpai_test_api_connection', array($this, 'test_api_connection_ajax'));
     }
@@ -109,16 +106,11 @@ class MPAI_Admin {
      */
     public function render_admin_page() {
         // Check if user has consented to terms
-        $consent_given = get_option('mpai_consent_given', false);
-        if (!$consent_given && is_user_logged_in()) {
-            $user_id = get_current_user_id();
-            $user_consent = get_user_meta($user_id, 'mpai_has_consented', true);
-            $consent_given = !empty($user_consent);
-        }
+        $consent_manager = MPAI_Consent_Manager::get_instance();
         
-        // If consent is not given, show consent form
-        if (!$consent_given) {
-            require_once MPAI_PLUGIN_DIR . 'includes/admin/views/consent-form.php';
+        // If consent is not given, show the consent form
+        if (!$consent_manager->has_user_consented()) {
+            $consent_manager->render_consent_form();
             return;
         }
         
@@ -132,31 +124,6 @@ class MPAI_Admin {
         do_action('MPAI_HOOK_ACTION_after_display_settings');
     }
     
-    /**
-     * Process consent form submission
-     */
-    public function process_consent_form() {
-        // Check if the consent form was submitted
-        if (isset($_POST['mpai_save_consent']) && isset($_POST['mpai_consent'])) {
-            // Verify nonce
-            if (!isset($_POST['mpai_consent_nonce']) || !wp_verify_nonce($_POST['mpai_consent_nonce'], 'mpai_consent_nonce')) {
-                add_settings_error('mpai_messages', 'mpai_consent_error', __('Security check failed.', 'memberpress-ai-assistant'), 'error');
-                return;
-            }
-            
-            // Save consent to options
-            update_option('mpai_consent_given', true);
-            
-            // Save to user meta as well
-            $user_id = get_current_user_id();
-            update_user_meta($user_id, 'mpai_has_consented', true);
-            
-            // Redirect to remove POST data
-            wp_redirect(admin_url('admin.php?page=memberpress-ai-assistant&consent=given'));
-            exit;
-        }
-    }
-
     /**
      * Enqueue admin assets
      */
