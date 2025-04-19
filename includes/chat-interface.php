@@ -36,9 +36,14 @@ $position_class = 'mpai-chat-' . $position;
 
 // Get welcome message
 $welcome_message = get_option('mpai_welcome_message', 'Hi there! I\'m your MemberPress AI Assistant. How can I help you today?');
-?>
 
-<div id="mpai-chat-container" class="mpai-chat-container <?php echo esc_attr($position_class); ?>">
+// Filter chat interface rendering
+$chat_interface_content = '<div id="mpai-chat-container" class="mpai-chat-container ' . esc_attr($position_class) . '">';
+$chat_interface_content = apply_filters('MPAI_HOOK_FILTER_chat_interface_render', $chat_interface_content, $position, $welcome_message);
+
+// Output the filtered content
+echo $chat_interface_content;
+?>
     <div class="mpai-chat-header">
         <div class="mpai-chat-logo">
             <img src="<?php echo esc_url(MPAI_PLUGIN_URL . 'assets/images/memberpress-logo.svg'); ?>" alt="MemberPress">

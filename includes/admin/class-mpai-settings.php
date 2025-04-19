@@ -35,7 +35,7 @@ class MPAI_Settings {
      * Define all settings
      */
     private function define_settings() {
-        $this->settings_definitions = array(
+        $settings = array(
             // OpenAI API settings
             'mpai_api_key' => array(
                 'type' => 'string',
@@ -134,6 +134,9 @@ class MPAI_Settings {
                 'callback' => 'render_console_log_level_field',
             ),
         );
+        
+        // Filter settings fields
+        $this->settings_definitions = apply_filters('MPAI_HOOK_FILTER_settings_fields', $settings);
     }
     
     /**
@@ -158,27 +161,34 @@ class MPAI_Settings {
             ));
         }
         
+        // Define settings tabs/sections
+        $sections = [
+            'mpai_api_settings' => [
+                'title' => __('AI API Settings', 'memberpress-ai-assistant'),
+                'callback' => array($this, 'render_api_section_description')
+            ],
+            'mpai_chat_settings' => [
+                'title' => __('Chat Interface Settings', 'memberpress-ai-assistant'),
+                'callback' => array($this, 'render_chat_section_description')
+            ],
+            'mpai_debug_settings' => [
+                'title' => __('Debug Settings', 'memberpress-ai-assistant'),
+                'callback' => array($this, 'render_debug_section_description')
+            ]
+        ];
+        
+        // Filter settings tabs
+        $filtered_sections = apply_filters('MPAI_HOOK_FILTER_settings_tabs', $sections);
+        
         // Add Settings Sections
-        add_settings_section(
-            'mpai_api_settings',
-            __('AI API Settings', 'memberpress-ai-assistant'),
-            array($this, 'render_api_section_description'),
-            'mpai_settings'
-        );
-        
-        add_settings_section(
-            'mpai_chat_settings',
-            __('Chat Interface Settings', 'memberpress-ai-assistant'),
-            array($this, 'render_chat_section_description'),
-            'mpai_settings'
-        );
-        
-        add_settings_section(
-            'mpai_debug_settings',
-            __('Debug Settings', 'memberpress-ai-assistant'),
-            array($this, 'render_debug_section_description'),
-            'mpai_settings'
-        );
+        foreach ($filtered_sections as $id => $section) {
+            add_settings_section(
+                $id,
+                $section['title'],
+                $section['callback'],
+                'mpai_settings'
+            );
+        }
         
         // Add all settings fields
         foreach ($this->settings_definitions as $option_name => $args) {

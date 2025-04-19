@@ -126,11 +126,32 @@ abstract class MPAI_Base_Tool {
 				$this->init_validator();
 			}
 			
+			// Fire action before tool execution
+			do_action('MPAI_HOOK_ACTION_before_tool_execution', $this->name, $parameters, $this);
+			
+			// Filter tool parameters before execution
+			$parameters = apply_filters('MPAI_HOOK_FILTER_tool_parameters', $parameters, $this->name, $this);
+			
 			// Validate and sanitize parameters
 			$validated_parameters = $this->validate_parameters($parameters);
 			
+			// Check if user has capability to use this tool
+			$can_use_tool = apply_filters('MPAI_HOOK_FILTER_tool_capability_check', true, $this->name, $validated_parameters, $this);
+			
+			if (!$can_use_tool) {
+				throw new Exception('You do not have permission to use this tool.');
+			}
+			
 			// Execute tool implementation with validated parameters
-			return $this->execute_tool($validated_parameters);
+			$result = $this->execute_tool($validated_parameters);
+			
+			// Filter tool execution result
+			$result = apply_filters('MPAI_HOOK_FILTER_tool_execution_result', $result, $this->name, $validated_parameters, $this);
+			
+			// Fire action after tool execution
+			do_action('MPAI_HOOK_ACTION_after_tool_execution', $this->name, $validated_parameters, $result, $this);
+			
+			return $result;
 		} catch (Exception $e) {
 			// Log the error
 			if (function_exists('mpai_log_error')) {

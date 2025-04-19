@@ -36,6 +36,9 @@ class MPAI_Tool_Registry {
 	 * Constructor
 	 */
 	public function __construct() {
+		// Fire action after tool registry initialization
+		do_action('MPAI_HOOK_ACTION_tool_registry_init', $this);
+		
 		$this->register_core_tools();
 	}
 	
@@ -50,6 +53,9 @@ class MPAI_Tool_Registry {
 		if ( isset( $this->tools[$tool_id] ) ) {
 			return false;
 		}
+		
+		// Fire action when a tool is registered
+		do_action('MPAI_HOOK_ACTION_register_tool', $tool_id, $tool, $this);
 		
 		$this->tools[$tool_id] = $tool;
 		$this->loaded_tools[$tool_id] = true;
@@ -140,7 +146,8 @@ class MPAI_Tool_Registry {
 			}
 		}
 		
-		return $tools;
+		// Filter the list of available tools
+		return apply_filters('MPAI_HOOK_FILTER_available_tools', $tools, $this);
 	}
 	
 	/**

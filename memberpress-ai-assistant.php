@@ -129,6 +129,9 @@ define('MPAI_PLUGIN_BASENAME', plugin_basename(__FILE__));
 // Load Hook and Filter Utilities first for documentation and registration
 require_once MPAI_PLUGIN_DIR . 'includes/utilities/class-mpai-hooks.php';
 
+// Initialize all hooks and filters
+MPAI_Hooks::init();
+
 /**
  * Class MemberPress_AI_Assistant
  * 
