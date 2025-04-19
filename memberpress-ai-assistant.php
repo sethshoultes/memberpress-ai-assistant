@@ -356,6 +356,9 @@ class MemberPress_AI_Assistant {
         // Load Unified Detection System for MemberPress
         require_once MPAI_PLUGIN_DIR . 'includes/detection/load.php';
         
+        // Load Hooks and Filters Registration Utility
+        require_once MPAI_PLUGIN_DIR . 'includes/utilities/class-mpai-hooks.php';
+        
         // Unified Settings Manager has been removed
         
         // API Integration Classes

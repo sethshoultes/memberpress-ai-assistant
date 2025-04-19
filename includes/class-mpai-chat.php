@@ -1242,6 +1242,24 @@ class MPAI_Chat {
     private function save_message($message, $response) {
         global $wpdb;
         
+        // Check if MPAI_Hooks class exists before using it
+        if (class_exists('MPAI_Hooks')) {
+            // Register the before save history hook
+            MPAI_Hooks::register_hook(
+                'MPAI_HOOK_ACTION_before_save_history',
+                'Action before saving chat history',
+                [
+                    'message' => ['type' => 'string', 'description' => 'The user message'],
+                    'response' => ['type' => 'string', 'description' => 'The AI response']
+                ],
+                '1.7.0',
+                'history'
+            );
+        }
+        
+        // Fire the action regardless of whether the hook was registered
+        do_action('MPAI_HOOK_ACTION_before_save_history', $message, $response);
+        
         $conversation_id = $this->get_current_conversation_id();
         
         if (empty($conversation_id)) {
@@ -1267,6 +1285,24 @@ class MPAI_Chat {
             array('updated_at' => current_time('mysql')),
             array('conversation_id' => $conversation_id)
         );
+        
+        // Check if MPAI_Hooks class exists before using it
+        if (class_exists('MPAI_Hooks')) {
+            // Register the after save history hook
+            MPAI_Hooks::register_hook(
+                'MPAI_HOOK_ACTION_after_save_history',
+                'Action after saving chat history',
+                [
+                    'message' => ['type' => 'string', 'description' => 'The user message'],
+                    'response' => ['type' => 'string', 'description' => 'The AI response']
+                ],
+                '1.7.0',
+                'history'
+            );
+        }
+        
+        // Fire the action regardless of whether the hook was registered
+        do_action('MPAI_HOOK_ACTION_after_save_history', $message, $response);
     }
 
     /**

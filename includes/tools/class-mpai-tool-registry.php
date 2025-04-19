@@ -1,261 +1,253 @@
 <?php
 /**
- * Registry for all available tools
+ * Tool Registry Class
+ *
+ * Manages registration and retrieval of tools
  *
  * @package MemberPress AI Assistant
+ * @subpackage MemberPress_AI_Assistant/includes/tools
  */
 
 // Prevent direct access.
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+if (!defined('ABSPATH')) {
+    die;
 }
 
 /**
- * Registry for all available tools
+ * Tool Registry Class
+ *
+ * Manages registration and retrieval of tools
  */
 class MPAI_Tool_Registry {
-	/**
-	 * Registered tools
-	 * @var array
-	 */
-	private $tools = [];
-	
-	/**
-	 * Tool definitions for lazy loading
-	 * @var array
-	 */
-	private $tool_definitions = [];
-	
-	/**
-	 * Loaded tools tracking
-	 * @var array
-	 */
-	private $loaded_tools = [];
-	
-	/**
-	 * Constructor
-	 */
-	public function __construct() {
-		$this->register_core_tools();
-	}
-	
-	/**
-	 * Register a new tool
-	 *
-	 * @param string $tool_id Unique tool identifier
-	 * @param object $tool Tool instance
-	 * @return bool Success status
-	 */
-	public function register_tool( $tool_id, $tool ) {
-		if ( isset( $this->tools[$tool_id] ) ) {
-			return false;
-		}
-		
-		$this->tools[$tool_id] = $tool;
-		$this->loaded_tools[$tool_id] = true;
-		return true;
-	}
-	
-	/**
-	 * Register a tool definition for lazy loading
-	 *
-	 * @param string $tool_id Unique tool identifier
-	 * @param string $class_name Tool class name
-	 * @param string $file_path Optional file path to include if class isn't loaded
-	 * @return bool Success status
-	 */
-	public function register_tool_definition( $tool_id, $class_name, $file_path = null ) {
-		if ( isset( $this->tools[$tool_id] ) || isset( $this->tool_definitions[$tool_id] ) ) {
-			return false;
-		}
-		
-		$this->tool_definitions[$tool_id] = [
-			'class' => $class_name,
-			'file' => $file_path
-		];
-		
-		return true;
-	}
-	
-	/**
-	 * Get a tool by ID
-	 *
-	 * @param string $tool_id Tool identifier
-	 * @return object|null Tool instance or null if not found
-	 */
-	public function get_tool( $tool_id ) {
-		// Return already loaded tool if available
-		if ( isset( $this->tools[$tool_id] ) ) {
-			return $this->tools[$tool_id];
-		}
-		
-		// Check if tool definition exists
-		if ( !isset( $this->tool_definitions[$tool_id] ) ) {
-			return null;
-		}
-		
-		// Load the tool file if provided
-		$definition = $this->tool_definitions[$tool_id];
-		if ( !empty( $definition['file'] ) && file_exists( $definition['file'] ) ) {
-			require_once $definition['file'];
-		}
-		
-		// Check if class exists
-		if ( !class_exists( $definition['class'] ) ) {
-			return null;
-		}
-		
-		// Create instance and store
-		$tool = new $definition['class']();
-		$this->tools[$tool_id] = $tool;
-		$this->loaded_tools[$tool_id] = true;
-		
-		return $tool;
-	}
-	
-	/**
-	 * Get all available tools
-	 *
-	 * @return array All registered tools
-	 */
-	public function get_available_tools() {
-		// Return combination of loaded tools and definitions
-		$tools = [];
-		
-		// Add loaded tools
-		foreach ( $this->tools as $tool_id => $tool ) {
-			$tools[$tool_id] = $tool;
-		}
-		
-		// Add tool definitions for tools not yet loaded
-		foreach ( $this->tool_definitions as $tool_id => $definition ) {
-			if ( !isset( $this->tools[$tool_id] ) ) {
-				// Create placeholder with basic info
-				$tools[$tool_id] = [
-					'id' => $tool_id,
-					'class' => $definition['class'],
-					'loaded' => false,
-					'status' => 'not_loaded'
-				];
-			}
-		}
-		
-		return $tools;
-	}
-	
-	/**
-	 * Register all core tools
-	 */
-	private function register_core_tools() {
-		// Register WP-CLI tool
-		$wp_cli_tool = $this->get_wp_cli_tool_instance();
-		if ( $wp_cli_tool ) {
-			$this->register_tool( 'wpcli', $wp_cli_tool );
-		}
-		
-		// Register WordPress API tool
-		$wp_api_tool = $this->get_wp_api_tool_instance();
-		if ( $wp_api_tool ) {
-			$this->register_tool( 'wp_api', $wp_api_tool );
-		}
-		
-		// Register diagnostic tool
-		$diagnostic_tool = $this->get_diagnostic_tool_instance();
-		if ( $diagnostic_tool ) {
-			$this->register_tool( 'diagnostic', $diagnostic_tool );
-		}
-		
-		// Register plugin logs tool
-		$plugin_logs_tool = $this->get_plugin_logs_tool_instance();
-		if ( $plugin_logs_tool ) {
-			$this->register_tool( 'plugin_logs', $plugin_logs_tool );
-		}
-		
-		// Register other tools as needed...
-		// Database tool, Content tool, etc.
-	}
-	
-	/**
-	 * Get WordPress API tool instance
-	 * 
-	 * @return object|null Tool instance
-	 */
-	private function get_wp_api_tool_instance() {
-		// Check if the WordPress API tool class exists
-		if ( ! class_exists( 'MPAI_WP_API_Tool' ) ) {
-			$tool_path = plugin_dir_path( __FILE__ ) . 'implementations/class-mpai-wp-api-tool.php';
-			if ( file_exists( $tool_path ) ) {
-				require_once $tool_path;
-				if ( class_exists( 'MPAI_WP_API_Tool' ) ) {
-					return new MPAI_WP_API_Tool();
-				}
-			}
-			return null;
-		}
-		
-		return new MPAI_WP_API_Tool();
-	}
-	
-	/**
-	 * Get WP-CLI tool instance
-	 *
-	 * @return object|null Tool instance or null if WP-CLI not available
-	 */
-	private function get_wp_cli_tool_instance() {
-		// Check if the WP-CLI tool class exists
-		if ( ! class_exists( 'MPAI_WP_CLI_Tool' ) ) {
-			$tool_path = plugin_dir_path( __FILE__ ) . 'implementations/class-mpai-wpcli-tool.php';
-			if ( file_exists( $tool_path ) ) {
-				require_once $tool_path;
-				if ( class_exists( 'MPAI_WP_CLI_Tool' ) ) {
-					return new MPAI_WP_CLI_Tool();
-				}
-			}
-			return null;
-		}
-		
-		return new MPAI_WP_CLI_Tool();
-	}
-	
-	/**
-	 * Get Diagnostic tool instance
-	 *
-	 * @return object|null Tool instance
-	 */
-	private function get_diagnostic_tool_instance() {
-		// Check if the Diagnostic tool class exists
-		if ( ! class_exists( 'MPAI_Diagnostic_Tool' ) ) {
-			$tool_path = plugin_dir_path( __FILE__ ) . 'implementations/class-mpai-diagnostic-tool.php';
-			if ( file_exists( $tool_path ) ) {
-				require_once $tool_path;
-				if ( class_exists( 'MPAI_Diagnostic_Tool' ) ) {
-					return new MPAI_Diagnostic_Tool();
-				}
-			}
-			return null;
-		}
-		
-		return new MPAI_Diagnostic_Tool();
-	}
-	
-	/**
-	 * Get Plugin Logs tool instance
-	 *
-	 * @return object|null Tool instance
-	 */
-	private function get_plugin_logs_tool_instance() {
-		// Check if the Plugin Logs tool class exists
-		if ( ! class_exists( 'MPAI_Plugin_Logs_Tool' ) ) {
-			$tool_path = plugin_dir_path( __FILE__ ) . 'implementations/class-mpai-plugin-logs-tool.php';
-			if ( file_exists( $tool_path ) ) {
-				require_once $tool_path;
-				if ( class_exists( 'MPAI_Plugin_Logs_Tool' ) ) {
-					return new MPAI_Plugin_Logs_Tool();
-				}
-			}
-			return null;
-		}
-		
-		return new MPAI_Plugin_Logs_Tool();
-	}
+    /**
+     * Registered tools
+     *
+     * @var array
+     */
+    private $tools = array();
+
+    /**
+     * Tool definitions
+     *
+     * @var array
+     */
+    private $tool_definitions = array();
+
+    /**
+     * Instance of this class (singleton)
+     *
+     * @var MPAI_Tool_Registry
+     */
+    private static $instance = null;
+
+    /**
+     * Constructor
+     */
+    public function __construct() {
+        // Check if MPAI_Hooks class exists before using it
+        if (class_exists('MPAI_Hooks')) {
+            // Register the tool registry initialization action
+            MPAI_Hooks::register_hook(
+                'MPAI_HOOK_ACTION_tool_registry_init',
+                'Action after tool registry initialization',
+                [],
+                '1.7.0',
+                'tools'
+            );
+        }
+        
+        // Register core tools
+        $this->register_core_tools();
+        
+        // Fire the action regardless of whether the hook was registered
+        do_action('MPAI_HOOK_ACTION_tool_registry_init');
+        
+        // Make this instance globally available
+        global $mpai_tool_registry;
+        $mpai_tool_registry = $this;
+    }
+
+    /**
+     * Get instance (singleton pattern)
+     *
+     * @return MPAI_Tool_Registry
+     */
+    public static function get_instance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    /**
+     * Register core tools
+     */
+    public function register_core_tools() {
+        // This method will be called to register built-in tools
+        // It can be extended in the future
+        mpai_log_debug('Registering core tools', 'tool-registry');
+    }
+
+    /**
+     * Register a tool definition
+     *
+     * @param string $tool_id Tool identifier
+     * @param string $class_name Tool class name
+     * @param string $file_path Optional file path to include
+     * @return bool Success status
+     */
+    public function register_tool_definition($tool_id, $class_name, $file_path = '') {
+        if (isset($this->tool_definitions[$tool_id])) {
+            mpai_log_warning("Tool definition '{$tool_id}' already registered", 'tool-registry');
+            return false;
+        }
+
+        $this->tool_definitions[$tool_id] = array(
+            'class' => $class_name,
+            'file' => $file_path
+        );
+
+        mpai_log_debug("Registered tool definition: {$tool_id}", 'tool-registry');
+        return true;
+    }
+
+    /**
+     * Register a tool instance
+     *
+     * @param string $tool_id Tool identifier
+     * @param object $tool_instance Tool instance
+     * @return bool Success status
+     */
+    public function register_tool($tool_id, $tool_instance) {
+        // Check if MPAI_Hooks class exists before using it
+        if (class_exists('MPAI_Hooks')) {
+            // Register the tool registration action
+            MPAI_Hooks::register_hook(
+                'MPAI_HOOK_ACTION_register_tool',
+                'Action when a tool is registered to the system',
+                [
+                    'tool_id' => ['type' => 'string', 'description' => 'The tool identifier'],
+                    'tool_instance' => ['type' => 'object', 'description' => 'The tool instance']
+                ],
+                '1.7.0',
+                'tools'
+            );
+        }
+        
+        // Fire the action regardless of whether the hook was registered
+        do_action('MPAI_HOOK_ACTION_register_tool', $tool_id, $tool_instance);
+        
+        if (isset($this->tools[$tool_id])) {
+            mpai_log_warning("Tool '{$tool_id}' already registered, replacing", 'tool-registry');
+        }
+
+        $this->tools[$tool_id] = $tool_instance;
+        mpai_log_debug("Registered tool instance: {$tool_id}", 'tool-registry');
+        
+        return true;
+    }
+
+    /**
+     * Get a tool instance
+     *
+     * @param string $tool_id Tool identifier
+     * @return object|null Tool instance or null if not found
+     */
+    public function get_tool($tool_id) {
+        // Check if tool is already instantiated
+        if (isset($this->tools[$tool_id])) {
+            return $this->tools[$tool_id];
+        }
+
+        // Check if we have a definition for this tool
+        if (isset($this->tool_definitions[$tool_id])) {
+            $definition = $this->tool_definitions[$tool_id];
+            
+            // Include the file if provided
+            if (!empty($definition['file']) && file_exists($definition['file'])) {
+                require_once $definition['file'];
+            }
+            
+            // Check if the class exists
+            if (class_exists($definition['class'])) {
+                try {
+                    // Create a new instance
+                    $tool = new $definition['class']();
+                    
+                    // Register the tool
+                    $this->register_tool($tool_id, $tool);
+                    
+                    return $tool;
+                } catch (Exception $e) {
+                    mpai_log_error("Error creating tool '{$tool_id}': " . $e->getMessage(), 'tool-registry');
+                }
+            } else {
+                mpai_log_error("Tool class '{$definition['class']}' not found", 'tool-registry');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get all available tools
+     *
+     * @return array Registered tools
+     */
+    public function get_available_tools() {
+        // Check if MPAI_Hooks class exists before using it
+        if (class_exists('MPAI_Hooks')) {
+            // Register the available tools filter
+            MPAI_Hooks::register_filter(
+                'MPAI_HOOK_FILTER_available_tools',
+                'Filter the list of available tools',
+                $this->tools,
+                ['tools' => ['type' => 'array', 'description' => 'Array of available tool instances']],
+                '1.7.0',
+                'tools'
+            );
+        }
+        
+        // Apply the filter regardless of whether the hook was registered
+        $tools = apply_filters('MPAI_HOOK_FILTER_available_tools', $this->tools);
+        
+        return $tools;
+    }
+
+    /**
+     * Check if a user has capability to use a specific tool
+     *
+     * @param string $tool_id Tool identifier
+     * @param int $user_id User ID
+     * @return bool Whether user has capability
+     */
+    public function check_tool_capability($tool_id, $user_id = 0) {
+        if ($user_id === 0) {
+            $user_id = get_current_user_id();
+        }
+        
+        // Default to true for admin users
+        $has_capability = current_user_can('manage_options');
+        
+        // Check if MPAI_Hooks class exists before using it
+        if (class_exists('MPAI_Hooks')) {
+            // Register the tool capability check filter
+            MPAI_Hooks::register_filter(
+                'MPAI_HOOK_FILTER_tool_capability_check',
+                'Filter whether a user has capability to use a specific tool',
+                $has_capability,
+                [
+                    'tool_id' => ['type' => 'string', 'description' => 'The tool identifier'],
+                    'user_id' => ['type' => 'integer', 'description' => 'The user ID']
+                ],
+                '1.7.0',
+                'tools'
+            );
+        }
+        
+        // Apply the filter regardless of whether the hook was registered
+        $has_capability = apply_filters('MPAI_HOOK_FILTER_tool_capability_check', $has_capability, $tool_id, $user_id);
+        
+        return $has_capability;
+    }
 }

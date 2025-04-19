@@ -417,27 +417,65 @@ class MPAI_Agent_Orchestrator {
 	 * @return bool Success status
 	 */
 	public function register_agent( $agent_id, $agent_instance ) {
-		if ( isset( $this->agents[$agent_id] ) ) {
-			mpai_log_warning( "Agent with ID {$agent_id} already registered", 'orchestrator' );
-			return false;
-		}
-		
-		$this->agents[$agent_id] = $agent_instance;
-		
-		// Register with SDK if available
-		if ( $this->sdk_initialized && $this->sdk_integration ) {
-			try {
-				$this->sdk_integration->register_agent( $agent_id, $agent_instance );
-				// Agent registered with SDK
-			} catch ( Exception $e ) {
-				mpai_log_warning( "Failed to register agent {$agent_id} with SDK: " . $e->getMessage(), 'orchestrator', array(
-					'file' => $e->getFile(),
-					'line' => $e->getLine()
-				));
-			}
-		}
-		
-		return true;
+	    // Check if MPAI_Hooks class exists before using it
+	    if (class_exists('MPAI_Hooks')) {
+	        // Register the agent registration action
+	        MPAI_Hooks::register_hook(
+	            'MPAI_HOOK_ACTION_register_agent',
+	            'Action when an agent is registered to the system',
+	            [
+	                'agent_id' => ['type' => 'string', 'description' => 'The agent identifier'],
+	                'agent_instance' => ['type' => 'object', 'description' => 'The agent instance']
+	            ],
+	            '1.7.0',
+	            'agents'
+	        );
+	    }
+	    
+	    // Fire the action regardless of whether the hook was registered
+	    do_action('MPAI_HOOK_ACTION_register_agent', $agent_id, $agent_instance);
+	    
+	    if ( isset( $this->agents[$agent_id] ) ) {
+	        mpai_log_warning( "Agent with ID {$agent_id} already registered", 'orchestrator' );
+	        return false;
+	    }
+	    
+	    // Check if MPAI_Hooks class exists before using it
+	    if (class_exists('MPAI_Hooks')) {
+	        // Register the agent capabilities filter
+	        MPAI_Hooks::register_filter(
+	            'MPAI_HOOK_FILTER_agent_capabilities',
+	            'Filter agent capabilities',
+	            $agent_instance->get_capabilities(),
+	            [
+	                'capabilities' => ['type' => 'array', 'description' => 'The agent capabilities'],
+	                'agent_id' => ['type' => 'string', 'description' => 'The agent identifier']
+	            ],
+	            '1.7.0',
+	            'agents'
+	        );
+	    }
+	    
+	    // Apply the filter regardless of whether the hook was registered
+	    $capabilities = apply_filters('MPAI_HOOK_FILTER_agent_capabilities', $agent_instance->get_capabilities(), $agent_id);
+	    
+	    // Store the agent
+	    $this->agents[$agent_id] = $agent_instance;
+	    
+	    // Register with SDK if available
+	    if ( $this->sdk_initialized && $this->sdk_integration ) {
+	        try {
+	            $this->sdk_integration->register_agent( $agent_id, $agent_instance );
+	            // Agent registered with SDK
+	        } catch ( Exception $e ) {
+	            mpai_log_warning( "Failed to register agent {$agent_id} with SDK: " . $e->getMessage(), 'orchestrator', array(
+	                'file' => $e->getFile(),
+	                'line' => $e->getLine()
+	            ));
+	        }
+	    }
+	    
+	    return true;
 	}
 	
 	/**
@@ -448,56 +486,97 @@ class MPAI_Agent_Orchestrator {
 	 * @return array Response data
 	 */
 	public function process_request( $user_message, $user_id = 0 ) {
-		// If error recovery system is available, use it for robust error handling
-		if ($this->error_recovery) {
-			// Define the main processing function
-			$process_func = function() use ($user_message, $user_id) {
-				// Get user context
-				$user_context = $this->get_user_context( $user_id );
-				
-				// Log the request
-				mpai_log_info( "Processing request - User ID: " . $user_id . ", Using SDK: " . ($this->sdk_initialized ? "Yes" : "No"), 'orchestrator' );
-				
-				// If SDK is initialized, use it for processing
-				if ( $this->sdk_initialized && $this->sdk_integration ) {
-					return $this->process_with_sdk( $user_message, $user_id, $user_context );
-				}
-				
-				// Otherwise use the traditional processing method
-				return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
-			};
-			
-			// Define fallback processing function that uses traditional method
-			$fallback_func = function() use ($user_message, $user_id) {
-				$user_context = $this->get_user_context( $user_id );
-				mpai_log_info("Fallback processing with traditional method", 'orchestrator' );
-				return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
-			};
-			
-			// Create an error with proper context for the error recovery system
-			$error = $this->error_recovery->create_agent_error(
-				'orchestrator', 
-				'agent_processing', 
-				'Agent request processing with recovery', 
-				['user_id' => $user_id]
-			);
-			
-			// Process with error recovery
-			$result = $this->error_recovery->handle_error(
-				$error, 
-				'request_processing', 
-				$process_func, 
-				[], 
-				$fallback_func, 
-				[]
-			);
-			
-			// If result is a WP_Error, format it appropriately for the user
-			if (is_wp_error($result)) {
-				mpai_log_warning("Error recovery failed, returning formatted error", 'orchestrator' );
-				$error_message = $this->error_recovery->format_error_for_display($result);
-				return [
-					'success' => false,
+	    // If error recovery system is available, use it for robust error handling
+	    if ($this->error_recovery) {
+	        // Define the main processing function
+	        $process_func = function() use ($user_message, $user_id) {
+	            // Get user context
+	            $user_context = $this->get_user_context( $user_id );
+	            
+	            // Log the request
+	            mpai_log_info( "Processing request - User ID: " . $user_id . ", Using SDK: " . ($this->sdk_initialized ? "Yes" : "No"), 'orchestrator' );
+	            
+	            // Check if MPAI_Hooks class exists before using it
+	            if (class_exists('MPAI_Hooks')) {
+	                // Register the before agent process action
+	                MPAI_Hooks::register_hook(
+	                    'MPAI_HOOK_ACTION_before_agent_process',
+	                    'Action before agent processes a request',
+	                    [
+	                        'message' => ['type' => 'string', 'description' => 'The user message'],
+	                        'user_id' => ['type' => 'integer', 'description' => 'The user ID'],
+	                        'context' => ['type' => 'array', 'description' => 'The user context']
+	                    ],
+	                    '1.7.0',
+	                    'agents'
+	                );
+	            }
+	            
+	            // Fire the action regardless of whether the hook was registered
+	            do_action('MPAI_HOOK_ACTION_before_agent_process', $user_message, $user_id, $user_context);
+	            
+	            // If SDK is initialized, use it for processing
+	            if ( $this->sdk_initialized && $this->sdk_integration ) {
+	                $result = $this->process_with_sdk( $user_message, $user_id, $user_context );
+	            } else {
+	                // Otherwise use the traditional processing method
+	                $result = $this->process_with_traditional_method( $user_message, $user_id, $user_context );
+	            }
+	            
+	            // Check if MPAI_Hooks class exists before using it
+	            if (class_exists('MPAI_Hooks')) {
+	                // Register the after agent process action
+	                MPAI_Hooks::register_hook(
+	                    'MPAI_HOOK_ACTION_after_agent_process',
+	                    'Action after agent processes a request',
+	                    [
+	                        'message' => ['type' => 'string', 'description' => 'The user message'],
+	                        'user_id' => ['type' => 'integer', 'description' => 'The user ID'],
+	                        'context' => ['type' => 'array', 'description' => 'The user context'],
+	                        'result' => ['type' => 'array', 'description' => 'The processing result']
+	                    ],
+	                    '1.7.0',
+	                    'agents'
+	                );
+	            }
+	            
+	            // Fire the action regardless of whether the hook was registered
+	            do_action('MPAI_HOOK_ACTION_after_agent_process', $user_message, $user_id, $user_context, $result);
+	            
+	            return $result;
+	        };
+	        
+	        // Define fallback processing function that uses traditional method
+	        $fallback_func = function() use ($user_message, $user_id) {
+	            $user_context = $this->get_user_context( $user_id );
+	            mpai_log_info("Fallback processing with traditional method", 'orchestrator' );
+	            return $this->process_with_traditional_method( $user_message, $user_id, $user_context );
+	        };
+	        
+	        // Create an error with proper context for the error recovery system
+	        $error = $this->error_recovery->create_agent_error(
+	            'orchestrator',
+	            'agent_processing',
+	            'Agent request processing with recovery',
+	            ['user_id' => $user_id]
+	        );
+	        
+	        // Process with error recovery
+	        $result = $this->error_recovery->handle_error(
+	            $error,
+	            'request_processing',
+	            $process_func,
+	            [],
+	            $fallback_func,
+	            []
+	        );
+	        
+	        // If result is a WP_Error, format it appropriately for the user
+	        if (is_wp_error($result)) {
+	            mpai_log_warning("Error recovery failed, returning formatted error", 'orchestrator' );
+	            $error_message = $this->error_recovery->format_error_for_display($result);
+	            return [
+	                'success' => false,
 					'message' => $error_message,
 					'error' => $result->get_error_message(),
 				];
@@ -1267,21 +1346,45 @@ class MPAI_Agent_Orchestrator {
 	 * @return array Associative array of agent_id => confidence_score
 	 */
 	private function get_agent_confidence_scores($message, $context = []) {
-		$agent_scores = [];
+		$scores = [];
 		
-		// Calculate scores for each agent
-		foreach ( $this->agents as $agent_id => $agent ) {
-			// Get base confidence score from agent's evaluate_request method
-			$base_score = $agent->evaluate_request($message, $context);
-			
-			// Apply contextual modifiers
-			$modified_score = $this->apply_contextual_modifiers($agent_id, $base_score, $message, $context);
-			
-			// Store the final score
-			$agent_scores[$agent_id] = $modified_score;
+		foreach ($this->agents as $agent_id => $agent) {
+			try {
+				// Get base confidence score
+				$base_score = $agent->evaluate_request($message, $context);
+				
+				// Apply contextual modifiers
+				$final_score = $this->apply_contextual_modifiers($agent_id, $base_score, $message, $context);
+				
+				// Check if MPAI_Hooks class exists before using it
+				if (class_exists('MPAI_Hooks')) {
+					// Register the agent scoring filter
+					MPAI_Hooks::register_filter(
+						'MPAI_HOOK_FILTER_agent_scoring',
+						'Filter confidence scores for agent selection',
+						$final_score,
+						[
+							'score' => ['type' => 'integer', 'description' => 'The confidence score (0-100)'],
+							'agent_id' => ['type' => 'string', 'description' => 'The agent identifier'],
+							'message' => ['type' => 'string', 'description' => 'The user message'],
+							'context' => ['type' => 'array', 'description' => 'The context data']
+						],
+						'1.7.0',
+						'agents'
+					);
+				}
+				
+				// Apply the filter regardless of whether the hook was registered
+				$final_score = apply_filters('MPAI_HOOK_FILTER_agent_scoring', $final_score, $agent_id, $message, $context);
+				
+				$scores[$agent_id] = $final_score;
+			} catch (Exception $e) {
+				mpai_log_error("Error getting confidence score for agent {$agent_id}: " . $e->getMessage(), 'orchestrator');
+				$scores[$agent_id] = 0; // Default to 0 on error
+			}
 		}
 		
-		return $agent_scores;
+		return $scores;
 	}
 	
 	/**
@@ -1464,30 +1567,70 @@ class MPAI_Agent_Orchestrator {
 	 * @return bool Whether agent passes validation
 	 */
 	private function validate_agent($agent_id, $agent) {
-		// Check agent has required methods
+		// Check if agent implements required methods
+		$is_valid = true;
+		$validation_errors = [];
+		
 		if (!method_exists($agent, 'get_capabilities') ||
 			!method_exists($agent, 'get_name') ||
 			!method_exists($agent, 'get_description')) {
-			return false;
+			$validation_errors[] = "Agent does not implement required methods";
+			$is_valid = false;
 		}
 		
 		// Check agent has valid capabilities structure
 		$capabilities = $agent->get_capabilities();
 		if (!is_array($capabilities)) {
-			return false;
+			$validation_errors[] = "Agent capabilities must be an array";
+			$is_valid = false;
 		}
 		
 		// Check agent implements the MPAI_Agent interface
 		if (!($agent instanceof MPAI_Agent)) {
-			return false;
+			$validation_errors[] = "Agent does not implement MPAI_Agent interface";
+			$is_valid = false;
 		}
 		
 		// Check agent has process_request method
 		if (!method_exists($agent, 'process_request')) {
-			return false;
+			$validation_errors[] = "Agent does not implement process_request method";
+			$is_valid = false;
 		}
 		
-		return true;
+		// Check if MPAI_Hooks class exists before using it
+		if (class_exists('MPAI_Hooks')) {
+			// Register the agent validation filter
+			MPAI_Hooks::register_filter(
+				'MPAI_HOOK_FILTER_agent_validation',
+				'Filter agent validation results',
+				[
+					'is_valid' => $is_valid,
+					'errors' => $validation_errors
+				],
+				[
+					'validation_result' => ['type' => 'array', 'description' => 'The validation result array'],
+					'agent_id' => ['type' => 'string', 'description' => 'The agent identifier'],
+					'agent' => ['type' => 'object', 'description' => 'The agent instance']
+				],
+				'1.7.0',
+				'agents'
+			);
+		}
+		
+		// Apply the filter regardless of whether the hook was registered
+		$validation_result = apply_filters('MPAI_HOOK_FILTER_agent_validation', [
+			'is_valid' => $is_valid,
+			'errors' => $validation_errors
+		], $agent_id, $agent);
+		
+		// Log validation errors
+		if (!$validation_result['is_valid']) {
+			foreach ($validation_result['errors'] as $error) {
+				mpai_log_warning("Agent {$agent_id} validation failed: {$error}", 'orchestrator');
+			}
+		}
+		
+		return $validation_result['is_valid'];
 	}
 	
 	/**
@@ -1599,6 +1742,27 @@ class MPAI_Agent_Orchestrator {
 	 * @return array Handoff result
 	 */
 	public function handle_handoff( $from_agent_id, $to_agent_id, $handoff_data, $user_id = 0 ) {
+		// Check if MPAI_Hooks class exists before using it
+		if (class_exists('MPAI_Hooks')) {
+			// Register the agent handoff filter
+			MPAI_Hooks::register_filter(
+				'MPAI_HOOK_FILTER_agent_handoff',
+				'Filter agent handoff behavior',
+				$handoff_data,
+				[
+					'handoff_data' => ['type' => 'array', 'description' => 'The handoff data'],
+					'from_agent_id' => ['type' => 'string', 'description' => 'The source agent identifier'],
+					'to_agent_id' => ['type' => 'string', 'description' => 'The target agent identifier'],
+					'user_id' => ['type' => 'integer', 'description' => 'The user ID']
+				],
+				'1.7.0',
+				'agents'
+			);
+		}
+		
+		// Apply the filter regardless of whether the hook was registered
+		$handoff_data = apply_filters('MPAI_HOOK_FILTER_agent_handoff', $handoff_data, $from_agent_id, $to_agent_id, $user_id);
+		
 		// Create agent message
 		$message = new MPAI_Agent_Message(
 			$from_agent_id,
@@ -1623,8 +1787,22 @@ class MPAI_Agent_Orchestrator {
 				$handoff_data['to_agent'] = $to_agent_id;
 				$handoff_data['message_object'] = $message->to_array();
 				
-				// Execute the handoff using the SDK
-				$handoff_result = $this->sdk_integration->handle_handoff( $from_agent_id, $to_agent_id, $handoff_data, $user_id );
+				// Check if the method exists before calling it
+				if (method_exists($this->sdk_integration, 'handle_handoff')) {
+					// Execute the handoff using the SDK
+					$handoff_result = $this->sdk_integration->handle_handoff( $from_agent_id, $to_agent_id, $handoff_data, $user_id );
+				} else {
+					mpai_log_warning("SDK integration does not support handle_handoff method", 'orchestrator');
+					// Create a fallback result
+					$handoff_result = [
+						'success' => false,
+						'message' => 'SDK integration does not support handle_handoff method',
+						'fallback' => true
+					];
+					
+					// Skip the rest of the SDK processing and return the fallback result
+					return $handoff_result;
+				}
 				
 				mpai_log_info( "Successfully handled handoff with SDK from {$from_agent_id} to {$to_agent_id}", 'orchestrator' );
 				
@@ -1713,52 +1891,131 @@ class MPAI_Agent_Orchestrator {
 	 * @return array Agent result
 	 */
 	public function run_agent( $agent_id, $params = [], $user_id = 0 ) {
-		// Check if SDK integration can handle this
-		if ( $this->sdk_initialized && $this->sdk_integration ) {
+		// Register the before agent process action if MPAI_Hooks class exists
+		if (class_exists('MPAI_Hooks')) {
+			MPAI_Hooks::register_hook(
+				'MPAI_HOOK_ACTION_before_agent_process',
+				'Action before agent processes a request',
+				[
+					'agent_id' => ['type' => 'string', 'description' => 'The agent identifier'],
+					'params' => ['type' => 'array', 'description' => 'The parameters for the agent'],
+					'user_id' => ['type' => 'integer', 'description' => 'The user ID']
+				],
+				'1.7.0',
+				'agents'
+			);
+		}
+		
+		// Fire the before action
+		do_action('MPAI_HOOK_ACTION_before_agent_process', $agent_id, $params, $user_id);
+		
+		$result = null;
+		
+		// Try SDK integration if available
+		if ($this->sdk_initialized && $this->sdk_integration) {
 			try {
 				// Add user ID to the parameters
 				$params['user_id'] = $user_id;
 				
-				// Execute the agent run using the SDK
-				$run_result = $this->sdk_integration->run_agent( $agent_id, $params, $user_id );
-				
-				mpai_log_info( "Successfully started running agent with SDK: {$agent_id}", 'orchestrator' );
-				
-				return $run_result;
-			} catch ( Exception $e ) {
-				mpai_log_error( "Error starting running agent with SDK: " . $e->getMessage(), 'orchestrator', array(
+				// Check if the SDK supports the run_agent method
+				if (method_exists($this->sdk_integration, 'run_agent')) {
+					// Execute the agent run using the SDK
+					$result = $this->sdk_integration->run_agent($agent_id, $params, $user_id);
+					mpai_log_info("Successfully started running agent with SDK: {$agent_id}", 'orchestrator');
+					
+					// Register and fire the after action
+					$this->fire_after_agent_process_action($agent_id, $params, $user_id, $result);
+					
+					return $result;
+				} else {
+					mpai_log_warning("SDK integration does not support run_agent method", 'orchestrator');
+					// Fall through to traditional execution
+				}
+			} catch (Exception $e) {
+				mpai_log_error("Error starting running agent with SDK: " . $e->getMessage(), 'orchestrator', [
 					'file' => $e->getFile(),
 					'line' => $e->getLine(),
 					'trace' => $e->getTraceAsString()
-				));
-				// Fall back to traditional processing
+				]);
+				// Fall through to traditional execution
 			}
 		}
 		
 		// Traditional direct agent execution
-		if ( ! isset( $this->agents[$agent_id] ) ) {
-			throw new Exception( "Agent {$agent_id} not found" );
+		try {
+			// Check if agent exists
+			if (!isset($this->agents[$agent_id])) {
+				throw new Exception("Agent {$agent_id} not found");
+			}
+			
+			// Get user context
+			$user_context = $this->get_user_context($user_id);
+			
+			// Create intent data
+			$intent_data = [
+				'intent' => 'direct_run',
+				'primary_agent' => $agent_id,
+				'params' => $params
+			];
+			
+			// Get the agent
+			$agent = $this->agents[$agent_id];
+			
+			// Process the request with the agent
+			$result = $agent->process_request($intent_data, $user_context);
+			
+			// Update memory
+			$this->update_memory($user_id, $intent_data, $result);
+			
+			// Register and fire the after action
+			$this->fire_after_agent_process_action($agent_id, $params, $user_id, $result);
+			
+			return $result;
+		} catch (Exception $e) {
+			mpai_log_error("Error in traditional agent execution: " . $e->getMessage(), 'orchestrator', [
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			]);
+			
+			$result = [
+				'success' => false,
+				'message' => "Agent execution failed: " . $e->getMessage()
+			];
+			
+			// Register and fire the after action
+			$this->fire_after_agent_process_action($agent_id, $params, $user_id, $result);
+			
+			return $result;
+		}
+	}
+	
+	/**
+	 * Fire the after agent process action
+	 *
+	 * @param string $agent_id Agent ID
+	 * @param array $params Agent parameters
+	 * @param int $user_id User ID
+	 * @param array $result Agent result
+	 */
+	private function fire_after_agent_process_action($agent_id, $params, $user_id, $result) {
+		// Register the after agent process action if MPAI_Hooks class exists
+		if (class_exists('MPAI_Hooks')) {
+			MPAI_Hooks::register_hook(
+				'MPAI_HOOK_ACTION_after_agent_process',
+				'Action after agent processes a request',
+				[
+					'agent_id' => ['type' => 'string', 'description' => 'The agent identifier'],
+					'params' => ['type' => 'array', 'description' => 'The parameters for the agent'],
+					'user_id' => ['type' => 'integer', 'description' => 'The user ID'],
+					'result' => ['type' => 'array', 'description' => 'The processing result']
+				],
+				'1.7.0',
+				'agents'
+			);
 		}
 		
-		// Get user context
-		$user_context = $this->get_user_context( $user_id );
-		
-		// Create intent data
-		$intent_data = [
-			'intent' => 'direct_run',
-			'primary_agent' => $agent_id,
-			'params' => $params
-		];
-		
-		// Get the agent
-		$agent = $this->agents[$agent_id];
-		
-		// Process the request with the agent
-		$result = $agent->process_request( $intent_data, $user_context );
-		
-		// Update memory
-		$this->update_memory( $user_id, $intent_data, $result );
-		
-		return $result;
+		// Fire the after action
+		do_action('MPAI_HOOK_ACTION_after_agent_process', $agent_id, $params, $user_id, $result);
 	}
 }
