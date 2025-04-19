@@ -33,28 +33,28 @@ This document outlines a comprehensive plan to enhance the extensibility of the 
 
 **Planned Hooks:**
 - Plugin Initialization:
-  - `mpai_before_plugin_init` - Action before plugin initialization begins
-  - `mpai_after_plugin_init` - Action after plugin is fully initialized
-  - `mpai_loaded_dependencies` - Action after all dependencies are loaded
-  - `mpai_default_options` (filter) - Filter default options when plugin is first initialized
-  - `mpai_plugin_capabilities` (filter) - Filter capabilities needed for plugin operation
+  - `MPAI_HOOK_ACTION_before_plugin_init` - Action before plugin initialization begins
+  - `MPAI_HOOK_ACTION_after_plugin_init` - Action after plugin is fully initialized
+  - `MPAI_HOOK_ACTION_loaded_dependencies` - Action after all dependencies are loaded
+  - `MPAI_HOOK_FILTER_default_options` (filter) - Filter default options when plugin is first initialized
+  - `MPAI_HOOK_FILTER_plugin_capabilities` (filter) - Filter capabilities needed for plugin operation
 
 - Chat Processing:
-  - `mpai_before_process_message` - Action before processing a user message
-  - `mpai_after_process_message` - Action after message is processed
-  - `mpai_system_prompt` (filter) - Filter to modify the system prompt
-  - `mpai_chat_conversation_history` (filter) - Filter the conversation history
-  - `mpai_message_content` (filter) - Filter message content before sending to AI
-  - `mpai_response_content` (filter) - Filter AI response before returning to user
-  - `mpai_user_context` (filter) - Filter user context data sent with messages
-  - `mpai_allowed_commands` (filter) - Filter allowed commands in chat
+  - `MPAI_HOOK_ACTION_before_process_message` - Action before processing a user message
+  - `MPAI_HOOK_ACTION_after_process_message` - Action after message is processed
+  - `MPAI_HOOK_FILTER_system_prompt` (filter) - Filter to modify the system prompt
+  - `MPAI_HOOK_FILTER_chat_conversation_history` (filter) - Filter the conversation history
+  - `MPAI_HOOK_FILTER_message_content` (filter) - Filter message content before sending to AI
+  - `MPAI_HOOK_FILTER_response_content` (filter) - Filter AI response before returning to user
+  - `MPAI_HOOK_FILTER_user_context` (filter) - Filter user context data sent with messages
+  - `MPAI_HOOK_FILTER_allowed_commands` (filter) - Filter allowed commands in chat
 
 - History Management:
-  - `mpai_before_save_history` - Action before saving chat history
-  - `mpai_after_save_history` - Action after saving chat history
-  - `mpai_before_clear_history` - Action before clearing chat history
-  - `mpai_after_clear_history` - Action after clearing chat history
-  - `mpai_history_retention` (filter) - Filter history retention settings
+  - `MPAI_HOOK_ACTION_before_save_history` - Action before saving chat history
+  - `MPAI_HOOK_ACTION_after_save_history` - Action after saving chat history
+  - `MPAI_HOOK_ACTION_before_clear_history` - Action before clearing chat history
+  - `MPAI_HOOK_ACTION_after_clear_history` - Action after clearing chat history
+  - `MPAI_HOOK_FILTER_history_retention` (filter) - Filter history retention settings
 
 **Deliverables:**
 - Implementation of core initialization hooks
@@ -81,23 +81,23 @@ This document outlines a comprehensive plan to enhance the extensibility of the 
 
 **Planned Hooks:**
 - Tool Execution:
-  - `mpai_before_tool_execution` - Action before any tool is executed with tool name and parameters
-  - `mpai_after_tool_execution` - Action after tool execution with tool name, parameters, and result
-  - `mpai_tool_parameters` (filter) - Filter tool parameters before execution
-  - `mpai_tool_execution_result` (filter) - Filter tool execution result
-  - `mpai_available_tools` (filter) - Filter the list of available tools
-  - `mpai_tool_registry_init` - Action after tool registry initialization
-  - `mpai_register_tool` - Action when a tool is registered to the system
-  - `mpai_tool_capability_check` (filter) - Filter whether a user has capability to use a specific tool
+  - `MPAI_HOOK_ACTION_before_tool_execution` - Action before any tool is executed with tool name and parameters
+  - `MPAI_HOOK_ACTION_after_tool_execution` - Action after tool execution with tool name, parameters, and result
+  - `MPAI_HOOK_FILTER_tool_parameters` (filter) - Filter tool parameters before execution
+  - `MPAI_HOOK_FILTER_tool_execution_result` (filter) - Filter tool execution result
+  - `MPAI_HOOK_FILTER_available_tools` (filter) - Filter the list of available tools
+  - `MPAI_HOOK_ACTION_tool_registry_init` - Action after tool registry initialization
+  - `MPAI_HOOK_ACTION_register_tool` - Action when a tool is registered to the system
+  - `MPAI_HOOK_FILTER_tool_capability_check` (filter) - Filter whether a user has capability to use a specific tool
 
 - Agent System:
-  - `mpai_agent_capabilities` (filter) - Filter agent capabilities 
-  - `mpai_before_agent_process` - Action before agent processes a request
-  - `mpai_after_agent_process` - Action after agent processes a request
-  - `mpai_agent_validation` (filter) - Filter agent validation results
-  - `mpai_agent_scoring` (filter) - Filter confidence scores for agent selection
-  - `mpai_register_agent` - Action when an agent is registered to the system
-  - `mpai_agent_handoff` (filter) - Filter agent handoff behavior
+  - `MPAI_HOOK_FILTER_agent_capabilities` (filter) - Filter agent capabilities
+  - `MPAI_HOOK_ACTION_before_agent_process` - Action before agent processes a request
+  - `MPAI_HOOK_ACTION_after_agent_process` - Action after agent processes a request
+  - `MPAI_HOOK_FILTER_agent_validation` (filter) - Filter agent validation results
+  - `MPAI_HOOK_FILTER_agent_scoring` (filter) - Filter confidence scores for agent selection
+  - `MPAI_HOOK_ACTION_register_agent` - Action when an agent is registered to the system
+  - `MPAI_HOOK_FILTER_agent_handoff` (filter) - Filter agent handoff behavior
 
 **Deliverables:**
 - Implementation of tool execution hooks
@@ -123,24 +123,24 @@ This document outlines a comprehensive plan to enhance the extensibility of the 
 
 **Planned Hooks:**
 - Content Generation:
-  - `mpai_generated_content` (filter) - Filter any AI-generated content before use
-  - `mpai_content_template` (filter) - Filter content templates before filling with data
-  - `mpai_content_formatting` (filter) - Filter content formatting rules
-  - `mpai_blog_post_content` (filter) - Filter blog post content before creation
-  - `mpai_before_content_save` - Action before saving generated content
-  - `mpai_after_content_save` - Action after saving generated content
-  - `mpai_content_type` (filter) - Filter the detected content type from AI responses
-  - `mpai_content_marker` (filter) - Filter content markers used in XML parsing
+  - `MPAI_HOOK_FILTER_generated_content` (filter) - Filter any AI-generated content before use
+  - `MPAI_HOOK_FILTER_content_template` (filter) - Filter content templates before filling with data
+  - `MPAI_HOOK_FILTER_content_formatting` (filter) - Filter content formatting rules
+  - `MPAI_HOOK_FILTER_blog_post_content` (filter) - Filter blog post content before creation
+  - `MPAI_HOOK_ACTION_before_content_save` - Action before saving generated content
+  - `MPAI_HOOK_ACTION_after_content_save` - Action after saving generated content
+  - `MPAI_HOOK_FILTER_content_type` (filter) - Filter the detected content type from AI responses
+  - `MPAI_HOOK_FILTER_content_marker` (filter) - Filter content markers used in XML parsing
 
 - Admin Interface:
-  - `mpai_admin_menu_items` (filter) - Filter admin menu items before registration
-  - `mpai_admin_capabilities` (filter) - Filter capabilities required for admin functions
-  - `mpai_settings_fields` (filter) - Filter settings fields before display
-  - `mpai_settings_tabs` (filter) - Filter settings tabs before display
-  - `mpai_before_display_settings` - Action before displaying settings page
-  - `mpai_after_display_settings` - Action after displaying settings page
-  - `mpai_dashboard_sections` (filter) - Filter dashboard page sections
-  - `mpai_chat_interface_render` (filter) - Filter chat interface rendering
+  - `MPAI_HOOK_FILTER_admin_menu_items` (filter) - Filter admin menu items before registration
+  - `MPAI_HOOK_FILTER_admin_capabilities` (filter) - Filter capabilities required for admin functions
+  - `MPAI_HOOK_FILTER_settings_fields` (filter) - Filter settings fields before display
+  - `MPAI_HOOK_FILTER_settings_tabs` (filter) - Filter settings tabs before display
+  - `MPAI_HOOK_ACTION_before_display_settings` - Action before displaying settings page
+  - `MPAI_HOOK_ACTION_after_display_settings` - Action after displaying settings page
+  - `MPAI_HOOK_FILTER_dashboard_sections` (filter) - Filter dashboard page sections
+  - `MPAI_HOOK_FILTER_chat_interface_render` (filter) - Filter chat interface rendering
 
 **Deliverables:**
 - Implementation of content generation hooks
@@ -169,28 +169,28 @@ This document outlines a comprehensive plan to enhance the extensibility of the 
 
 **Planned Hooks:**
 - API Integration:
-  - `mpai_before_api_request` - Action before sending request to AI provider
-  - `mpai_after_api_request` - Action after receiving response from AI provider
-  - `mpai_api_request_params` (filter) - Filter request parameters before sending
-  - `mpai_api_response` (filter) - Filter raw API response
-  - `mpai_api_provider` (filter) - Filter which API provider to use
-  - `mpai_api_rate_limit` (filter) - Filter rate limiting behavior
-  - `mpai_format_api_response` (filter) - Filter response formatting for display
-  - `mpai_cache_ttl` (filter) - Filter cache time-to-live settings by request type
+  - `MPAI_HOOK_ACTION_before_api_request` - Action before sending request to AI provider
+  - `MPAI_HOOK_ACTION_after_api_request` - Action after receiving response from AI provider
+  - `MPAI_HOOK_FILTER_api_request_params` (filter) - Filter request parameters before sending
+  - `MPAI_HOOK_FILTER_api_response` (filter) - Filter raw API response
+  - `MPAI_HOOK_FILTER_api_provider` (filter) - Filter which API provider to use
+  - `MPAI_HOOK_FILTER_api_rate_limit` (filter) - Filter rate limiting behavior
+  - `MPAI_HOOK_FILTER_format_api_response` (filter) - Filter response formatting for display
+  - `MPAI_HOOK_FILTER_cache_ttl` (filter) - Filter cache time-to-live settings by request type
 
 - Error Handling:
-  - `mpai_api_error_handling` (filter) - Filter error handling behavior
-  - `mpai_before_error_recovery` - Action before error recovery attempted
-  - `mpai_after_error_recovery` - Action after error recovery completed
-  - `mpai_error_message` (filter) - Filter user-facing error messages
-  - `mpai_error_should_retry` (filter) - Filter whether an error should trigger a retry
+  - `MPAI_HOOK_FILTER_api_error_handling` (filter) - Filter error handling behavior
+  - `MPAI_HOOK_ACTION_before_error_recovery` - Action before error recovery attempted
+  - `MPAI_HOOK_ACTION_after_error_recovery` - Action after error recovery completed
+  - `MPAI_HOOK_FILTER_error_message` (filter) - Filter user-facing error messages
+  - `MPAI_HOOK_FILTER_error_should_retry` (filter) - Filter whether an error should trigger a retry
 
 - Logging:
-  - `mpai_log_entry` (filter) - Filter log entry before writing
-  - `mpai_should_log` (filter) - Filter whether to log a specific event
-  - `mpai_log_level` (filter) - Filter log level for a specific event
-  - `mpai_log_retention` (filter) - Filter log retention period
-  - `mpai_sanitize_log_data` (filter) - Filter to sanitize sensitive data in logs
+  - `MPAI_HOOK_FILTER_log_entry` (filter) - Filter log entry before writing
+  - `MPAI_HOOK_FILTER_should_log` (filter) - Filter whether to log a specific event
+  - `MPAI_HOOK_FILTER_log_level` (filter) - Filter log level for a specific event
+  - `MPAI_HOOK_FILTER_log_retention` (filter) - Filter log retention period
+  - `MPAI_HOOK_FILTER_sanitize_log_data` (filter) - Filter to sanitize sensitive data in logs
 
 **Deliverables:**
 - Implementation of API integration hooks
@@ -313,9 +313,9 @@ This document outlines a comprehensive plan to enhance the extensibility of the 
 ## Implementation Guidelines
 
 1. **Naming Conventions:**
-   - Action hooks: verb_noun format (e.g., `mpai_process_message`)
-   - Filter hooks: noun_descriptor format (e.g., `mpai_api_credentials`)
-   - Consistent `mpai_` prefix for all hooks
+   - Action hooks: MPAI_HOOK_ACTION_verb_noun format (e.g., `MPAI_HOOK_ACTION_process_message`)
+   - Filter hooks: MPAI_HOOK_FILTER_noun_descriptor format (e.g., `MPAI_HOOK_FILTER_api_credentials`)
+   - Consistent naming convention to clearly indicate whether a hook is an action or filter
 
 2. **Parameter Passing:**
    - Pass objects by reference only when necessary
