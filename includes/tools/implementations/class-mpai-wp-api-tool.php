@@ -32,7 +32,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	public function get_tool_definition() {
 		return [
 			'name' => 'wp_api',
-			'description' => 'Executes WordPress API functions for common operations like creating posts and managing plugins',
+			'description' => 'Executes WordPress API functions for common operations like creating posts and managing plugins and themes',
 			'parameters' => [
 				'type' => 'object',
 				'properties' => [
@@ -52,6 +52,8 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 							'activate_plugin',
 							'deactivate_plugin',
 							'get_plugins',
+							'activate_theme',
+							'get_themes',
 						],
 						'description' => 'The action to perform'
 					],
@@ -191,6 +193,10 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					return $this->deactivate_plugin( $parameters );
 				case 'get_plugins':
 					return $this->get_plugins( $parameters );
+				case 'activate_theme':
+					return $this->activate_theme( $parameters );
+				case 'get_themes':
+					return $this->get_themes( $parameters );
 				default:
 					throw new Exception( 'Unsupported action: ' . $action );
 			}
@@ -1511,6 +1517,190 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			throw $e;
 		}
 	}
+	
+	/**
+	 * Get themes installed on the site
+	 *
+	 * @param array $parameters Parameters for retrieving themes
+	 * @return array List of themes
+	 */
+	private function get_themes( $parameters ) {
+		mpai_log_debug('get_themes called with parameters: ' . json_encode($parameters), 'wp-api-tool');
+		$current_time = date('H:i:s');
+		
+		// Get all themes
+		$themes = wp_get_themes();
+		$result = array();
+		
+		// Get current theme
+		$current_theme = wp_get_theme();
+		$current_stylesheet = $current_theme->get_stylesheet();
+		
+		foreach ($themes as $theme_slug => $theme) {
+			$is_active = ($theme_slug === $current_stylesheet);
+			
+			$result[] = array(
+				'name' => $theme->get('Name'),
+				'slug' => $theme_slug,
+				'version' => $theme->get('Version'),
+				'description' => $theme->get('Description'),
+				'author' => $theme->get('Author'),
+				'is_active' => $is_active,
+				'status' => $is_active ? 'active' : 'inactive',
+				'screenshot' => $theme->get_screenshot(),
+				'generated_at' => $current_time,
+			);
+		}
+		
+		// Format for tabular display if requested
+		if (isset($parameters['format']) && $parameters['format'] === 'table') {
+			mpai_log_debug('Formatting themes as table', 'wp-api-tool');
+			$table_output = "Name\tStatus\tVersion\tAuthor (Generated at $current_time)\n";
+			
+			foreach ($result as $theme) {
+				$name = $theme['name'];
+				$status = $theme['status'];
+				$version = $theme['version'];
+				$author = $theme['author'];
+				
+				$table_output .= "$name\t$status\t$version\t$author\n";
+			}
+			
+			return array(
+				'success' => true,
+				'count' => count($result),
+				'format' => 'table',
+				'table_data' => $table_output,
+				'themes' => $result
+			);
+		}
+		
+		return array(
+			'success' => true,
+			'count' => count($result),
+			'themes' => $result
+		);
+	}
+	
+	/**
+	 * Activate a theme
+	 *
+	 * @param array $parameters Parameters for activating a theme
+	 * @return array Activation result
+	 */
+	private function activate_theme( $parameters ) {
+		try {
+			// Debug log inputs
+			mpai_log_debug('activate_theme: Starting with parameters: ' . json_encode($parameters), 'wp-api-tool');
+			
+			// Check user capabilities
+			if ( ! current_user_can( 'switch_themes' ) ) {
+				mpai_log_error('User does not have switch_themes capability', 'wp-api-tool');
+				throw new Exception( 'You do not have sufficient permissions to switch themes' );
+			}
+			
+			// Check parameters
+			if ( ! isset( $parameters['theme'] ) || empty($parameters['theme']) ) {
+				$debug_trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+				$caller = isset($debug_trace[1]['function']) ? $debug_trace[1]['function'] : 'unknown';
+				$caller_file = isset($debug_trace[1]['file']) ? basename($debug_trace[1]['file']) : 'unknown';
+				$caller_line = isset($debug_trace[1]['line']) ? $debug_trace[1]['line'] : 'unknown';
+				
+				mpai_log_error('Missing theme parameter. Called from ' . $caller_file . ':' . $caller_line . ' in ' . $caller);
+				mpai_log_debug('Full parameters: ' . json_encode($parameters), 'wp-api-tool');
+				
+				throw new Exception( 'Theme parameter is required but was missing or empty. This should be the theme slug (e.g. "twentytwentythree")' );
+			}
+			
+			// Get the theme slug
+			$theme_slug = $parameters['theme'];
+			
+			// Get all themes
+			$themes = wp_get_themes();
+			
+			// Debug
+			mpai_log_debug('Attempting to activate theme: ' . $theme_slug, 'wp-api-tool');
+			mpai_log_debug('Available themes: ' . implode(', ', array_keys($themes)), 'wp-api-tool');
+			
+			// Find the theme
+			$theme = null;
+			
+			// Check for exact match
+			if (isset($themes[$theme_slug])) {
+				$theme = $themes[$theme_slug];
+			} else {
+				// Try to find a match by name
+				foreach ($themes as $slug => $theme_obj) {
+					if (strtolower($theme_obj->get('Name')) === strtolower($theme_slug)) {
+						$theme = $theme_obj;
+						$theme_slug = $slug;
+						break;
+					}
+				}
+				
+				// Try to find a partial match
+				if (!$theme) {
+					foreach ($themes as $slug => $theme_obj) {
+						if (stripos($slug, $theme_slug) !== false ||
+							stripos($theme_obj->get('Name'), $theme_slug) !== false) {
+							$theme = $theme_obj;
+							$theme_slug = $slug;
+							break;
+						}
+					}
+				}
+			}
+			
+			// Check if theme was found
+			if (!$theme) {
+				mpai_log_warning('Theme not found: ' . $theme_slug, 'wp-api-tool');
+				throw new Exception( "Theme '{$theme_slug}' not found. Available themes include: " .
+					implode(', ', array_slice(array_keys($themes), 0, 5)) );
+			}
+			
+			// Get current theme
+			$current_theme = wp_get_theme();
+			
+			// Check if theme is already active
+			if ($current_theme->get_stylesheet() === $theme_slug) {
+				mpai_log_debug('Theme already active: ' . $theme_slug, 'wp-api-tool');
+				return array(
+					'success' => true,
+					'theme' => $theme_slug,
+					'theme_name' => $theme->get('Name'),
+					'message' => "Theme '{$theme->get('Name')}' is already active",
+					'status' => 'active',
+				);
+			}
+			
+			// Activate the theme
+			mpai_log_debug('Activating theme: ' . $theme_slug, 'wp-api-tool');
+			switch_theme($theme_slug);
+			
+			// Verify activation
+			$new_theme = wp_get_theme();
+			if ($new_theme->get_stylesheet() === $theme_slug) {
+				mpai_log_debug('Theme activated successfully: ' . $theme_slug, 'wp-api-tool');
+				return array(
+					'success' => true,
+					'theme' => $theme_slug,
+					'theme_name' => $theme->get('Name'),
+					'message' => "Theme '{$theme->get('Name')}' has been activated successfully",
+					'status' => 'active',
+				);
+			} else {
+				mpai_log_error('Failed to activate theme: ' . $theme_slug, 'wp-api-tool');
+				throw new Exception( "Failed to activate theme '{$theme->get('Name')}'" );
+			}
+		} catch (Exception $e) {
+			mpai_log_error('activate_theme exception: ' . $e->getMessage(), 'wp-api-tool', array(
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			));
+			throw $e;
+		}
+	}
 
 	/**
 	 * Get parameters for the tool
@@ -1536,6 +1726,8 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					'activate_plugin',
 					'deactivate_plugin',
 					'get_plugins',
+					'activate_theme',
+					'get_themes',
 				),
 			),
 		);

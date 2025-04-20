@@ -179,13 +179,18 @@ class MPAI_Context_Manager {
                     'action' => array(
                         'type' => 'string',
                         'description' => 'The WordPress API action to perform',
-                        'enum' => array('create_post', 'update_post', 'get_post', 'create_page', 'create_user', 
-                                        'get_users', 'get_memberships', 'create_membership', 'get_transactions', 
-                                        'get_subscriptions', 'activate_plugin', 'deactivate_plugin', 'get_plugins')
+                        'enum' => array('create_post', 'update_post', 'get_post', 'create_page', 'create_user',
+                                        'get_users', 'get_memberships', 'create_membership', 'get_transactions',
+                                        'get_subscriptions', 'activate_plugin', 'deactivate_plugin', 'get_plugins',
+                                        'activate_theme', 'get_themes')
                     ),
                     'plugin' => array(
                         'type' => 'string',
                         'description' => 'The plugin path to activate or deactivate (e.g. "memberpress-coachkit/memberpress-coachkit.php")'
+                    ),
+                    'theme' => array(
+                        'type' => 'string',
+                        'description' => 'The theme slug to activate (e.g. "twentytwentythree")'
                     ),
                     // Other parameters are dynamic based on the action
                 ),
@@ -563,6 +568,77 @@ class MPAI_Context_Manager {
                 }
                 mpai_log_debug('Returning simulated output for wp user list', 'context-manager');
                 return $this->format_tabular_output($command, $output);
+            }
+            
+            if (strpos($command, 'wp theme activate') === 0) {
+                mpai_log_debug('Detected theme activation command - using WP API Tool', 'context-manager');
+                
+                try {
+                    // Extract theme name from command
+                    preg_match('/wp theme activate\s+(\S+)/', $command, $matches);
+                    if (isset($matches[1])) {
+                        $theme_name = $matches[1];
+                        
+                        // Use the WP API Tool to activate the theme
+                        if ($wp_api_tool) {
+                            mpai_log_debug('Activating theme: ' . $theme_name, 'context-manager');
+                            
+                            $result = $wp_api_tool->execute(array(
+                                'action' => 'activate_theme',
+                                'theme' => $theme_name
+                            ));
+                            
+                            if (is_array($result) && isset($result['message'])) {
+                                return $result['message'];
+                            } else {
+                                return "Theme '{$theme_name}' activation result: " . json_encode($result);
+                            }
+                        } else {
+                            mpai_log_warning('WP API Tool not initialized', 'context-manager');
+                            throw new Exception('WP API Tool not initialized');
+                        }
+                    } else {
+                        mpai_log_warning('Could not extract theme name from command: ' . $command, 'context-manager');
+                        return "Error: Could not extract theme name from command. Please specify a theme name.";
+                    }
+                } catch (Exception $e) {
+                    mpai_log_error('Error activating theme: ' . $e->getMessage(), 'context-manager', array(
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ));
+                    return "Error activating theme: " . $e->getMessage();
+                }
+            }
+            
+            if (strpos($command, 'wp theme list') === 0) {
+                mpai_log_debug('Detected theme list command - using WP API Tool', 'context-manager');
+                
+                try {
+                    // Use the WP API Tool to get theme list
+                    if ($wp_api_tool) {
+                        $result = $wp_api_tool->execute(array(
+                            'action' => 'get_themes',
+                            'format' => 'table'
+                        ));
+                        
+                        if (is_array($result) && isset($result['table_data'])) {
+                            return $result['table_data'];
+                        } else {
+                            return "Theme list result: " . json_encode($result);
+                        }
+                    } else {
+                        mpai_log_warning('WP API Tool not initialized', 'context-manager');
+                        throw new Exception('WP API Tool not initialized');
+                    }
+                } catch (Exception $e) {
+                    mpai_log_error('Error getting theme list: ' . $e->getMessage(), 'context-manager', array(
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ));
+                    return "Error getting theme list: " . $e->getMessage();
+                }
             }
             
             if (strpos($command, 'wp post list') === 0) {

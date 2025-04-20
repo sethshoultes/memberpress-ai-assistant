@@ -490,6 +490,161 @@ class MPAI_WP_CLI_Executor {
     				'method' => 'wp_api'
     			];
     			
+    		case 'activate':
+    			// Check if plugin name is provided
+    			if (!isset($command_parts[2])) {
+    				return [
+    					'success' => false,
+    					'output' => 'Plugin name is required',
+    					'error' => 'Missing plugin name',
+    					'command' => 'wp plugin activate',
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			$plugin_name = $command_parts[2];
+    			
+    			// Find the plugin file path
+    			$plugin_file = null;
+    			$all_plugins = get_plugins();
+    			
+    			// Check if the provided name is a direct plugin file path
+    			if (isset($all_plugins[$plugin_name])) {
+    				$plugin_file = $plugin_name;
+    			} else {
+    				// Try to find the plugin by name
+    				foreach ($all_plugins as $path => $data) {
+    					if (strtolower($data['Name']) === strtolower($plugin_name) ||
+    						strpos(strtolower($path), strtolower($plugin_name)) !== false) {
+    						$plugin_file = $path;
+    						break;
+    					}
+    				}
+    			}
+    			
+    			if (!$plugin_file) {
+    				return [
+    					'success' => false,
+    					'output' => "Plugin '{$plugin_name}' not found.",
+    					'error' => 'Plugin not found',
+    					'command' => 'wp plugin activate ' . $plugin_name,
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			// Check if plugin is already active
+    			$active_plugins = get_option('active_plugins');
+    			if (in_array($plugin_file, $active_plugins)) {
+    				return [
+    					'success' => true,
+    					'output' => "Plugin '{$all_plugins[$plugin_file]['Name']}' is already active.",
+    					'command' => 'wp plugin activate ' . $plugin_name,
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			// Activate the plugin
+    			$result = activate_plugin($plugin_file);
+    			
+    			// Check for activation error
+    			if (is_wp_error($result)) {
+    				return [
+    					'success' => false,
+    					'output' => "Failed to activate plugin '{$all_plugins[$plugin_file]['Name']}': " . $result->get_error_message(),
+    					'error' => $result->get_error_message(),
+    					'command' => 'wp plugin activate ' . $plugin_name,
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			return [
+    				'success' => true,
+    				'output' => "Plugin '{$all_plugins[$plugin_file]['Name']}' activated successfully.",
+    				'plugin_name' => $all_plugins[$plugin_file]['Name'],
+    				'plugin' => $plugin_file,
+    				'status' => 'active',
+    				'command' => 'wp plugin activate ' . $plugin_name,
+    				'method' => 'wp_api'
+    			];
+    			
+    		case 'deactivate':
+    			// Check if plugin name is provided
+    			if (!isset($command_parts[2])) {
+    				return [
+    					'success' => false,
+    					'output' => 'Plugin name is required',
+    					'error' => 'Missing plugin name',
+    					'command' => 'wp plugin deactivate',
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			$plugin_name = $command_parts[2];
+    			
+    			// Find the plugin file path
+    			$plugin_file = null;
+    			$all_plugins = get_plugins();
+    			
+    			// Check if the provided name is a direct plugin file path
+    			if (isset($all_plugins[$plugin_name])) {
+    				$plugin_file = $plugin_name;
+    			} else {
+    				// Try to find the plugin by name
+    				foreach ($all_plugins as $path => $data) {
+    					if (strtolower($data['Name']) === strtolower($plugin_name) ||
+    						strpos(strtolower($path), strtolower($plugin_name)) !== false) {
+    						$plugin_file = $path;
+    						break;
+    					}
+    				}
+    			}
+    			
+    			if (!$plugin_file) {
+    				return [
+    					'success' => false,
+    					'output' => "Plugin '{$plugin_name}' not found.",
+    					'error' => 'Plugin not found',
+    					'command' => 'wp plugin deactivate ' . $plugin_name,
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			// Check if plugin is already inactive
+    			$active_plugins = get_option('active_plugins');
+    			if (!in_array($plugin_file, $active_plugins)) {
+    				return [
+    					'success' => true,
+    					'output' => "Plugin '{$all_plugins[$plugin_file]['Name']}' is already inactive.",
+    					'command' => 'wp plugin deactivate ' . $plugin_name,
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			// Deactivate the plugin
+    			deactivate_plugins($plugin_file);
+    			
+    			// Verify deactivation
+    			$active_plugins = get_option('active_plugins');
+    			if (in_array($plugin_file, $active_plugins)) {
+    				return [
+    					'success' => false,
+    					'output' => "Failed to deactivate plugin '{$all_plugins[$plugin_file]['Name']}'.",
+    					'error' => 'Plugin deactivation failed',
+    					'command' => 'wp plugin deactivate ' . $plugin_name,
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			return [
+    				'success' => true,
+    				'output' => "Plugin '{$all_plugins[$plugin_file]['Name']}' deactivated successfully.",
+    				'plugin_name' => $all_plugins[$plugin_file]['Name'],
+    				'plugin' => $plugin_file,
+    				'status' => 'inactive',
+    				'command' => 'wp plugin deactivate ' . $plugin_name,
+    				'method' => 'wp_api'
+    			];
+    			
     		default:
     			return [
     				'success' => false,
@@ -1869,6 +2024,90 @@ class MPAI_WP_CLI_Executor {
     				'success' => true,
     				'output' => $output,
     				'command' => 'wp theme status',
+    				'method' => 'wp_api'
+    			];
+    		
+    		case 'activate':
+    			// Check if theme name is provided
+    			if (!isset($command_parts[2])) {
+    				return [
+    					'success' => false,
+    					'output' => 'Theme name is required',
+    					'error' => 'Missing theme name',
+    					'command' => 'wp theme activate',
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			$theme_name = $command_parts[2];
+    			
+    			// Get all themes
+    			$themes = wp_get_themes();
+    			$theme_object = null;
+    			
+    			// Find the theme by name or stylesheet
+    			foreach ($themes as $theme) {
+    				if (strtolower($theme->get('Name')) === strtolower($theme_name) ||
+    					strtolower($theme->get_stylesheet()) === strtolower($theme_name)) {
+    					$theme_object = $theme;
+    					break;
+    				}
+    			}
+    			
+    			if (!$theme_object) {
+    				return [
+    					'success' => false,
+    					'output' => "Theme '{$theme_name}' not found.",
+    					'error' => 'Theme not found',
+    					'command' => 'wp theme activate ' . $theme_name,
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			// Get the stylesheet (theme directory name)
+    			$stylesheet = $theme_object->get_stylesheet();
+    			
+    			// Check if theme is already active
+    			$current_theme = wp_get_theme();
+    			if ($current_theme->get_stylesheet() === $stylesheet) {
+    				return [
+    					'success' => true,
+    					'output' => "Theme '{$theme_object->get('Name')}' is already active.",
+    					'command' => 'wp theme activate ' . $theme_name,
+    					'method' => 'wp_api'
+    				];
+    			}
+    			
+    			// Activate the theme
+    			switch_theme($stylesheet);
+    			
+    			// Verify activation
+    			$new_current_theme = wp_get_theme();
+    			if ($new_current_theme->get_stylesheet() === $stylesheet) {
+    				return [
+    					'success' => true,
+    					'output' => "Theme '{$theme_object->get('Name')}' activated successfully.",
+    					'command' => 'wp theme activate ' . $theme_name,
+    					'method' => 'wp_api'
+    				];
+    			} else {
+    				return [
+    					'success' => false,
+    					'output' => "Failed to activate theme '{$theme_object->get('Name')}'.",
+    					'error' => 'Theme activation failed',
+    					'command' => 'wp theme activate ' . $theme_name,
+    					'method' => 'wp_api'
+    				];
+    			}
+    		
+    		case 'deactivate':
+    			// WordPress doesn't have a direct function to deactivate a theme
+    			// You can only switch to another theme
+    			return [
+    				'success' => false,
+    				'output' => "WordPress doesn't support theme deactivation. Use 'wp theme activate' to switch to another theme instead.",
+    				'error' => 'Unsupported operation',
+    				'command' => 'wp theme deactivate',
     				'method' => 'wp_api'
     			];
     			
