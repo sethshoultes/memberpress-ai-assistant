@@ -370,7 +370,7 @@
             }
             
             if (this.categories.tool_usage) {
-                this.logToolUsage('wp_cli', { command: 'wp user list' });
+                this.logToolUsage('wpcli', { command: 'wp user list' });
             }
             
             if (this.categories.agent_activity) {

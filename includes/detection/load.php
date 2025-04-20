@@ -12,17 +12,20 @@ if ( ! defined( 'WPINC' ) ) {
     die;
 }
 
-// Load the MemberPress detector
+// Load the detection classes
 require_once dirname( __FILE__ ) . '/class-mpai-memberpress-detector.php';
+require_once dirname( __FILE__ ) . '/class-mpai-tool-call-detector.php';
 
 // Initialize the detection system
 function mpai_init_detection_system() {
-    // Get the detector instance to ensure it's initialized
+    // Get the detector instances to ensure they're initialized
     mpai_memberpress_detector();
+    mpai_tool_call_detector();
     
     // Log initialization
     mpai_log_debug('MemberPress detection system initialized', [
-        'detection_info' => mpai_memberpress_detector()->get_detection_info()
+        'detection_info' => mpai_memberpress_detector()->get_detection_info(),
+        'tool_call_detector' => 'Initialized'
     ]);
 }
 

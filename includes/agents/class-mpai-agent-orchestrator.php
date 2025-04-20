@@ -327,19 +327,6 @@ class MPAI_Agent_Orchestrator {
 			// Register the adapter as a tool for WP-CLI commands
 			if ( $this->command_adapter->register_as_tool( $this->tool_registry ) ) {
 				mpai_log_info( 'Registered command adapter as tool', 'orchestrator' );
-				
-				// Replace the standard WP-CLI tool with our new implementation
-				// Get the new implementation and register it as the primary tools
-				$wpcli_new_tool = $this->tool_registry->get_tool( 'wpcli_new' );
-				if ($wpcli_new_tool) {
-					$this->tool_registry->register_tool( 'wpcli', $wpcli_new_tool );
-					// For backward compatibility, also register under the wp_cli name
-					$this->tool_registry->register_tool( 'wp_cli', $wpcli_new_tool );
-					mpai_log_info( 'Replaced standard WP-CLI tools with new implementation', 'orchestrator' );
-				} else {
-					mpai_log_warning( 'Could not get wpcli_new tool', 'orchestrator' );
-				}
-				
 				return true;
 			}
 			
@@ -956,7 +943,7 @@ class MPAI_Agent_Orchestrator {
 			// Provide the recommended command for getting PHP version directly
 			$intent_data['php_version_commands'] = [
 				'direct' => 'php -v',
-				'wp_cli' => 'wp eval \'echo PHP_VERSION;\'',
+				'wpcli' => 'wp eval \'echo PHP_VERSION;\'',
 				'wp_php' => 'wp php info'
 			];
 			
@@ -986,86 +973,160 @@ class MPAI_Agent_Orchestrator {
 		if ($is_plugin_query) {
 			mpai_log_debug("Detected plugin-related query, gathering plugin information", 'agent-orchestrator');
 			
-			// Ensure plugin functions are available
-			if (!function_exists('get_plugins')) {
-				require_once ABSPATH . 'wp-admin/includes/plugin.php';
-			}
+			// First try to use the plugin_logs tool for more accurate and reliable information
+			$plugin_logs_tool = $this->tool_registry->get_tool('plugin_logs');
+			$plugin_logs_data = null;
 			
-			if (!function_exists('is_plugin_active')) {
-				include_once ABSPATH . 'wp-admin/includes/plugin.php';
-			}
-			
-			// Get active plugins
-			$all_plugins = get_plugins();
-			$active_plugins = get_option('active_plugins');
-			
-			// Prepare plugin summary info
-			$plugin_summary = "Plugin Information:\n\n";
-			$plugin_summary .= "Total Plugins: " . count($all_plugins) . "\n";
-			$plugin_summary .= "Active Plugins: " . count($active_plugins) . "\n";
-			$plugin_summary .= "Inactive Plugins: " . (count($all_plugins) - count($active_plugins)) . "\n\n";
-			
-			// Add list of active plugins
-			$plugin_summary .= "Active Plugins:\n";
-			$count = 0;
-			
-			foreach ($active_plugins as $plugin) {
-				if (isset($all_plugins[$plugin]) && $count < 10) {
-					$plugin_data = $all_plugins[$plugin];
-					$plugin_summary .= "- {$plugin_data['Name']} v{$plugin_data['Version']}\n";
-					$count++;
-				}
-			}
-			
-			if (count($active_plugins) > 10) {
-				$plugin_summary .= "... and " . (count($active_plugins) - 10) . " more\n";
-			}
-			
-			// Ensure plugin logger is accessible and data is available
-			if (function_exists('mpai_init_plugin_logger')) {
-				$plugin_logger = mpai_init_plugin_logger();
-				if ($plugin_logger) {
-					try {
-						// Ensure the table exists and has data
-						if (method_exists($plugin_logger, 'maybe_create_table')) {
-							$plugin_logger->maybe_create_table();
+			if ($plugin_logs_tool) {
+				try {
+					mpai_log_debug("Using plugin_logs tool for plugin query", 'agent-orchestrator');
+					
+					// Check if this is specifically about recently installed plugins
+					$is_recent_install_query = preg_match('/recent.*(?:install|add)/i', $user_message) ||
+											   preg_match('/(?:install|add).*recent/i', $user_message);
+					
+					$action = $is_recent_install_query ? 'installed' : '';
+					
+					// Execute the plugin_logs tool
+					$logs_result = $plugin_logs_tool->execute([
+						'action' => $action,
+						'days' => 30,
+						'limit' => 10
+					]);
+					
+					if (is_array($logs_result) && isset($logs_result['success']) && $logs_result['success']) {
+						$plugin_logs_data = $logs_result;
+						mpai_log_debug("Successfully retrieved plugin logs data", 'agent-orchestrator');
+						
+						// Format plugin logs data for display
+						$plugin_summary = "Plugin Information:\n\n";
+						
+						if (isset($logs_result['summary'])) {
+							$summary = $logs_result['summary'];
+							$plugin_summary .= "Plugin Activity Summary (last 30 days):\n";
+							$plugin_summary .= "Total Activities: " . $summary['total'] . "\n";
+							$plugin_summary .= "Installations: " . $summary['installed'] . "\n";
+							$plugin_summary .= "Updates: " . $summary['updated'] . "\n";
+							$plugin_summary .= "Activations: " . $summary['activated'] . "\n";
+							$plugin_summary .= "Deactivations: " . $summary['deactivated'] . "\n";
+							$plugin_summary .= "Deletions: " . $summary['deleted'] . "\n\n";
 						}
 						
-						// Get recent logs
-						if (method_exists($plugin_logger, 'get_logs')) {
-							$logs = $plugin_logger->get_logs(array(
-								'limit' => 10,
-								'date_from' => date('Y-m-d H:i:s', strtotime('-30 days')),
-								'orderby' => 'date_time',
-								'order' => 'DESC',
-							));
-							
-							if (!empty($logs)) {
-								$plugin_summary .= "\nRecent Plugin Activity:\n";
-								
-								foreach ($logs as $log) {
-									$action = ucfirst($log['action']);
-									$plugin_name = $log['plugin_name'];
-									$date = date('M j, Y', strtotime($log['date_time']));
-									$plugin_summary .= "- {$plugin_name}: {$action} on {$date}\n";
+						if (isset($logs_result['plugins']) && !empty($logs_result['plugins'])) {
+							$plugin_summary .= "Recent Plugin Activity:\n";
+							foreach ($logs_result['plugins'] as $plugin) {
+								$plugin_summary .= "- {$plugin['plugin_name']} (v{$plugin['current_version']})\n";
+								if (!empty($plugin['logs'])) {
+									foreach (array_slice($plugin['logs'], 0, 3) as $log) {
+										$action = ucfirst($log['action']);
+										$date = date('M j, Y', strtotime($log['date_time']));
+										$plugin_summary .= "  * {$action} on {$date}\n";
+									}
 								}
 							}
 						}
-					} catch (Exception $e) {
-						mpai_log_error("Error accessing plugin logs: " . $e->getMessage(), 'agent-orchestrator', array(
-							'file' => $e->getFile(),
-							'line' => $e->getLine(),
-							'trace' => $e->getTraceAsString()
-						));
+						
+						// Add plugin logs data to intent data
+						$intent_data['plugin_logs'] = $logs_result;
+						$intent_data['enhanced_plugin_info'] = $plugin_summary;
+						
+						// Directly add to message for better handling
+						$intent_data['message'] .= "\n\nPlugin Information: " . $plugin_summary;
 					}
+				} catch (Exception $e) {
+					mpai_log_error("Error using plugin_logs tool: " . $e->getMessage(), 'agent-orchestrator', array(
+						'file' => $e->getFile(),
+						'line' => $e->getLine(),
+						'trace' => $e->getTraceAsString()
+					));
 				}
 			}
 			
-			// Add plugin information to intent data
-			$intent_data['enhanced_plugin_info'] = $plugin_summary;
-			
-			// Directly add to message for better handling
-			$intent_data['message'] .= "\n\nPlugin Information: " . $plugin_summary;
+			// Fall back to direct WordPress API if plugin_logs tool failed or isn't available
+			if (!$plugin_logs_data) {
+				mpai_log_debug("Falling back to direct WordPress API for plugin information", 'agent-orchestrator');
+				
+				// Ensure plugin functions are available
+				if (!function_exists('get_plugins')) {
+					require_once ABSPATH . 'wp-admin/includes/plugin.php';
+				}
+				
+				if (!function_exists('is_plugin_active')) {
+					include_once ABSPATH . 'wp-admin/includes/plugin.php';
+				}
+				
+				// Get active plugins
+				$all_plugins = get_plugins();
+				$active_plugins = get_option('active_plugins');
+				
+				// Prepare plugin summary info
+				$plugin_summary = "Plugin Information:\n\n";
+				$plugin_summary .= "Total Plugins: " . count($all_plugins) . "\n";
+				$plugin_summary .= "Active Plugins: " . count($active_plugins) . "\n";
+				$plugin_summary .= "Inactive Plugins: " . (count($all_plugins) - count($active_plugins)) . "\n\n";
+				
+				// Add list of active plugins
+				$plugin_summary .= "Active Plugins:\n";
+				$count = 0;
+				
+				foreach ($active_plugins as $plugin) {
+					if (isset($all_plugins[$plugin]) && $count < 10) {
+						$plugin_data = $all_plugins[$plugin];
+						$plugin_summary .= "- {$plugin_data['Name']} v{$plugin_data['Version']}\n";
+						$count++;
+					}
+				}
+				
+				if (count($active_plugins) > 10) {
+					$plugin_summary .= "... and " . (count($active_plugins) - 10) . " more\n";
+				}
+				
+				// Ensure plugin logger is accessible and data is available
+				if (function_exists('mpai_init_plugin_logger')) {
+					$plugin_logger = mpai_init_plugin_logger();
+					if ($plugin_logger) {
+						try {
+							// Ensure the table exists and has data
+							if (method_exists($plugin_logger, 'maybe_create_table')) {
+								$plugin_logger->maybe_create_table();
+							}
+							
+							// Get recent logs
+							if (method_exists($plugin_logger, 'get_logs')) {
+								$logs = $plugin_logger->get_logs(array(
+									'limit' => 10,
+									'date_from' => date('Y-m-d H:i:s', strtotime('-30 days')),
+									'orderby' => 'date_time',
+									'order' => 'DESC',
+								));
+								
+								if (!empty($logs)) {
+									$plugin_summary .= "\nRecent Plugin Activity:\n";
+									
+									foreach ($logs as $log) {
+										$action = ucfirst($log['action']);
+										$plugin_name = $log['plugin_name'];
+										$date = date('M j, Y', strtotime($log['date_time']));
+										$plugin_summary .= "- {$plugin_name}: {$action} on {$date}\n";
+									}
+								}
+							}
+						} catch (Exception $e) {
+							mpai_log_error("Error accessing plugin logs: " . $e->getMessage(), 'agent-orchestrator', array(
+								'file' => $e->getFile(),
+								'line' => $e->getLine(),
+								'trace' => $e->getTraceAsString()
+							));
+						}
+					}
+				}
+				
+				// Add plugin information to intent data
+				$intent_data['enhanced_plugin_info'] = $plugin_summary;
+				
+				// Directly add to message for better handling
+				$intent_data['message'] .= "\n\nPlugin Information: " . $plugin_summary;
+			}
 		}
 	}
 	
@@ -1249,11 +1310,12 @@ class MPAI_Agent_Orchestrator {
 			return 'memberpress_management';
 		}
 		
-		// Use enhanced agent scoring system
+		// Use unified agent scoring system
+		$scoring = mpai_agent_scoring();
 		$agent_scores = $this->get_agent_confidence_scores($message, $context);
 		
 		// Apply weighted selection algorithm with confidence threshold
-		$primary_agent = $this->select_agent_with_confidence($agent_scores, $message);
+		$primary_agent = $scoring->select_agent_with_confidence($agent_scores, $message);
 		
 		// Log detailed scoring results for debugging
 		mpai_log_debug("Agent scores: " . json_encode($agent_scores), 'agent-orchestrator');
@@ -1272,16 +1334,14 @@ class MPAI_Agent_Orchestrator {
 	private function get_agent_confidence_scores($message, $context = []) {
 		$agent_scores = [];
 		
-		// Calculate scores for each agent
+		// Calculate scores for each agent using the unified scoring system
 		foreach ( $this->agents as $agent_id => $agent ) {
-			// Get base confidence score from agent's evaluate_request method
-			$base_score = $agent->evaluate_request($message, $context);
+			// Get confidence score from agent's evaluate_request method
+			// This now uses the unified scoring system internally
+			$score = $agent->evaluate_request($message, $context);
 			
-			// Apply contextual modifiers
-			$modified_score = $this->apply_contextual_modifiers($agent_id, $base_score, $message, $context);
-			
-			// Store the final score
-			$agent_scores[$agent_id] = $modified_score;
+			// Store the score
+			$agent_scores[$agent_id] = $score;
 		}
 		
 		return $agent_scores;
@@ -1289,7 +1349,8 @@ class MPAI_Agent_Orchestrator {
 	
 	/**
 	 * Apply contextual modifiers to the base confidence score
-	 * 
+	 *
+	 * @deprecated Use mpai_agent_scoring()->apply_contextual_modifiers() instead
 	 * @param string $agent_id Agent identifier
 	 * @param int $base_score Base confidence score (0-100)
 	 * @param string $message User message
@@ -1297,109 +1358,23 @@ class MPAI_Agent_Orchestrator {
 	 * @return int Modified confidence score (0-100)
 	 */
 	private function apply_contextual_modifiers($agent_id, $base_score, $message, $context = []) {
-		$modified_score = $base_score;
-		
-		// 1. Conversation continuity - boost score if this is a follow-up to previous interaction
-		if (isset($context['memory']) && is_array($context['memory'])) {
-			// Check if the last interaction was with this agent
-			$last_memory = end($context['memory']);
-			if ($last_memory && 
-				isset($last_memory['result']['agent']) && 
-				$last_memory['result']['agent'] === $agent_id) {
-				// Apply a significant boost for conversation continuity
-				$modified_score += 15;
-			}
-		}
-		
-		// 2. Agent specialization - boost score for specialized agents over general ones
-		if ($agent_id !== 'memberpress') {
-			// Give a slight boost to specialized agents over the default agent
-			$modified_score += 5;
-		}
-		
-		// 3. Performance history - adjust based on past performance
-		if (isset($context['agent_performance']) && 
-			isset($context['agent_performance'][$agent_id])) {
-			$performance = $context['agent_performance'][$agent_id];
-			if (isset($performance['success_rate']) && $performance['success_rate'] > 0.8) {
-				// Boost for agents with high success rate
-				$modified_score += 10;
-			} elseif (isset($performance['success_rate']) && $performance['success_rate'] < 0.4) {
-				// Penalty for agents with low success rate
-				$modified_score -= 10;
-			}
-		}
-		
-		// Cap at 0-100 range
-		return max(0, min($modified_score, 100));
+		// Use the unified agent scoring system
+		$scoring = mpai_agent_scoring();
+		return $scoring->apply_contextual_modifiers($agent_id, $base_score, $message, $context);
 	}
 	
 	/**
 	 * Select the most appropriate agent based on confidence scores
-	 * 
+	 *
+	 * @deprecated Use mpai_agent_scoring()->select_agent_with_confidence() instead
 	 * @param array $agent_scores Associative array of agent_id => confidence_score
 	 * @param string $message Original user message
 	 * @return string Selected agent ID
 	 */
 	private function select_agent_with_confidence($agent_scores, $message) {
-		// Find highest scoring agent
-		$highest_score = 0;
-		$primary_agent = 'memberpress'; // Default if no high scores
-		
-		foreach ( $agent_scores as $agent_id => $score ) {
-			if ( $score > $highest_score ) {
-				$highest_score = $score;
-				$primary_agent = $agent_id;
-			}
-		}
-		
-		// Apply confidence threshold - if no agent scores high enough, fall back to default
-		$confidence_threshold = 30; // Minimum score to be confident in selection
-		
-		if ($highest_score < $confidence_threshold) {
-			// No agent is confident enough, use default memberpress agent
-			mpai_log_debug("No agent met confidence threshold of {$confidence_threshold}, falling back to default", 'agent-orchestrator');
-			return 'memberpress';
-		}
-		
-		// Check for agents with similar scores and apply tiebreaker logic
-		$close_scores = [];
-		$similarity_threshold = 10; // Consider scores within this range as similar
-		
-		foreach ($agent_scores as $agent_id => $score) {
-			if ($score >= ($highest_score - $similarity_threshold)) {
-				$close_scores[$agent_id] = $score;
-			}
-		}
-		
-		// If multiple agents have similar high scores, apply tiebreakers
-		if (count($close_scores) > 1) {
-			// Log tied agents
-			mpai_log_debug("Multiple agents with similar scores: " . json_encode($close_scores), 'agent-orchestrator');
-			
-			// Tiebreaker 1: Prefer specialized agents over general ones
-			if (isset($close_scores['memberpress']) && count($close_scores) > 1) {
-				// If default agent is tied with specialized agents, prefer specialized
-				unset($close_scores['memberpress']);
-				$primary_agent = array_keys($close_scores)[0];
-			}
-			
-			// Tiebreaker 2: If still tied, use content analysis (length of message, complexity)
-			if (count($close_scores) > 1) {
-				// More complex, longer messages might benefit from more specialized agents
-				if (strlen($message) > 100) {
-					// For longer messages, prefer specialized over general agents
-					foreach (array_keys($close_scores) as $agent_id) {
-						if ($agent_id !== 'memberpress') {
-							$primary_agent = $agent_id;
-							break;
-						}
-					}
-				}
-			}
-		}
-		
-		return $primary_agent;
+		// Use the unified agent scoring system
+		$scoring = mpai_agent_scoring();
+		return $scoring->select_agent_with_confidence($agent_scores, $message);
 	}
 	
 	/**
