@@ -1310,6 +1310,159 @@ class MPAI_Context_Manager {
     public function execute_plugin_logs($parameters) {
         mpai_log_debug('Execute_plugin_logs called with: ' . json_encode($parameters), 'context-manager');
         
+        // Skip the URL approach and directly use the plugin logger
+        try {
+            // Initialize the plugin logger
+            if (!function_exists('mpai_init_plugin_logger')) {
+                if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
+                    require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+                    mpai_log_debug('Loaded plugin logger class', 'context-manager');
+                } else {
+                    mpai_log_error('Plugin logger class not found', 'context-manager');
+                    return array(
+                        'success' => false,
+                        'message' => 'Plugin logger class not found'
+                    );
+                }
+            }
+            
+            $plugin_logger = mpai_init_plugin_logger();
+            
+            if (!$plugin_logger) {
+                mpai_log_error('Failed to initialize plugin logger', 'context-manager');
+                return array(
+                    'success' => false,
+                    'message' => 'Failed to initialize plugin logger'
+                );
+            }
+            
+            mpai_log_debug('Plugin logger initialized successfully', 'context-manager');
+            
+            // Parse parameters
+            $action = isset($parameters['action']) ? sanitize_text_field($parameters['action']) : '';
+            $plugin_name = isset($parameters['plugin_name']) ? sanitize_text_field($parameters['plugin_name']) : '';
+            $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
+            $limit = isset($parameters['limit']) ? intval($parameters['limit']) : 25;
+            $summary_only = isset($parameters['summary_only']) ? (bool)$parameters['summary_only'] : false;
+            
+            // Calculate date range
+            $date_from = '';
+            if ($days > 0) {
+                $date_from = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+            }
+            
+            // Get summary data
+            $summary_days = $days > 0 ? $days : 365; // If all time, limit to 1 year for summary
+            $summary = $plugin_logger->get_activity_summary($summary_days);
+            
+            // Create a simplified summary
+            $action_counts = [
+                'total' => 0,
+                'installed' => 0,
+                'updated' => 0,
+                'activated' => 0,
+                'deactivated' => 0,
+                'deleted' => 0
+            ];
+            
+            if (isset($summary['action_counts']) && is_array($summary['action_counts'])) {
+                foreach ($summary['action_counts'] as $count_data) {
+                    if (isset($count_data['action']) && isset($count_data['count'])) {
+                        $action_counts[$count_data['action']] = intval($count_data['count']);
+                        $action_counts['total'] += intval($count_data['count']);
+                    }
+                }
+            }
+            
+            // If summary_only is true, return just the summary data
+            if ($summary_only) {
+                mpai_log_debug('Returning summary data for plugin logs', 'context-manager');
+                return array(
+                    'success' => true,
+                    'summary' => $action_counts,
+                    'time_period' => $days > 0 ? "past {$days} days" : "all time",
+                    'most_active_plugins' => $summary['most_active_plugins'] ?? [],
+                    'logs_exist' => $action_counts['total'] > 0,
+                    'message' => $action_counts['total'] > 0
+                        ? "Found {$action_counts['total']} plugin log entries"
+                        : "No plugin logs found for the specified criteria"
+                );
+            }
+            
+            // Prepare query arguments for detailed logs
+            $args = [
+                'plugin_name' => $plugin_name,
+                'action'      => $action,
+                'date_from'   => $date_from,
+                'orderby'     => 'date_time',
+                'order'       => 'DESC',
+                'limit'       => $limit
+            ];
+            
+            // Get logs
+            $logs = $plugin_logger->get_logs($args);
+            mpai_log_debug('Retrieved ' . count($logs) . ' plugin logs', 'context-manager');
+            
+            // Get total count for the query
+            $count_args = [
+                'plugin_name' => $plugin_name,
+                'action'      => $action,
+                'date_from'   => $date_from
+            ];
+            $total = $plugin_logger->count_logs($count_args);
+            
+            // Enhance the logs with readable timestamps
+            foreach ($logs as &$log) {
+                // Convert the MySQL timestamp to a readable format
+                $timestamp = strtotime($log['date_time']);
+                $log['readable_date'] = date('F j, Y, g:i a', $timestamp);
+                $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
+            }
+            
+            // Format the result for readability
+            $result = array(
+                'success' => true,
+                'summary' => $action_counts,
+                'time_period' => $days > 0 ? "past {$days} days" : "all time",
+                'total_records' => $total,
+                'returned_records' => count($logs),
+                'has_more' => $total > count($logs),
+                'logs' => $logs,
+                'query' => [
+                    'action' => $action,
+                    'plugin_name' => $plugin_name,
+                    'days' => $days,
+                    'limit' => $limit
+                ]
+            );
+            
+            mpai_log_debug('Plugin logs executed successfully', 'context-manager');
+            return $result;
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error in plugin logs handler: ' . $e->getMessage(), 'context-manager', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            // Return error information
+            return array(
+                'success' => false,
+                'error' => 'Error retrieving plugin logs: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Original implementation of execute_plugin_logs (kept for fallback)
+     *
+     * @param array $parameters Parameters for the tool
+     * @return array Execution result
+     */
+    private function execute_plugin_logs_original($parameters) {
+        mpai_log_debug('Falling back to original plugin_logs implementation', 'context-manager');
+        
         // Initialize the plugin logger
         if (!function_exists('mpai_init_plugin_logger')) {
             if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
@@ -1381,7 +1534,7 @@ class MPAI_Context_Manager {
                 'time_period' => $days > 0 ? "past {$days} days" : "all time",
                 'most_active_plugins' => $summary['most_active_plugins'] ?? [],
                 'logs_exist' => $action_counts['total'] > 0,
-                'message' => $action_counts['total'] > 0 
+                'message' => $action_counts['total'] > 0
                     ? "Found {$action_counts['total']} plugin log entries"
                     : "No plugin logs found for the specified criteria"
             );
@@ -1513,8 +1666,7 @@ class MPAI_Context_Manager {
      * @return string Result of the API call
      */
     public function execute_wp_api($parameters) {
-        // This is the key fix - we need to make sure we're using the full parameters object
-        // In the case where we see 'parameters' inside the parameters, extract those
+        // Standardize parameters format
         if (isset($parameters['parameters']) && is_array($parameters['parameters']) && isset($parameters['parameters']['action'])) {
             mpai_log_debug('Unwrapped nested parameters structure', 'context-manager');
             $parameters = $parameters['parameters'];
@@ -1906,22 +2058,22 @@ class MPAI_Context_Manager {
     public function process_tool_request($request) {
         mpai_log_debug('Processing tool request: ' . json_encode($request), 'context-manager');
         
-        // Enhanced logging for debugging
-        mpai_log_debug('Original request format: ' . gettype($request), 'context-manager');
-        if (is_array($request)) {
-            mpai_log_debug('Request keys: ' . implode(', ', array_keys($request)), 'context-manager');
-        }
-        
-        // Special handling for common request format variations
+        // Standardize tool request format
         if (isset($request['tool']) && !isset($request['name'])) {
-            // Convert from tool + parameters format to name + parameters format
-            mpai_log_debug('Converting tool format to name format', 'context-manager');
+            // Convert from tool to name format for consistency
             $request['name'] = $request['tool'];
             unset($request['tool']);
+            mpai_log_debug('Converted tool format to name format', 'context-manager');
         }
         
-        // Only the standardized 'wpcli' tool ID is supported
-        // Legacy tool IDs have been completely removed
+        // Ensure name parameter exists
+        if (!isset($request['name'])) {
+            mpai_log_warning('Tool request missing name parameter', 'context-manager');
+            return array(
+                'success' => false,
+                'error' => 'Tool request must include a name parameter'
+            );
+        }
         
         // MCP is always enabled now (settings were removed from UI)
         mpai_log_debug('MCP is always enabled', 'context-manager');
@@ -2173,29 +2325,45 @@ class MPAI_Context_Manager {
                 mpai_log_debug('Getting plugin logs with parameters: ' . json_encode($validated_params), 'context-manager');
                 $result = $this->execute_plugin_logs($validated_params);
                 
-                // Format the result for better display
+                // Check if we already have a formatted output from the tool
+                if (isset($result['formatted_output']) && !empty($result['formatted_output'])) {
+                    mpai_log_debug('Using pre-formatted output from plugin_logs tool', 'context-manager');
+                    return array(
+                        'success' => true,
+                        'tool' => $request['name'],
+                        'result' => $result['formatted_output']
+                    );
+                }
+                
+                // Format the result for better display if no pre-formatted output
                 if (isset($result['logs']) && is_array($result['logs']) && !empty($result['logs'])) {
-                    $formatted_logs = "Plugin Activity Logs for the " . $result['time_period'] . ":\n\n";
+                    $formatted_logs = "## Plugin Activity Logs\n\n";
+                    $formatted_logs .= "Showing plugin activity for the " . $result['time_period'] . "\n\n";
                     
                     // Add summary counts
-                    $formatted_logs .= "Summary:\n";
-                    $formatted_logs .= "- Total logs: " . $result['summary']['total'] . "\n";
-                    $formatted_logs .= "- Installed: " . $result['summary']['installed'] . "\n";
-                    $formatted_logs .= "- Activated: " . $result['summary']['activated'] . "\n";
-                    $formatted_logs .= "- Deactivated: " . $result['summary']['deactivated'] . "\n";
-                    $formatted_logs .= "- Updated: " . $result['summary']['updated'] . "\n";
-                    $formatted_logs .= "- Deleted: " . $result['summary']['deleted'] . "\n\n";
+                    $formatted_logs .= "### Summary\n";
+                    $formatted_logs .= "- Total activities: " . $result['summary']['total'] . "\n";
+                    $formatted_logs .= "- Installations: " . $result['summary']['installed'] . "\n";
+                    $formatted_logs .= "- Updates: " . $result['summary']['updated'] . "\n";
+                    $formatted_logs .= "- Activations: " . $result['summary']['activated'] . "\n";
+                    $formatted_logs .= "- Deactivations: " . $result['summary']['deactivated'] . "\n";
+                    $formatted_logs .= "- Deletions: " . $result['summary']['deleted'] . "\n\n";
                     
                     // Add detailed logs
-                    $formatted_logs .= "Recent Activity:\n";
+                    $formatted_logs .= "### Recent Activity\n";
                     foreach ($result['logs'] as $log) {
                         $action = ucfirst($log['action']);
                         $plugin_name = $log['plugin_name'];
                         $version = $log['plugin_version'];
                         $time_ago = $log['time_ago'] ?? '';
-                        $user = $log['user_login'] ? " by user {$log['user_login']}" : '';
+                        $user = isset($log['user_login']) && !empty($log['user_login']) ? " by user {$log['user_login']}" : '';
                         
                         $formatted_logs .= "- {$action}: {$plugin_name} v{$version} ({$time_ago}){$user}\n";
+                    }
+                    
+                    // Add natural language summary if available
+                    if (isset($result['nl_summary']) && !empty($result['nl_summary'])) {
+                        $formatted_logs .= "\n### Analysis\n" . $result['nl_summary'] . "\n";
                     }
                     
                     // Return the formatted logs as the result

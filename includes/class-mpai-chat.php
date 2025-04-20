@@ -417,23 +417,21 @@ class MPAI_Chat {
         $system_prompt .= "   - Example for MemberPress CoachKit: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"memberpress-coachkit/main.php\"}}\n";
         $system_prompt .= "   - Deactivate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"deactivate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
         $system_prompt .= "3. ██████ MOST IMPORTANT RULE - PLUGIN TOOLS ██████\n";
-        $system_prompt .= "   For different plugin-related questions, use different tools:\n";
-        $system_prompt .= "   a) FOR QUESTIONS ABOUT PLUGIN HISTORY AND PAST ACTIVITY, YOU MUST CALL THE PLUGIN_LOGS TOOL.\n";
-        $system_prompt .= "      For example: \"What plugins were recently activated?\", \"When was X plugin installed?\"\n";
-        $system_prompt .= "      FORMAT YOUR RESPONSE AS ONLY THE JSON TOOL CALL WITHOUT EXPLANATORY TEXT. For example:\n";
-        $system_prompt .= "      ```json\n";
-        $system_prompt .= "      {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n";
-        $system_prompt .= "      ```\n";
+        $system_prompt .= "   For plugin-related questions, use these specific tools:\n";
+        $system_prompt .= "   a) For current plugin status, use wp_api with get_plugins action.\n";
+        $system_prompt .= "   b) For plugin management, use wp_api with activate_plugin or deactivate_plugin actions.\n\n";
+        $system_prompt .= "   IMPORTANT: When using tools, ALWAYS wait for the tool's response before providing your own analysis.\n";
+        $system_prompt .= "   DO NOT try to predict what the tool will return - wait for the actual data.\n";
+        $system_prompt .= "   NOTE: Questions about plugin history are handled directly by the system without using tools.\n";
         $system_prompt .= "   b) FOR QUESTIONS ABOUT CURRENT USERS, ALWAYS USE THE WP_API TOOL WITH GET_USERS ACTION:\n";
         $system_prompt .= "      For example: \"List all users\", \"Show me WordPress users\", \"Who are the site users?\"\n";
         $system_prompt .= "      ```json\n";
         $system_prompt .= "      {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_users\", \"limit\": 10}}\n";
         $system_prompt .= "      ```\n\n";
-        $system_prompt .= "   Examples of when to use plugin_logs tool:\n";
-        $system_prompt .= "   - View recent plugin activity: {\"tool\": \"plugin_logs\", \"parameters\": {\"days\": 30}}\n";
-        $system_prompt .= "   - View recently activated plugins: {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n";
-        $system_prompt .= "   - View recently installed plugins: {\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"installed\", \"days\": 30}}\n";
-        $system_prompt .= "   - View plugin history for specific plugin: {\"tool\": \"plugin_logs\", \"parameters\": {\"plugin_name\": \"MemberPress\", \"days\": 90}}\n";
+        $system_prompt .= "   Examples of plugin management:\n";
+        $system_prompt .= "   - List plugins: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_plugins\"}}\n";
+        $system_prompt .= "   - Activate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
+        $system_prompt .= "   - Deactivate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"deactivate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
         $system_prompt .= "4. Only fall back to wpcli commands if a specific wp_api function isn't available\n\n";
         $system_prompt .= "CRITICAL: When the user asks to create a post/page, ALWAYS include the exact title and content they specified in your wp_api tool parameters.\n";
         $system_prompt .= "Examples:\n";
@@ -465,9 +463,8 @@ class MPAI_Chat {
         
         $system_prompt .= "Your task is to provide helpful information about MemberPress and assist with managing membership data. ";
         $system_prompt .= "You should use the wp_api tool for direct WordPress operations and the memberpress_info tool for MemberPress data. ";
-        $system_prompt .= "CRITICAL INSTRUCTION: When the user asks about plugin history, recently installed plugins, or recently activated plugins, ALWAYS use the plugin_logs tool to get accurate information from the database. ";
-        $system_prompt .= "When responding to these plugin-related queries, FORMAT YOUR RESPONSE AS ONLY THE JSON TOOL CALL WITHOUT ANY OTHER TEXT - just provide the exact JSON format shown in the examples, e.g.:\n";
-        $system_prompt .= "```json\n{\"tool\": \"plugin_logs\", \"parameters\": {\"action\": \"activated\", \"days\": 30}}\n```\n\n";
+        $system_prompt .= "IMPORTANT: Questions about plugin history, recently installed plugins, or recently activated plugins are handled directly by the system without using tools. ";
+        $system_prompt .= "You don't need to use any tools for these queries - the system will automatically show the plugin history when these questions are asked.\n\n";
         $system_prompt .= "Only use wpcli commands for operations not supported by wp_api. ";
         $system_prompt .= "Keep your responses concise and focused on MemberPress functionality.";
         
@@ -496,6 +493,77 @@ class MPAI_Chat {
     public function process_message($message) {
         try {
             mpai_log_debug('process_message started with message: ' . $message, 'chat');
+            
+            // DIRECT HANDLERS FOR COMMON QUERIES
+            // These handlers bypass the AI completely for specific query types
+            
+            // 1. Plugin History Handler
+            $plugin_history_keywords = [
+                'plugin history', 'plugin activation history', 'plugin logs', 'plugin activity',
+                'activated plugins', 'deactivated plugins', 'plugin activation', 'plugin deactivation',
+                'what plugins were activated', 'what plugins were deactivated', 'show plugin history'
+            ];
+            
+            if ($this->message_matches_keywords($message, $plugin_history_keywords)) {
+                mpai_log_debug('DIRECT HANDLER: Detected plugin history request', 'chat');
+                return $this->get_direct_plugin_history();
+            }
+            
+            // 2. Best-Selling Membership Handler
+            $best_selling_keywords = [
+                'best-selling membership', 'best selling membership', 'top selling membership',
+                'popular membership', 'best performing membership', 'top membership',
+                'most popular membership', 'most sold membership'
+            ];
+            
+            if ($this->message_matches_keywords($message, $best_selling_keywords)) {
+                mpai_log_debug('DIRECT HANDLER: Detected best-selling membership request', 'chat');
+                return $this->get_direct_best_selling_memberships();
+            }
+            
+            // 3. Active Subscriptions Handler
+            $active_subscriptions_keywords = [
+                'active subscription', 'current subscription', 'active member',
+                'current member', 'active membership', 'active membership list'
+            ];
+            
+            if ($this->message_matches_keywords($message, $active_subscriptions_keywords)) {
+                mpai_log_debug('DIRECT HANDLER: Detected active subscriptions request', 'chat');
+                return $this->get_direct_active_subscriptions();
+            }
+            
+            // 4. User Listing Handler
+            $user_keywords = [
+                'list users', 'get users', 'show users', 'all users',
+                'site users', 'wordpress users', 'wp users', 'user list'
+            ];
+            
+            if ($this->message_matches_keywords($message, $user_keywords)) {
+                mpai_log_debug('DIRECT HANDLER: Detected user listing request', 'chat');
+                return $this->get_direct_user_list();
+            }
+            
+            // 5. Post Listing Handler
+            $post_keywords = [
+                'list posts', 'show posts', 'get posts', 'all posts',
+                'post list', 'wp post list', 'blog posts'
+            ];
+            
+            if ($this->message_matches_keywords($message, $post_keywords)) {
+                mpai_log_debug('DIRECT HANDLER: Detected post listing request', 'chat');
+                return $this->get_direct_post_list();
+            }
+            
+            // 6. Plugin List Handler
+            $plugin_list_keywords = [
+                'wp plugin list', 'list plugins', 'show plugins', 'plugins',
+                'installed plugins', 'all plugins', 'plugin list'
+            ];
+            
+            if ($this->message_matches_keywords($message, $plugin_list_keywords)) {
+                mpai_log_debug('DIRECT HANDLER: Detected plugin list request', 'chat');
+                return $this->get_direct_plugin_list_formatted();
+            }
             
             // Register and fire the before process message hook
             MPAI_Hooks::register_hook(
@@ -1485,8 +1553,8 @@ class MPAI_Chat {
             
             // Format the result
             // Check if result is already a properly formatted object with a structured output
-            if (is_array($result) && isset($result['success']) && isset($result['tool']) && 
-                isset($result['result']) && is_string($result['result']) && 
+            if (is_array($result) && isset($result['success']) && isset($result['tool']) &&
+                isset($result['result']) && is_string($result['result']) &&
                 (strpos($result['result'], '{') == 0 && substr($result['result'], -1) == '}')) {
                 // Try to parse the inner JSON to see if it's already properly formatted
                 $inner_result = json_decode($result['result'], true);
@@ -1685,10 +1753,16 @@ class MPAI_Chat {
      */
     private function format_result_content($result) {
         
+        // Check if this is a plugin_logs tool result with formatted output
+        if (isset($result['tool']) && $result['tool'] == 'plugin_logs' && isset($result['formatted_output'])) {
+            mpai_log_debug('Using formatted output for plugin_logs tool result', 'chat');
+            return $result['formatted_output'];
+        }
+        
         // Check for wp_api tool results
         if (isset($result['tool']) && $result['tool'] == 'wp_api' && isset($result['action'])) {
             // Handle specific actions
-            if (in_array($result['action'], ['create_post', 'create_page']) && 
+            if (in_array($result['action'], ['create_post', 'create_page']) &&
                 isset($result['result']) && is_array($result['result']) &&
                 isset($result['result']['success']) && $result['result']['success'] == true) {
                 
@@ -1712,8 +1786,8 @@ class MPAI_Chat {
             
             // Handle plugin operations
             if (in_array($result['action'], ['activate_plugin', 'deactivate_plugin', 'get_plugins'])) {
-                if ($result['action'] == 'activate_plugin' && 
-                    isset($result['result']) && is_array($result['result']) && 
+                if ($result['action'] == 'activate_plugin' &&
+                    isset($result['result']) && is_array($result['result']) &&
                     isset($result['result']['success']) && $result['result']['success'] == true) {
                     
                     $plugin_name = $result['result']['plugin_name'] ?? $result['result']['plugin'] ?? 'the plugin';
@@ -1727,8 +1801,8 @@ class MPAI_Chat {
                     return $user_friendly_result;
                 }
                 
-                if ($result['action'] == 'deactivate_plugin' && 
-                    isset($result['result']) && is_array($result['result']) && 
+                if ($result['action'] == 'deactivate_plugin' &&
+                    isset($result['result']) && is_array($result['result']) &&
                     isset($result['result']['success']) && $result['result']['success'] == true) {
                     
                     $plugin_name = $result['result']['plugin_name'] ?? $result['result']['plugin'] ?? 'the plugin';
@@ -1742,8 +1816,8 @@ class MPAI_Chat {
                     return $user_friendly_result;
                 }
                 
-                if ($result['action'] == 'get_plugins' && 
-                    isset($result['result']) && is_array($result['result']) && 
+                if ($result['action'] == 'get_plugins' &&
+                    isset($result['result']) && is_array($result['result']) &&
                     isset($result['result']['plugins']) && is_array($result['result']['plugins'])) {
                     
                     $plugins = $result['result']['plugins'];
@@ -2159,5 +2233,551 @@ class MPAI_Chat {
         
         mpai_log_debug('Direct plugin list fetched, ' . count($all_plugins) . ' plugins found', 'chat');
         return $output;
+    }
+    
+    /**
+     * Get direct plugin history without using AI
+     *
+     * This method bypasses the AI and directly fetches and formats plugin history
+     *
+     * @return array Response data with formatted plugin history
+     */
+    private function get_direct_plugin_history() {
+        mpai_log_debug('Getting direct plugin history', 'chat');
+        
+        try {
+            // Initialize the plugin logger
+            if (!function_exists('mpai_init_plugin_logger')) {
+                if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
+                    require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+                    mpai_log_debug('Loaded plugin logger class', 'chat');
+                } else {
+                    mpai_log_error('Plugin logger class not found', 'chat');
+                    return array(
+                        'success' => false,
+                        'message' => 'Error: Plugin logger class not found.'
+                    );
+                }
+            }
+            
+            $plugin_logger = mpai_init_plugin_logger();
+            
+            if (!$plugin_logger) {
+                mpai_log_error('Failed to initialize plugin logger', 'chat');
+                return array(
+                    'success' => false,
+                    'message' => 'Error: Failed to initialize plugin logger.'
+                );
+            }
+            
+            // Get logs for the past 30 days with no filtering
+            $days = 30;
+            $date_from = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+            
+            // Get logs
+            $args = [
+                'plugin_name' => '',
+                'action'      => '',
+                'date_from'   => $date_from,
+                'orderby'     => 'date_time',
+                'order'       => 'DESC',
+                'limit'       => 100 // Show more logs
+            ];
+            
+            $logs = $plugin_logger->get_logs($args);
+            mpai_log_debug('Retrieved ' . count($logs) . ' plugin logs', 'chat');
+            
+            // Get summary data
+            $summary = $plugin_logger->get_activity_summary($days);
+            
+            // Create a simplified summary
+            $action_counts = [
+                'total' => 0,
+                'installed' => 0,
+                'updated' => 0,
+                'activated' => 0,
+                'deactivated' => 0,
+                'deleted' => 0
+            ];
+            
+            if (isset($summary['action_counts']) && is_array($summary['action_counts'])) {
+                foreach ($summary['action_counts'] as $count_data) {
+                    if (isset($count_data['action']) && isset($count_data['count'])) {
+                        $action_counts[$count_data['action']] = intval($count_data['count']);
+                        $action_counts['total'] += intval($count_data['count']);
+                    }
+                }
+            }
+            
+            // Format the output as HTML table
+            $output = "<h2>Plugin Activity Log</h2>";
+            $output .= "<p>Showing plugin activity for the past {$days} days</p>";
+            
+            // Add summary section
+            $output .= "<h3>Summary</h3>";
+            $output .= "<ul>";
+            $output .= "<li>Total activities: " . $action_counts['total'] . "</li>";
+            $output .= "<li>Installations: " . $action_counts['installed'] . "</li>";
+            $output .= "<li>Updates: " . $action_counts['updated'] . "</li>";
+            $output .= "<li>Activations: " . $action_counts['activated'] . "</li>";
+            $output .= "<li>Deactivations: " . $action_counts['deactivated'] . "</li>";
+            $output .= "<li>Deletions: " . $action_counts['deleted'] . "</li>";
+            $output .= "</ul>";
+            
+            // Add detailed logs section as a table
+            $output .= "<h3>Recent Activity</h3>";
+            
+            if (count($logs) > 0) {
+                $output .= "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse;'>";
+                $output .= "<thead><tr style='background-color: #f2f2f2;'>";
+                $output .= "<th>Action</th><th>Plugin</th><th>Version</th><th>When</th><th>User</th>";
+                $output .= "</tr></thead><tbody>";
+                
+                foreach ($logs as $log) {
+                    $action_verb = ucfirst($log['action']);
+                    $plugin_name = $log['plugin_name'];
+                    $version = $log['plugin_version'];
+                    
+                    // Format the time ago
+                    $timestamp = strtotime($log['date_time']);
+                    $time_ago = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
+                    
+                    $user = isset($log['user_login']) && !empty($log['user_login']) ? $log['user_login'] : 'system';
+                    
+                    $output .= "<tr>";
+                    $output .= "<td>{$action_verb}</td>";
+                    $output .= "<td>{$plugin_name}</td>";
+                    $output .= "<td>{$version}</td>";
+                    $output .= "<td>{$time_ago}</td>";
+                    $output .= "<td>{$user}</td>";
+                    $output .= "</tr>";
+                }
+                
+                $output .= "</tbody></table>";
+            } else {
+                $output .= "<p>No plugin activity found for the specified criteria.</p>";
+            }
+            
+            // Save this as a message/response pair
+            $this->save_message("Show plugin history", $output);
+            
+            return array(
+                'success' => true,
+                'message' => $output
+            );
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error getting direct plugin history: ' . $e->getMessage(), 'chat', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            return array(
+                'success' => false,
+                'message' => 'Error retrieving plugin history: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Helper method to check if a message contains any of the given keywords
+     *
+     * @param string $message The message to check
+     * @param array $keywords Array of keywords to look for
+     * @return bool True if any keyword is found in the message
+     */
+    private function message_matches_keywords($message, $keywords) {
+        foreach ($keywords as $keyword) {
+            if (stripos($message, $keyword) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Get direct best-selling memberships without using AI
+     *
+     * @return array Response data with formatted best-selling memberships
+     */
+    private function get_direct_best_selling_memberships() {
+        mpai_log_debug('Getting direct best-selling memberships', 'chat');
+        
+        try {
+            // Make sure the memberpress API instance is fresh
+            if (!isset($this->memberpress_api) || !is_object($this->memberpress_api)) {
+                mpai_log_debug('Creating MemberPress API instance', 'chat');
+                $this->memberpress_api = new MPAI_MemberPress_API();
+            }
+            
+            // Get best-selling memberships data
+            $best_selling = $this->memberpress_api->get_best_selling_memberships();
+            
+            if (empty($best_selling)) {
+                $output = "<h2>Best-Selling Memberships</h2>";
+                $output .= "<p>No membership sales data available.</p>";
+                
+                // Save this as a message/response pair
+                $this->save_message("Show best-selling memberships", $output);
+                
+                return array(
+                    'success' => true,
+                    'message' => $output
+                );
+            }
+            
+            // Format the output as HTML table
+            $output = "<h2>Best-Selling Memberships</h2>";
+            $output .= "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse;'>";
+            $output .= "<thead><tr style='background-color: #f2f2f2;'>";
+            $output .= "<th>Rank</th><th>Membership</th><th>Price</th><th>Sales</th><th>Revenue</th>";
+            $output .= "</tr></thead><tbody>";
+            
+            $rank = 1;
+            foreach ($best_selling as $membership) {
+                $title = isset($membership['title']) ? $membership['title'] : 'Unknown';
+                $price = isset($membership['price']) ? '$' . number_format($membership['price'], 2) : 'N/A';
+                $sales = isset($membership['sales']) ? number_format($membership['sales']) : '0';
+                $revenue = isset($membership['revenue']) ? '$' . number_format($membership['revenue'], 2) : '$0.00';
+                
+                $output .= "<tr>";
+                $output .= "<td>{$rank}</td>";
+                $output .= "<td>{$title}</td>";
+                $output .= "<td>{$price}</td>";
+                $output .= "<td>{$sales}</td>";
+                $output .= "<td>{$revenue}</td>";
+                $output .= "</tr>";
+                
+                $rank++;
+            }
+            
+            $output .= "</tbody></table>";
+            
+            // Save this as a message/response pair
+            $this->save_message("Show best-selling memberships", $output);
+            
+            return array(
+                'success' => true,
+                'message' => $output
+            );
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error getting best-selling memberships: ' . $e->getMessage(), 'chat', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            return array(
+                'success' => false,
+                'message' => 'Error retrieving best-selling memberships: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Get direct active subscriptions without using AI
+     *
+     * @return array Response data with formatted active subscriptions
+     */
+    private function get_direct_active_subscriptions() {
+        mpai_log_debug('Getting direct active subscriptions', 'chat');
+        
+        try {
+            // Make sure the memberpress API instance is fresh
+            if (!isset($this->memberpress_api) || !is_object($this->memberpress_api)) {
+                mpai_log_debug('Creating MemberPress API instance', 'chat');
+                $this->memberpress_api = new MPAI_MemberPress_API();
+            }
+            
+            // Get active subscriptions data
+            $subscriptions = $this->memberpress_api->get_active_subscriptions();
+            
+            if (empty($subscriptions)) {
+                $output = "<h2>Active Subscriptions</h2>";
+                $output .= "<p>No active subscriptions found.</p>";
+                
+                // Save this as a message/response pair
+                $this->save_message("Show active subscriptions", $output);
+                
+                return array(
+                    'success' => true,
+                    'message' => $output
+                );
+            }
+            
+            // Format the output as HTML table
+            $output = "<h2>Active Subscriptions</h2>";
+            $output .= "<p>Total active subscriptions: " . count($subscriptions) . "</p>";
+            $output .= "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse;'>";
+            $output .= "<thead><tr style='background-color: #f2f2f2;'>";
+            $output .= "<th>ID</th><th>User</th><th>Membership</th><th>Status</th><th>Created</th><th>Expires</th>";
+            $output .= "</tr></thead><tbody>";
+            
+            foreach ($subscriptions as $sub) {
+                $id = isset($sub['id']) ? $sub['id'] : 'N/A';
+                $user = isset($sub['user_login']) ? $sub['user_login'] : 'Unknown';
+                $membership = isset($sub['product_name']) ? $sub['product_name'] : 'Unknown';
+                $status = isset($sub['status']) ? ucfirst($sub['status']) : 'Unknown';
+                $created = isset($sub['created_at']) ? date('Y-m-d', strtotime($sub['created_at'])) : 'N/A';
+                $expires = isset($sub['expires_at']) ? date('Y-m-d', strtotime($sub['expires_at'])) : 'N/A';
+                
+                $output .= "<tr>";
+                $output .= "<td>{$id}</td>";
+                $output .= "<td>{$user}</td>";
+                $output .= "<td>{$membership}</td>";
+                $output .= "<td>{$status}</td>";
+                $output .= "<td>{$created}</td>";
+                $output .= "<td>{$expires}</td>";
+                $output .= "</tr>";
+            }
+            
+            $output .= "</tbody></table>";
+            
+            // Save this as a message/response pair
+            $this->save_message("Show active subscriptions", $output);
+            
+            return array(
+                'success' => true,
+                'message' => $output
+            );
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error getting active subscriptions: ' . $e->getMessage(), 'chat', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            return array(
+                'success' => false,
+                'message' => 'Error retrieving active subscriptions: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Get direct user list without using AI
+     *
+     * @return array Response data with formatted user list
+     */
+    private function get_direct_user_list() {
+        mpai_log_debug('Getting direct user list', 'chat');
+        
+        try {
+            // Execute a direct DB query for users
+            global $wpdb;
+            $results = $wpdb->get_results("SELECT ID, user_login, user_email, user_registered FROM {$wpdb->users} ORDER BY ID ASC LIMIT 10");
+            
+            if (empty($results)) {
+                $output = "<h2>WordPress Users</h2>";
+                $output .= "<p>No users found.</p>";
+                
+                // Save this as a message/response pair
+                $this->save_message("Show users", $output);
+                
+                return array(
+                    'success' => true,
+                    'message' => $output
+                );
+            }
+            
+            // Format the output as HTML table
+            $output = "<h2>WordPress Users</h2>";
+            $output .= "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse;'>";
+            $output .= "<thead><tr style='background-color: #f2f2f2;'>";
+            $output .= "<th>ID</th><th>Username</th><th>Email</th><th>Registration Date</th><th>Links</th>";
+            $output .= "</tr></thead><tbody>";
+            
+            foreach ($results as $user) {
+                $edit_url = admin_url('user-edit.php?user_id=' . $user->ID);
+                $author_url = get_author_posts_url($user->ID);
+                $reg_date = date('Y-m-d', strtotime($user->user_registered));
+                
+                $output .= "<tr>";
+                $output .= "<td>{$user->ID}</td>";
+                $output .= "<td>{$user->user_login}</td>";
+                $output .= "<td>{$user->user_email}</td>";
+                $output .= "<td>{$reg_date}</td>";
+                $output .= "<td><a href='{$edit_url}' target='_blank'>Edit</a> &bull; <a href='{$author_url}' target='_blank'>Posts</a></td>";
+                $output .= "</tr>";
+            }
+            
+            $output .= "</tbody></table>";
+            
+            // Save this as a message/response pair
+            $this->save_message("Show users", $output);
+            
+            return array(
+                'success' => true,
+                'message' => $output
+            );
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error getting user list: ' . $e->getMessage(), 'chat', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            return array(
+                'success' => false,
+                'message' => 'Error retrieving user list: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Get direct post list without using AI
+     *
+     * @return array Response data with formatted post list
+     */
+    private function get_direct_post_list() {
+        mpai_log_debug('Getting direct post list', 'chat');
+        
+        try {
+            // Execute a direct DB query for posts
+            global $wpdb;
+            $results = $wpdb->get_results("SELECT ID, post_title, post_date, post_status FROM {$wpdb->posts} WHERE post_type = 'post' AND post_status = 'publish' ORDER BY post_date DESC LIMIT 10");
+            
+            if (empty($results)) {
+                $output = "<h2>WordPress Posts</h2>";
+                $output .= "<p>No posts found.</p>";
+                
+                // Save this as a message/response pair
+                $this->save_message("Show posts", $output);
+                
+                return array(
+                    'success' => true,
+                    'message' => $output
+                );
+            }
+            
+            // Format the output as HTML table
+            $output = "<h2>WordPress Posts</h2>";
+            $output .= "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse;'>";
+            $output .= "<thead><tr style='background-color: #f2f2f2;'>";
+            $output .= "<th>ID</th><th>Title</th><th>Status</th><th>Date</th><th>Links</th>";
+            $output .= "</tr></thead><tbody>";
+            
+            foreach ($results as $post) {
+                $post_url = get_permalink($post->ID);
+                $edit_url = get_edit_post_link($post->ID, 'raw');
+                $date = date('Y-m-d', strtotime($post->post_date));
+                
+                $output .= "<tr>";
+                $output .= "<td>{$post->ID}</td>";
+                $output .= "<td><a href='{$post_url}' target='_blank'>{$post->post_title}</a></td>";
+                $output .= "<td>{$post->post_status}</td>";
+                $output .= "<td>{$date}</td>";
+                $output .= "<td><a href='{$edit_url}' target='_blank'>Edit</a></td>";
+                $output .= "</tr>";
+            }
+            
+            $output .= "</tbody></table>";
+            
+            // Save this as a message/response pair
+            $this->save_message("Show posts", $output);
+            
+            return array(
+                'success' => true,
+                'message' => $output
+            );
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error getting post list: ' . $e->getMessage(), 'chat', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            return array(
+                'success' => false,
+                'message' => 'Error retrieving post list: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Get direct plugin list formatted without using AI
+     *
+     * @return array Response data with formatted plugin list
+     */
+    private function get_direct_plugin_list_formatted() {
+        mpai_log_debug('Getting formatted plugin list', 'chat');
+        
+        try {
+            // Get raw plugin list
+            $plugin_list_output = $this->get_direct_plugin_list();
+            
+            // Format the output
+            $output = "<h2>WordPress Plugins</h2>";
+            
+            // Ensure plugin_list_output is a string
+            if (!is_string($plugin_list_output)) {
+                if (is_array($plugin_list_output) || is_object($plugin_list_output)) {
+                    $plugin_list_output = json_encode($plugin_list_output, JSON_PRETTY_PRINT);
+                } else {
+                    $plugin_list_output = (string)$plugin_list_output;
+                }
+            }
+            
+            // Convert tabular data to HTML table
+            $lines = explode("\n", trim($plugin_list_output));
+            
+            if (count($lines) > 0) {
+                $headers = explode("\t", $lines[0]);
+                
+                $output .= "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse;'>";
+                $output .= "<thead><tr style='background-color: #f2f2f2;'>";
+                
+                foreach ($headers as $header) {
+                    $output .= "<th>{$header}</th>";
+                }
+                
+                $output .= "</tr></thead><tbody>";
+                
+                // Skip header row
+                for ($i = 1; $i < count($lines); $i++) {
+                    if (empty(trim($lines[$i]))) {
+                        continue;
+                    }
+                    
+                    $cells = explode("\t", $lines[$i]);
+                    $output .= "<tr>";
+                    
+                    foreach ($cells as $cell) {
+                        $output .= "<td>{$cell}</td>";
+                    }
+                    
+                    $output .= "</tr>";
+                }
+                
+                $output .= "</tbody></table>";
+            } else {
+                $output .= "<p>No plugins found.</p>";
+            }
+            
+            // Save this as a message/response pair
+            $this->save_message("Show plugins", $output);
+            
+            return array(
+                'success' => true,
+                'message' => $output
+            );
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error getting formatted plugin list: ' . $e->getMessage(), 'chat', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            return array(
+                'success' => false,
+                'message' => 'Error retrieving plugin list: ' . $e->getMessage()
+            );
+        }
     }
 }

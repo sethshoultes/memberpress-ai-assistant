@@ -141,7 +141,11 @@ class MPAI_WP_CLI_Executor {
     		$command = trim($command);
     		$this->logger->info('Analyzing command type: ' . $command);
     		
-    		if ($this->is_php_version_query($command)) {
+    		// Check for plugin logs command first - this should take precedence
+    		if ($this->is_plugin_logs_query($command)) {
+    			$this->logger->info('Handling as plugin logs command');
+    			return $this->handle_plugin_logs_command($parameters);
+    		} else if ($this->is_php_version_query($command)) {
     			$this->logger->info('Handling as PHP version query');
     			return $this->get_php_version_info();
     		} elseif ($this->is_plugin_query($command)) {
@@ -322,10 +326,24 @@ class MPAI_WP_CLI_Executor {
      */
     private function is_plugin_query($command) {
         $command = strtolower(trim($command));
-        return (strpos($command, 'wp plugin') === 0 || 
-                strpos($command, 'plugin') === 0 || 
-                strpos($command, 'plugins') === 0 || 
+        return (strpos($command, 'wp plugin') === 0 ||
+                strpos($command, 'plugin') === 0 ||
+                strpos($command, 'plugins') === 0 ||
                 strpos($command, 'wp plugins') === 0);
+    }
+    
+    /**
+     * Check if command is a plugin logs query
+     *
+     * @param string $command Command to check
+     * @return bool Whether command is a plugin logs query
+     */
+    private function is_plugin_logs_query($command) {
+        $command = strtolower(trim($command));
+        return (strpos($command, 'wp plugin logs') === 0 ||
+                strpos($command, 'plugin logs') === 0 ||
+                strpos($command, 'wp plugin_logs') === 0 ||
+                strpos($command, 'plugin_logs') === 0);
     }
 
     /**
@@ -419,18 +437,24 @@ class MPAI_WP_CLI_Executor {
         // Normalize command for better pattern matching
         $command_lower = strtolower(trim($command));
         
+        // Handle plugin logs commands - this should take precedence over other plugin commands
+        if ($this->is_plugin_logs_query($command_lower)) {
+            $this->logger->info('Detected plugin logs command, redirecting to direct plugin logs handler');
+            return $this->handle_plugin_logs_command($parameters);
+        }
+        
         // Handle plugin list commands
-        if (preg_match('/wp\s+plugins?\s+list/i', $command) || 
-            $command_lower === 'plugins' || 
-            $command_lower === 'wp plugins' || 
-            $command_lower === 'plugin list' || 
+        if (preg_match('/wp\s+plugins?\s+list/i', $command) ||
+            $command_lower === 'plugins' ||
+            $command_lower === 'wp plugins' ||
+            $command_lower === 'plugin list' ||
             $command_lower === 'wp plugin list') {
             $this->logger->info('Getting plugin list');
             return $this->get_plugin_list($parameters);
         }
         
         // Handle plugin status or info commands
-        if (preg_match('/wp\s+plugins?\s+(status|info)/i', $command) || 
+        if (preg_match('/wp\s+plugins?\s+(status|info)/i', $command) ||
             preg_match('/plugins?\s+(status|info)/i', $command)) {
             $this->logger->info('Getting plugin status');
             return $this->get_plugin_status($parameters);
@@ -448,6 +472,97 @@ class MPAI_WP_CLI_Executor {
             'output' => implode("\n", $output),
             'return_code' => $return_var,
             'command' => $command
+        ];
+    }
+    
+    /**
+     * Handle plugin logs commands by redirecting to the direct plugin logs handler
+     *
+     * @param array $parameters Additional parameters
+     * @return array Plugin logs data
+     */
+    private function handle_plugin_logs_command($parameters = []) {
+        $this->logger->info('Handling plugin logs command with direct plugin logs handler');
+        
+        // Extract parameters
+        $action = isset($parameters['action']) ? $parameters['action'] : '';
+        $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
+        $limit = isset($parameters['limit']) ? intval($parameters['limit']) : 25;
+        
+        // Build the URL for the direct plugin logs handler
+        $url = admin_url('admin-ajax.php');
+        $query_args = [
+            'direct_plugin_logs' => 'true',
+            'action' => $action,
+            'days' => $days,
+            'limit' => $limit
+        ];
+        
+        $url = add_query_arg($query_args, $url);
+        
+        $this->logger->info('Calling direct plugin logs handler at: ' . $url);
+        
+        // Make the request to the direct handler
+        $response = wp_remote_get($url);
+        
+        if (is_wp_error($response)) {
+            $this->logger->error('Error calling direct plugin logs handler: ' . $response->get_error_message());
+            return [
+                'success' => false,
+                'output' => 'Error calling direct plugin logs handler: ' . $response->get_error_message(),
+                'command' => 'plugin_logs'
+            ];
+        }
+        
+        $body = wp_remote_retrieve_body($response);
+        $result = json_decode($body, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->logger->error('Error parsing JSON response from direct plugin logs handler');
+            return [
+                'success' => false,
+                'output' => 'Error parsing JSON response from direct plugin logs handler',
+                'command' => 'plugin_logs'
+            ];
+        }
+        
+        $this->logger->info('Successfully retrieved plugin logs via direct handler');
+        
+        // Format the output for display
+        $output = "Plugin Logs for the past {$days} days:\n\n";
+        
+        if (isset($result['summary'])) {
+            $output .= "Summary:\n";
+            $output .= "- Total logs: " . $result['summary']['total'] . "\n";
+            $output .= "- Installed: " . $result['summary']['installed'] . "\n";
+            $output .= "- Activated: " . $result['summary']['activated'] . "\n";
+            $output .= "- Deactivated: " . $result['summary']['deactivated'] . "\n";
+            $output .= "- Updated: " . $result['summary']['updated'] . "\n";
+            $output .= "- Deleted: " . $result['summary']['deleted'] . "\n\n";
+        }
+        
+        if (isset($result['logs']) && is_array($result['logs'])) {
+            $output .= "Recent Activity:\n";
+            foreach ($result['logs'] as $log) {
+                $action = ucfirst($log['action']);
+                $plugin_name = $log['plugin_name'];
+                $version = $log['plugin_version'];
+                $time_ago = isset($log['time_ago']) ? $log['time_ago'] : '';
+                $user = isset($log['user_login']) ? $log['user_login'] : '';
+                
+                $output .= "- {$action}: {$plugin_name} v{$version} ({$time_ago})";
+                if (!empty($user)) {
+                    $output .= " by user {$user}";
+                }
+                $output .= "\n";
+            }
+        }
+        
+        return [
+            'success' => true,
+            'output' => $output,
+            'command' => 'plugin_logs',
+            'result' => $result
         ];
     }
 
