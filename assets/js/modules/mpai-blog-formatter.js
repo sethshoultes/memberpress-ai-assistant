@@ -292,10 +292,14 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
                         <button class="mpai-create-post-button" data-content-type="${postType}">
                             Create ${postType === "page" ? "Page" : "Post"}
                         </button>
+                        <button class="mpai-preview-post-button">Preview</button>
                         <button class="mpai-toggle-xml-button">View XML</button>
                     </div>
                     <div class="mpai-post-xml-content" style="display:none;">
                         <pre>${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                    </div>
+                    <div class="mpai-post-preview-content" style="display:none;">
+                        <div class="mpai-post-preview-container"></div>
                     </div>
                 </div>
             `);
@@ -317,6 +321,79 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
                     $xmlContent.addClass('show-xml');
                     $xmlContent.slideDown(200);
                     $(this).text('Hide XML');
+                }
+            });
+            
+            // Add preview post button handler
+            $previewCard.find('.mpai-preview-post-button').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent event bubbling
+                
+                // Debug logging
+                console.log("Preview button clicked (blog formatter)");
+                console.log("Preview card:", $previewCard);
+                console.log("Data attributes:", $previewCard.data());
+                
+                const $previewContent = $previewCard.find('.mpai-post-preview-content');
+                const $previewContainer = $previewCard.find('.mpai-post-preview-container');
+                
+                // Get XML content directly from the hidden pre element instead of data attribute
+                let actualXmlContent = '';
+                const $xmlContentElement = $previewCard.find('.mpai-post-xml-content pre');
+                if ($xmlContentElement.length) {
+                    // Get the HTML content and convert HTML entities back to characters
+                    const htmlContent = $xmlContentElement.html();
+                    actualXmlContent = $('<div/>').html(htmlContent).text();
+                    console.log("XML content from pre element:", actualXmlContent.substring(0, 100) + "...");
+                } else {
+                    // Fallback to data attribute if pre element not found
+                    try {
+                        actualXmlContent = $previewCard.data('xml-content') || '';
+                        console.log("XML content from data attribute:", actualXmlContent.substring(0, 100) + "...");
+                    } catch (e) {
+                        console.error("Error accessing XML content:", e);
+                        alert("Error accessing XML content. Please try again.");
+                        return;
+                    }
+                }
+                
+                if (!actualXmlContent) {
+                    console.error("No XML content found");
+                    alert("No XML content found. Cannot generate preview.");
+                    return;
+                }
+                
+                if ($previewContent.hasClass('show-preview')) {
+                    // Hide preview
+                    $previewContent.removeClass('show-preview');
+                    $previewContent.slideUp(200);
+                    $(this).text('Preview');
+                } else {
+                    // Show preview
+                    // Generate HTML preview from XML content
+                    try {
+                        // Extract content from XML
+                        const contentMatch = actualXmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
+                        if (contentMatch && contentMatch[1]) {
+                            const contentBlocks = contentMatch[1];
+                            console.log("Content blocks found:", contentBlocks.substring(0, 100) + "...");
+                            const previewHtml = convertXmlBlocksToHtml(contentBlocks);
+                            
+                            // Add the formatted HTML to the preview container
+                            $previewContainer.html(previewHtml);
+                            
+                            // Show the preview
+                            $previewContent.addClass('show-preview');
+                            $previewContent.slideDown(200);
+                            $(this).text('Hide Preview');
+                        } else {
+                            console.error("No post content found in XML");
+                            alert("Could not generate preview: No post content found.");
+                        }
+                    } catch (error) {
+                        console.error("Error generating preview:", error);
+                        alert(`Error generating preview: ${error.message}`);
+                    }
                 }
             });
             
@@ -889,10 +966,14 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
                         <button class="mpai-create-post-button" data-content-type="${postType}">
                             Create ${postType === "page" ? "Page" : "Post"}
                         </button>
+                        <button class="mpai-preview-post-button">Preview</button>
                         <button class="mpai-toggle-xml-button">View XML</button>
                     </div>
                     <div class="mpai-post-xml-content" style="display:none;">
                         <pre>${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                    </div>
+                    <div class="mpai-post-preview-content" style="display:none;">
+                        <div class="mpai-post-preview-container"></div>
                     </div>
                 </div>
             `;
@@ -929,7 +1010,8 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
         enhanceUserPrompt: enhanceUserPrompt,
         processAssistantMessage: processAssistantMessage,
         createPostFromXML: createPostFromXML,
-        preProcessXmlContent: preProcessXmlContent
+        preProcessXmlContent: preProcessXmlContent,
+        convertXmlBlocksToHtml: convertXmlBlocksToHtml
     };
 })(jQuery);
 
