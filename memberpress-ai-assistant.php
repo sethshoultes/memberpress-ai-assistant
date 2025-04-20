@@ -317,6 +317,7 @@ class MemberPress_AI_Assistant {
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-context-manager.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
         require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-xml-content-parser.php';
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-xml-display-handler.php';
         
         // Admin functionality - new implementation in admin directory
         require_once MPAI_PLUGIN_DIR . 'includes/admin/class-mpai-admin.php';
@@ -702,6 +703,14 @@ class MemberPress_AI_Assistant {
             'mpai-chat-css',
             MPAI_PLUGIN_URL . 'assets/css/chat-interface.css',
             array('dashicons'),
+            MPAI_VERSION
+        );
+        
+        // Load blog post preview styles
+        wp_enqueue_style(
+            'mpai-blog-post-preview-css',
+            MPAI_PLUGIN_URL . 'assets/css/blog-post-preview.css',
+            array('mpai-chat-css'),
             MPAI_VERSION
         );
 
