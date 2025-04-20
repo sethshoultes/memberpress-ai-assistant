@@ -100,23 +100,61 @@ var MPAI_Formatters = (function($) {
             if (!window.mpaiXmlToggleHandlerAdded) {
                 $(document).on('click', '.mpai-toggle-xml-button', function(e) {
                     e.preventDefault();
+                    e.stopPropagation(); // Prevent event bubbling
+                    
                     const $card = $(this).closest('.mpai-post-preview-card');
                     const $xmlContent = $card.find('.mpai-post-xml-content');
                     
-                    if ($xmlContent.is(':visible')) {
+                    // Toggle a class instead of just using slideUp/slideDown
+                    if ($xmlContent.hasClass('xml-visible')) {
+                        $xmlContent.removeClass('xml-visible');
                         $xmlContent.slideUp(200);
                         $(this).text('View XML');
                     } else {
+                        $xmlContent.addClass('xml-visible');
                         $xmlContent.slideDown(200);
                         $(this).text('Hide XML');
                     }
+                    
+                    // Return false to prevent any other handlers from executing
+                    return false;
                 });
                 
-                // IMPORTANT: We've removed the click handler for .mpai-create-post-button to prevent conflicts
-                // The handler in mpai-blog-formatter.js will handle the button clicks
-                console.log("XML post creation button handler DISABLED in chat-formatters.js");
+                // Add click handler for .mpai-create-post-button
+                $(document).on('click', '.mpai-create-post-button', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation(); // Prevent event bubbling
+                    
+                    const $button = $(this);
+                    const contentType = $button.data('content-type') || 'post';
+                    const xmlContent = $button.data('xml') || $button.closest('.mpai-post-preview-card').data('xml-content');
+                    
+                    console.log("Create post button clicked in chat-formatters.js");
+                    console.log("Content type:", contentType);
+                    console.log("XML content available:", !!xmlContent);
+                    
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.info('Create post button clicked in chat-formatters.js', 'ui', {
+                            contentType: contentType,
+                            hasXmlContent: !!xmlContent
+                        });
+                    }
+                    
+                    // Check if MPAI_BlogFormatter is available
+                    if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.createPostFromXML === 'function') {
+                        // Use the blog formatter to create the post
+                        window.MPAI_BlogFormatter.createPostFromXML(xmlContent, contentType);
+                    } else {
+                        console.error("MPAI_BlogFormatter not available or createPostFromXML method not found");
+                        alert("Error: Blog formatter module not available. Please refresh the page and try again.");
+                    }
+                    
+                    return false;
+                });
+                
+                console.log("XML post creation button handler ENABLED in chat-formatters.js");
                 if (window.mpaiLogger) {
-                    window.mpaiLogger.info('XML post creation button handler DISABLED in chat-formatters.js', 'ui');
+                    window.mpaiLogger.info('XML post creation button handler ENABLED in chat-formatters.js', 'ui');
                 }
                 
                 window.mpaiXmlToggleHandlerAdded = true;
@@ -127,24 +165,27 @@ var MPAI_Formatters = (function($) {
             }
             
             // ========================
-            // XML DETECTION DISABLED IN CHAT FORMATTERS
-            // This is now handled entirely by mpai-blog-formatter.js
-            // which uses addCreatePostButton instead
+            // XML DETECTION IN CHAT FORMATTERS
+            // We need to properly handle XML content in the chat
             // ========================
             
-            // We're keeping code block detection for backwards compatibility
-            // but not doing anything with it
-            
+            // Process XML code blocks and extract content
             let xmlCodeBlockContent = null;
             content = content.replace(/```xml\s*([\s\S]*?)```/g, function(match, xmlCode) {
-                // Just return the match without processing
+                // Store the XML content for processing
+                if (xmlCode.includes('<wp-post>') && xmlCode.includes('</wp-post>')) {
+                    xmlCodeBlockContent = xmlCode;
+                    // Return an empty string to remove the XML code block from the content
+                    return '';
+                }
+                // If it's not a wp-post XML block, return the original match
                 return match;
             });
             
-            // DISABLED - XML handling moved to mpai-blog-formatter.js
-            if (false) { // This condition will never be true, effectively disabling this code
+            // Re-enable XML handling in chat formatters
+            if (xmlCodeBlockContent || content.includes('<wp-post>')) {
                 if (window.mpaiLogger) {
-                    window.mpaiLogger.info('XML detection disabled in chat formatters', 'ui');
+                    window.mpaiLogger.info('Processing XML content in chat formatters', 'ui');
                 }
                 
                 // Pre-process the content to protect XML from other formatters
@@ -267,7 +308,7 @@ var MPAI_Formatters = (function($) {
                             </button>
                             <button class="mpai-toggle-xml-button">View XML</button>
                         </div>
-                        <div class="mpai-post-xml-content" style="display:none;">
+                        <div class="mpai-post-xml-content">
                             <pre>${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
                         </div>
                     </div>`;
@@ -345,7 +386,7 @@ var MPAI_Formatters = (function($) {
                                 </button>
                                 <button class="mpai-toggle-xml-button">View XML</button>
                             </div>
-                            <div class="mpai-post-xml-content" style="display:none;">
+                            <div class="mpai-post-xml-content">
                                 <pre>${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
                             </div>
                         </div>`;

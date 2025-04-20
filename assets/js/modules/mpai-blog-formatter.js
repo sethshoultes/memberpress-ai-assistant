@@ -163,6 +163,24 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             console.log("AddCreatePostButton: Found direct XML", xmlContent.substring(0, 100) + "...");
         }
         
+        // Try one more time with a more lenient approach if still not found
+        if (!hasXml && content.includes('post-title') && content.includes('post-content')) {
+            console.log("Trying lenient XML detection approach");
+            // Try to reconstruct the XML structure
+            const titleMatch = content.match(/<post-title[^>]*>([\s\S]*?)<\/post-title>/i);
+            const contentMatch = content.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
+            
+            if (titleMatch && contentMatch) {
+                // Reconstruct a minimal valid XML structure
+                xmlContent = '<wp-post>\n' +
+                             '  ' + content.substring(titleMatch.index, titleMatch.index + titleMatch[0].length) + '\n' +
+                             '  ' + content.substring(contentMatch.index, contentMatch.index + contentMatch[0].length) + '\n' +
+                             '</wp-post>';
+                hasXml = true;
+                console.log("AddCreatePostButton: Reconstructed XML", xmlContent.substring(0, 100) + "...");
+            }
+        }
+        
         // If we found XML content
         if (hasXml) {
             // Don't add if buttons are already present
@@ -234,12 +252,15 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             // Add toggle XML button handler
             $previewCard.find('.mpai-toggle-xml-button').on('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation(); // Prevent event bubbling
                 const $xmlContent = $previewCard.find('.mpai-post-xml-content');
                 
-                if ($xmlContent.is(':visible')) {
+                if ($xmlContent.hasClass('show-xml')) {
+                    $xmlContent.removeClass('show-xml');
                     $xmlContent.slideUp(200);
                     $(this).text('View XML');
                 } else {
+                    $xmlContent.addClass('show-xml');
                     $xmlContent.slideDown(200);
                     $(this).text('Hide XML');
                 }
@@ -248,12 +269,16 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             // Add create post button handler
             $previewCard.find('.mpai-create-post-button').on('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation(); // Prevent event bubbling
                 const clickedContentType = $(this).data('content-type');
                 const actualXmlContent = $previewCard.data('xml-content');
                 
                 console.log("Create post button clicked");
                 console.log("Content type:", clickedContentType);
                 console.log("XML content preview:", actualXmlContent.substring(0, 150) + "...");
+                
+                // Show a loading indicator
+                $(this).prop('disabled', true).text('Creating...');
                 
                 // Use the createPostFromXML function with the raw XML content
                 createPostFromXML(actualXmlContent, clickedContentType);
@@ -391,8 +416,41 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
                 return `<!-- wp:list --><ul>${listItems}</ul><!-- /wp:list -->`;
             });
             
-            // Check if we've done any transformations by looking for wp:paragraph
-            if (!xmlBlocks.includes('<!-- wp:paragraph -->') && !xmlBlocks.includes('<!-- wp:heading -->') && !xmlBlocks.includes('<!-- wp:list -->')) {
+            // Process ordered list blocks
+            const orderedListRegex = /<block\s+type=["']ordered-list["'][^>]*>([\s\S]*?)<\/block>/g;
+            xmlBlocks = xmlBlocks.replace(orderedListRegex, function(match, content) {
+                // Extract list items
+                const items = [];
+                const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+                let itemMatch;
+                
+                while ((itemMatch = itemRegex.exec(content)) !== null) {
+                    items.push(`<li>${itemMatch[1].trim()}</li>`);
+                }
+                
+                const listItems = items.join('');
+                return `<!-- wp:list {"ordered":true} --><ol>${listItems}</ol><!-- /wp:list -->`;
+            });
+            
+            // Process quote blocks
+            const quoteRegex = /<block\s+type=["']quote["'][^>]*>([\s\S]*?)<\/block>/g;
+            xmlBlocks = xmlBlocks.replace(quoteRegex, function(match, content) {
+                return `<!-- wp:quote --><blockquote class="wp-block-quote"><p>${content.trim()}</p></blockquote><!-- /wp:quote -->`;
+            });
+            
+            // Process code blocks
+            const codeRegex = /<block\s+type=["']code["'][^>]*>([\s\S]*?)<\/block>/g;
+            xmlBlocks = xmlBlocks.replace(codeRegex, function(match, content) {
+                return `<!-- wp:code --><pre class="wp-block-code"><code>${content.trim()}</code></pre><!-- /wp:code -->`;
+            });
+            
+            // Check if we've done any transformations by looking for wp:paragraph and other block types
+            if (!xmlBlocks.includes('<!-- wp:paragraph -->') &&
+                !xmlBlocks.includes('<!-- wp:heading -->') &&
+                !xmlBlocks.includes('<!-- wp:list -->') &&
+                !xmlBlocks.includes('<!-- wp:quote -->') &&
+                !xmlBlocks.includes('<!-- wp:code -->')) {
+                
                 // No transformations happened - wrap the entire content in a paragraph block
                 console.log("No XML blocks were transformed, wrapping as paragraphs");
                 
@@ -409,8 +467,30 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
                     return '';
                 }).filter(Boolean).join('\n\n');
             } else {
-                // Some transformations happened, just remove any remaining XML tags
-                html = xmlBlocks.replace(/<[^>]*>/g, '');
+                // Some transformations happened, but we need to preserve the Gutenberg blocks
+                // and only remove remaining XML tags
+                html = xmlBlocks;
+                
+                // If there are still XML tags that weren't converted to blocks, remove them
+                if (html.includes('<') && html.includes('>')) {
+                    // Only remove XML tags that aren't part of HTML or Gutenberg comments
+                    const safeHtml = html.replace(/<(?!\!--)(\/?)([^>\s]+)[^>]*>/g, function(match) {
+                        // Don't replace HTML tags that are part of Gutenberg blocks
+                        if (match.startsWith('<p>') || match.startsWith('</p>') ||
+                            match.startsWith('<h') || match.startsWith('</h') ||
+                            match.startsWith('<ul>') || match.startsWith('</ul>') ||
+                            match.startsWith('<ol>') || match.startsWith('</ol>') ||
+                            match.startsWith('<li>') || match.startsWith('</li>') ||
+                            match.startsWith('<blockquote') || match.startsWith('</blockquote>') ||
+                            match.startsWith('<code>') || match.startsWith('</code>') ||
+                            match.startsWith('<pre>') || match.startsWith('</pre>')) {
+                            return match;
+                        }
+                        // Remove other XML tags
+                        return ' ';
+                    });
+                    html = safeHtml;
+                }
             }
             
             // If the content is still empty after processing, use a simple paragraph
