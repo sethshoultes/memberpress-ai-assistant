@@ -248,6 +248,34 @@ class MPAI_Chat_Interface {
 
         // Return the response
         if ($response) {
+            // Process XML content before sending to client
+            if (class_exists('MPAI_XML_Display_Handler')) {
+                $xml_handler = new MPAI_XML_Display_Handler();
+                
+                // Check if response contains XML blog post format
+                if ($xml_handler->contains_xml_blog_post($response)) {
+                    mpai_log_debug('XML content detected in response, pre-processing before sending to client', 'chat-interface');
+                    
+                    // Create a message array for the XML handler
+                    $message_data = array(
+                        'role' => 'assistant',
+                        'content' => $response
+                    );
+                    
+                    // Process the XML content
+                    $processed_response = $xml_handler->process_xml_content($response, $message_data);
+                    
+                    // Extract the blog post title for logging
+                    preg_match('/<post-title>(.*?)<\/post-title>/s', $response, $title_match);
+                    $title = isset($title_match[1]) ? trim($title_match[1]) : 'Unknown Title';
+                    
+                    mpai_log_debug('Processed XML content for blog post: ' . $title, 'chat-interface');
+                    
+                    // Use the processed response
+                    $response = $processed_response;
+                }
+            }
+            
             // Save message to history
             $this->save_message_to_history($message, $response);
             
@@ -368,6 +396,31 @@ class MPAI_Chat_Interface {
             $history = array();
         }
 
+        // Process any XML content in the history
+        if (class_exists('MPAI_XML_Display_Handler')) {
+            $xml_handler = new MPAI_XML_Display_Handler();
+            
+            foreach ($history as $key => $message) {
+                // Only process assistant messages
+                if (isset($message['role']) && $message['role'] === 'assistant') {
+                    $content = $message['content'];
+                    
+                    // Check if content contains XML blog post format
+                    if ($xml_handler->contains_xml_blog_post($content)) {
+                        mpai_log_debug('XML content detected in history message, processing', 'chat-interface');
+                        
+                        // Process the XML content
+                        $processed_content = $xml_handler->process_xml_content($content, $message);
+                        
+                        // Update the message content
+                        $history[$key]['content'] = $processed_content;
+                        
+                        mpai_log_debug('Processed XML content in history message', 'chat-interface');
+                    }
+                }
+            }
+        }
+
         wp_send_json_success(array(
             'history' => $history,
         ));
@@ -395,10 +448,32 @@ class MPAI_Chat_Interface {
             'timestamp' => time(),
         );
 
+        // Process XML content in the response before saving to history
+        $processed_response = $response;
+        if (class_exists('MPAI_XML_Display_Handler')) {
+            $xml_handler = new MPAI_XML_Display_Handler();
+            
+            // Check if response contains XML blog post format
+            if ($xml_handler->contains_xml_blog_post($response)) {
+                mpai_log_debug('XML content detected in response, processing before saving to history', 'chat-interface');
+                
+                // Create a message array for the XML handler
+                $message_data = array(
+                    'role' => 'assistant',
+                    'content' => $response
+                );
+                
+                // Process the XML content
+                $processed_response = $xml_handler->process_xml_content($response, $message_data);
+                
+                mpai_log_debug('Processed XML content before saving to history', 'chat-interface');
+            }
+        }
+
         // Add assistant response
         $history[] = array(
             'role' => 'assistant',
-            'content' => $response,
+            'content' => $processed_response,
             'timestamp' => time(),
         );
 

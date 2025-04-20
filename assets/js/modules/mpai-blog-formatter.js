@@ -25,6 +25,60 @@ var MPAI_BlogFormatter = (function($) {
             e.preventDefault();
             enhanceUserPrompt($(this).data('command'), 'page');
         });
+        
+        // Add event handlers for the XML buttons
+        $(document).on('click', '.mpai-toggle-xml-button', function(e) {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent event bubbling
+            const $xmlContent = $(this).closest('.mpai-post-preview-card').find('.mpai-post-xml-content');
+            
+            if ($xmlContent.is(':visible')) {
+                $xmlContent.slideUp(200);
+                $(this).text('View XML');
+            } else {
+                $xmlContent.slideDown(200);
+                $(this).text('Hide XML');
+            }
+        });
+        
+        $(document).on('click', '.mpai-create-post-button', function(e) {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent event bubbling
+            const clickedContentType = $(this).data('content-type');
+            const $card = $(this).closest('.mpai-post-preview-card');
+            const xmlContent = decodeURIComponent($(this).data('xml') || $card.data('xml-content'));
+            
+            console.log("Create post button clicked");
+            console.log("Content type:", clickedContentType);
+            console.log("XML content preview:", xmlContent.substring(0, 150) + "...");
+            
+            // Show a loading indicator
+            $(this).prop('disabled', true).text('Creating...');
+            
+            // Use the createPostFromXML function with the raw XML content
+            createPostFromXML(xmlContent, clickedContentType);
+        });
+        
+        // Process any existing XML content on page load
+        setTimeout(function() {
+            console.log("MPAI: Checking for XML content on page load");
+            $('.mpai-chat-message-assistant').each(function() {
+                const $message = $(this);
+                const content = $message.find('.mpai-chat-message-content').html();
+                
+                if (content && (
+                    content.includes('<wp-post>') ||
+                    content.includes('</wp-post>') ||
+                    content.includes('<post-title>') ||
+                    content.includes('</post-title>') ||
+                    content.includes('<post-content>') ||
+                    content.includes('</post-content>')
+                )) {
+                    console.log("MPAI: Found XML content in message, processing");
+                    processAssistantMessage($message, content);
+                }
+            });
+        }, 500); // Short delay to ensure DOM is ready
     }
     
     /**
@@ -698,8 +752,175 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             return;
         }
         
-        // Add create post buttons
-        addCreatePostButton($message, content);
+        // Check if we have original XML content stored
+        if (window.originalXmlResponse && typeof window.originalXmlResponse === 'string') {
+            // Use the original XML content instead of the cleaned content
+            addCreatePostButton($message, window.originalXmlResponse);
+            // Clear the original XML content
+            window.originalXmlResponse = null;
+        } else {
+            // Use the provided content
+            addCreatePostButton($message, content);
+        }
+    }
+    
+    /**
+     * Pre-process XML content synchronously before displaying in chat
+     *
+     * @param {string} content - The message content
+     * @return {object} Object with cleaned content and preview card HTML
+     */
+    function preProcessXmlContent(content) {
+        if (!content) {
+            return {
+                content: content,
+                previewCardHtml: '',
+                hasXml: false
+            };
+        }
+        
+        // Check if content contains XML blog post format
+        let hasXml = false;
+        let xmlContent = '';
+        let cleanedContent = content;
+        
+        // Check for XML in code blocks first
+        const codeBlockRegex = /```(?:xml)?\s*([\s\S]*?)```/g;
+        let match;
+        while ((match = codeBlockRegex.exec(content)) !== null) {
+            if (match[1] && match[1].includes('<wp-post') && match[1].includes('</wp-post>')) {
+                xmlContent = match[1];
+                hasXml = true;
+                console.log("preProcessXmlContent: Found XML in code block", xmlContent.substring(0, 100) + "...");
+                
+                // Remove this code block from the content
+                cleanedContent = cleanedContent.replace(match[0], '');
+                break;
+            }
+        }
+        
+        // If not found in code blocks, check for direct XML
+        if (!hasXml && content.includes('<wp-post>') && content.includes('</wp-post>')) {
+            // Extract the XML content
+            const startPos = content.indexOf('<wp-post>');
+            const endPos = content.lastIndexOf('</wp-post>') + 10; // 10 = length of "</wp-post>"
+            xmlContent = content.substring(startPos, endPos);
+            
+            // Remove the XML content from the cleaned content
+            cleanedContent = cleanedContent.replace(xmlContent, '');
+            
+            hasXml = true;
+            console.log("preProcessXmlContent: Found direct XML", xmlContent.substring(0, 100) + "...");
+        }
+        
+        // Try one more time with a more lenient approach if still not found
+        if (!hasXml && content.includes('post-title') && content.includes('post-content')) {
+            console.log("Trying lenient XML detection approach");
+            // Try to reconstruct the XML structure
+            const titleMatch = content.match(/<post-title[^>]*>([\s\S]*?)<\/post-title>/i);
+            const contentMatch = content.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
+            
+            if (titleMatch && contentMatch) {
+                // Reconstruct a minimal valid XML structure
+                xmlContent = '<wp-post>\n' +
+                             '  ' + content.substring(titleMatch.index, titleMatch.index + titleMatch[0].length) + '\n' +
+                             '  ' + content.substring(contentMatch.index, contentMatch.index + contentMatch[0].length) + '\n' +
+                             '</wp-post>';
+                
+                // Remove these parts from the cleaned content
+                cleanedContent = cleanedContent.replace(titleMatch[0], '');
+                cleanedContent = cleanedContent.replace(contentMatch[0], '');
+                
+                hasXml = true;
+                console.log("preProcessXmlContent: Reconstructed XML", xmlContent.substring(0, 100) + "...");
+            }
+        }
+        
+        // If we found XML content, create a preview card
+        let previewCardHtml = '';
+        if (hasXml) {
+            // Extract title and excerpt for a nicer display
+            let title = "New Blog Post";
+            let excerpt = "Blog post content created with AI Assistant";
+            let postType = "post";
+            
+            // Try to extract title
+            const titleMatch = xmlContent.match(/<post-title[^>]*>([\s\S]*?)<\/post-title>/i);
+            if (titleMatch && titleMatch[1]) {
+                title = titleMatch[1].trim();
+            }
+            
+            // Try to extract excerpt
+            const excerptMatch = xmlContent.match(/<post-excerpt[^>]*>([\s\S]*?)<\/post-excerpt>/i);
+            if (excerptMatch && excerptMatch[1]) {
+                excerpt = excerptMatch[1].trim();
+            } else {
+                // If no excerpt, try to get first paragraph from content
+                const contentMatch = xmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
+                if (contentMatch && contentMatch[1]) {
+                    // Find first paragraph or block
+                    const firstBlockMatch = contentMatch[1].match(/<block[^>]*>([\s\S]*?)<\/block>/i);
+                    if (firstBlockMatch && firstBlockMatch[1]) {
+                        excerpt = firstBlockMatch[1].trim();
+                        // Limit length
+                        if (excerpt.length > 150) {
+                            excerpt = excerpt.substring(0, 147) + '...';
+                        }
+                    }
+                }
+            }
+            
+            // Check for post type
+            const typeMatch = xmlContent.match(/<post-type[^>]*>([\s\S]*?)<\/post-type>/i);
+            if (typeMatch && typeMatch[1] && typeMatch[1].trim().toLowerCase() === 'page') {
+                postType = "page";
+            }
+            
+            // Create the preview card HTML
+            previewCardHtml = `
+                <div class="mpai-post-preview-card" data-xml-content="${encodeURIComponent(xmlContent)}">
+                    <div class="mpai-post-preview-header">
+                        <div class="mpai-post-preview-type">${postType === "page" ? "Page" : "Blog Post"}</div>
+                        <div class="mpai-post-preview-icon">${postType === "page" ? '<span class="dashicons dashicons-page"></span>' : '<span class="dashicons dashicons-admin-post"></span>'}</div>
+                    </div>
+                    <h3 class="mpai-post-preview-title">${title}</h3>
+                    <div class="mpai-post-preview-excerpt">${excerpt}</div>
+                    <div class="mpai-post-preview-actions">
+                        <button class="mpai-create-post-button" data-content-type="${postType}">
+                            Create ${postType === "page" ? "Page" : "Post"}
+                        </button>
+                        <button class="mpai-toggle-xml-button">View XML</button>
+                    </div>
+                    <div class="mpai-post-xml-content" style="display:none;">
+                        <pre>${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                    </div>
+                </div>
+            `;
+            
+            // Clean up any remaining XML tags in the content
+            cleanedContent = cleanedContent.replace(/<post-title>[\s\S]*?<\/post-title>/g, '');
+            cleanedContent = cleanedContent.replace(/<post-content>[\s\S]*?<\/post-content>/g, '');
+            cleanedContent = cleanedContent.replace(/<post-excerpt>[\s\S]*?<\/post-excerpt>/g, '');
+            cleanedContent = cleanedContent.replace(/<post-type>[\s\S]*?<\/post-type>/g, '');
+            cleanedContent = cleanedContent.replace(/<block[^>]*>[\s\S]*?<\/block>/g, '');
+            cleanedContent = cleanedContent.replace(/<item>[\s\S]*?<\/item>/g, '');
+            
+            // Clean up any empty lines or excessive whitespace
+            cleanedContent = cleanedContent.replace(/\n\s*\n\s*\n/g, '\n\n');
+            cleanedContent = cleanedContent.trim();
+            
+            // If the content is now empty, add a simple message
+            if (!cleanedContent.trim()) {
+                cleanedContent = "I've created a blog post for you:";
+            }
+        }
+        
+        return {
+            content: cleanedContent,
+            previewCardHtml: previewCardHtml,
+            hasXml: hasXml,
+            xmlContent: xmlContent
+        };
     }
     
     // Public API
@@ -707,7 +928,8 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
         init: init,
         enhanceUserPrompt: enhanceUserPrompt,
         processAssistantMessage: processAssistantMessage,
-        createPostFromXML: createPostFromXML
+        createPostFromXML: createPostFromXML,
+        preProcessXmlContent: preProcessXmlContent
     };
 })(jQuery);
 

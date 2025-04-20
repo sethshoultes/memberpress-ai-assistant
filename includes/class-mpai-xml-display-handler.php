@@ -78,7 +78,31 @@ class MPAI_XML_Display_Handler {
 
         // Check if content contains XML blog post format
         if ($this->contains_xml_blog_post($content)) {
-            $content = $this->format_xml_blog_post($content);
+            // Log that we're processing XML content
+            if (function_exists('mpai_log_debug')) {
+                mpai_log_debug('Processing XML content in message', 'xml-display-handler');
+            }
+            
+            // Format the XML content
+            $formatted_content = $this->format_xml_blog_post($content);
+            
+            // Add a script to ensure the preview card is displayed immediately
+            $formatted_content .= '<script>
+                (function() {
+                    // Execute immediately
+                    console.log("MPAI: XML content processed, ensuring preview card is displayed");
+                    
+                    // Force display of preview card
+                    var cards = document.querySelectorAll(".mpai-post-preview-card");
+                    if (cards.length > 0) {
+                        var latestCard = cards[cards.length - 1];
+                        latestCard.style.display = "block";
+                        console.log("MPAI: Found and displayed preview card");
+                    }
+                })();
+            </script>';
+            
+            return $formatted_content;
         }
 
         return $content;
@@ -90,7 +114,7 @@ class MPAI_XML_Display_Handler {
      * @param string $content The content to check
      * @return bool True if content contains XML blog post format
      */
-    private function contains_xml_blog_post($content) {
+    public function contains_xml_blog_post($content) {
         // Check for wp-post tags
         if (preg_match('/<wp-post>.*?<\/wp-post>/s', $content)) {
             return true;
@@ -158,22 +182,73 @@ class MPAI_XML_Display_Handler {
         // Create preview card HTML
         $preview_card = $this->create_preview_card($title, $excerpt, $post_type, $xml_content);
         
-        // Replace the XML content in the original message with the preview card
-        // We need to be careful not to replace XML inside code blocks
+        // Log the XML processing
+        if (function_exists('mpai_log_debug')) {
+            mpai_log_debug('Processing XML blog post: ' . $title, 'xml-display-handler');
+        }
         
-        // First, try to replace XML in code blocks
-        $pattern = '/```xml\s*(<wp-post>.*?<\/wp-post>)\s*```/s';
-        if (preg_match($pattern, $content)) {
-            $content = preg_replace($pattern, $preview_card, $content, 1);
-        } 
-        // Then try to replace direct XML
-        else if (preg_match('/(<wp-post>.*?<\/wp-post>)/s', $content)) {
-            $content = preg_replace('/(<wp-post>.*?<\/wp-post>)/s', $preview_card, $content, 1);
-        }
-        // If neither worked, append the preview card
-        else {
-            $content .= $preview_card;
-        }
+        // Completely replace the content with a simple message and the preview card
+        // This ensures no XML content remains in the message
+        $content = "I've created a " . ($post_type === 'page' ? 'page' : 'blog post') . " titled \"" . esc_html($title) . "\" for you:";
+        
+        // Add the preview card to the cleaned content
+        $content .= $preview_card;
+        
+        // Add inline script to ensure the preview card is displayed immediately
+        $content .= '<script>
+            (function() {
+                // Execute immediately to ensure preview card is displayed
+                console.log("MPAI: Ensuring preview card is displayed immediately");
+                
+                // Force display of preview card
+                var cards = document.querySelectorAll(".mpai-post-preview-card");
+                if (cards.length > 0) {
+                    var latestCard = cards[cards.length - 1];
+                    latestCard.style.display = "block";
+                    latestCard.style.opacity = "1";
+                    latestCard.style.visibility = "visible";
+                    console.log("MPAI: Found and displayed preview card immediately");
+                }
+                
+                // Initialize event handlers immediately
+                var toggleButtons = document.querySelectorAll(".mpai-toggle-xml-button");
+                toggleButtons.forEach(function(button) {
+                    button.addEventListener("click", function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var card = this.closest(".mpai-post-preview-card");
+                        var xmlContent = card.querySelector(".mpai-post-xml-content");
+                        
+                        if (xmlContent.style.display === "block") {
+                            xmlContent.style.display = "none";
+                            this.textContent = "View XML";
+                        } else {
+                            xmlContent.style.display = "block";
+                            this.textContent = "Hide XML";
+                        }
+                    });
+                });
+                
+                var createButtons = document.querySelectorAll(".mpai-create-post-button");
+                createButtons.forEach(function(button) {
+                    button.addEventListener("click", function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var contentType = this.getAttribute("data-content-type");
+                        var xmlContent = this.getAttribute("data-xml") || this.closest(".mpai-post-preview-card").getAttribute("data-xml-content");
+                        
+                        // Show loading indicator
+                        this.disabled = true;
+                        this.textContent = "Creating...";
+                        
+                        // Call the createPostFromXML function if available
+                        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.createPostFromXML === "function") {
+                            window.MPAI_BlogFormatter.createPostFromXML(decodeURIComponent(xmlContent), contentType);
+                        }
+                    });
+                });
+            })();
+        </script>';
         
         return $content;
     }
@@ -238,7 +313,7 @@ class MPAI_XML_Display_Handler {
         $escaped_xml = esc_attr($xml_content);
         
         // Create the preview card HTML
-        $html = '<div class="mpai-post-preview-card">';
+        $html = '<div class="mpai-post-preview-card" data-xml-content="' . $escaped_xml . '">';
         $html .= '<div class="mpai-post-preview-header">';
         $html .= '<div class="mpai-post-preview-type">' . ($post_type === 'page' ? 'Page' : 'Blog Post') . '</div>';
         $html .= '<div class="mpai-post-preview-icon">' . ($post_type === 'page' ? '<span class="dashicons dashicons-page"></span>' : '<span class="dashicons dashicons-admin-post"></span>') . '</div>';
@@ -255,6 +330,51 @@ class MPAI_XML_Display_Handler {
         $html .= '<pre>' . esc_html($xml_content) . '</pre>';
         $html .= '</div>';
         $html .= '</div>';
+        
+        // Add inline script to ensure the preview card is displayed immediately
+        $html .= '<script>
+            (function() {
+                // Add event handlers for the buttons immediately
+                document.addEventListener("DOMContentLoaded", function() {
+                    // Find all toggle XML buttons and add click handlers
+                    document.querySelectorAll(".mpai-toggle-xml-button").forEach(function(button) {
+                        button.addEventListener("click", function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var card = this.closest(".mpai-post-preview-card");
+                            var xmlContent = card.querySelector(".mpai-post-xml-content");
+                            
+                            if (xmlContent.style.display === "block") {
+                                xmlContent.style.display = "none";
+                                this.textContent = "View XML";
+                            } else {
+                                xmlContent.style.display = "block";
+                                this.textContent = "Hide XML";
+                            }
+                        });
+                    });
+                    
+                    // Find all create post buttons and add click handlers
+                    document.querySelectorAll(".mpai-create-post-button").forEach(function(button) {
+                        button.addEventListener("click", function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var contentType = this.getAttribute("data-content-type");
+                            var xmlContent = this.getAttribute("data-xml") || this.closest(".mpai-post-preview-card").getAttribute("data-xml-content");
+                            
+                            // Show loading indicator
+                            this.disabled = true;
+                            this.textContent = "Creating...";
+                            
+                            // Call the createPostFromXML function if available
+                            if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.createPostFromXML === "function") {
+                                window.MPAI_BlogFormatter.createPostFromXML(decodeURIComponent(xmlContent), contentType);
+                            }
+                        });
+                    });
+                });
+            })();
+        </script>';
         
         return $html;
     }
