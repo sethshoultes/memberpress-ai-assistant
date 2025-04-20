@@ -22,104 +22,8 @@
  * GNU General Public License for more details.
  */
 
-// SUPER DIRECT PLUGIN LOGS HANDLER - First check if we're being called directly
-// This is a special case to handle the plugin_logs tool directly, bypassing WordPress entirely
-if (isset($_REQUEST['direct_plugin_logs']) && $_REQUEST['direct_plugin_logs'] === 'true') {
-    // We can't use mpai_log_* here because it hasn't been defined yet
-    // This is a special early endpoint that bypasses normal WordPress initialization
-    
-    // Set headers for JSON response
-    header('Content-Type: application/json');
-    header('Access-Control-Allow-Origin: *');
-    
-    try {
-        // We need to bootstrap WordPress minimally
-        define('SHORTINIT', true);
-        require_once('../../../wp-load.php');
-        
-        // Define our plugin constants
-        define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
-        define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
-        
-        // Load the plugin logger
-        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
-        
-        // Initialize the plugin logger
-        $plugin_logger = mpai_init_plugin_logger();
-        
-        if (!$plugin_logger) {
-            echo json_encode([
-                'success' => false,
-                'error' => 'Failed to initialize plugin logger'
-            ]);
-            exit;
-        }
-        
-        // Get parameters with defaults - support both action and action_type for compatibility
-        $action = '';
-        if (isset($_REQUEST['action'])) {
-            $action = $_REQUEST['action'];
-        } elseif (isset($_REQUEST['action_type'])) {
-            $action = $_REQUEST['action_type'];
-        }
-        
-        $days = isset($_REQUEST['days']) ? intval($_REQUEST['days']) : 30;
-        $limit = isset($_REQUEST['limit']) ? intval($_REQUEST['limit']) : 25;
-        
-        // Get logs
-        $args = [
-            'action'    => $action,
-            'date_from' => date('Y-m-d H:i:s', strtotime("-{$days} days")),
-            'orderby'   => 'date_time',
-            'order'     => 'DESC',
-            'limit'     => $limit
-        ];
-        
-        $logs = $plugin_logger->get_logs($args);
-        
-        // Count logs by action
-        $summary = [
-            'total' => count($logs),
-            'installed' => 0,
-            'updated' => 0,
-            'activated' => 0,
-            'deactivated' => 0,
-            'deleted' => 0
-        ];
-        
-        foreach ($logs as $log) {
-            if (isset($log['action']) && isset($summary[$log['action']])) {
-                $summary[$log['action']]++;
-            }
-        }
-        
-        // Format logs with time_ago
-        foreach ($logs as &$log) {
-            $timestamp = strtotime($log['date_time']);
-            $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
-        }
-        
-        // Output the response
-        echo json_encode([
-            'success' => true,
-            'tool' => 'plugin_logs',
-            'summary' => $summary,
-            'time_period' => "past {$days} days",
-            'logs' => $logs,
-            'total' => count($logs),
-            'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
-        ]);
-        exit;
-    } catch (Exception $e) {
-        // We can't use mpai_log_* here because it hasn't been defined yet
-        // Log directly to PHP error log in this emergency case
-        echo json_encode([
-            'success' => false,
-            'error' => 'Error retrieving plugin logs: ' . $e->getMessage()
-        ]);
-        exit;
-    }
-}
+// Plugin logs are now handled directly by the context manager and AJAX handler
+// No need for a special early endpoint
 
 // If this is a normal WordPress request, continue as usual
 if (!defined('WPINC')) {
@@ -1460,15 +1364,8 @@ class MemberPress_AI_Assistant {
         }
         
         try {
-            // Initialize the plugin logger
-            $plugin_logger = mpai_init_plugin_logger();
-            
-            if (!$plugin_logger) {
-                wp_send_json_error('Failed to initialize plugin logger');
-                return;
-            }
-            
             // Get filter parameters - support both direct parameters and JSON format
+            $plugin_name = '';
             if (isset($_POST['tool_request'])) {
                 // Parse the tool request
                 $tool_request = json_decode(stripslashes($_POST['tool_request']), true);
@@ -1481,19 +1378,33 @@ class MemberPress_AI_Assistant {
                 if (json_last_error() === JSON_ERROR_NONE && isset($tool_request['parameters'])) {
                     $parameters = $tool_request['parameters'];
                     $action = isset($parameters['action']) ? sanitize_text_field($parameters['action']) : '';
+                    $plugin_name = isset($parameters['plugin_name']) ? sanitize_text_field($parameters['plugin_name']) : '';
                     $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
                     $limit = isset($parameters['limit']) ? intval($parameters['limit']) : 25;
+                    $summary_only = isset($parameters['summary_only']) ? (bool)$parameters['summary_only'] : false;
                 } else {
                     // Fallback to direct parameters
                     $action = isset($_POST['action']) ? sanitize_text_field($_POST['action']) : '';
+                    $plugin_name = isset($_POST['plugin_name']) ? sanitize_text_field($_POST['plugin_name']) : '';
                     $days = isset($_POST['days']) ? intval($_POST['days']) : 30;
                     $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 25;
+                    $summary_only = isset($_POST['summary_only']) ? (bool)$_POST['summary_only'] : false;
                 }
             } else {
                 // Direct parameters
                 $action = isset($_POST['action']) ? sanitize_text_field($_POST['action']) : '';
+                $plugin_name = isset($_POST['plugin_name']) ? sanitize_text_field($_POST['plugin_name']) : '';
                 $days = isset($_POST['days']) ? intval($_POST['days']) : 30;
                 $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 25;
+                $summary_only = isset($_POST['summary_only']) ? (bool)$_POST['summary_only'] : false;
+            }
+            
+            // Initialize the plugin logger
+            $plugin_logger = mpai_init_plugin_logger();
+            
+            if (!$plugin_logger) {
+                wp_send_json_error('Failed to initialize plugin logger');
+                return;
             }
             
             // Calculate date range
@@ -1502,46 +1413,87 @@ class MemberPress_AI_Assistant {
                 $date_from = date('Y-m-d H:i:s', strtotime("-{$days} days"));
             }
             
-            // Prepare query arguments
-            $args = array(
+            // Get summary data
+            $summary_days = $days > 0 ? $days : 365; // If all time, limit to 1 year for summary
+            $summary = $plugin_logger->get_activity_summary($summary_days);
+            
+            // Create a simplified summary
+            $action_counts = [
+                'total' => 0,
+                'installed' => 0,
+                'updated' => 0,
+                'activated' => 0,
+                'deactivated' => 0,
+                'deleted' => 0
+            ];
+            
+            if (isset($summary['action_counts']) && is_array($summary['action_counts'])) {
+                foreach ($summary['action_counts'] as $count_data) {
+                    if (isset($count_data['action']) && isset($count_data['count'])) {
+                        $action_counts[$count_data['action']] = intval($count_data['count']);
+                        $action_counts['total'] += intval($count_data['count']);
+                    }
+                }
+            }
+            
+            // If summary_only is true, return just the summary data
+            if ($summary_only) {
+                wp_send_json_success(array(
+                    'tool' => 'plugin_logs',
+                    'summary' => $action_counts,
+                    'time_period' => $days > 0 ? "past {$days} days" : "all time",
+                    'most_active_plugins' => $summary['most_active_plugins'] ?? [],
+                    'logs_exist' => $action_counts['total'] > 0,
+                    'message' => $action_counts['total'] > 0
+                        ? "Found {$action_counts['total']} plugin log entries"
+                        : "No plugin logs found for the specified criteria"
+                ));
+                return;
+            }
+            
+            // Prepare query arguments for detailed logs
+            $args = [
+                'plugin_name' => $plugin_name,
                 'action'      => $action,
                 'date_from'   => $date_from,
                 'orderby'     => 'date_time',
                 'order'       => 'DESC',
                 'limit'       => $limit
-            );
+            ];
             
             // Get logs
             $logs = $plugin_logger->get_logs($args);
             
-            // Count by action type
-            $summary = array(
-                'total'       => count($logs),
-                'installed'   => 0,
-                'updated'     => 0,
-                'activated'   => 0,
-                'deactivated' => 0,
-                'deleted'     => 0
-            );
+            // Get total count for the query
+            $count_args = [
+                'plugin_name' => $plugin_name,
+                'action'      => $action,
+                'date_from'   => $date_from
+            ];
+            $total = $plugin_logger->count_logs($count_args);
             
-            foreach ($logs as $log) {
-                if (isset($log['action']) && isset($summary[$log['action']])) {
-                    $summary[$log['action']]++;
-                }
-            }
-            
-            // Format logs with time_ago
+            // Enhance the logs with readable timestamps
             foreach ($logs as &$log) {
                 $timestamp = strtotime($log['date_time']);
+                $log['readable_date'] = date('F j, Y, g:i a', $timestamp);
                 $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
             }
             
+            // Format the result for readability
             wp_send_json_success(array(
                 'tool' => 'plugin_logs',
-                'summary' => $summary,
-                'time_period' => "past {$days} days",
+                'summary' => $action_counts,
+                'time_period' => $days > 0 ? "past {$days} days" : "all time",
+                'total_records' => $total,
+                'returned_records' => count($logs),
+                'has_more' => $total > count($logs),
                 'logs' => $logs,
-                'total' => count($logs),
+                'query' => [
+                    'action' => $action,
+                    'plugin_name' => $plugin_name,
+                    'days' => $days,
+                    'limit' => $limit
+                ],
                 'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
             ));
         } catch (Exception $e) {

@@ -113,16 +113,18 @@
                     // Mark as processed
                     processedToolCalls.add(match[0]);
                 } else if (jsonData.tool && jsonData.parameters) {
-                    // Legacy format with 'tool' instead of 'name'
+                    // Convert tool format to name format for consistency
                     toolCalls.push({
                         name: jsonData.tool,
                         parameters: jsonData.parameters,
                         original: match[0],
-                        format: 'json_legacy'
+                        format: 'json'
                     });
                     
                     // Mark as processed
                     processedToolCalls.add(match[0]);
+                    
+                    console.log('Converted tool format to name format for consistency');
                 }
             } catch (e) {
                 console.error('Failed to parse JSON tool call:', e);
@@ -197,13 +199,7 @@
             const parameters = toolCall.parameters;
             const original = toolCall.original;
             
-            // Legacy tool IDs have been removed - only 'wpcli' is supported
-            if (toolName === 'wpcli_new' || toolName === 'wp_cli') {
-                console.error(`Legacy tool ID "${toolName}" is no longer supported. Use "wpcli" instead.`);
-                const errorMessage = `Legacy tool ID "${toolName}" is no longer supported. Use "wpcli" instead.`;
-                updatedResponse = updatedResponse.replace(original, formatErrorResult(toolName, errorMessage));
-                continue;
-            }
+            // Standardize tool request format
             
             // Execute the tool via AJAX
             $.ajax({

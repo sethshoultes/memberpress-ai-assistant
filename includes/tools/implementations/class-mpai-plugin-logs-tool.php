@@ -122,6 +122,184 @@ class MPAI_Plugin_Logs_Tool extends MPAI_Base_Tool {
     protected function execute_tool($parameters) {
         mpai_log_debug('Executing plugin_logs tool with parameters: ' . json_encode($parameters), 'plugin-logs-tool');
         
+        // Initialize the plugin logger directly
+        try {
+            // Initialize the plugin logger with better error handling
+            if (!function_exists('mpai_init_plugin_logger')) {
+                if (defined('MPAI_PLUGIN_DIR')) {
+                    $logger_file = MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
+                    if (file_exists($logger_file)) {
+                        mpai_log_debug('Loading plugin logger class from: ' . $logger_file, 'plugin-logs-tool');
+                        require_once $logger_file;
+                    } else {
+                        mpai_log_error('Plugin logger class not found at: ' . $logger_file, 'plugin-logs-tool');
+                        return $this->get_fallback_response('Plugin logger class not found. Using WordPress API instead.');
+                    }
+                } else {
+                    mpai_log_error('MPAI_PLUGIN_DIR not defined', 'plugin-logs-tool');
+                    return $this->get_fallback_response('MPAI_PLUGIN_DIR not defined. Using WordPress API instead.');
+                }
+            }
+            
+            // Try to initialize the plugin logger
+            $plugin_logger = mpai_init_plugin_logger();
+            
+            if (!$plugin_logger) {
+                mpai_log_error('Failed to initialize plugin logger', 'plugin-logs-tool');
+                return $this->get_fallback_response('Failed to initialize plugin logger. Using WordPress API instead.');
+            }
+            
+            // Parameters are already validated and sanitized by the base class
+            $action = isset($parameters['action']) ? $parameters['action'] : '';
+            $plugin_name = isset($parameters['plugin_name']) ? $parameters['plugin_name'] : '';
+            $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
+            $limit = isset($parameters['limit']) ? intval($parameters['limit']) : 25;
+            $summary_only = isset($parameters['summary_only']) ? (bool)$parameters['summary_only'] : false;
+            
+            // Calculate date range
+            $date_from = '';
+            if ($days > 0) {
+                $date_from = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+            }
+            
+            // Get summary data with error handling
+            $summary_days = $days > 0 ? $days : 365; // If all time, limit to 1 year for summary
+            $summary = $plugin_logger->get_activity_summary($summary_days);
+            
+            // Check if we got a fallback summary (indicates database issues)
+            $using_fallback = isset($summary['is_fallback']) && $summary['is_fallback'];
+            
+            if ($using_fallback) {
+                mpai_log_warning('Using fallback summary data from plugin logger', 'plugin-logs-tool');
+            }
+            
+            // Create a simplified summary
+            $action_counts = [
+                'total' => 0,
+                'installed' => 0,
+                'updated' => 0,
+                'activated' => 0,
+                'deactivated' => 0,
+                'deleted' => 0
+            ];
+            
+            if (isset($summary['action_counts']) && is_array($summary['action_counts'])) {
+                foreach ($summary['action_counts'] as $count_data) {
+                    if (isset($count_data['action']) && isset($count_data['count'])) {
+                        $action_counts[$count_data['action']] = intval($count_data['count']);
+                        $action_counts['total'] += intval($count_data['count']);
+                    }
+                }
+            }
+            
+            // If summary_only is true, return just the summary data
+            if ($summary_only) {
+                return [
+                    'success' => true,
+                    'summary' => $action_counts,
+                    'time_period' => $days > 0 ? "past {$days} days" : "all time",
+                    'most_active_plugins' => $summary['most_active_plugins'] ?? [],
+                    'logs_exist' => $action_counts['total'] > 0,
+                    'message' => $action_counts['total'] > 0
+                        ? "Found {$action_counts['total']} plugin log entries"
+                        : "No plugin logs found for the specified criteria"
+                ];
+            }
+            
+            // Prepare query arguments for detailed logs
+            $args = [
+                'plugin_name' => $plugin_name,
+                'action'      => $action,
+                'date_from'   => $date_from,
+                'orderby'     => 'date_time',
+                'order'       => 'DESC',
+                'limit'       => $limit
+            ];
+            
+            // Get logs
+            $logs = $plugin_logger->get_logs($args);
+            
+            // Get total count for the query
+            $count_args = [
+                'plugin_name' => $plugin_name,
+                'action'      => $action,
+                'date_from'   => $date_from
+            ];
+            $total = $plugin_logger->count_logs($count_args);
+            
+            // Enhance the logs with readable timestamps
+            foreach ($logs as &$log) {
+                // Convert the MySQL timestamp to a readable format
+                $timestamp = strtotime($log['date_time']);
+                $log['readable_date'] = date('F j, Y, g:i a', $timestamp);
+                $log['time_ago'] = $this->time_elapsed_string($timestamp);
+            }
+            
+            // Add natural language summary
+            $nl_summary = $this->generate_natural_language_summary(
+                $action,
+                $plugin_name,
+                $logs,
+                $action_counts
+            );
+            
+            // Create a direct, simple string output instead of a complex structure
+            $output = "# Plugin Activity Log\n\n";
+            $output .= "Showing plugin activity for the " . ($days > 0 ? "past {$days} days" : "all time") . "\n\n";
+            
+            // Add summary section
+            $output .= "## Summary\n";
+            $output .= "- Total activities: " . $action_counts['total'] . "\n";
+            $output .= "- Installations: " . $action_counts['installed'] . "\n";
+            $output .= "- Updates: " . $action_counts['updated'] . "\n";
+            $output .= "- Activations: " . $action_counts['activated'] . "\n";
+            $output .= "- Deactivations: " . $action_counts['deactivated'] . "\n";
+            $output .= "- Deletions: " . $action_counts['deleted'] . "\n\n";
+            
+            // Add detailed logs section
+            $output .= "## Recent Activity\n";
+            if (count($logs) > 0) {
+                foreach ($logs as $log) {
+                    $action_verb = ucfirst($log['action']);
+                    $plugin_name = $log['plugin_name'];
+                    $version = $log['plugin_version'];
+                    $time_ago = $log['time_ago'];
+                    $user = isset($log['user_login']) && !empty($log['user_login']) ? " by user {$log['user_login']}" : '';
+                    
+                    $output .= "- {$action_verb}: {$plugin_name} v{$version} ({$time_ago}){$user}\n";
+                }
+            } else {
+                $output .= "No plugin activity found for the specified criteria.\n";
+            }
+            
+            // Include the natural language summary
+            $output .= "\n## Analysis\n" . $nl_summary;
+            
+            // Log success and return the output
+            mpai_log_debug('Successfully retrieved plugin logs directly', 'plugin-logs-tool');
+            return $output;
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error in plugin logs handler: ' . $e->getMessage(), 'plugin-logs-tool', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            // Fall back to the WordPress API
+            return $this->get_fallback_response('Error retrieving plugin logs: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Original implementation of execute_tool (kept for fallback)
+     *
+     * @param array $parameters Validated tool parameters
+     * @return array Result of the plugin logs query
+     */
+    private function execute_tool_original($parameters) {
+        mpai_log_debug('Falling back to original plugin_logs implementation', 'plugin-logs-tool');
+        
         // Initialize the plugin logger with better error handling
         if (!function_exists('mpai_init_plugin_logger')) {
             if (defined('MPAI_PLUGIN_DIR')) {
