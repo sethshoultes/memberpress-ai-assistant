@@ -233,7 +233,29 @@ class MPAI_Chat {
                 }
                 
                 if (isset($message['response']) && !empty($message['response'])) {
-                    $this->conversation[] = array('role' => 'assistant', 'content' => $message['response']);
+                    // Process XML content in the response if needed
+                    $processed_response = $message['response'];
+                    if (class_exists('MPAI_XML_Display_Handler')) {
+                        $xml_handler = new MPAI_XML_Display_Handler();
+                        
+                        // Check if response contains XML blog post format
+                        if ($xml_handler->contains_xml_blog_post($message['response'])) {
+                            mpai_log_debug('XML content detected in loaded message, processing', 'chat');
+                            
+                            // Create a message array for the XML handler
+                            $message_data = array(
+                                'role' => 'assistant',
+                                'content' => $message['response']
+                            );
+                            
+                            // Process the XML content
+                            $processed_response = $xml_handler->process_xml_content($message['response'], $message_data);
+                            
+                            mpai_log_debug('Processed XML content in loaded message', 'chat');
+                        }
+                    }
+                    
+                    $this->conversation[] = array('role' => 'assistant', 'content' => $processed_response);
                 }
             }
             
@@ -1123,7 +1145,30 @@ class MPAI_Chat {
                     // Add assistant response to conversation
                     try {
                         mpai_log_debug('Adding assistant response to conversation', 'chat');
-                        $this->conversation[] = array('role' => 'assistant', 'content' => $modified_content);
+                        
+                        // Process XML content in the response before adding to conversation
+                        $processed_content = $modified_content;
+                        if (class_exists('MPAI_XML_Display_Handler')) {
+                            $xml_handler = new MPAI_XML_Display_Handler();
+                            
+                            // Check if response contains XML blog post format
+                            if ($xml_handler->contains_xml_blog_post($modified_content)) {
+                                mpai_log_debug('XML content detected in response, processing before adding to conversation', 'chat');
+                                
+                                // Create a message array for the XML handler
+                                $message_data = array(
+                                    'role' => 'assistant',
+                                    'content' => $modified_content
+                                );
+                                
+                                // Process the XML content
+                                $processed_content = $xml_handler->process_xml_content($modified_content, $message_data);
+                                
+                                mpai_log_debug('Processed XML content before adding to conversation', 'chat');
+                            }
+                        }
+                        
+                        $this->conversation[] = array('role' => 'assistant', 'content' => $processed_content);
                         mpai_log_debug('Added assistant response to conversation', 'chat');
                     } catch (Throwable $conv_e) {
                         mpai_log_error('Error adding assistant response to conversation: ' . $conv_e->getMessage(), 'chat', array(
@@ -1242,7 +1287,30 @@ class MPAI_Chat {
                     // Add assistant response to conversation
                     try {
                         mpai_log_debug('Adding string response to conversation', 'chat');
-                        $this->conversation[] = array('role' => 'assistant', 'content' => $response);
+                        
+                        // Process XML content in the response before adding to conversation
+                        $processed_content = $response;
+                        if (class_exists('MPAI_XML_Display_Handler')) {
+                            $xml_handler = new MPAI_XML_Display_Handler();
+                            
+                            // Check if response contains XML blog post format
+                            if ($xml_handler->contains_xml_blog_post($response)) {
+                                mpai_log_debug('XML content detected in string response, processing before adding to conversation', 'chat');
+                                
+                                // Create a message array for the XML handler
+                                $message_data = array(
+                                    'role' => 'assistant',
+                                    'content' => $response
+                                );
+                                
+                                // Process the XML content
+                                $processed_content = $xml_handler->process_xml_content($response, $message_data);
+                                
+                                mpai_log_debug('Processed XML content in string response before adding to conversation', 'chat');
+                            }
+                        }
+                        
+                        $this->conversation[] = array('role' => 'assistant', 'content' => $processed_content);
                         mpai_log_debug('Added string response to conversation', 'chat');
                     } catch (Throwable $str_conv_e) {
                         mpai_log_error('Error adding string response to conversation: ' . $str_conv_e->getMessage(), 'chat', array(
@@ -1256,7 +1324,7 @@ class MPAI_Chat {
                     // Save conversation to database
                     try {
                         mpai_log_debug('Saving string message to database', 'chat');
-                        $this->save_message($message, $response);
+                        $this->save_message($message, $processed_content);
                         mpai_log_debug('String message saved to database', 'chat');
                     } catch (Throwable $str_save_e) {
                         mpai_log_error('Error saving string message to database: ' . $str_save_e->getMessage(), 'chat', array(
@@ -1498,6 +1566,28 @@ class MPAI_Chat {
         );
         do_action('MPAI_HOOK_ACTION_before_save_history', $message, $response);
         
+        // Process XML content in the response before saving to database
+        $processed_response = $response;
+        if (class_exists('MPAI_XML_Display_Handler')) {
+            $xml_handler = new MPAI_XML_Display_Handler();
+            
+            // Check if response contains XML blog post format
+            if ($xml_handler->contains_xml_blog_post($response)) {
+                mpai_log_debug('XML content detected in response, processing before saving to database', 'chat');
+                
+                // Create a message array for the XML handler
+                $message_data = array(
+                    'role' => 'assistant',
+                    'content' => $response
+                );
+                
+                // Process the XML content
+                $processed_response = $xml_handler->process_xml_content($response, $message_data);
+                
+                mpai_log_debug('Processed XML content before saving to database', 'chat');
+            }
+        }
+        
         $conversation_id = $this->get_current_conversation_id();
         
         if (empty($conversation_id)) {
@@ -1511,7 +1601,7 @@ class MPAI_Chat {
             array(
                 'conversation_id' => $conversation_id,
                 'message' => $message,
-                'response' => $response,
+                'response' => $processed_response,
             )
         );
         

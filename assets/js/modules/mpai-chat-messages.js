@@ -326,6 +326,69 @@ var MPAI_Messages = (function($) {
             });
         }
         
+        // Check if the response contains XML content
+        const hasXmlContent = response && (
+            response.includes('<wp-post>') ||
+            response.includes('</wp-post>') ||
+            response.includes('<post-title>') ||
+            response.includes('</post-title>') ||
+            response.includes('<post-content>') ||
+            response.includes('</post-content>') ||
+            response.includes('<post-excerpt>') ||
+            response.includes('</post-excerpt>') ||
+            response.includes('<post-type>') ||
+            response.includes('</post-type>')
+        );
+        
+        if (hasXmlContent && window.mpaiLogger) {
+            window.mpaiLogger.debug('Response contains XML content, removing it', 'ui', {
+                responseLength: response.length,
+                xmlDetected: true
+            });
+            
+            // Store the original response for blog formatter
+            const originalResponse = response;
+            
+            // Remove all XML content from the response
+            
+            // 1. Remove XML code blocks
+            response = response.replace(/```xml\s*[\s\S]*?```/g, '');
+            
+            // 2. Remove XML in JSON code blocks
+            response = response.replace(/```json\s*([\s\S]*?)```/g, function(match, jsonContent) {
+                if (jsonContent.includes('<wp-post>') ||
+                    jsonContent.includes('<post-title>') ||
+                    jsonContent.includes('<post-content>') ||
+                    jsonContent.includes('<post-excerpt>') ||
+                    jsonContent.includes('<post-type>')) {
+                    return '';
+                }
+                return match;
+            });
+            
+            // 3. Remove raw XML tags
+            response = response.replace(/<wp-post>[\s\S]*?<\/wp-post>/g, '');
+            response = response.replace(/<post-title>[\s\S]*?<\/post-title>/g, '');
+            response = response.replace(/<post-content>[\s\S]*?<\/post-content>/g, '');
+            response = response.replace(/<post-excerpt>[\s\S]*?<\/post-excerpt>/g, '');
+            response = response.replace(/<post-type>[\s\S]*?<\/post-type>/g, '');
+            
+            // 4. Remove XML in JSON strings
+            response = response.replace(/"<wp-post>[\s\S]*?<\/wp-post>"/g, '""');
+            response = response.replace(/"<post-title>[\s\S]*?<\/post-title>"/g, '""');
+            response = response.replace(/"<post-content>[\s\S]*?<\/post-content>"/g, '""');
+            response = response.replace(/"<post-excerpt>[\s\S]*?<\/post-excerpt>"/g, '""');
+            response = response.replace(/"<post-type>[\s\S]*?<\/post-type>"/g, '""');
+            
+            // 5. Clean up any remaining XML-like content
+            response = response.replace(/```json\s*[\s\S]*?<wp-post>[\s\S]*?<\/wp-post>[\s\S]*?```/g, '');
+            response = response.replace(/```json\s*[\s\S]*?<post-title>[\s\S]*?<\/post-title>[\s\S]*?```/g, '');
+            response = response.replace(/```json\s*[\s\S]*?<post-content>[\s\S]*?<\/post-content>[\s\S]*?```/g, '');
+            
+            // Pass the original response to the blog formatter
+            window.originalXmlResponse = originalResponse;
+        }
+        
         // Check if the response contains tool calls
         if (window.MPAI_Tools && typeof window.MPAI_Tools.processToolCalls === 'function') {
             if (window.mpaiLogger) {
@@ -347,21 +410,84 @@ var MPAI_Messages = (function($) {
             }
         }
         
+        // Pre-process XML content if blog formatter is available
+        let processedResponse = response;
+        let previewCardHtml = '';
+        let hasXml = false;
+        
+        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.preProcessXmlContent === 'function') {
+            const result = window.MPAI_BlogFormatter.preProcessXmlContent(response);
+            if (result.hasXml) {
+                processedResponse = result.content;
+                previewCardHtml = result.previewCardHtml;
+                hasXml = true;
+                
+                if (window.mpaiLogger) {
+                    window.mpaiLogger.info('Pre-processed XML content before display', 'ui', {
+                        originalLength: response.length,
+                        processedLength: processedResponse.length,
+                        hasPreviewCard: !!previewCardHtml
+                    });
+                }
+            }
+        }
+        
         // Add the assistant message to the chat
         if (window.mpaiLogger) {
             const elapsed = window.mpaiLogger.endTimer('process_response');
             window.mpaiLogger.info('Adding assistant response to chat', 'ui', {
                 processingTimeMs: elapsed,
-                responseLength: response ? response.length : 0,
-                hasHtml: response && (response.includes('<') && response.includes('>')),
-                hasCodeBlocks: response && response.includes('```')
+                responseLength: processedResponse ? processedResponse.length : 0,
+                hasHtml: processedResponse && (processedResponse.includes('<') && processedResponse.includes('>')),
+                hasCodeBlocks: processedResponse && processedResponse.includes('```'),
+                hasXml: hasXml
             });
         }
         
-        const $message = addMessage('assistant', response);
+        // Add the message with the processed content
+        const $message = addMessage('assistant', processedResponse);
         
-        // Process the message with blog formatter if available
-        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function') {
+        // If we have a preview card, append it to the message
+        if (previewCardHtml) {
+            $message.append(previewCardHtml);
+            
+            // Add event handlers for the buttons
+            $message.find('.mpai-toggle-xml-button').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent event bubbling
+                const $xmlContent = $(this).closest('.mpai-post-preview-card').find('.mpai-post-xml-content');
+                
+                if ($xmlContent.is(':visible')) {
+                    $xmlContent.slideUp(200);
+                    $(this).text('View XML');
+                } else {
+                    $xmlContent.slideDown(200);
+                    $(this).text('Hide XML');
+                }
+            });
+            
+            $message.find('.mpai-create-post-button').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent event bubbling
+                const clickedContentType = $(this).data('content-type');
+                const $card = $(this).closest('.mpai-post-preview-card');
+                const xmlContent = decodeURIComponent($card.data('xml-content'));
+                
+                console.log("Create post button clicked");
+                console.log("Content type:", clickedContentType);
+                console.log("XML content preview:", xmlContent.substring(0, 150) + "...");
+                
+                // Show a loading indicator
+                $(this).prop('disabled', true).text('Creating...');
+                
+                // Use the createPostFromXML function with the raw XML content
+                if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.createPostFromXML === 'function') {
+                    window.MPAI_BlogFormatter.createPostFromXML(xmlContent, clickedContentType);
+                }
+            });
+        }
+        // Otherwise, process the message with blog formatter if available (fallback)
+        else if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function') {
             window.MPAI_BlogFormatter.processAssistantMessage($message, response);
         }
     }
@@ -454,11 +580,145 @@ var MPAI_Messages = (function($) {
     function completeToolCalls(finalResponse) {
         if (pendingToolCalls) {
             pendingToolCalls = false;
-            const $message = addMessage('assistant', finalResponse);
             
-            // Process the message with blog formatter if available
-            if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function') {
-                window.MPAI_BlogFormatter.processAssistantMessage($message, finalResponse);
+            // Check if the response contains XML content
+            const hasXmlContent = finalResponse && (
+                finalResponse.includes('<wp-post>') ||
+                finalResponse.includes('</wp-post>') ||
+                finalResponse.includes('<post-title>') ||
+                finalResponse.includes('</post-title>') ||
+                finalResponse.includes('<post-content>') ||
+                finalResponse.includes('</post-content>') ||
+                finalResponse.includes('<post-excerpt>') ||
+                finalResponse.includes('</post-excerpt>') ||
+                finalResponse.includes('<post-type>') ||
+                finalResponse.includes('</post-type>')
+            );
+            
+            // Store the original response for blog formatter
+            const originalResponse = finalResponse;
+            
+            if (hasXmlContent && window.mpaiLogger) {
+                window.mpaiLogger.debug('Final response contains XML content, removing it', 'ui', {
+                    responseLength: finalResponse.length,
+                    xmlDetected: true
+                });
+                
+                // Remove all XML content from the response
+                
+                // 1. Remove XML code blocks
+                finalResponse = finalResponse.replace(/```xml\s*[\s\S]*?```/g, '');
+                
+                // 2. Remove XML in JSON code blocks
+                finalResponse = finalResponse.replace(/```json\s*([\s\S]*?)```/g, function(match, jsonContent) {
+                    if (jsonContent.includes('<wp-post>') ||
+                        jsonContent.includes('<post-title>') ||
+                        jsonContent.includes('<post-content>') ||
+                        jsonContent.includes('<post-excerpt>') ||
+                        jsonContent.includes('<post-type>')) {
+                        return '';
+                    }
+                    return match;
+                });
+                
+                // 3. Remove raw XML tags
+                finalResponse = finalResponse.replace(/<wp-post>[\s\S]*?<\/wp-post>/g, '');
+                finalResponse = finalResponse.replace(/<post-title>[\s\S]*?<\/post-title>/g, '');
+                finalResponse = finalResponse.replace(/<post-content>[\s\S]*?<\/post-content>/g, '');
+                finalResponse = finalResponse.replace(/<post-excerpt>[\s\S]*?<\/post-excerpt>/g, '');
+                finalResponse = finalResponse.replace(/<post-type>[\s\S]*?<\/post-type>/g, '');
+                
+                // 4. Remove XML in JSON strings
+                finalResponse = finalResponse.replace(/"<wp-post>[\s\S]*?<\/wp-post>"/g, '""');
+                finalResponse = finalResponse.replace(/"<post-title>[\s\S]*?<\/post-title>"/g, '""');
+                finalResponse = finalResponse.replace(/"<post-content>[\s\S]*?<\/post-content>"/g, '""');
+                finalResponse = finalResponse.replace(/"<post-excerpt>[\s\S]*?<\/post-excerpt>"/g, '""');
+                finalResponse = finalResponse.replace(/"<post-type>[\s\S]*?<\/post-type>"/g, '""');
+                
+                // 5. Clean up any remaining XML-like content
+                finalResponse = finalResponse.replace(/```json\s*[\s\S]*?<wp-post>[\s\S]*?<\/wp-post>[\s\S]*?```/g, '');
+                finalResponse = finalResponse.replace(/```json\s*[\s\S]*?<post-title>[\s\S]*?<\/post-title>[\s\S]*?```/g, '');
+                finalResponse = finalResponse.replace(/```json\s*[\s\S]*?<post-content>[\s\S]*?<\/post-content>[\s\S]*?```/g, '');
+                
+                // Pass the original response to the blog formatter
+                window.originalXmlResponse = originalResponse;
+            }
+            
+            // Pre-process XML content if blog formatter is available
+            let processedResponse = finalResponse;
+            let previewCardHtml = '';
+            let xmlProcessed = false;
+            
+            if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.preProcessXmlContent === 'function') {
+                // If we have XML content, use the original response for processing
+                const contentToProcess = hasXmlContent ? originalResponse : finalResponse;
+                const result = window.MPAI_BlogFormatter.preProcessXmlContent(contentToProcess);
+                
+                if (result.hasXml) {
+                    processedResponse = result.content;
+                    previewCardHtml = result.previewCardHtml;
+                    xmlProcessed = true;
+                    
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.info('Pre-processed XML content before display in tool call response', 'ui', {
+                            originalLength: contentToProcess.length,
+                            processedLength: processedResponse.length,
+                            hasPreviewCard: !!previewCardHtml
+                        });
+                    }
+                }
+            }
+            
+            // Add the message with the processed content
+            const $message = addMessage('assistant', processedResponse);
+            
+            // If we have a preview card, append it to the message
+            if (previewCardHtml) {
+                $message.append(previewCardHtml);
+                
+                // Add event handlers for the buttons
+                $message.find('.mpai-toggle-xml-button').on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation(); // Prevent event bubbling
+                    const $xmlContent = $(this).closest('.mpai-post-preview-card').find('.mpai-post-xml-content');
+                    
+                    if ($xmlContent.is(':visible')) {
+                        $xmlContent.slideUp(200);
+                        $(this).text('View XML');
+                    } else {
+                        $xmlContent.slideDown(200);
+                        $(this).text('Hide XML');
+                    }
+                });
+                
+                $message.find('.mpai-create-post-button').on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation(); // Prevent event bubbling
+                    const clickedContentType = $(this).data('content-type');
+                    const $card = $(this).closest('.mpai-post-preview-card');
+                    const xmlContent = decodeURIComponent($card.data('xml-content'));
+                    
+                    console.log("Create post button clicked");
+                    console.log("Content type:", clickedContentType);
+                    console.log("XML content preview:", xmlContent.substring(0, 150) + "...");
+                    
+                    // Show a loading indicator
+                    $(this).prop('disabled', true).text('Creating...');
+                    
+                    // Use the createPostFromXML function with the raw XML content
+                    if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.createPostFromXML === 'function') {
+                        window.MPAI_BlogFormatter.createPostFromXML(xmlContent, clickedContentType);
+                    }
+                });
+            }
+            // Otherwise, process the message with blog formatter if available (fallback)
+            else if (!xmlProcessed && window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function') {
+                // If we have XML content, pass the original response to the blog formatter
+                if (hasXmlContent) {
+                    window.MPAI_BlogFormatter.processAssistantMessage($message, originalResponse);
+                } else {
+                    window.MPAI_BlogFormatter.processAssistantMessage($message, finalResponse);
+                }
             }
         }
     }

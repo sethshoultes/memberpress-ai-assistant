@@ -66,6 +66,70 @@ var MPAI_Formatters = (function($) {
         }
         
         try {
+            // Pre-process to remove all XML content
+            if (typeof content === 'string') {
+                // Check for XML content
+                const hasXmlContent = content.includes('<wp-post>') ||
+                                     content.includes('</wp-post>') ||
+                                     content.includes('<post-title>') ||
+                                     content.includes('</post-title>') ||
+                                     content.includes('<post-content>') ||
+                                     content.includes('</post-content>') ||
+                                     content.includes('<post-excerpt>') ||
+                                     content.includes('</post-excerpt>') ||
+                                     content.includes('<post-type>') ||
+                                     content.includes('</post-type>');
+                
+                if (hasXmlContent) {
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.debug('XML content detected, processing for display', 'ui');
+                    }
+                    
+                    // Store the original content for processing
+                    const originalContent = content;
+                    
+                    // Remove XML code blocks
+                    content = content.replace(/```xml\s*[\s\S]*?```/g, '');
+                    
+                    // Remove XML in JSON code blocks
+                    content = content.replace(/```json\s*([\s\S]*?)```/g, function(match, jsonContent) {
+                        if (jsonContent.includes('<wp-post>') ||
+                            jsonContent.includes('<post-title>') ||
+                            jsonContent.includes('<post-content>') ||
+                            jsonContent.includes('<post-excerpt>') ||
+                            jsonContent.includes('<post-type>')) {
+                            return '';
+                        }
+                        return match;
+                    });
+                    
+                    // Remove raw XML tags
+                    content = content.replace(/<wp-post>[\s\S]*?<\/wp-post>/g, '');
+                    content = content.replace(/<post-title>[\s\S]*?<\/post-title>/g, '');
+                    content = content.replace(/<post-content>[\s\S]*?<\/post-content>/g, '');
+                    content = content.replace(/<post-excerpt>[\s\S]*?<\/post-excerpt>/g, '');
+                    content = content.replace(/<post-type>[\s\S]*?<\/post-type>/g, '');
+                    
+                    // Remove XML in JSON strings
+                    content = content.replace(/"<wp-post>[\s\S]*?<\/wp-post>"/g, '""');
+                    content = content.replace(/"<post-title>[\s\S]*?<\/post-title>"/g, '""');
+                    content = content.replace(/"<post-content>[\s\S]*?<\/post-content>"/g, '""');
+                    content = content.replace(/"<post-excerpt>[\s\S]*?<\/post-excerpt>"/g, '""');
+                    content = content.replace(/"<post-type>[\s\S]*?<\/post-type>"/g, '""');
+                    
+                    // Clean up any remaining XML-like content
+                    content = content.replace(/```json\s*[\s\S]*?<wp-post>[\s\S]*?<\/wp-post>[\s\S]*?```/g, '');
+                    content = content.replace(/```json\s*[\s\S]*?<post-title>[\s\S]*?<\/post-title>[\s\S]*?```/g, '');
+                    content = content.replace(/```json\s*[\s\S]*?<post-content>[\s\S]*?<\/post-content>[\s\S]*?```/g, '');
+                    
+                    // Add a marker to indicate this message has XML content
+                    content += '<div class="mpai-xml-processed" data-has-xml="true"></div>';
+                    
+                    // Store the original content for blog formatter
+                    window.originalXmlResponse = originalContent;
+                }
+            }
+            
             // Store any wp commands so we can make them clickable
             const wpCommands = [];
             

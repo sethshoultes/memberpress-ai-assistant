@@ -18,11 +18,13 @@
 
 /* Post preview card specific styles */
 .mpai-post-preview-card {
-    display: block;
+    display: block !important; /* Force display */
     width: 100%;
     max-width: 100%;
     overflow: hidden;
     margin-top: 20px;
+    opacity: 1 !important; /* Ensure visibility */
+    visibility: visible !important; /* Ensure visibility */
 }
 
 .mpai-post-preview-header {
@@ -302,4 +304,9 @@
     .mpai-post-xml-content {
         max-height: 300px;
     }
+}
+
+/* Hide the XML processed marker */
+.mpai-xml-processed {
+    display: none !important;
 }
