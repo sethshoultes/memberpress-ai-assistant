@@ -411,15 +411,19 @@ class MPAI_Chat {
         $system_prompt .= "1. For creating/editing WordPress content (posts, pages, users), ALWAYS use the wp_api tool first:\n";
         $system_prompt .= "   - Create post: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_post\", \"title\": \"Title\", \"content\": \"Content\", \"status\": \"draft\"}}\n";
         $system_prompt .= "   - Create page: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"create_page\", \"title\": \"Title\", \"content\": \"Content\", \"status\": \"draft\"}}\n";
-        $system_prompt .= "2. For managing WordPress plugins, ALWAYS use the wp_api tool:\n";
+        $system_prompt .= "2. For managing WordPress plugins and themes, ALWAYS use the wp_api tool:\n";
         $system_prompt .= "   - List plugins: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_plugins\"}}\n";
         $system_prompt .= "   - Activate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
         $system_prompt .= "   - Example for MemberPress CoachKit: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_plugin\", \"plugin\": \"memberpress-coachkit/main.php\"}}\n";
         $system_prompt .= "   - Deactivate plugin: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"deactivate_plugin\", \"plugin\": \"plugin-directory/main-file.php\"}}\n";
-        $system_prompt .= "3. ██████ MOST IMPORTANT RULE - PLUGIN TOOLS ██████\n";
-        $system_prompt .= "   For plugin-related questions, use these specific tools:\n";
+        $system_prompt .= "   - List themes: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_themes\"}}\n";
+        $system_prompt .= "   - Activate theme: {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"activate_theme\", \"theme\": \"twentytwentythree\"}}\n";
+        $system_prompt .= "3. ██████ MOST IMPORTANT RULE - PLUGIN AND THEME TOOLS ██████\n";
+        $system_prompt .= "   For plugin and theme related questions, use these specific tools:\n";
         $system_prompt .= "   a) For current plugin status, use wp_api with get_plugins action.\n";
-        $system_prompt .= "   b) For plugin management, use wp_api with activate_plugin or deactivate_plugin actions.\n\n";
+        $system_prompt .= "   b) For plugin management, use wp_api with activate_plugin or deactivate_plugin actions.\n";
+        $system_prompt .= "   c) For current theme status, use wp_api with get_themes action.\n";
+        $system_prompt .= "   d) For theme management, use wp_api with activate_theme action.\n\n";
         $system_prompt .= "   IMPORTANT: When using tools, ALWAYS wait for the tool's response before providing your own analysis.\n";
         $system_prompt .= "   DO NOT try to predict what the tool will return - wait for the actual data.\n";
         $system_prompt .= "   NOTE: Questions about plugin history are handled directly by the system without using tools.\n";
@@ -547,6 +551,39 @@ class MPAI_Chat {
                 ],
                 'handler' => 'get_direct_plugin_list_formatted',
                 'description' => 'Shows WordPress plugins'
+            ],
+            'theme_list' => [
+                'keywords' => [
+                    'list themes', 'show themes', 'get themes', 'all themes',
+                    'installed themes', 'theme list', 'wp theme list', 'themes'
+                ],
+                'handler' => 'get_direct_theme_list',
+                'description' => 'Shows WordPress themes'
+            ],
+            'activate_theme' => [
+                'keywords' => [
+                    'activate theme', 'switch theme', 'change theme', 'use theme',
+                    'set theme', 'switch to theme', 'change to theme', 'activate the theme',
+                    'switch to the theme', 'change to the theme', 'use the theme'
+                ],
+                'handler' => 'activate_theme_by_name',
+                'description' => 'Activates a WordPress theme'
+            ],
+            'activate_plugin' => [
+                'keywords' => [
+                    'activate plugin', 'enable plugin', 'turn on plugin', 'start plugin',
+                    'activate the plugin', 'enable the plugin', 'turn on the plugin'
+                ],
+                'handler' => 'activate_plugin_by_name',
+                'description' => 'Activates a WordPress plugin'
+            ],
+            'deactivate_plugin' => [
+                'keywords' => [
+                    'deactivate plugin', 'disable plugin', 'turn off plugin', 'stop plugin',
+                    'deactivate the plugin', 'disable the plugin', 'turn off the plugin'
+                ],
+                'handler' => 'deactivate_plugin_by_name',
+                'description' => 'Deactivates a WordPress plugin'
             ]
         ];
     }
@@ -1340,6 +1377,12 @@ class MPAI_Chat {
                     mpai_log_debug('Unescaped plugin path for structured tool call: ' . $parameters['plugin'], 'chat');
                 }
                 
+                // Clean up any escaped slashes in theme names
+                if (isset($parameters['theme'])) {
+                    $parameters['theme'] = str_replace('\\/', '/', $parameters['theme']);
+                    mpai_log_debug('Unescaped theme name for structured tool call: ' . $parameters['theme'], 'chat');
+                }
+                
                 $tool_request = array(
                     'name' => $function['name'],
                     'parameters' => $parameters
@@ -1522,6 +1565,12 @@ class MPAI_Chat {
             if (isset($tool_call['parameters']) && isset($tool_call['parameters']['plugin'])) {
                 $tool_call['parameters']['plugin'] = str_replace('\\/', '/', $tool_call['parameters']['plugin']);
                 mpai_log_debug('Unescaped plugin path for tool call: ' . $tool_call['parameters']['plugin'], 'chat');
+            }
+            
+            // Clean up any escaped slashes in theme names
+            if (isset($tool_call['parameters']) && isset($tool_call['parameters']['theme'])) {
+                $tool_call['parameters']['theme'] = str_replace('\\/', '/', $tool_call['parameters']['theme']);
+                mpai_log_debug('Unescaped theme name for tool call: ' . $tool_call['parameters']['theme'], 'chat');
             }
             
             $tool_request = array(
@@ -1793,6 +1842,38 @@ class MPAI_Chat {
                     $user_friendly_result .= "- Action: Deactivated\n";
                     $user_friendly_result .= "- Plugin: {$plugin_name}\n";
                     $user_friendly_result .= "- Status: {$status}\n";
+                    
+                    return $user_friendly_result;
+                }
+                
+                // Handle theme activation
+                if ($result['action'] == 'activate_theme' &&
+                    isset($result['result']) && is_array($result['result']) &&
+                    isset($result['result']['success']) && $result['result']['success'] == true) {
+                    
+                    $theme_name = $result['result']['theme_name'] ?? $result['result']['theme'] ?? 'the theme';
+                    $status = $result['result']['status'] ?? 'active';
+                    
+                    $user_friendly_result = "Theme operation successful!\n\n";
+                    $user_friendly_result .= "- Action: Activated\n";
+                    $user_friendly_result .= "- Theme: {$theme_name}\n";
+                    $user_friendly_result .= "- Status: {$status}\n";
+                    
+                    return $user_friendly_result;
+                }
+                
+                // Handle theme listing
+                if ($result['action'] == 'get_themes' &&
+                    isset($result['result']) && is_array($result['result']) &&
+                    isset($result['result']['themes']) && is_array($result['result']['themes'])) {
+                    
+                    $themes = $result['result']['themes'];
+                    $user_friendly_result = "Installed Themes (" . count($themes) . "):\n\n";
+                    
+                    foreach ($themes as $theme) {
+                        $status = isset($theme['is_active']) && $theme['is_active'] ? '✅ Active' : '❌ Inactive';
+                        $user_friendly_result .= "- {$theme['name']} ({$theme['version']}): {$status}\n";
+                    }
                     
                     return $user_friendly_result;
                 }
@@ -2814,5 +2895,609 @@ class MPAI_Chat {
         
         mpai_log_debug('Generated fallback data for ' . count($results) . ' memberships', 'chat');
         return $results;
+    }
+    
+    /**
+     * Get direct theme list without using AI
+     *
+     * @return array Response data with formatted theme list
+     */
+    private function get_direct_theme_list() {
+        mpai_log_debug('Getting direct theme list', 'chat');
+        
+        try {
+            // Get all themes
+            $themes = wp_get_themes();
+            $current_theme = wp_get_theme();
+            
+            if (empty($themes)) {
+                $output = "<h2>WordPress Themes</h2>";
+                $output .= "<p>No themes found.</p>";
+                
+                // Save this as a message/response pair
+                $this->save_message("Show themes", $output);
+                
+                return array(
+                    'success' => true,
+                    'message' => $output
+                );
+            }
+            
+            // Format the output as HTML table
+            $output = "<h2>WordPress Themes</h2>";
+            $output .= "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse;'>";
+            $output .= "<thead><tr style='background-color: #f2f2f2;'>";
+            $output .= "<th>Name</th><th>Version</th><th>Status</th><th>Author</th><th>Description</th>";
+            $output .= "</tr></thead><tbody>";
+            
+            foreach ($themes as $theme_slug => $theme) {
+                $name = $theme->get('Name');
+                $version = $theme->get('Version');
+                $author = $theme->get('Author');
+                $description = $theme->get('Description');
+                $status = ($current_theme->get_stylesheet() === $theme->get_stylesheet()) ? '✅ Active' : 'Inactive';
+                
+                $output .= "<tr>";
+                $output .= "<td>{$name}</td>";
+                $output .= "<td>{$version}</td>";
+                $output .= "<td>{$status}</td>";
+                $output .= "<td>{$author}</td>";
+                $output .= "<td>{$description}</td>";
+                $output .= "</tr>";
+            }
+            
+            $output .= "</tbody></table>";
+            
+            // Save this as a message/response pair
+            $this->save_message("Show themes", $output);
+            
+            return array(
+                'success' => true,
+                'message' => $output
+            );
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error getting theme list: ' . $e->getMessage(), 'chat', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            return array(
+                'success' => false,
+                'message' => 'Error retrieving theme list: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Activate a theme by name
+     *
+     * @return array Response data with activation result
+     */
+    private function activate_theme_by_name() {
+        mpai_log_debug('Activating theme by name from message', 'chat');
+        
+        try {
+            // Get the user's message
+            $message = isset($_POST['message']) ? sanitize_text_field($_POST['message']) : '';
+            
+            if (empty($message)) {
+                return array(
+                    'success' => false,
+                    'message' => 'No message provided to extract theme name'
+                );
+            }
+            
+            // Extract theme name from message
+            $theme_name = $this->extract_theme_name_from_message($message);
+            
+            if (empty($theme_name)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Could not determine which theme to activate. Please specify the theme name.'
+                );
+            }
+            
+            mpai_log_debug('Extracted theme name: ' . $theme_name, 'chat');
+            
+            // Get all themes
+            $themes = wp_get_themes();
+            $theme_to_activate = null;
+            $theme_stylesheet = '';
+            
+            // First try exact match
+            foreach ($themes as $theme_slug => $theme) {
+                if (strtolower($theme->get('Name')) === strtolower($theme_name)) {
+                    $theme_to_activate = $theme;
+                    $theme_stylesheet = $theme_slug;
+                    break;
+                }
+            }
+            
+            // If no exact match, try partial match
+            if (!$theme_to_activate) {
+                foreach ($themes as $theme_slug => $theme) {
+                    if (stripos($theme->get('Name'), $theme_name) !== false) {
+                        $theme_to_activate = $theme;
+                        $theme_stylesheet = $theme_slug;
+                        break;
+                    }
+                }
+            }
+            
+            // If still no match, try matching the slug
+            if (!$theme_to_activate) {
+                foreach ($themes as $theme_slug => $theme) {
+                    if (stripos($theme_slug, str_replace(' ', '', strtolower($theme_name))) !== false) {
+                        $theme_to_activate = $theme;
+                        $theme_stylesheet = $theme_slug;
+                        break;
+                    }
+                }
+            }
+            
+            if (!$theme_to_activate) {
+                return array(
+                    'success' => false,
+                    'message' => "Theme '{$theme_name}' not found. Please check the theme name and try again."
+                );
+            }
+            
+            // Check if theme is already active
+            $current_theme = wp_get_theme();
+            if ($current_theme->get_stylesheet() === $theme_stylesheet) {
+                return array(
+                    'success' => true,
+                    'message' => "Theme '{$theme_to_activate->get('Name')}' is already active."
+                );
+            }
+            
+            // Activate the theme
+            switch_theme($theme_stylesheet);
+            
+            // Verify activation
+            $new_theme = wp_get_theme();
+            $success = ($new_theme->get_stylesheet() === $theme_stylesheet);
+            
+            if ($success) {
+                $output = "<h2>Theme Activation</h2>";
+                $output .= "<p>Successfully activated theme: <strong>{$theme_to_activate->get('Name')}</strong></p>";
+                $output .= "<ul>";
+                $output .= "<li><strong>Version:</strong> {$theme_to_activate->get('Version')}</li>";
+                $output .= "<li><strong>Author:</strong> {$theme_to_activate->get('Author')}</li>";
+                $output .= "<li><strong>Theme URI:</strong> {$theme_to_activate->get('ThemeURI')}</li>";
+                $output .= "</ul>";
+                
+                // Save this as a message/response pair
+                $this->save_message($message, $output);
+                
+                return array(
+                    'success' => true,
+                    'message' => $output
+                );
+            } else {
+                return array(
+                    'success' => false,
+                    'message' => "Failed to activate theme '{$theme_to_activate->get('Name')}'. Please try again or check for errors."
+                );
+            }
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error activating theme: ' . $e->getMessage(), 'chat', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            return array(
+                'success' => false,
+                'message' => 'Error activating theme: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Extract theme name from user message
+     *
+     * @param string $message User message
+     * @return string|null Theme name or null if not found
+     */
+    private function extract_theme_name_from_message($message) {
+        // Common theme name patterns
+        $patterns = [
+            // "activate theme Twenty Twenty-Three"
+            '/(?:activate|switch|change|use|set)(?:\s+to)?(?:\s+the)?\s+theme\s+([a-zA-Z0-9\s\-]+)(?:\.|\!|\?|$)/i',
+            
+            // "switch to Twenty Twenty-Three theme"
+            '/(?:activate|switch|change|use|set)(?:\s+to)?(?:\s+the)?\s+([a-zA-Z0-9\s\-]+)\s+theme(?:\.|\!|\?|$)/i',
+            
+            // "make Twenty Twenty-Three the active theme"
+            '/make\s+([a-zA-Z0-9\s\-]+)(?:\s+the)?\s+active\s+theme/i',
+            
+            // "set active theme to Twenty Twenty-Three"
+            '/set\s+(?:the\s+)?active\s+theme\s+(?:to\s+)?([a-zA-Z0-9\s\-]+)(?:\.|\!|\?|$)/i'
+        ];
+        
+        // Try each pattern
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $message, $matches)) {
+                return trim($matches[1]);
+            }
+        }
+        
+        // Handle common WordPress theme names directly
+        $common_themes = [
+            'twenty twenty-three' => 'Twenty Twenty-Three',
+            'twentytwentythree' => 'Twenty Twenty-Three',
+            'twenty23' => 'Twenty Twenty-Three',
+            'twenty twenty-two' => 'Twenty Twenty-Two',
+            'twentytwentytwo' => 'Twenty Twenty-Two',
+            'twenty22' => 'Twenty Twenty-Two',
+            'twenty twenty-one' => 'Twenty Twenty-One',
+            'twentytwentyone' => 'Twenty Twenty-One',
+            'twenty21' => 'Twenty Twenty-One',
+            'twenty twenty' => 'Twenty Twenty',
+            'twentytwenty' => 'Twenty Twenty',
+            'twenty20' => 'Twenty Twenty',
+            'twenty nineteen' => 'Twenty Nineteen',
+            'twentynineteen' => 'Twenty Nineteen',
+            'twenty19' => 'Twenty Nineteen',
+            'twenty seventeen' => 'Twenty Seventeen',
+            'twentyseventeen' => 'Twenty Seventeen',
+            'twenty17' => 'Twenty Seventeen',
+            'twenty sixteen' => 'Twenty Sixteen',
+            'twentysixteen' => 'Twenty Sixteen',
+            'twenty16' => 'Twenty Sixteen',
+            'twenty fifteen' => 'Twenty Fifteen',
+            'twentyfifteen' => 'Twenty Fifteen',
+            'twenty15' => 'Twenty Fifteen',
+            'twenty fourteen' => 'Twenty Fourteen',
+            'twentyfourteen' => 'Twenty Fourteen',
+            'twenty14' => 'Twenty Fourteen',
+            'twenty thirteen' => 'Twenty Thirteen',
+            'twentythirteen' => 'Twenty Thirteen',
+            'twenty13' => 'Twenty Thirteen',
+            'twenty twelve' => 'Twenty Twelve',
+            'twentytwelve' => 'Twenty Twelve',
+            'twenty12' => 'Twenty Twelve',
+            'twenty eleven' => 'Twenty Eleven',
+            'twentyeleven' => 'Twenty Eleven',
+            'twenty11' => 'Twenty Eleven',
+            'twenty ten' => 'Twenty Ten',
+            'twentyten' => 'Twenty Ten',
+            'twenty10' => 'Twenty Ten'
+        ];
+        
+        $message_lower = strtolower($message);
+        foreach ($common_themes as $theme_key => $theme_name) {
+            if (strpos($message_lower, $theme_key) !== false) {
+                return $theme_name;
+            }
+        }
+        
+        // If no match found, return null
+        return null;
+    }
+    
+    /**
+     * Activate a plugin by name
+     *
+     * @return array Response data with activation result
+     */
+    private function activate_plugin_by_name() {
+        mpai_log_debug('Activating plugin by name from message', 'chat');
+        
+        try {
+            // Get the user's message
+            $message = isset($_POST['message']) ? sanitize_text_field($_POST['message']) : '';
+            
+            if (empty($message)) {
+                return array(
+                    'success' => false,
+                    'message' => 'No message provided to extract plugin name'
+                );
+            }
+            
+            // Extract plugin name from message
+            $plugin_name = $this->extract_plugin_name_from_message($message);
+            
+            if (empty($plugin_name)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Could not determine which plugin to activate. Please specify the plugin name.'
+                );
+            }
+            
+            mpai_log_debug('Extracted plugin name: ' . $plugin_name, 'chat');
+            
+            // Ensure plugin functions are available
+            if (!function_exists('get_plugins')) {
+                require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            }
+            
+            // Get all plugins
+            $all_plugins = get_plugins();
+            $active_plugins = get_option('active_plugins');
+            $plugin_to_activate = null;
+            $plugin_file = '';
+            
+            // First try exact match on plugin name
+            foreach ($all_plugins as $plugin_file_path => $plugin_data) {
+                if (strtolower($plugin_data['Name']) === strtolower($plugin_name)) {
+                    $plugin_to_activate = $plugin_data;
+                    $plugin_file = $plugin_file_path;
+                    break;
+                }
+            }
+            
+            // If no exact match, try partial match on plugin name
+            if (!$plugin_to_activate) {
+                foreach ($all_plugins as $plugin_file_path => $plugin_data) {
+                    if (stripos($plugin_data['Name'], $plugin_name) !== false) {
+                        $plugin_to_activate = $plugin_data;
+                        $plugin_file = $plugin_file_path;
+                        break;
+                    }
+                }
+            }
+            
+            // If still no match, try matching the plugin file path
+            if (!$plugin_to_activate) {
+                foreach ($all_plugins as $plugin_file_path => $plugin_data) {
+                    if (stripos($plugin_file_path, str_replace(' ', '-', strtolower($plugin_name))) !== false) {
+                        $plugin_to_activate = $plugin_data;
+                        $plugin_file = $plugin_file_path;
+                        break;
+                    }
+                }
+            }
+            
+            if (!$plugin_to_activate) {
+                return array(
+                    'success' => false,
+                    'message' => "Plugin '{$plugin_name}' not found. Please check the plugin name and try again."
+                );
+            }
+            
+            // Check if plugin is already active
+            if (in_array($plugin_file, $active_plugins)) {
+                return array(
+                    'success' => true,
+                    'message' => "Plugin '{$plugin_to_activate['Name']}' is already active."
+                );
+            }
+            
+            // Activate the plugin
+            $result = activate_plugin($plugin_file);
+            
+            if (is_wp_error($result)) {
+                return array(
+                    'success' => false,
+                    'message' => "Failed to activate plugin '{$plugin_to_activate['Name']}': " . $result->get_error_message()
+                );
+            }
+            
+            $output = "<h2>Plugin Activation</h2>";
+            $output .= "<p>Successfully activated plugin: <strong>{$plugin_to_activate['Name']}</strong></p>";
+            $output .= "<ul>";
+            $output .= "<li><strong>Version:</strong> {$plugin_to_activate['Version']}</li>";
+            $output .= "<li><strong>Author:</strong> {$plugin_to_activate['Author']}</li>";
+            $output .= "<li><strong>Plugin URI:</strong> {$plugin_to_activate['PluginURI']}</li>";
+            $output .= "</ul>";
+            
+            // Save this as a message/response pair
+            $this->save_message($message, $output);
+            
+            return array(
+                'success' => true,
+                'message' => $output
+            );
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error activating plugin: ' . $e->getMessage(), 'chat', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            return array(
+                'success' => false,
+                'message' => 'Error activating plugin: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Deactivate a plugin by name
+     *
+     * @return array Response data with deactivation result
+     */
+    private function deactivate_plugin_by_name() {
+        mpai_log_debug('Deactivating plugin by name from message', 'chat');
+        
+        try {
+            // Get the user's message
+            $message = isset($_POST['message']) ? sanitize_text_field($_POST['message']) : '';
+            
+            if (empty($message)) {
+                return array(
+                    'success' => false,
+                    'message' => 'No message provided to extract plugin name'
+                );
+            }
+            
+            // Extract plugin name from message
+            $plugin_name = $this->extract_plugin_name_from_message($message, 'deactivate');
+            
+            if (empty($plugin_name)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Could not determine which plugin to deactivate. Please specify the plugin name.'
+                );
+            }
+            
+            mpai_log_debug('Extracted plugin name: ' . $plugin_name, 'chat');
+            
+            // Ensure plugin functions are available
+            if (!function_exists('get_plugins')) {
+                require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            }
+            
+            // Get all plugins
+            $all_plugins = get_plugins();
+            $active_plugins = get_option('active_plugins');
+            $plugin_to_deactivate = null;
+            $plugin_file = '';
+            
+            // First try exact match on plugin name
+            foreach ($all_plugins as $plugin_file_path => $plugin_data) {
+                if (strtolower($plugin_data['Name']) === strtolower($plugin_name)) {
+                    $plugin_to_deactivate = $plugin_data;
+                    $plugin_file = $plugin_file_path;
+                    break;
+                }
+            }
+            
+            // If no exact match, try partial match on plugin name
+            if (!$plugin_to_deactivate) {
+                foreach ($all_plugins as $plugin_file_path => $plugin_data) {
+                    if (stripos($plugin_data['Name'], $plugin_name) !== false) {
+                        $plugin_to_deactivate = $plugin_data;
+                        $plugin_file = $plugin_file_path;
+                        break;
+                    }
+                }
+            }
+            
+            // If still no match, try matching the plugin file path
+            if (!$plugin_to_deactivate) {
+                foreach ($all_plugins as $plugin_file_path => $plugin_data) {
+                    if (stripos($plugin_file_path, str_replace(' ', '-', strtolower($plugin_name))) !== false) {
+                        $plugin_to_deactivate = $plugin_data;
+                        $plugin_file = $plugin_file_path;
+                        break;
+                    }
+                }
+            }
+            
+            if (!$plugin_to_deactivate) {
+                return array(
+                    'success' => false,
+                    'message' => "Plugin '{$plugin_name}' not found. Please check the plugin name and try again."
+                );
+            }
+            
+            // Check if plugin is already inactive
+            if (!in_array($plugin_file, $active_plugins)) {
+                return array(
+                    'success' => true,
+                    'message' => "Plugin '{$plugin_to_deactivate['Name']}' is already inactive."
+                );
+            }
+            
+            // Deactivate the plugin
+            deactivate_plugins($plugin_file);
+            
+            // Verify deactivation
+            $active_plugins_after = get_option('active_plugins');
+            $success = !in_array($plugin_file, $active_plugins_after);
+            
+            if ($success) {
+                $output = "<h2>Plugin Deactivation</h2>";
+                $output .= "<p>Successfully deactivated plugin: <strong>{$plugin_to_deactivate['Name']}</strong></p>";
+                $output .= "<ul>";
+                $output .= "<li><strong>Version:</strong> {$plugin_to_deactivate['Version']}</li>";
+                $output .= "<li><strong>Author:</strong> {$plugin_to_deactivate['Author']}</li>";
+                $output .= "<li><strong>Plugin URI:</strong> {$plugin_to_deactivate['PluginURI']}</li>";
+                $output .= "</ul>";
+                
+                // Save this as a message/response pair
+                $this->save_message($message, $output);
+                
+                return array(
+                    'success' => true,
+                    'message' => $output
+                );
+            } else {
+                return array(
+                    'success' => false,
+                    'message' => "Failed to deactivate plugin '{$plugin_to_deactivate['Name']}'. Please try again or check for errors."
+                );
+            }
+            
+        } catch (Exception $e) {
+            mpai_log_error('Error deactivating plugin: ' . $e->getMessage(), 'chat', array(
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ));
+            
+            return array(
+                'success' => false,
+                'message' => 'Error deactivating plugin: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Extract plugin name from user message
+     *
+     * @param string $message User message
+     * @param string $action Action type ('activate' or 'deactivate')
+     * @return string|null Plugin name or null if not found
+     */
+    private function extract_plugin_name_from_message($message, $action = 'activate') {
+        $action_words = ($action === 'activate') ?
+            '(?:activate|enable|turn\s+on|start)' :
+            '(?:deactivate|disable|turn\s+off|stop)';
+        
+        // Common plugin name patterns
+        $patterns = [
+            // "activate plugin WooCommerce"
+            "/{$action_words}(?:\\s+the)?\\s+plugin\\s+([a-zA-Z0-9\\s\\-\\_\\.]+)(?:\\.|\!|\\?|$)/i",
+            
+            // "activate WooCommerce plugin"
+            "/{$action_words}(?:\\s+the)?\\s+([a-zA-Z0-9\\s\\-\\_\\.]+)\\s+plugin(?:\\.|\!|\\?|$)/i",
+            
+            // "enable WooCommerce"
+            "/{$action_words}(?:\\s+the)?\\s+([a-zA-Z0-9\\s\\-\\_\\.]+)(?:\\.|\!|\\?|$)/i"
+        ];
+        
+        // Try each pattern
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $message, $matches)) {
+                return trim($matches[1]);
+            }
+        }
+        
+        // Handle common plugin names directly
+        $common_plugins = [
+            'woocommerce' => 'WooCommerce',
+            'memberpress' => 'MemberPress',
+            'elementor' => 'Elementor',
+            'yoast' => 'Yoast SEO',
+            'yoast seo' => 'Yoast SEO',
+            'wordpress seo' => 'Yoast SEO',
+            'contact form 7' => 'Contact Form 7',
+            'cf7' => 'Contact Form 7',
+            'akismet' => 'Akismet',
+            'jetpack' => 'Jetpack',
+            'wpforms' => 'WPForms',
+            'wp forms' => 'WPForms',
+            'gravity forms' => 'Gravity Forms',
+            'wordfence' => 'Wordfence',
+            'classic editor' => 'Classic Editor'
+        ];
+        
+        $message_lower = strtolower($message);
+        foreach ($common_plugins as $plugin_key => $plugin_name) {
+            if (strpos($message_lower, $plugin_key) !== false) {
+                return $plugin_name;
+            }
+        }
+        
+        // If no match found, return null
+        return null;
     }
 }

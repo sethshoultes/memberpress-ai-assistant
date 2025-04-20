@@ -238,6 +238,67 @@ class MPAI_Command_Detector {
      * @return array|false Detected command or false
      */
     private function detect_theme_query($message) {
+        // Theme activation query
+        $theme_activation_patterns = [
+            '/activate.*theme/i',
+            '/switch.*theme/i',
+            '/change.*theme/i',
+            '/use.*theme/i',
+            '/set.*theme/i'
+        ];
+        
+        foreach ($theme_activation_patterns as $pattern) {
+            if (preg_match($pattern, $message)) {
+                $this->logger->info('Detected theme activation query');
+                
+                // Try to extract theme name
+                $theme_name = null;
+                
+                // Look for common theme names
+                $theme_patterns = [
+                    '/twenty\s*twenty\s*three/i' => 'twentytwentythree',
+                    '/twenty\s*twenty\s*two/i' => 'twentytwentytwo',
+                    '/twenty\s*twenty\s*one/i' => 'twentytwentyone',
+                    '/twenty\s*twenty/i' => 'twentytwenty',
+                    '/twenty\s*nineteen/i' => 'twentynineteen',
+                    '/twenty\s*seventeen/i' => 'twentyseventeen',
+                    '/twenty\s*sixteen/i' => 'twentysixteen',
+                    '/twenty\s*fifteen/i' => 'twentyfifteen',
+                    '/twenty\s*fourteen/i' => 'twentyfourteen',
+                    '/twenty\s*thirteen/i' => 'twentythirteen',
+                    '/twenty\s*twelve/i' => 'twentytwelve',
+                    '/twenty\s*eleven/i' => 'twentyeleven',
+                    '/twenty\s*ten/i' => 'twentyten'
+                ];
+                
+                foreach ($theme_patterns as $search => $theme) {
+                    if (preg_match($search, $message)) {
+                        $theme_name = $theme;
+                        break;
+                    }
+                }
+                
+                // If we found a theme name, return a wp_api tool call
+                if ($theme_name) {
+                    return [
+                        'type' => 'wp_api',
+                        'tool' => 'wp_api',
+                        'parameters' => [
+                            'action' => 'activate_theme',
+                            'theme' => $theme_name
+                        ]
+                    ];
+                }
+                
+                // If no specific theme name found, return a generic command
+                return [
+                    'type' => 'theme_activate',
+                    'command' => 'wp theme activate',
+                    'parameters' => []
+                ];
+            }
+        }
+        
         // Theme list query
         $theme_list_patterns = [
             '/list.*theme/i',
@@ -259,11 +320,12 @@ class MPAI_Command_Detector {
                     $status = 'inactive';
                 }
                 
+                // Return a wp_api tool call for theme list
                 return [
-                    'type' => 'theme_list',
-                    'command' => 'wp theme list',
+                    'type' => 'wp_api',
+                    'tool' => 'wp_api',
                     'parameters' => [
-                        'status' => $status
+                        'action' => 'get_themes'
                     ]
                 ];
             }
@@ -281,10 +343,14 @@ class MPAI_Command_Detector {
         foreach ($current_theme_patterns as $pattern) {
             if (preg_match($pattern, $message)) {
                 $this->logger->info('Detected current theme query');
+                
+                // Return a wp_api tool call for theme list
                 return [
-                    'type' => 'current_theme',
-                    'command' => 'wp theme status',
-                    'parameters' => []
+                    'type' => 'wp_api',
+                    'tool' => 'wp_api',
+                    'parameters' => [
+                        'action' => 'get_themes'
+                    ]
                 ];
             }
         }
