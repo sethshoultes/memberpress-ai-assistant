@@ -466,6 +466,82 @@ var MPAI_Messages = (function($) {
                 }
             });
             
+            // Add preview post button handler
+            $message.find('.mpai-preview-post-button').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent event bubbling
+                
+                // Debug logging
+                console.log("Preview button clicked");
+                console.log("Preview card:", $(this).closest('.mpai-post-preview-card'));
+                console.log("Data attributes:", $(this).closest('.mpai-post-preview-card').data());
+                
+                const $previewContent = $(this).closest('.mpai-post-preview-card').find('.mpai-post-preview-content');
+                const $previewContainer = $(this).closest('.mpai-post-preview-card').find('.mpai-post-preview-container');
+                
+                // Get XML content directly from the hidden pre element instead of data attribute
+                let xmlContent = '';
+                const $xmlContentElement = $(this).closest('.mpai-post-preview-card').find('.mpai-post-xml-content pre');
+                if ($xmlContentElement.length) {
+                    // Get the HTML content and convert HTML entities back to characters
+                    const htmlContent = $xmlContentElement.html();
+                    xmlContent = $('<div/>').html(htmlContent).text();
+                    console.log("XML content from pre element:", xmlContent.substring(0, 100) + "...");
+                } else {
+                    // Fallback to data attribute if pre element not found
+                    try {
+                        xmlContent = decodeURIComponent($(this).closest('.mpai-post-preview-card').data('xml-content') || '');
+                        console.log("XML content from data attribute:", xmlContent.substring(0, 100) + "...");
+                    } catch (e) {
+                        console.error("Error decoding XML content:", e);
+                        alert("Error accessing XML content. Please try again.");
+                        return;
+                    }
+                }
+                
+                if (!xmlContent) {
+                    console.error("No XML content found");
+                    alert("No XML content found. Cannot generate preview.");
+                    return;
+                }
+                
+                if ($previewContent.is(':visible')) {
+                    // Hide preview
+                    $previewContent.slideUp(200);
+                    $(this).text('Preview');
+                } else {
+                    // Show preview
+                    // Generate HTML preview from XML content
+                    try {
+                        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.convertXmlBlocksToHtml === 'function') {
+                            // Extract content from XML
+                            const contentMatch = xmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
+                            if (contentMatch && contentMatch[1]) {
+                                const contentBlocks = contentMatch[1];
+                                console.log("Content blocks found:", contentBlocks.substring(0, 100) + "...");
+                                const previewHtml = window.MPAI_BlogFormatter.convertXmlBlocksToHtml(contentBlocks);
+                                
+                                // Add the formatted HTML to the preview container
+                                $previewContainer.html(previewHtml);
+                                
+                                // Show the preview
+                                $previewContent.slideDown(200);
+                                $(this).text('Hide Preview');
+                            } else {
+                                console.error("No post content found in XML");
+                                alert("Could not generate preview: No post content found.");
+                            }
+                        } else {
+                            console.error("MPAI_BlogFormatter or convertXmlBlocksToHtml function not available");
+                            alert("Preview functionality is not available.");
+                        }
+                    } catch (error) {
+                        console.error("Error generating preview:", error);
+                        alert(`Error generating preview: ${error.message}`);
+                    }
+                }
+            });
+            
             $message.find('.mpai-create-post-button').on('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation(); // Prevent event bubbling
@@ -688,6 +764,82 @@ var MPAI_Messages = (function($) {
                     } else {
                         $xmlContent.slideDown(200);
                         $(this).text('Hide XML');
+                    }
+                });
+                
+                // Add preview post button handler
+                $message.find('.mpai-preview-post-button').on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation(); // Prevent event bubbling
+                    
+                    // Debug logging
+                    console.log("Preview button clicked (tool calls)");
+                    console.log("Preview card:", $(this).closest('.mpai-post-preview-card'));
+                    console.log("Data attributes:", $(this).closest('.mpai-post-preview-card').data());
+                    
+                    const $previewContent = $(this).closest('.mpai-post-preview-card').find('.mpai-post-preview-content');
+                    const $previewContainer = $(this).closest('.mpai-post-preview-card').find('.mpai-post-preview-container');
+                    
+                    // Get XML content directly from the hidden pre element instead of data attribute
+                    let xmlContent = '';
+                    const $xmlContentElement = $(this).closest('.mpai-post-preview-card').find('.mpai-post-xml-content pre');
+                    if ($xmlContentElement.length) {
+                        // Get the HTML content and convert HTML entities back to characters
+                        const htmlContent = $xmlContentElement.html();
+                        xmlContent = $('<div/>').html(htmlContent).text();
+                        console.log("XML content from pre element:", xmlContent.substring(0, 100) + "...");
+                    } else {
+                        // Fallback to data attribute if pre element not found
+                        try {
+                            xmlContent = decodeURIComponent($(this).closest('.mpai-post-preview-card').data('xml-content') || '');
+                            console.log("XML content from data attribute:", xmlContent.substring(0, 100) + "...");
+                        } catch (e) {
+                            console.error("Error decoding XML content:", e);
+                            alert("Error accessing XML content. Please try again.");
+                            return;
+                        }
+                    }
+                    
+                    if (!xmlContent) {
+                        console.error("No XML content found");
+                        alert("No XML content found. Cannot generate preview.");
+                        return;
+                    }
+                    
+                    if ($previewContent.is(':visible')) {
+                        // Hide preview
+                        $previewContent.slideUp(200);
+                        $(this).text('Preview');
+                    } else {
+                        // Show preview
+                        // Generate HTML preview from XML content
+                        try {
+                            if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.convertXmlBlocksToHtml === 'function') {
+                                // Extract content from XML
+                                const contentMatch = xmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
+                                if (contentMatch && contentMatch[1]) {
+                                    const contentBlocks = contentMatch[1];
+                                    console.log("Content blocks found:", contentBlocks.substring(0, 100) + "...");
+                                    const previewHtml = window.MPAI_BlogFormatter.convertXmlBlocksToHtml(contentBlocks);
+                                    
+                                    // Add the formatted HTML to the preview container
+                                    $previewContainer.html(previewHtml);
+                                    
+                                    // Show the preview
+                                    $previewContent.slideDown(200);
+                                    $(this).text('Hide Preview');
+                                } else {
+                                    console.error("No post content found in XML");
+                                    alert("Could not generate preview: No post content found.");
+                                }
+                            } else {
+                                console.error("MPAI_BlogFormatter or convertXmlBlocksToHtml function not available");
+                                alert("Preview functionality is not available.");
+                            }
+                        } catch (error) {
+                            console.error("Error generating preview:", error);
+                            alert(`Error generating preview: ${error.message}`);
+                        }
                     }
                 });
                 
