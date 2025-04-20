@@ -68,8 +68,22 @@ class MPAI_AJAX_Handler {
             return;
         }
         
+        // Check for legacy tool IDs and reject them
+        $tool_id = '';
+        if (isset($tool_request['name'])) {
+            $tool_id = $tool_request['name'];
+        } elseif (isset($tool_request['tool'])) {
+            $tool_id = $tool_request['tool'];
+        }
+        
+        // Reject legacy tool IDs with a clear error message
+        if ($tool_id === 'wpcli_new' || $tool_id === 'wp_cli') {
+            mpai_log_warning('Rejected request using legacy tool ID: ' . $tool_id, 'ajax-handler');
+            wp_send_json_error('Legacy tool ID "' . $tool_id . '" is no longer supported. Please use "wpcli" instead.');
+            return;
+        }
+        
         // Only the standardized 'wpcli' tool ID is supported
-        // Legacy tool IDs have been completely removed
         
         try {
             // Initialize context manager

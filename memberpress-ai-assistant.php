@@ -444,7 +444,7 @@ class MemberPress_AI_Assistant {
         
         // Load WP-CLI test command if WP-CLI is available
         if (defined('WP_CLI') && constant('WP_CLI')) {
-            require_once MPAI_PLUGIN_DIR . 'includes/cli/test-wpcli-command.php';
+            require_once MPAI_PLUGIN_DIR . 'tests/cli/test-wpcli-command.php';
         }
     }
     
