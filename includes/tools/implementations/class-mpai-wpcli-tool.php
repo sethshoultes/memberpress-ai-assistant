@@ -1,10 +1,11 @@
 <?php
 /**
  * Tool for executing WP-CLI commands
- * 
- * SECURITY NOTE: This implementation now uses the new MPAI_WP_CLI_Executor which follows
- * a permissive blacklist security approach rather than a restrictive whitelist. This is
- * more user-friendly while still providing protection against dangerous commands.
+ *
+ * This is the standardized implementation of the WP-CLI tool that uses MPAI_WP_CLI_Executor
+ * to execute commands securely. This implementation follows a permissive blacklist security
+ * approach rather than a restrictive whitelist, which is more user-friendly while still
+ * providing protection against dangerous commands.
  *
  * @package MemberPress AI Assistant
  */
@@ -15,7 +16,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Tool for executing WP-CLI commands - Wrapper for new implementation
+ * Tool for executing WP-CLI commands
+ *
+ * This is the primary and only implementation of the WP-CLI tool in the system.
+ * It is registered with the tool registry as 'wpcli'.
  */
 class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 	/**
@@ -33,6 +37,8 @@ class MPAI_WP_CLI_Tool extends MPAI_Base_Tool {
 		
 		// Initialize the executor
 		$this->init_executor();
+		
+		mpai_log_debug('Initialized standardized WP-CLI Tool implementation', 'wpcli-tool');
 	}
 	
 	/**

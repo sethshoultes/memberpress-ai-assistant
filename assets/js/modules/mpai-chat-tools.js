@@ -345,8 +345,6 @@ var MPAI_Tools = (function($) {
                 break;
                 
             case 'wpcli':
-            case 'wp_cli': // For backward compatibility
-            case 'runCommand':
                 // Format tabular data
                 if (result && typeof result === 'object' && result.result && result.command_type) {
                     if (window.MPAI_Formatters && typeof window.MPAI_Formatters.formatTabularResult === 'function') {
@@ -544,12 +542,165 @@ var MPAI_Tools = (function($) {
         processedToolCalls.clear();
     }
     
+    /**
+     * Format plugin logs result
+     *
+     * @param {object} result - The plugin logs result data
+     * @return {string} Formatted HTML for the plugin logs
+     */
+    function formatPluginLogsResult(result) {
+        if (!result || (!result.logs && !result.summary)) {
+            return '<div class="mpai-tool-call-error-message">No plugin logs data to format</div>';
+        }
+        
+        let html = '<div class="mpai-plugin-logs-result">';
+        
+        // Add summary section
+        if (result.summary) {
+            html += '<div class="mpai-plugin-logs-summary">';
+            html += '<h3>Plugin Activity Summary</h3>';
+            html += '<p>Time period: ' + (result.time_period || 'All time') + '</p>';
+            
+            html += '<table class="mpai-summary-table">';
+            html += '<tr><th>Action</th><th>Count</th></tr>';
+            
+            if (typeof result.summary === 'object') {
+                html += '<tr><td>Total</td><td>' + (result.summary.total || 0) + '</td></tr>';
+                html += '<tr><td>Installed</td><td>' + (result.summary.installed || 0) + '</td></tr>';
+                html += '<tr><td>Activated</td><td>' + (result.summary.activated || 0) + '</td></tr>';
+                html += '<tr><td>Deactivated</td><td>' + (result.summary.deactivated || 0) + '</td></tr>';
+                html += '<tr><td>Updated</td><td>' + (result.summary.updated || 0) + '</td></tr>';
+                html += '<tr><td>Deleted</td><td>' + (result.summary.deleted || 0) + '</td></tr>';
+            }
+            
+            html += '</table>';
+            html += '</div>';
+        }
+        
+        // Add detailed logs section
+        if (result.logs && result.logs.length > 0) {
+            html += '<div class="mpai-plugin-logs-details">';
+            html += '<h3>Recent Plugin Activity</h3>';
+            
+            html += '<table class="mpai-logs-table">';
+            html += '<tr><th>Plugin</th><th>Action</th><th>Version</th><th>When</th><th>User</th></tr>';
+            
+            result.logs.forEach(function(log) {
+                const action = log.action ? log.action.charAt(0).toUpperCase() + log.action.slice(1) : 'Unknown';
+                const pluginName = log.plugin_name || 'Unknown';
+                const version = log.plugin_version || '';
+                const timeAgo = log.time_ago || '';
+                const user = log.user_login || '';
+                
+                // Determine status class for coloring
+                let actionClass = '';
+                switch(log.action) {
+                    case 'activated':
+                        actionClass = 'mpai-action-activated';
+                        break;
+                    case 'deactivated':
+                        actionClass = 'mpai-action-deactivated';
+                        break;
+                    case 'installed':
+                        actionClass = 'mpai-action-installed';
+                        break;
+                    case 'updated':
+                        actionClass = 'mpai-action-updated';
+                        break;
+                    case 'deleted':
+                        actionClass = 'mpai-action-deleted';
+                        break;
+                }
+                
+                html += '<tr>';
+                html += '<td>' + pluginName + '</td>';
+                html += '<td class="' + actionClass + '">' + action + '</td>';
+                html += '<td>' + version + '</td>';
+                html += '<td>' + timeAgo + '</td>';
+                html += '<td>' + user + '</td>';
+                html += '</tr>';
+            });
+            
+            html += '</table>';
+            
+            // Add pagination info if available
+            if (result.total_records && result.returned_records) {
+                html += '<p class="mpai-logs-pagination">';
+                html += 'Showing ' + result.returned_records + ' of ' + result.total_records + ' records';
+                if (result.has_more) {
+                    html += ' (more records available)';
+                }
+                html += '</p>';
+            }
+            
+            html += '</div>';
+        } else if (result.summary && result.summary.total === 0) {
+            html += '<div class="mpai-plugin-logs-empty">';
+            html += '<p>No plugin activity logs found for the specified criteria.</p>';
+            html += '</div>';
+        }
+        
+        // Add CSS for styling
+        html += `
+        <style>
+            .mpai-plugin-logs-result {
+                margin: 10px 0;
+            }
+            .mpai-plugin-logs-result h3 {
+                margin-top: 15px;
+                margin-bottom: 5px;
+            }
+            .mpai-summary-table, .mpai-logs-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 10px 0;
+            }
+            .mpai-summary-table th, .mpai-summary-table td,
+            .mpai-logs-table th, .mpai-logs-table td {
+                padding: 8px;
+                text-align: left;
+                border: 1px solid #ddd;
+            }
+            .mpai-summary-table th, .mpai-logs-table th {
+                background-color: #f2f2f2;
+                font-weight: bold;
+            }
+            .mpai-action-activated {
+                color: green;
+                font-weight: bold;
+            }
+            .mpai-action-deactivated {
+                color: #999;
+            }
+            .mpai-action-installed {
+                color: blue;
+                font-weight: bold;
+            }
+            .mpai-action-updated {
+                color: purple;
+            }
+            .mpai-action-deleted {
+                color: red;
+            }
+            .mpai-logs-pagination {
+                font-size: 0.9em;
+                color: #666;
+                margin-top: 5px;
+            }
+        </style>`;
+        
+        html += '</div>';
+        
+        return html;
+    }
+    
     // Public API
     return {
         init: init,
         processToolCalls: processToolCalls,
         executeToolCall: executeToolCall,
         formatTabularResult: formatTabularResult,
+        formatPluginLogsResult: formatPluginLogsResult,
         resetProcessedToolCalls: resetProcessedToolCalls
     };
 })(jQuery);

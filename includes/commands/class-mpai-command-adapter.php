@@ -64,7 +64,7 @@ class MPAI_Command_Adapter {
     /**
      * Execute a command using the new command system
      *
-     * @param string $tool_id Tool ID (wp_cli, plugin_logs, etc.)
+     * @param string $tool_id Tool ID (wpcli, plugin_logs, etc.)
      * @param array $parameters Tool parameters
      * @return mixed Command execution result
      * @throws Exception If command execution fails
@@ -74,7 +74,6 @@ class MPAI_Command_Adapter {
         
         switch ($tool_id) {
             case 'wpcli':
-            case 'wp_cli':
                 if (isset($parameters['command'])) {
                     $result = $this->command_handler->execute_command($parameters['command'], $parameters);
                     
@@ -87,7 +86,7 @@ class MPAI_Command_Adapter {
                         // Return the full result object
                         return $result;
                     } else {
-                        // Default to just returning the output for backward compatibility
+                        // Default to just returning the output
                         return $result['output'];
                     }
                 } else {
@@ -189,9 +188,9 @@ class MPAI_Command_Adapter {
             }
         };
         
-        // Register the tool
-        $tool_registry->register_tool('wpcli_new', $wpcli_tool);
-        mpai_log_debug('Registered command adapter as wpcli_new tool', 'command-adapter');
+        // Register the tool as 'wpcli' (the only standardized tool ID)
+        $tool_registry->register_tool('wpcli', $wpcli_tool);
+        mpai_log_debug('Registered command adapter as wpcli tool', 'command-adapter');
         
         return true;
     }

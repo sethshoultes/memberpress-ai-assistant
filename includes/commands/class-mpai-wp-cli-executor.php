@@ -117,91 +117,175 @@ class MPAI_WP_CLI_Executor {
      * @return array Execution result
      */
     public function execute($command, $parameters = []) {
-        $this->logger->info('Executing WP-CLI command: ' . $command);
-        
-        // Validate the command for security
-        if (!$this->validate_command($command)) {
-            $this->logger->error('Command security validation failed: ' . $command);
-            return [
-                'success' => false,
-                'output' => 'Command could not be executed for security reasons. Please try a different command.',
-                'error' => 'Command blocked by security validation',
-                'command' => $command
-            ];
-        }
-        try {
-            mpai_log_info('Executing command: ' . $command, 'wp-cli');
-            
-            // Set custom timeout if provided
-            if (isset($parameters['timeout'])) {
-                $this->timeout = min((int)$parameters['timeout'], 60); // Max 60 seconds
-            }
-            
-            // Parse command type and route to appropriate handler
-            $command = trim($command);
-            $this->logger->info('Analyzing command type: ' . $command);
-            
-            if ($this->is_php_version_query($command)) {
-                $this->logger->info('Handling as PHP version query');
-                return $this->get_php_version_info();
-            } elseif ($this->is_plugin_query($command)) {
-                $this->logger->info('Handling as plugin command');
-                return $this->handle_plugin_command($command, $parameters);
-            } elseif ($this->is_system_query($command)) {
-                $this->logger->info('Handling as system command');
-                return $this->handle_system_command($command, $parameters);
-            }
-            
-            $this->logger->info('Handling as general WP-CLI command');
-            
-            // Check for special cases that should bypass WP-CLI
-            if (trim($command) === 'wp plugin list' || 
-                trim($command) === 'wp plugins' || 
-                trim($command) === 'plugins') {
-                // Special handling for plugin list command
-                $this->logger->info('Using direct WordPress API for plugin list');
-                return $this->get_plugin_list($parameters);
-            }
-            
-            // Build the command
-            $wp_cli_command = $this->build_command($command, $parameters);
-            
-            // Execute the command
-            $output = [];
-            $return_var = 0;
-            $this->logger->info('Executing: ' . $wp_cli_command);
-            $last_line = exec($wp_cli_command, $output, $return_var);
-            
-            // Handle the result
-            if ($return_var !== 0) {
-                mpai_log_error('Command failed with code ' . $return_var . ': ' . implode("\n", $output), 'wp-cli');
-                return [
-                    'success' => false,
-                    'output' => implode("\n", $output),
-                    'return_code' => $return_var,
-                    'command' => $command
-                ];
-            }
-            
-            // Format the output based on the requested format
-            $format = isset($parameters['format']) ? $parameters['format'] : 'text';
-            $formatted_output = $this->format_output($output, $format);
-            
-            return [
-                'success' => true,
-                'output' => $formatted_output,
-                'return_code' => $return_var,
-                'command' => $command
-            ];
-        } catch (Exception $e) {
-            $this->logger->error('Command execution error: ' . $e->getMessage());
-            return [
-                'success' => false,
-                'output' => 'Error executing command: ' . $e->getMessage(),
-                'error' => $e->getMessage(),
-                'command' => $command
-            ];
-        }
+    	$this->logger->info('Executing WP-CLI command: ' . $command);
+    	
+    	// Validate the command for security
+    	if (!$this->validate_command($command)) {
+    		$this->logger->error('Command security validation failed: ' . $command);
+    		return [
+    			'success' => false,
+    			'output' => 'Command could not be executed for security reasons. Please try a different command.',
+    			'error' => 'Command blocked by security validation',
+    			'command' => $command
+    		];
+    	}
+    	try {
+    		mpai_log_info('Executing command: ' . $command, 'wp-cli');
+    		
+    		// Set custom timeout if provided
+    		if (isset($parameters['timeout'])) {
+    			$this->timeout = min((int)$parameters['timeout'], 60); // Max 60 seconds
+    		}
+    		
+    		// Parse command type and route to appropriate handler
+    		$command = trim($command);
+    		$this->logger->info('Analyzing command type: ' . $command);
+    		
+    		if ($this->is_php_version_query($command)) {
+    			$this->logger->info('Handling as PHP version query');
+    			return $this->get_php_version_info();
+    		} elseif ($this->is_plugin_query($command)) {
+    			$this->logger->info('Handling as plugin command');
+    			return $this->handle_plugin_command($command, $parameters);
+    		} elseif ($this->is_system_query($command)) {
+    			$this->logger->info('Handling as system command');
+    			return $this->handle_system_command($command, $parameters);
+    		}
+    		
+    		$this->logger->info('Handling as general WP-CLI command');
+    		
+    		// Check for special cases that should bypass WP-CLI
+    		if (trim($command) === 'wp plugin list' ||
+    			trim($command) === 'wp plugins' ||
+    			trim($command) === 'plugins') {
+    			// Special handling for plugin list command
+    			$this->logger->info('Using direct WordPress API for plugin list');
+    			return $this->get_plugin_list($parameters);
+    		}
+    		
+    		// Check if exec() is available or if we're in safe mode
+    		if (!function_exists('exec') || ini_get('safe_mode')) {
+    			$this->logger->warning('exec() function is disabled or safe mode is enabled, using WP-CLI API fallback');
+    			return $this->execute_with_wp_cli_api($command, $parameters);
+    		}
+    		
+    		// Build the command
+    		$wp_cli_command = $this->build_command($command, $parameters);
+    		
+    		// Execute the command
+    		$output = [];
+    		$return_var = 0;
+    		$this->logger->info('Executing: ' . $wp_cli_command);
+    		$last_line = exec($wp_cli_command, $output, $return_var);
+    		
+    		// Handle the result
+    		if ($return_var !== 0) {
+    			mpai_log_error('Command failed with code ' . $return_var . ': ' . implode("\n", $output), 'wp-cli');
+    			return [
+    				'success' => false,
+    				'output' => implode("\n", $output),
+    				'return_code' => $return_var,
+    				'command' => $command
+    			];
+    		}
+    		
+    		// Format the output based on the requested format
+    		$format = isset($parameters['format']) ? $parameters['format'] : 'text';
+    		$formatted_output = $this->format_output($output, $format);
+    		
+    		return [
+    			'success' => true,
+    			'output' => $formatted_output,
+    			'return_code' => $return_var,
+    			'command' => $command
+    		];
+    	} catch (Exception $e) {
+    		$this->logger->error('Command execution error: ' . $e->getMessage());
+    		return [
+    			'success' => false,
+    			'output' => 'Error executing command: ' . $e->getMessage(),
+    			'error' => $e->getMessage(),
+    			'command' => $command
+    		];
+    	}
+    }
+    
+    /**
+     * Execute a command using the WP-CLI PHP API directly
+     *
+     * This is a fallback method for environments where exec() is disabled
+     *
+     * @param string $command Command to execute
+     * @param array $parameters Additional parameters
+     * @return array Execution result
+     */
+    private function execute_with_wp_cli_api($command, $parameters = []) {
+    	$this->logger->info('Executing command with WP-CLI PHP API: ' . $command);
+    	
+    	// Check if WP-CLI is available
+    	if (!class_exists('WP_CLI')) {
+    		$this->logger->error('WP-CLI class not available for direct API execution');
+    		return [
+    			'success' => false,
+    			'output' => 'WP-CLI is not available in this environment.',
+    			'error' => 'WP_CLI class not found',
+    			'command' => $command
+    		];
+    	}
+    	
+    	// Parse the command to extract the arguments
+    	$command = trim($command);
+    	
+    	// Remove 'wp ' prefix if present
+    	if (strpos($command, 'wp ') === 0) {
+    		$command = substr($command, 3);
+    	}
+    	
+    	// Split the command into arguments
+    	$args = explode(' ', $command);
+    	
+    	// Capture output
+    	ob_start();
+    	
+    	try {
+    		// Set up a custom error handler to catch WP_CLI errors
+    		set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    			throw new Exception($errstr, $errno);
+    		});
+    		
+    		// Execute the command using WP_CLI::run_command
+    		WP_CLI::run_command($args);
+    		
+    		// Restore the error handler
+    		restore_error_handler();
+    		
+    		// Get the captured output
+    		$output = ob_get_clean();
+    		
+    		return [
+    			'success' => true,
+    			'output' => $output,
+    			'return_code' => 0,
+    			'command' => $command,
+    			'method' => 'wp_cli_api'
+    		];
+    	} catch (Exception $e) {
+    		// Restore the error handler
+    		restore_error_handler();
+    		
+    		// Get any output that was generated before the error
+    		$output = ob_get_clean();
+    		
+    		$this->logger->error('WP-CLI API execution error: ' . $e->getMessage());
+    		
+    		return [
+    			'success' => false,
+    			'output' => $output . "\nError: " . $e->getMessage(),
+    			'error' => $e->getMessage(),
+    			'command' => $command,
+    			'method' => 'wp_cli_api'
+    		];
+    	}
     }
 
     /**

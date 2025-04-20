@@ -168,7 +168,7 @@ class MPAI_Error_Recovery {
         
         // Tool fallbacks
         $this->fallbacks[self::ERROR_TYPE_TOOL] = [
-            'wp_cli' => 'wp_api',
+            'wpcli' => 'wp_api',
             'wp_api' => 'wordpress',
         ];
     }

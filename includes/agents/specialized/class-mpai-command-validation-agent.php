@@ -140,7 +140,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             ];
             
             // FAST PATH: Skip validation for wp post list and wp user list commands
-            if ($command_type === 'wp_cli' && isset($command_data['command'])) {
+            if ($command_type === 'wpcli' && isset($command_data['command'])) {
                 // Check for post list command
                 if (strpos($command_data['command'], 'wp post list') === 0) {
                     $this->logger->info('Bypassing validation for wp post list command');
@@ -176,9 +176,11 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
                 case 'wp_api':
                     $validation_result = $this->validate_wp_api_command( $command_data, $context );
                     break;
-                case 'wp_cli':
-                    $validation_result = $this->validate_wp_cli_command( $command_data, $context );
+                case 'wpcli':
+                    $validation_result = $this->validate_wpcli_command( $command_data, $context );
                     break;
+                // Only the standardized 'wpcli' tool ID is supported
+                // Legacy tool IDs have been completely removed
                 case 'tool_call':
                     $validation_result = $this->validate_tool_call( $command_data, $context );
                     break;
@@ -297,15 +299,15 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
     }
 
     /**
-     * Validate a wp_cli command
+     * Validate a wpcli command
      *
      * @param array $command_data Command data
      * @param array $context Context data
      * @return array Validation result
      */
-    private function validate_wp_cli_command( $command_data, $context ) {
-        try {
-            $this->logger->info( 'Validating wp_cli command: ' . json_encode( $command_data ) );
+    private function validate_wpcli_command( $command_data, $context ) {
+       try {
+           $this->logger->info( 'Validating wpcli command: ' . json_encode( $command_data ) );
             
             $result = [
                 'success' => true,
@@ -326,7 +328,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             
             // Plugin commands
             if ( strpos( $command, 'wp plugin ' ) === 0 ) {
-                $result = $this->validate_wp_cli_plugin_command( $command, $context );
+                $result = $this->validate_wpcli_plugin_command( $command, $context );
                 $result['original_command'] = $command_data;
                 $result['validated_command'] = [
                     'command' => $result['validated_command']
@@ -343,7 +345,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             }
             // Theme commands
             else if ( strpos( $command, 'wp theme ' ) === 0 ) {
-                $result = $this->validate_wp_cli_theme_command( $command, $context );
+                $result = $this->validate_wpcli_theme_command( $command, $context );
                 $result['original_command'] = $command_data;
                 $result['validated_command'] = [
                     'command' => $result['validated_command']
@@ -351,7 +353,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             }
             // Block commands
             else if ( strpos( $command, 'wp block ' ) === 0 ) {
-                $result = $this->validate_wp_cli_block_command( $command, $context );
+                $result = $this->validate_wpcli_block_command( $command, $context );
                 $result['original_command'] = $command_data;
                 $result['validated_command'] = [
                     'command' => $result['validated_command']
@@ -361,7 +363,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             return $result;
         } catch ( Exception $e ) {
             // Log the error but allow the command to proceed
-            $this->logger->error( 'Error in validate_wp_cli_command: ' . $e->getMessage() );
+            $this->logger->error( 'Error in validate_wpcli_command: ' . $e->getMessage() );
             return [
                 'success' => true, // Return true to allow operation to proceed
                 'original_command' => $command_data,
@@ -379,7 +381,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
      * @param array $context Context data
      * @return array Validation result
      */
-    private function validate_wp_cli_plugin_command( $command, $context ) {
+    private function validate_wpcli_plugin_command( $command, $context ) {
         $result = [
             'success' => true,
             'original_command' => $command,
@@ -458,20 +460,25 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
                 }
                 break;
                 
-            case 'wp_cli':
-                // We're validating a wp_cli tool call
+            case 'wpcli':
+                // We're validating a WP-CLI tool call
                 if ( isset( $parameters['command'] ) ) {
-                    $wp_cli_validation = $this->validate_wp_cli_command( $parameters, $context );
+                    $wpcli_validation = $this->validate_wpcli_command( $parameters, $context );
                     
-                    if ( ! $wp_cli_validation['success'] ) {
+                    if ( ! $wpcli_validation['success'] ) {
                         $result['success'] = false;
-                        $result['message'] = $wp_cli_validation['message'];
+                        $result['message'] = $wpcli_validation['message'];
                     } else {
                         // Update the parameters with validated ones
-                        $result['validated_command']['parameters'] = $wp_cli_validation['validated_command'];
+                        $result['validated_command']['parameters'] = $wpcli_validation['validated_command'];
+                        
+                        // Ensure the tool name is standardized to 'wpcli'
+                        $result['validated_command']['name'] = 'wpcli';
                     }
                 }
                 break;
+                // Only the standardized 'wpcli' tool ID is supported
+                // Legacy tool IDs have been completely removed
         }
         
         return $result;
@@ -880,7 +887,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
      * @param array $context Context data
      * @return array Validation result
      */
-    private function validate_wp_cli_theme_command( $command, $context ) {
+    private function validate_wpcli_theme_command( $command, $context ) {
         $result = [
             'success' => true,
             'original_command' => $command,
@@ -921,7 +928,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             
             return $result;
         } catch ( Exception $e ) {
-            $this->logger->error( 'Error in validate_wp_cli_theme_command: ' . $e->getMessage() );
+            $this->logger->error( 'Error in validate_wpcli_theme_command: ' . $e->getMessage() );
             return $result;
         }
     }
@@ -1007,7 +1014,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
      * @param array $context Context data
      * @return array Validation result
      */
-    private function validate_wp_cli_block_command( $command, $context ) {
+    private function validate_wpcli_block_command( $command, $context ) {
         $result = [
             'success' => true,
             'original_command' => $command,
@@ -1051,7 +1058,7 @@ class MPAI_Command_Validation_Agent extends MPAI_Base_Agent {
             
             return $result;
         } catch ( Exception $e ) {
-            $this->logger->error( 'Error in validate_wp_cli_block_command: ' . $e->getMessage() );
+            $this->logger->error( 'Error in validate_wpcli_block_command: ' . $e->getMessage() );
             return $result;
         }
     }

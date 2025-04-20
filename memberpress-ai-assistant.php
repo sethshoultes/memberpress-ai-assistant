@@ -55,8 +55,14 @@ if (isset($_REQUEST['direct_plugin_logs']) && $_REQUEST['direct_plugin_logs'] ==
             exit;
         }
         
-        // Get parameters with defaults
-        $action = isset($_REQUEST['action_type']) ? $_REQUEST['action_type'] : '';
+        // Get parameters with defaults - support both action and action_type for compatibility
+        $action = '';
+        if (isset($_REQUEST['action'])) {
+            $action = $_REQUEST['action'];
+        } elseif (isset($_REQUEST['action_type'])) {
+            $action = $_REQUEST['action_type'];
+        }
+        
         $days = isset($_REQUEST['days']) ? intval($_REQUEST['days']) : 30;
         $limit = isset($_REQUEST['limit']) ? intval($_REQUEST['limit']) : 25;
         
@@ -391,6 +397,9 @@ class MemberPress_AI_Assistant {
         // Load Unified Detection System for MemberPress
         require_once MPAI_PLUGIN_DIR . 'includes/detection/load.php';
         
+        // Load AJAX Handler
+        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-ajax-handler.php';
+        
         // Unified Settings Manager has been removed
         
         // API Integration Classes
@@ -432,15 +441,17 @@ class MemberPress_AI_Assistant {
         // CLI Commands - always load to ensure early initialization
         // The CLI commands file itself handles WP-CLI availability checks
         require_once MPAI_PLUGIN_DIR . 'includes/cli/class-mpai-cli-commands.php';
+        
+        // Load WP-CLI test command if WP-CLI is available
+        if (defined('WP_CLI') && constant('WP_CLI')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/cli/test-wpcli-command.php';
+        }
     }
     
     /**
      * Load agent system components
      */
     private function load_agent_system() {
-        // Load agent interface
-        require_once MPAI_PLUGIN_DIR . 'includes/agents/interfaces/interface-mpai-agent.php';
-        
         // Load base tool class
         if (!class_exists('MPAI_Base_Tool')) {
             require_once MPAI_PLUGIN_DIR . 'includes/tools/class-mpai-base-tool.php';
@@ -459,25 +470,40 @@ class MemberPress_AI_Assistant {
             }
         }
         
-        // Load base agent class
-        require_once MPAI_PLUGIN_DIR . 'includes/agents/class-mpai-base-agent.php';
-        
-        // Load specialized agents
-        $agents_dir = MPAI_PLUGIN_DIR . 'includes/agents/specialized/';
-        if (file_exists($agents_dir)) {
-            foreach (glob($agents_dir . 'class-mpai-*.php') as $agent_file) {
-                require_once $agent_file;
+        // Load the unified agent system
+        $agent_loader = MPAI_PLUGIN_DIR . 'includes/agents/load.php';
+        if (file_exists($agent_loader)) {
+            require_once $agent_loader;
+            mpai_log_debug('Loaded unified agent system', 'agent-system');
+        } else {
+            mpai_log_error('Agent system loader not found: ' . $agent_loader, 'agent-system');
+            
+            // Fallback to legacy loading
+            mpai_log_warning('Falling back to legacy agent system loading', 'agent-system');
+            
+            // Load agent interface
+            require_once MPAI_PLUGIN_DIR . 'includes/agents/interfaces/interface-mpai-agent.php';
+            
+            // Load base agent class
+            require_once MPAI_PLUGIN_DIR . 'includes/agents/class-mpai-base-agent.php';
+            
+            // Load specialized agents
+            $agents_dir = MPAI_PLUGIN_DIR . 'includes/agents/specialized/';
+            if (file_exists($agents_dir)) {
+                foreach (glob($agents_dir . 'class-mpai-*.php') as $agent_file) {
+                    require_once $agent_file;
+                }
             }
+            
+            // Load SDK integration
+            $sdk_dir = MPAI_PLUGIN_DIR . 'includes/agents/sdk/';
+            if (file_exists($sdk_dir . 'class-mpai-sdk-integration.php')) {
+                require_once $sdk_dir . 'class-mpai-sdk-integration.php';
+            }
+            
+            // Finally, load the orchestrator
+            require_once MPAI_PLUGIN_DIR . 'includes/agents/class-mpai-agent-orchestrator.php';
         }
-        
-        // Load SDK integration
-        $sdk_dir = MPAI_PLUGIN_DIR . 'includes/agents/sdk/';
-        if (file_exists($sdk_dir . 'class-mpai-sdk-integration.php')) {
-            require_once $sdk_dir . 'class-mpai-sdk-integration.php';
-        }
-        
-        // Finally, load the orchestrator
-        require_once MPAI_PLUGIN_DIR . 'includes/agents/class-mpai-agent-orchestrator.php';
     }
 
     /**
@@ -906,7 +932,7 @@ class MemberPress_AI_Assistant {
                 'tools_enabled' => array(
                     'mcp' => true, // Always enabled
                     'cli_commands' => true, // Always enabled
-                    'wp_cli_tool' => true, // Always enabled
+                    'wpcli' => true, // Always enabled
                     'memberpress_info_tool' => true, // Always enabled
                     'plugin_logs_tool' => true // Always enabled
                 )
@@ -1423,6 +1449,107 @@ class MemberPress_AI_Assistant {
     // Diagnostic and test handlers have been moved to the diagnostics plugin
 
     /**
+     * AJAX handler for getting AI plugin logs
+     * Special handler for AI assistant to get plugin logs with no nonce check
+     */
+    public function get_ai_plugin_logs_ajax() {
+        // Allow all logged-in users to access plugin logs for AI Assistant
+        if (!is_user_logged_in()) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+        
+        try {
+            // Initialize the plugin logger
+            $plugin_logger = mpai_init_plugin_logger();
+            
+            if (!$plugin_logger) {
+                wp_send_json_error('Failed to initialize plugin logger');
+                return;
+            }
+            
+            // Get filter parameters - support both direct parameters and JSON format
+            if (isset($_POST['tool_request'])) {
+                // Parse the tool request
+                $tool_request = json_decode(stripslashes($_POST['tool_request']), true);
+                
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    // Try without stripslashes
+                    $tool_request = json_decode($_POST['tool_request'], true);
+                }
+                
+                if (json_last_error() === JSON_ERROR_NONE && isset($tool_request['parameters'])) {
+                    $parameters = $tool_request['parameters'];
+                    $action = isset($parameters['action']) ? sanitize_text_field($parameters['action']) : '';
+                    $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
+                    $limit = isset($parameters['limit']) ? intval($parameters['limit']) : 25;
+                } else {
+                    // Fallback to direct parameters
+                    $action = isset($_POST['action']) ? sanitize_text_field($_POST['action']) : '';
+                    $days = isset($_POST['days']) ? intval($_POST['days']) : 30;
+                    $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 25;
+                }
+            } else {
+                // Direct parameters
+                $action = isset($_POST['action']) ? sanitize_text_field($_POST['action']) : '';
+                $days = isset($_POST['days']) ? intval($_POST['days']) : 30;
+                $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 25;
+            }
+            
+            // Calculate date range
+            $date_from = '';
+            if ($days > 0) {
+                $date_from = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+            }
+            
+            // Prepare query arguments
+            $args = array(
+                'action'      => $action,
+                'date_from'   => $date_from,
+                'orderby'     => 'date_time',
+                'order'       => 'DESC',
+                'limit'       => $limit
+            );
+            
+            // Get logs
+            $logs = $plugin_logger->get_logs($args);
+            
+            // Count by action type
+            $summary = array(
+                'total'       => count($logs),
+                'installed'   => 0,
+                'updated'     => 0,
+                'activated'   => 0,
+                'deactivated' => 0,
+                'deleted'     => 0
+            );
+            
+            foreach ($logs as $log) {
+                if (isset($log['action']) && isset($summary[$log['action']])) {
+                    $summary[$log['action']]++;
+                }
+            }
+            
+            // Format logs with time_ago
+            foreach ($logs as &$log) {
+                $timestamp = strtotime($log['date_time']);
+                $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
+            }
+            
+            wp_send_json_success(array(
+                'tool' => 'plugin_logs',
+                'summary' => $summary,
+                'time_period' => "past {$days} days",
+                'logs' => $logs,
+                'total' => count($logs),
+                'result' => "Plugin logs for the past {$days} days: " . count($logs) . " entries found"
+            ));
+        } catch (Exception $e) {
+            wp_send_json_error('Error retrieving plugin logs: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Clear chat history via AJAX
      */
     public function clear_chat_history_ajax() {
@@ -1889,7 +2016,7 @@ class MemberPress_AI_Assistant {
                 // Hardcoded tool settings (removed from UI)
                 'mpai_enable_mcp' => true,
                 'mpai_enable_cli_commands' => true,
-                'mpai_enable_wp_cli_tool' => true,
+                'mpai_enable_wpcli' => true,
                 'mpai_enable_memberpress_info_tool' => true,
                 'mpai_enable_plugin_logs_tool' => true,
                 
@@ -1948,7 +2075,7 @@ class MemberPress_AI_Assistant {
             // Hard-coded tool settings (no longer configurable)
             update_option('mpai_enable_mcp', true);
             update_option('mpai_enable_cli_commands', true);
-            update_option('mpai_enable_wp_cli_tool', true);
+            update_option('mpai_enable_wpcli', true);
             update_option('mpai_enable_memberpress_info_tool', true);
             update_option('mpai_enable_plugin_logs_tool', true);
             update_option('mpai_allowed_cli_commands', array('wp user list', 'wp post list', 'wp plugin list'));

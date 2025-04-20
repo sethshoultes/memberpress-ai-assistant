@@ -151,17 +151,24 @@ switch ($action) {
             exit;
         }
 
-        // Get parameters
-        $action_type = isset($_POST['action_type']) ? sanitize_text_field($_POST['action_type']) : '';
+        // Get parameters - support both action and action_type for compatibility
+        $action = '';
+        if (isset($_POST['action_type'])) {
+            $action = sanitize_text_field($_POST['action_type']);
+        } elseif (isset($_POST['action'])) {
+            $action = sanitize_text_field($_POST['action']);
+        }
+        
         $days = isset($_POST['days']) ? intval($_POST['days']) : 30;
+        $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 25;
         
         // Get logs
         $args = array(
-            'action'    => $action_type,
+            'action'    => $action,
             'date_from' => date('Y-m-d H:i:s', strtotime("-{$days} days")),
             'orderby'   => 'date_time',
             'order'     => 'DESC',
-            'limit'     => 25
+            'limit'     => $limit
         );
         
         $logs = $plugin_logger->get_logs($args);

@@ -105,10 +105,9 @@ class MPAI_Context_Manager {
         }
         
         // Clear any tool-specific cached data
-        if (isset($this->wp_api_tool)) {
-            $this->wp_api_tool = null;
-            mpai_log_debug('Cleared WP API tool instance', 'context-manager');
-        }
+        // Initialize tool registry if needed
+        $this->init_tools();
+        mpai_log_debug('Reinitialized tools', 'context-manager');
         
         // Reinitialize the tools
         $this->init_tools();
@@ -277,18 +276,36 @@ class MPAI_Context_Manager {
                 };
                 
                 $fallback_execution = function() {
-                    // Fallback to legacy command execution if tool execution fails
-                    return $this->execute_wp_cli_command('wp plugin list --format=table');
+                    // Fallback to direct WP-CLI execution if tool execution fails
+                    if (defined('WP_CLI') && class_exists('WP_CLI')) {
+                        mpai_log_debug('Falling back to direct WP-CLI execution', 'context-manager');
+                        // Use the WP-CLI tool from the registry
+                        $tool_registry = new MPAI_Tool_Registry();
+                        $wpcli_tool = $tool_registry->get_tool('wpcli');
+                        
+                        if ($wpcli_tool) {
+                            mpai_log_debug('Using WP-CLI tool from registry for fallback', 'context-manager');
+                            return $wpcli_tool->execute(array(
+                                'command' => 'wp plugin list --format=table'
+                            ));
+                        } else {
+                            mpai_log_error('WP-CLI tool not available for fallback', 'context-manager');
+                            return 'Error: WP-CLI tool not available for fallback';
+                        }
+                    } else {
+                        mpai_log_error('WP-CLI not available for fallback execution', 'context-manager');
+                        return 'Error: WP-CLI not available for fallback execution';
+                    }
                 };
                 
                 // Use error recovery system if available
                 if ($this->error_recovery) {
                     // Create tool execution context
                     $result = $this->error_recovery->handle_error(
-                        $this->error_recovery->create_tool_error('wp_cli', 'tool_execution', 'Tool execution with error recovery', [
+                        $this->error_recovery->create_tool_error('wpcli', 'tool_execution', 'Tool execution with error recovery', [
                             'command' => 'wp plugin list',
                         ]),
-                        'wp_cli',
+                        'wpcli',
                         $execute_command,
                         [],
                         $fallback_execution,
@@ -305,11 +322,11 @@ class MPAI_Context_Manager {
                     $result = $execute_command();
                 }
                 
-                mpai_log_debug('wp_cli_tool execution complete at ' . date('H:i:s') . ', result length: ' . strlen($result), 'context-manager');
+                mpai_log_debug('wpcli_tool execution complete at ' . date('H:i:s') . ', result length: ' . strlen($result), 'context-manager');
                 mpai_log_debug('Result preview: ' . substr($result, 0, 100) . '...', 'context-manager');
                 
                 // Check if the result is a JSON-encoded string and extract the tabular data
-                if (is_string($result) && strpos($result, '{"success":true,"tool":"wp_cli","command_type":"plugin_list","result":') === 0) {
+                if (is_string($result) && strpos($result, '{"success":true,"tool":"wpcli","command_type":"plugin_list","result":') === 0) {
                     mpai_log_debug('Detected JSON format in result, extracting tabular data', 'context-manager');
                     
                     try {
@@ -339,8 +356,8 @@ class MPAI_Context_Manager {
                 // Use error recovery formatting if available
                 if ($this->error_recovery) {
                     $error = $this->error_recovery->create_tool_error(
-                        'wp_cli', 
-                        'execution_exception', 
+                        'wpcli',
+                        'execution_exception',
                         'Error executing command: ' . $e->getMessage(),
                         ['exception' => $e->getMessage(), 'command' => 'wp plugin list']
                     );
@@ -372,23 +389,29 @@ class MPAI_Context_Manager {
         if (!defined('WP_CLI') || !class_exists('WP_CLI')) {
             mpai_log_info('WP-CLI not available in this environment, using WordPress API fallback', 'context-manager');
             
-            // Initialize WP API Tool if needed
-            if (!isset($this->wp_api_tool)) {
-                // Check if the class exists, if not try to load it
+            // Get the WP API Tool from the registry
+            $tool_registry = new MPAI_Tool_Registry();
+            $wp_api_tool = $tool_registry->get_tool('wp_api');
+            
+            if (!$wp_api_tool) {
+                // If not in registry, check if the class exists, if not try to load it
                 if (!class_exists('MPAI_WP_API_Tool')) {
                     $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-wp-api-tool.php';
                     if (file_exists($tool_path)) {
                         require_once $tool_path;
+                        mpai_log_debug('Loaded MPAI_WP_API_Tool class', 'context-manager');
                     }
                 }
                 
-                // Initialize the tool if the class exists
+                // Create a new instance if the class exists
                 if (class_exists('MPAI_WP_API_Tool')) {
-                    $this->wp_api_tool = new MPAI_WP_API_Tool();
-                    mpai_log_debug('WordPress API Tool initialized successfully', 'context-manager');
+                    $wp_api_tool = new MPAI_WP_API_Tool();
+                    mpai_log_debug('Created new WordPress API Tool instance', 'context-manager');
                 } else {
                     mpai_log_warning('WordPress API Tool class not found', 'context-manager');
                 }
+            } else {
+                mpai_log_debug('WordPress API Tool retrieved from registry', 'context-manager');
             }
             
             // For post creation/update commands
@@ -410,8 +433,8 @@ class MPAI_Context_Manager {
                 
                 try {
                     // Use WP API Tool to create the post
-                    if (isset($this->wp_api_tool)) {
-                        $result = $this->wp_api_tool->execute(array(
+                    if ($wp_api_tool) {
+                        $result = $wp_api_tool->execute(array(
                             'action' => 'create_post',
                             'title' => $title,
                             'content' => $content,
@@ -449,8 +472,8 @@ class MPAI_Context_Manager {
                 
                 try {
                     // Use WP API Tool to create the page
-                    if (isset($this->wp_api_tool)) {
-                        $result = $this->wp_api_tool->execute(array(
+                    if ($wp_api_tool) {
+                        $result = $wp_api_tool->execute(array(
                             'action' => 'create_page',
                             'title' => $title,
                             'content' => $content,
@@ -483,8 +506,8 @@ class MPAI_Context_Manager {
                 
                 try {
                     // Use WP API Tool to create the user
-                    if (isset($this->wp_api_tool) && !empty($username) && !empty($email)) {
-                        $result = $this->wp_api_tool->execute(array(
+                    if ($wp_api_tool && !empty($username) && !empty($email)) {
+                        $result = $wp_api_tool->execute(array(
                             'action' => 'create_user',
                             'username' => $username,
                             'email' => $email,
@@ -507,8 +530,8 @@ class MPAI_Context_Manager {
             if (strpos($command, 'wp user list') === 0) {
                 // Try to use WP API Tool first
                 try {
-                    if (isset($this->wp_api_tool)) {
-                        $result = $this->wp_api_tool->execute(array(
+                    if ($wp_api_tool) {
+                        $result = $wp_api_tool->execute(array(
                             'action' => 'get_users',
                             'limit' => 10
                         ));
@@ -558,13 +581,13 @@ class MPAI_Context_Manager {
                 
                 try {
                     // Use the WP API Tool to get plugin list with activity data
-                    if (isset($this->wp_api_tool)) {
+                    if ($wp_api_tool) {
                         // Get current time for verification
                         $current_time = date('H:i:s');
                         mpai_log_debug('wp plugin list called at ' . $current_time, 'context-manager');
                         
                         // Call the enhanced get_plugins method from our WP API Tool
-                        $result = $this->wp_api_tool->execute(array(
+                        $result = $wp_api_tool->execute(array(
                             'action' => 'get_plugins',
                             'format' => 'table'
                         ));
@@ -677,9 +700,9 @@ class MPAI_Context_Manager {
                     
                     // Try using the WP API Tool as fallback
                     try {
-                        if (isset($this->wp_api_tool)) {
+                        if ($wp_api_tool) {
                             mpai_log_debug('Trying WP API Tool as fallback for plugin list', 'context-manager');
-                            $result = $this->wp_api_tool->execute(array(
+                            $result = $wp_api_tool->execute(array(
                                 'action' => 'get_plugins',
                                 'format' => 'table'
                             ));
@@ -742,8 +765,8 @@ class MPAI_Context_Manager {
             if (strpos($command, 'wp mepr-membership list') === 0 || 
                 strpos($command, 'wp mepr-membership') === 0) {
                 try {
-                    if (isset($this->wp_api_tool)) {
-                        $result = $this->wp_api_tool->execute(array(
+                    if ($wp_api_tool) {
+                        $result = $wp_api_tool->execute(array(
                             'action' => 'get_memberships'
                         ));
                         
@@ -777,13 +800,33 @@ class MPAI_Context_Manager {
         mpai_log_debug('Executing WP-CLI command: ' . $command, 'context-manager');
         ob_start();
         try {
-            $result = WP_CLI::runcommand($command, array(
-                'return' => true,
-                'exit_error' => false,
-            ));
+            // Use the WP-CLI tool from the registry
+            $tool_registry = new MPAI_Tool_Registry();
+            $wpcli_tool = $tool_registry->get_tool('wpcli');
             
-            echo $result;
-            mpai_log_debug('Command executed successfully', 'context-manager');
+            if ($wpcli_tool) {
+                // Use the WP-CLI tool from the registry
+                mpai_log_debug('Using WP-CLI tool from registry', 'context-manager');
+                $result = $wpcli_tool->execute(array(
+                    'command' => $command
+                ));
+                
+                echo $result;
+                mpai_log_debug('Command executed successfully', 'context-manager');
+            } else if (class_exists('MPAI_WP_CLI_Executor')) {
+                // Try to use the executor directly if available
+                mpai_log_debug('Using MPAI_WP_CLI_Executor directly', 'context-manager');
+                $executor = new MPAI_WP_CLI_Executor();
+                $result = $executor->execute($command);
+                
+                echo $result;
+                mpai_log_debug('Command executed successfully using executor', 'context-manager');
+            } else {
+                // No execution methods available
+                mpai_log_error('No WP-CLI execution methods available', 'context-manager');
+                $result = 'Error: No WP-CLI execution methods available';
+                echo $result;
+            }
         } catch (Exception $e) {
             $error_message = 'Error: ' . $e->getMessage();
             echo $error_message;
@@ -1494,8 +1537,11 @@ class MPAI_Context_Manager {
                 . ', status=' . (isset($parameters['status']) ? $parameters['status'] : 'NOT SET'), 'context-manager');
         }
         
-        // Initialize WP API Tool if needed
-        if (!isset($this->wp_api_tool)) {
+        // Get the WP API Tool from the registry or create a new instance
+        $tool_registry = new MPAI_Tool_Registry();
+        $wp_api_tool = $tool_registry->get_tool('wp_api');
+        
+        if (!$wp_api_tool) {
             // Check if the class exists, if not try to load it
             if (!class_exists('MPAI_WP_API_Tool')) {
                 $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-wp-api-tool.php';
@@ -1504,14 +1550,16 @@ class MPAI_Context_Manager {
                 }
             }
             
-            // Initialize the tool if the class exists
+            // Create a new instance if the class exists
             if (class_exists('MPAI_WP_API_Tool')) {
-                $this->wp_api_tool = new MPAI_WP_API_Tool();
-                mpai_log_debug('WordPress API Tool initialized successfully', 'context-manager');
+                $wp_api_tool = new MPAI_WP_API_Tool();
+                mpai_log_debug('WordPress API Tool created successfully', 'context-manager');
             } else {
                 mpai_log_error('WordPress API Tool class not found', 'context-manager');
                 return 'Error: WordPress API Tool class not found';
             }
+        } else {
+            mpai_log_debug('WordPress API Tool retrieved from registry', 'context-manager');
         }
         
         // Special handling for create_post/create_page action
@@ -1627,7 +1675,18 @@ class MPAI_Context_Manager {
         // Execute the tool with the provided parameters
         try {
             mpai_log_debug('Executing WordPress API function: ' . $parameters['action'] . ' with parameter count: ' . count($parameters), 'context-manager');
-            $result = $this->wp_api_tool->execute($parameters);
+            
+            // Initialize the tool if needed
+            if (!class_exists('MPAI_WP_API_Tool')) {
+                $tool_path = MPAI_PLUGIN_DIR . 'includes/tools/implementations/class-mpai-wp-api-tool.php';
+                if (file_exists($tool_path)) {
+                    require_once $tool_path;
+                }
+            }
+            
+            // Create a new instance for this execution
+            $wp_api_tool = new MPAI_WP_API_Tool();
+            $result = $wp_api_tool->execute($parameters);
             
             // Format the result for display
             if (is_array($result) || is_object($result)) {
@@ -1714,7 +1773,7 @@ class MPAI_Context_Manager {
         // Format into a structured response
         $formatted_response = [
             'success' => true,
-            'tool' => 'wp_cli',
+            'tool' => 'wpcli',
             'command_type' => $command_type,
             'result' => $output
         ];
@@ -1861,17 +1920,14 @@ class MPAI_Context_Manager {
             unset($request['tool']);
         }
         
-        // IMPORTANT: Map tool names to match registry names
-        if (isset($request['name']) && $request['name'] === 'wp_cli') {
-            $request['name'] = 'wpcli';
-            mpai_log_debug('Mapping wp_cli tool name to wpcli for backend compatibility - THIS IS CRITICAL', 'context-manager');
-        }
+        // Only the standardized 'wpcli' tool ID is supported
+        // Legacy tool IDs have been completely removed
         
         // MCP is always enabled now (settings were removed from UI)
         mpai_log_debug('MCP is always enabled', 'context-manager');
         
         // FAST PATH: Special handling for common wpcli commands - bypass validation
-        if (isset($request['name']) && ($request['name'] === 'wpcli' || $request['name'] === 'wp_cli') && 
+        if (isset($request['name']) && $request['name'] === 'wpcli' &&
             isset($request['parameters']) && isset($request['parameters']['command'])) {
             
             $command = $request['parameters']['command'];
@@ -1899,7 +1955,7 @@ class MPAI_Context_Manager {
                     // Return properly formatted response
                     return array(
                         'success' => true,
-                        'tool' => 'wp_cli',
+                        'tool' => 'wpcli',
                         'action' => 'user_list',
                         'result' => array(
                             'success' => true,
@@ -2087,13 +2143,13 @@ class MPAI_Context_Manager {
             $validated_params[$param_name] = $parameters[$param_name];
         }
         
-        // Special handling for wp_cli tool
-        if ($tool['name'] === 'wp_cli') {
+        // Special handling for wpcli tool
+        if ($tool['name'] === 'wpcli') {
             if (!isset($validated_params['command'])) {
-                mpai_log_warning('Missing command parameter for wp_cli tool', 'context-manager');
+                mpai_log_warning('Missing command parameter for wpcli tool', 'context-manager');
                 return array(
                     'success' => false,
-                    'error' => 'Command parameter is required for wp_cli tool',
+                    'error' => 'Command parameter is required for wpcli tool',
                     'tool' => $request['name']
                 );
             }
@@ -2250,7 +2306,7 @@ class MPAI_Context_Manager {
                 $command_type = 'wp_api';
                 $command_data = $request;
             } else if (isset($request['command']) && is_string($request['command'])) {
-                $command_type = 'wp_cli';
+                $command_type = 'wpcli';
                 $command_data = $request;
             } else {
                 // Unknown command type, skip validation

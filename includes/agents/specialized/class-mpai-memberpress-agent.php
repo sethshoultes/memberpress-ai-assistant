@@ -237,7 +237,7 @@ class MPAI_MemberPress_Agent extends MPAI_Base_Agent {
 		$actions = [];
 		
 		// Check for time-based queries about new members
-		if ( ( strpos( $message, 'new member' ) !== false || strpos( $message, 'members joined' ) !== false ) 
+		if ( ( strpos( $message, 'new member' ) !== false || strpos( $message, 'members joined' ) !== false )
 			&& ( strpos( $message, 'this month' ) !== false || strpos( $message, 'current month' ) !== false ) ) {
 			$actions[] = [
 				'tool_id' => 'wp_api',
@@ -250,7 +250,7 @@ class MPAI_MemberPress_Agent extends MPAI_Base_Agent {
 			];
 		}
 		// Check for time-based queries about new members in previous month
-		elseif ( ( strpos( $message, 'new member' ) !== false || strpos( $message, 'members joined' ) !== false ) 
+		elseif ( ( strpos( $message, 'new member' ) !== false || strpos( $message, 'members joined' ) !== false )
 			&& ( strpos( $message, 'last month' ) !== false || strpos( $message, 'previous month' ) !== false ) ) {
 			$actions[] = [
 				'tool_id' => 'wp_api',
@@ -263,7 +263,7 @@ class MPAI_MemberPress_Agent extends MPAI_Base_Agent {
 			];
 		}
 		// Check for time-based queries about transactions for current month
-		elseif ( strpos( $message, 'transaction' ) !== false && 
+		elseif ( strpos( $message, 'transaction' ) !== false &&
 			( strpos( $message, 'this month' ) !== false || strpos( $message, 'current month' ) !== false ) ) {
 			$actions[] = [
 				'tool_id' => 'wp_api',
@@ -272,6 +272,31 @@ class MPAI_MemberPress_Agent extends MPAI_Base_Agent {
 					'action' => 'get_transactions',
 					'month' => 'current',
 					'limit' => 100,
+				],
+			];
+		}
+		// Check for plugin-related queries, especially about installations
+		elseif ( strpos( $message, 'plugin' ) !== false &&
+			( strpos( $message, 'install' ) !== false || strpos( $message, 'recent' ) !== false ||
+			  strpos( $message, 'add' ) !== false || strpos( $message, 'new' ) !== false ) ) {
+			$actions[] = [
+				'tool_id' => 'plugin_logs',
+				'description' => 'Get recently installed plugins',
+				'parameters' => [
+					'action' => 'installed',
+					'days' => 30,
+					'limit' => 10,
+				],
+			];
+		}
+		// Check for general plugin queries
+		elseif ( strpos( $message, 'plugin' ) !== false ) {
+			$actions[] = [
+				'tool_id' => 'plugin_logs',
+				'description' => 'Get plugin activity logs',
+				'parameters' => [
+					'days' => 30,
+					'limit' => 15,
 				],
 			];
 		}
