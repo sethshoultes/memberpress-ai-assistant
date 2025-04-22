@@ -1,0 +1,45 @@
+# MemberPress AI Assistant LLM Usage Information
+schema_version: https://llmstxt.org/v1
+date_created: 2025-04-21
+
+## Purpose
+The MemberPress AI Assistant uses language models to analyze membership site data and help WordPress administrators manage their MemberPress sites through natural language interaction. It provides a chat interface for querying membership data, executing WordPress CLI commands, and generating content.
+
+## Models
+
+### GPT-4o
+- Primary model used for OpenAI integration
+- Uses: Data analysis, command execution, content generation
+- Provider: OpenAI
+- Access method: API
+- System role: Primary AI assistant for MemberPress data analysis and site management
+
+### Claude-3-Opus
+- Primary model used for Anthropic integration
+- Uses: Data analysis, command execution, content generation
+- Provider: Anthropic
+- Access method: API
+- System role: Alternative AI assistant when OpenAI is unavailable
+
+## Data
+- User inputs: Natural language queries about MemberPress data and WordPress site
+- WordPress data: Site configuration, user data, membership information
+- Outputs: Natural language responses, WordPress commands, content generation
+
+## Sensitive Information
+- The plugin does not send sensitive customer data to language models
+- WP-CLI commands are validated before execution
+- User-provided inputs are sanitized
+
+## Automation
+- The plugin can automatically execute WordPress CLI commands based on natural language requests
+- Content can be automatically generated and published to the WordPress site
+- All automated actions require admin-level permissions
+
+## Logging
+- The plugin logs interactions with AI models for debugging purposes
+- Logs are stored locally in the WordPress database
+- Logs include timestamps, request types, and response status
+
+## Contact
+For questions about LLM usage in this plugin, contact MemberPress support.
