@@ -317,6 +317,136 @@ var MPAI_Messages = (function($) {
      * @param {string} response - The response from the AI
      */
     function processResponse(response) {
+        // CRITICAL FIX: Direct membership creation detector
+        if (response && response.includes('memberpress_info') && response.includes('"type":"create"')) {
+            console.log('DIRECT MEMBERSHIP FIX - Detected memberpress_info tool call in response');
+
+            // Direct pattern matching for membership tool calls - added more comprehensive patterns
+            const membershipPatterns = [
+                // Code block formats with JSON
+                /```(?:json)?\s*({[\s\n]*"tool"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*{[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?}[\s\n]*})\s*```/m,
+                /```(?:json)?\s*({[\s\n]*"name"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*{[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?}[\s\n]*})\s*```/m,
+                
+                // Raw JSON formats
+                /{[\s\n]*"tool"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*{[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?}[\s\n]*}/m,
+                /{[\s\n]*"name"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*{[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?}[\s\n]*}/m,
+                
+                // Different function call formats (Anthropic Claude format)
+                /<tool>[\s\n]*memberpress_info[\s\n]*<\/tool>[\s\n]*<parameters>[\s\n]*({[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?})[\s\n]*<\/parameters>/m,
+                /<function>[\s\n]*memberpress_info[\s\n]*<\/function>[\s\n]*<arguments>[\s\n]*({[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?})[\s\n]*<\/arguments>/m,
+                
+                // Tool calls with different quotation styles
+                /{[\s\n]*['"]tool['"][\s\n]*:[\s\n]*['"]memberpress_info['"][\s\n]*,[\s\n]*['"]parameters['"][\s\n]*:[\s\n]*{[\s\n]*['"]type['"][\s\n]*:[\s\n]*['"]create['"][\s\S]*?}[\s\n]*}/m,
+                /{[\s\n]*['"]name['"][\s\n]*:[\s\n]*['"]memberpress_info['"][\s\n]*,[\s\n]*['"]parameters['"][\s\n]*:[\s\n]*{[\s\n]*['"]type['"][\s\n]*:[\s\n]*['"]create['"][\s\S]*?}[\s\n]*}/m,
+                
+                // OpenAI function call format within messages
+                /{\s*"role"\s*:\s*"assistant"[\s\S]*?"function_call"\s*:\s*{\s*"name"\s*:\s*"memberpress_info"[\s\S]*?"arguments"\s*:\s*"({[\s\S]*?\"type\"\s*:\s*\"create\"[\s\S]*?})"/m
+            ];
+
+            // Try each pattern
+            for (const pattern of membershipPatterns) {
+                const matches = response.match(pattern);
+                if (matches && matches[1]) {
+                    let jsonStr = matches[1];
+                    console.log('DIRECT MEMBERSHIP FIX - Found potential match:', jsonStr);
+                    
+                    // Clean up the JSON string if needed (e.g., escaped quotes in OpenAI format)
+                    jsonStr = jsonStr.replace(/\\"/g, '"').replace(/\\n/g, '');
+                    if (jsonStr.startsWith('"') && jsonStr.endsWith('"')) {
+                        // Handle doubly-stringified JSON (happens in some OpenAI formats)
+                        jsonStr = jsonStr.slice(1, -1);
+                    }
+                    
+                    console.log('DIRECT MEMBERSHIP FIX - Cleaned JSON string:', jsonStr);
+                    
+                    try {
+                        const jsonData = JSON.parse(jsonStr);
+                        console.log('DIRECT MEMBERSHIP FIX - Parsed JSON data:', jsonData);
+                        
+                        // Extract tool name and parameters, handling multiple formats
+                        let toolName = 'memberpress_info'; // Default tool name
+                        let parameters;
+                        
+                        // Handle different JSON structures
+                        if (jsonData.type === 'create') {
+                            // Direct parameters format
+                            parameters = jsonData;
+                        } else if (jsonData.parameters && jsonData.parameters.type === 'create') {
+                            // Nested parameters format
+                            parameters = jsonData.parameters;
+                        } else if (jsonData.arguments && typeof jsonData.arguments === 'object' && jsonData.arguments.type === 'create') {
+                            // OpenAI format
+                            parameters = jsonData.arguments;
+                        }
+                        
+                        if (parameters && parameters.type === 'create') {
+                            console.log('DIRECT MEMBERSHIP FIX - Processing membership creation with params:', parameters);
+                            
+                            // Build clean parameters with proper types
+                            const cleanParameters = {
+                                type: 'create',
+                                name: parameters.name || ('Membership ' + new Date().toISOString().substring(0, 10)),
+                                price: typeof parameters.price === 'number' ? parameters.price : parseFloat(parameters.price || '99.99'),
+                                period_type: parameters.period_type || 'month',
+                                period: parameters.period || 1
+                            };
+                            
+                            console.log('DIRECT MEMBERSHIP FIX - Clean parameters:', cleanParameters);
+                            console.log('DIRECT MEMBERSHIP FIX - Price type:', typeof cleanParameters.price);
+                            
+                            // Create tool request
+                            const toolRequest = {
+                                name: toolName,
+                                parameters: cleanParameters
+                            };
+                            
+                            console.log('DIRECT MEMBERSHIP FIX - Sending AJAX for membership creation:', toolRequest);
+                            console.log('DIRECT MEMBERSHIP FIX - AJAX data:', {
+                                action: 'mpai_execute_tool',
+                                tool_request: JSON.stringify(toolRequest),
+                                nonce: mpai_chat_data.nonce
+                            });
+                            
+                            // Direct AJAX call for membership creation
+                            $.ajax({
+                                url: mpai_chat_data.ajax_url,
+                                type: 'POST',
+                                data: {
+                                    action: 'mpai_execute_tool',
+                                    tool_request: JSON.stringify(toolRequest),
+                                    nonce: mpai_chat_data.nonce
+                                },
+                                success: function(execResponse) {
+                                    console.log('DIRECT MEMBERSHIP FIX - Tool execution response:', execResponse);
+                                    if (execResponse.success) {
+                                        const resultMessage = 'Successfully created membership "' + cleanParameters.name + 
+                                                            '" with price $' + cleanParameters.price + 
+                                                            ' (' + cleanParameters.period_type + ').';
+                                        console.log('DIRECT MEMBERSHIP FIX - ' + resultMessage);
+                                    } else {
+                                        console.error('DIRECT MEMBERSHIP FIX - Tool execution failed:', execResponse);
+                                    }
+                                },
+                                error: function(xhr, status, error) {
+                                    console.error('DIRECT MEMBERSHIP FIX - AJAX error:', error);
+                                    console.error('DIRECT MEMBERSHIP FIX - Full error details:', {
+                                        status: xhr.status,
+                                        responseText: xhr.responseText,
+                                        errorThrown: error
+                                    });
+                                }
+                            });
+                            
+                            break; // Exit the loop once we've processed a valid match
+                        }
+                    } catch (e) {
+                        console.error('DIRECT MEMBERSHIP FIX - Error parsing JSON:', e);
+                        console.error('DIRECT MEMBERSHIP FIX - JSON string that failed:', jsonStr);
+                    }
+                }
+            }
+        }
+        
         // Start processing timing
         if (window.mpaiLogger) {
             window.mpaiLogger.startTimer('process_response');
