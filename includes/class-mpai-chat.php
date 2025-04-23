@@ -1729,9 +1729,40 @@ class MPAI_Chat {
             
             // Special handling for membership creation
             if ($tool_name === 'memberpress_info' && isset($parameters['type']) && $parameters['type'] === 'create') {
-                mpai_log_debug('Membership creation detected, ensuring name and price are passed correctly', 'chat');
-                mpai_log_debug('Name: ' . (isset($parameters['name']) ? $parameters['name'] : 'Not set'), 'chat');
-                mpai_log_debug('Price: ' . (isset($parameters['price']) ? $parameters['price'] : 'Not set'), 'chat');
+                mpai_log_debug('Membership creation detected - EXTRA VALIDATION', 'chat');
+                
+                // Validate required parameters
+                if (!isset($parameters['name']) || empty($parameters['name']) || $parameters['name'] === 'New Membership') {
+                    mpai_log_error('CRITICAL ERROR: Missing or default name for membership creation', 'chat');
+                    // Do not continue - return error instead
+                    $error_message = "Error: Membership creation requires a specific name. The default 'New Membership' is not allowed.";
+                    $tool_call_block = "```json\n{$match}\n```";
+                    $error_block = "```\nERROR: {$error_message}\n```";
+                    $processed_response = str_replace($tool_call_block, $error_block, $processed_response);
+                    continue; // Skip executing this tool
+                }
+                
+                // Validate price
+                if (!isset($parameters['price']) || floatval($parameters['price']) <= 0) {
+                    mpai_log_error('CRITICAL ERROR: Missing or invalid price for membership creation', 'chat');
+                    // Do not continue - return error instead
+                    $error_message = "Error: Membership creation requires a valid price greater than zero.";
+                    $tool_call_block = "```json\n{$match}\n```";
+                    $error_block = "```\nERROR: {$error_message}\n```";
+                    $processed_response = str_replace($tool_call_block, $error_block, $processed_response);
+                    continue; // Skip executing this tool
+                }
+                
+                // Log the parameters for debugging
+                mpai_log_debug('Membership creation parameters validated', 'chat');
+                mpai_log_debug('Name: ' . $parameters['name'], 'chat');
+                mpai_log_debug('Price: ' . $parameters['price'] . ' (type: ' . gettype($parameters['price']) . ')', 'chat');
+                
+                // Ensure price is always a number
+                if (is_string($parameters['price'])) {
+                    $parameters['price'] = floatval($parameters['price']);
+                    mpai_log_debug('Converted price from string to number: ' . $parameters['price'], 'chat');
+                }
             }
             
             $tool_request = array(

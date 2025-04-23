@@ -353,6 +353,24 @@ class MPAI_MemberPress_Agent extends MPAI_Base_Agent {
 	}
 	
 	/**
+	 * Get MemberPress service instance
+	 * @return MPAI_MemberPress_Service
+	 */
+	private function get_service() {
+		static $service = null;
+		
+		if ($service === null) {
+			// Ensure the service class is loaded
+			if (!class_exists('MPAI_MemberPress_Service')) {
+				require_once dirname(dirname(dirname(__FILE__))) . '/class-mpai-memberpress-service.php';
+			}
+			$service = new MPAI_MemberPress_Service();
+		}
+		
+		return $service;
+	}
+	
+	/**
 	 * Run a MemberPress CLI command
 	 *
 	 * @param string $command Command to run
@@ -360,6 +378,40 @@ class MPAI_MemberPress_Agent extends MPAI_Base_Agent {
 	 * @return string Command output
 	 */
 	public function run_mepr_command( $command, $args = [] ) {
+		// Check if this is a command we can handle directly with the service
+		if (preg_match('/membership\s+create/i', $command) || strpos($command, 'mepr-membership create') !== false) {
+			// Extract parameters from the command
+			preg_match('/--name=[\'"]?([^\'"]+)[\'"]?/i', $command, $name_matches);
+			preg_match('/--price=([0-9.]+)/i', $command, $price_matches);
+			preg_match('/--period=([a-z]+)/i', $command, $period_matches);
+			
+			$name = isset($name_matches[1]) ? $name_matches[1] : 'New Membership';
+			$price = isset($price_matches[1]) ? floatval($price_matches[1]) : 19.99;
+			$period = isset($period_matches[1]) ? $period_matches[1] : 'month';
+			
+			// Log the extracted parameters
+			error_log('AGENT COMMAND - Extracted parameters: name=' . $name . ', price=' . $price . ', period=' . $period);
+			
+			// Use our direct method
+			$result = $this->create_membership_level($name, $price, ['period_type' => $period]);
+			return json_encode($result);
+		}
+		else if (preg_match('/coupon\s+create/i', $command) || strpos($command, 'mepr-coupon create') !== false) {
+			// Extract parameters from the command
+			preg_match('/--code=[\'"]?([^\'"]+)[\'"]?/i', $command, $code_matches);
+			preg_match('/--type=([a-z]+)/i', $command, $type_matches);
+			preg_match('/--amount=([0-9.]+)/i', $command, $amount_matches);
+			
+			$code = isset($code_matches[1]) ? $code_matches[1] : 'COUPON' . rand(1000, 9999);
+			$type = isset($type_matches[1]) ? $type_matches[1] : 'percent';
+			$amount = isset($amount_matches[1]) ? floatval($amount_matches[1]) : 10;
+			
+			// Use our direct method
+			$result = $this->create_coupon($code, $type, $amount);
+			return json_encode($result);
+		}
+		
+		// For other commands, use WP-CLI as fallback
 		// Ensure command starts with wp mepr
 		if ( strpos( $command, 'wp mepr' ) !== 0 ) {
 			$command = 'wp mepr-' . $command;
@@ -377,17 +429,47 @@ class MPAI_MemberPress_Agent extends MPAI_Base_Agent {
 	 *
 	 * @param string $name Membership level name
 	 * @param float $price Membership price
-	 * @param string $period Billing period (month, year, etc)
+	 * @param array $args Additional arguments
 	 * @return array Membership data
 	 */
-	public function create_membership_level( $name, $price, $period = 'month' ) {
-		// Use the MemberPress tool to create a new membership level
-		$command = "wp mepr-membership create --name='{$name}' --price={$price} --period={$period} --format=json";
+	public function create_membership_level( $name, $price, $args = array() ) {
+		$service = $this->get_service();
 		
-		$result = $this->execute_tool( 'wpcli', ['command' => $command] );
+		// Ensure price is a number and greater than zero
+		if (!is_numeric($price)) {
+			$price = floatval($price);
+		}
 		
-		// Process the result
-		return json_decode( $result, true );
+		// Set a reasonable minimum price if zero or negative
+		if ($price <= 0) {
+			$price = 19.99;
+		}
+		
+		$membership_args = array_merge(array(
+			'name' => $name,
+			'price' => $price
+		), $args);
+		
+		// Log the arguments being passed to create_membership
+		error_log('AGENT CREATE - Membership arguments: ' . json_encode($membership_args));
+		
+		$result = $service->create_membership($membership_args);
+		
+		if (is_wp_error($result)) {
+			return array(
+				'success' => false, 
+				'message' => $result->get_error_message()
+			);
+		}
+		
+		return array(
+			'success' => true,
+			'membership_id' => $result->ID,
+			'name' => $result->post_title,
+			'price' => $result->price,
+			'period_type' => $result->period_type,
+			'message' => 'Membership created successfully'
+		);
 	}
 	
 	/**
@@ -396,15 +478,100 @@ class MPAI_MemberPress_Agent extends MPAI_Base_Agent {
 	 * @param string $code Coupon code
 	 * @param string $type Discount type (percent, flat)
 	 * @param float $amount Discount amount
+	 * @param array $args Additional arguments
 	 * @return array Coupon data
 	 */
-	public function create_coupon( $code, $type = 'percent', $amount = 10 ) {
-		// Use the MemberPress tool to create a new coupon
-		$command = "wp mepr-coupon create --code='{$code}' --type={$type} --amount={$amount} --format=json";
+	public function create_coupon( $code, $type = 'percent', $amount = 10, $args = array() ) {
+		$service = $this->get_service();
 		
-		$result = $this->execute_tool( 'wpcli', ['command' => $command] );
+		$coupon_args = array_merge(array(
+			'code' => $code,
+			'discount_type' => $type,
+			'discount_amount' => $amount
+		), $args);
 		
-		// Process the result
-		return json_decode( $result, true );
+		$result = $service->create_coupon($coupon_args);
+		
+		if (is_wp_error($result)) {
+			return array(
+				'success' => false, 
+				'message' => $result->get_error_message()
+			);
+		}
+		
+		return array(
+			'success' => true,
+			'coupon_id' => $result->ID,
+			'code' => $result->post_title,
+			'discount_type' => $result->discount_type,
+			'discount_amount' => $result->discount_amount,
+			'message' => 'Coupon created successfully'
+		);
+	}
+	
+	/**
+	 * Add a user to a membership
+	 *
+	 * @param int $user_id User ID
+	 * @param int $membership_id Membership ID
+	 * @param array $args Additional arguments
+	 * @return array Response data
+	 */
+	public function add_user_to_membership($user_id, $membership_id, $args = array()) {
+		$service = $this->get_service();
+		
+		$result = $service->add_user_to_membership($user_id, $membership_id, $args);
+		
+		if (is_wp_error($result)) {
+			return array(
+				'success' => false, 
+				'message' => $result->get_error_message()
+			);
+		}
+		
+		return array(
+			'success' => true,
+			'subscription_id' => $result->id,
+			'user_id' => $result->user_id,
+			'membership_id' => $result->product_id,
+			'status' => $result->status,
+			'message' => 'User added to membership successfully'
+		);
+	}
+	
+	/**
+	 * Create a transaction
+	 *
+	 * @param int $user_id User ID
+	 * @param int $membership_id Membership ID
+	 * @param array $args Additional arguments
+	 * @return array Response data
+	 */
+	public function create_transaction($user_id, $membership_id, $args = array()) {
+		$service = $this->get_service();
+		
+		$txn_args = array_merge(array(
+			'user_id' => $user_id,
+			'product_id' => $membership_id
+		), $args);
+		
+		$result = $service->create_transaction($txn_args);
+		
+		if (is_wp_error($result)) {
+			return array(
+				'success' => false, 
+				'message' => $result->get_error_message()
+			);
+		}
+		
+		return array(
+			'success' => true,
+			'transaction_id' => $result->id,
+			'user_id' => $result->user_id,
+			'membership_id' => $result->product_id,
+			'amount' => $result->amount,
+			'status' => $result->status,
+			'message' => 'Transaction created successfully'
+		);
 	}
 }
