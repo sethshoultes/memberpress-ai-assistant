@@ -1,7 +1,7 @@
 /**
  * MemberPress AI Assistant - Chat Tools Module
  * 
- * Handles tool call detection, execution, and formatting
+ * Completely rewritten module for tool execution with strict parameter validation
  */
 
 var MPAI_Tools = (function($) {
@@ -11,7 +11,6 @@ var MPAI_Tools = (function($) {
     var elements = {};
     var messagesModule = null;
     var formattersModule = null;
-    var processedToolCalls = new Set();
     
     /**
      * Initialize the module
@@ -25,6 +24,13 @@ var MPAI_Tools = (function($) {
         messagesModule = messages;
         formattersModule = formatters;
         
+        // Initialize the tool call detector
+        if (window.MPAI_ToolCallDetector && typeof window.MPAI_ToolCallDetector.init === 'function') {
+            window.MPAI_ToolCallDetector.init({
+                logger: window.mpaiLogger
+            });
+        }
+        
         if (window.mpaiLogger) {
             window.mpaiLogger.info('Tools module initialized', 'tool_usage');
         }
@@ -37,196 +43,359 @@ var MPAI_Tools = (function($) {
      * @return {boolean} Whether tool calls were detected and processing
      */
     function processToolCalls(response) {
-        // Comprehensive logging
-        if (window.mpaiLogger) {
-            window.mpaiLogger.debug('Processing response for tool calls', 'tool_usage');
-            window.mpaiLogger.startTimer('tool_detection');
-        }
-        
-        // Check for tool call markup
-        const toolCallRegex = /<tool:([^>]+)>([\s\S]*?)<\/tool>/g;
-        let match;
-        let hasToolCalls = false;
-        
-        // Create a temporary div to parse HTML
-        const $temp = $('<div>').html(response);
-        
-        // Log the parsed HTML for debugging
-        if (window.mpaiLogger) {
-            window.mpaiLogger.debug('Parsed response HTML for tool detection', 'tool_usage', {
-                responseLength: response.length,
-                containsJsonCode: response.includes('```json'),
-                containsToolTag: response.includes('<tool:')
-            });
-        }
-        
-        // Look for structured tool calls
-        const $toolCalls = $temp.find('.mpai-tool-call');
-        
-        if ($toolCalls.length > 0) {
-            // Process structured tool calls in the DOM
-            hasToolCalls = true;
+        // CRITICAL FIX: Direct detection for membership creation
+        if (response &&
+            response.includes('memberpress_info') &&
+            response.includes('"type":"create"')) {
             
-            $toolCalls.each(function() {
-                const $toolCall = $(this);
-                const toolId = $toolCall.attr('id');
-                const toolName = $toolCall.data('tool-name');
-                const parametersStr = $toolCall.data('tool-parameters');
+            console.log('MPAI Tools - CRITICAL FIX - Detected potential membership creation in response');
+            
+            // Multiple patterns to match different JSON formats
+            const jsonPatterns = [
+                // FIXED PATTERN: Use a more robust pattern that captures the entire JSON object
+                /\{[\s\n]*"tool"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*\{[\s\S]*?"type"[\s\n]*:[\s\n]*"create"[\s\S]*?\}\}/g,
                 
-                // Skip if this tool call has already been processed
-                if (processedToolCalls.has(toolId)) {
-                    return;
+                // Variation with name instead of tool
+                /\{[\s\n]*"name"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*\{[\s\S]*?"type"[\s\n]*:[\s\n]*"create"[\s\S]*?\}\}/g,
+                
+                // Variation with single quotes
+                /\{[\s\n]*['"]tool['"][\s\n]*:[\s\n]*['"]memberpress_info['"][\s\n]*,[\s\n]*['"]parameters['"][\s\n]*:[\s\n]*\{[\s\S]*?['"]type['"][\s\n]*:[\s\n]*['"]create['"][\s\S]*?\}\}/g
+            ];
+            
+            // Try each pattern
+            for (const pattern of jsonPatterns) {
+                const matches = response.match(pattern);
+                
+                if (matches && matches.length > 0) {
+                    console.log('MPAI Tools - CRITICAL FIX - Found direct membership creation format', matches[0]);
+                    
+                    try {
+                        // Clean the JSON string - handle single quotes, etc.
+                        let jsonStr = matches[0].replace(/'/g, '"');
+                        
+                        // Parse the JSON
+                        const jsonData = JSON.parse(jsonStr);
+                        console.log('MPAI Tools - CRITICAL FIX - Parsed JSON data:', jsonData);
+                        
+                        if ((jsonData.tool === 'memberpress_info' || jsonData.name === 'memberpress_info') &&
+                            jsonData.parameters &&
+                            jsonData.parameters.type === 'create') {
+                            
+                            // Extract and enhance parameters
+                            const params = jsonData.parameters;
+                            
+                            // Extract name from the response text if not in parameters
+                            if (!params.name && response && response.includes('named')) {
+                                const nameMatch = response.match(/named\s+['"]?([^'"]+)['"]?/i);
+                                if (nameMatch && nameMatch[1]) {
+                                    params.name = nameMatch[1].trim();
+                                    console.log('MPAI Tools - CRITICAL FIX - Extracted name from text:', params.name);
+                                }
+                            }
+                            
+                            // Extract price from the response text if not in parameters
+                            if (!params.price && response && response.includes('$')) {
+                                const priceMatch = response.match(/\$\s*(\d+(?:\.\d+)?)/);
+                                if (priceMatch && priceMatch[1]) {
+                                    params.price = parseFloat(priceMatch[1]);
+                                    console.log('MPAI Tools - CRITICAL FIX - Extracted price from text:', params.price);
+                                }
+                            } else if (typeof params.price === 'string' && !isNaN(parseFloat(params.price))) {
+                                // Ensure price is a number
+                                params.price = parseFloat(params.price);
+                                console.log('MPAI Tools - CRITICAL FIX - Converted price from string to number:', params.price);
+                            }
+                            
+                            // Extract period_type from the response text if not in parameters
+                            if (!params.period_type && response) {
+                                if (response.includes('monthly')) {
+                                    params.period_type = 'month';
+                                    console.log('MPAI Tools - CRITICAL FIX - Set period_type to month based on text');
+                                } else if (response.includes('yearly')) {
+                                    params.period_type = 'year';
+                                    console.log('MPAI Tools - CRITICAL FIX - Set period_type to year based on text');
+                                } else if (response.includes('lifetime')) {
+                                    params.period_type = 'lifetime';
+                                    console.log('MPAI Tools - CRITICAL FIX - Set period_type to lifetime based on text');
+                                }
+                            }
+                            
+                            // Log the final parameters
+                            console.log('MPAI Tools - CRITICAL FIX - Final parameters:', params);
+                            
+                            // Create a tool call object
+                            const toolCalls = [{
+                                name: 'memberpress_info',
+                                parameters: params
+                            }];
+                            
+                            // Execute the tool call directly
+                            executeToolCalls(toolCalls, response);
+                            return true;
+                        }
+                    } catch (e) {
+                        console.error('MPAI Tools - CRITICAL FIX - Error parsing direct format JSON', e);
+                    }
                 }
+            }
+            
+            // Check for JSON code blocks
+            if (response.includes('```json')) {
+                console.log('MPAI Tools - CRITICAL FIX - Checking for JSON code blocks');
                 
-                // Mark as processed
-                processedToolCalls.add(toolId);
+                const codeBlockPattern = /```json\s*([\s\S]*?)\s*```/g;
+                let codeBlockMatch;
                 
-                // Parse parameters
-                let parameters = {};
-                try {
-                    parameters = JSON.parse(parametersStr);
-                } catch (e) {
-                    console.error('Failed to parse tool parameters:', e);
+                while ((codeBlockMatch = codeBlockPattern.exec(response)) !== null) {
+                    if (codeBlockMatch[1] &&
+                        codeBlockMatch[1].includes('memberpress_info') &&
+                        codeBlockMatch[1].includes('"type":"create"')) {
+                        
+                        try {
+                            // Clean up the JSON string
+                            const jsonStr = codeBlockMatch[1].trim();
+                            
+                            console.log('MPAI Tools - CRITICAL FIX - Found JSON code block with potential tool call:', jsonStr.substring(0, 50) + '...');
+                            
+                            // Parse the JSON
+                            const jsonData = JSON.parse(jsonStr);
+                            console.log('MPAI Tools - CRITICAL FIX - Parsed JSON from code block:', jsonData);
+                            
+                            if ((jsonData.tool === 'memberpress_info' || jsonData.name === 'memberpress_info') &&
+                                jsonData.parameters &&
+                                jsonData.parameters.type === 'create') {
+                                
+                                // Extract and enhance parameters
+                                const params = jsonData.parameters;
+                                
+                                // Extract name from the response text if not in parameters
+                                if (!params.name && response && response.includes('named')) {
+                                    const nameMatch = response.match(/named\s+['"]?([^'"]+)['"]?/i);
+                                    if (nameMatch && nameMatch[1]) {
+                                        params.name = nameMatch[1].trim();
+                                        console.log('MPAI Tools - CRITICAL FIX - Extracted name from text:', params.name);
+                                    }
+                                }
+                                
+                                // Extract price from the response text if not in parameters
+                                if (!params.price && response && response.includes('$')) {
+                                    const priceMatch = response.match(/\$\s*(\d+(?:\.\d+)?)/);
+                                    if (priceMatch && priceMatch[1]) {
+                                        params.price = parseFloat(priceMatch[1]);
+                                        console.log('MPAI Tools - CRITICAL FIX - Extracted price from text:', params.price);
+                                    }
+                                } else if (typeof params.price === 'string' && !isNaN(parseFloat(params.price))) {
+                                    // Ensure price is a number
+                                    params.price = parseFloat(params.price);
+                                    console.log('MPAI Tools - CRITICAL FIX - Converted price from string to number:', params.price);
+                                }
+                                
+                                // Extract period_type from the response text if not in parameters
+                                if (!params.period_type && response) {
+                                    if (response.includes('monthly')) {
+                                        params.period_type = 'month';
+                                        console.log('MPAI Tools - CRITICAL FIX - Set period_type to month based on text');
+                                    } else if (response.includes('yearly')) {
+                                        params.period_type = 'year';
+                                        console.log('MPAI Tools - CRITICAL FIX - Set period_type to year based on text');
+                                    } else if (response.includes('lifetime')) {
+                                        params.period_type = 'lifetime';
+                                        console.log('MPAI Tools - CRITICAL FIX - Set period_type to lifetime based on text');
+                                    }
+                                }
+                                
+                                // Log the final parameters
+                                console.log('MPAI Tools - CRITICAL FIX - Final parameters:', params);
+                                
+                                // Create a tool call object
+                                const toolCalls = [{
+                                    name: 'memberpress_info',
+                                    parameters: params
+                                }];
+                                
+                                // Execute the tool call directly
+                                executeToolCalls(toolCalls, response);
+                                return true;
+                            }
+                        } catch (e) {
+                            console.error('MPAI Tools - CRITICAL FIX - Error parsing JSON code block', e);
+                        }
+                    }
                 }
-                
-                // Execute the tool
-                executeToolCall(toolName, parameters, toolId);
-            });
-        } else {
-            // Check for string-based tool calls
-            while ((match = toolCallRegex.exec(response)) !== null) {
-                hasToolCalls = true;
-                
-                const toolName = match[1];
-                const parametersStr = match[2];
-                
-                // Generate a unique ID for this tool call
-                const toolId = 'mpai-tool-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-                
-                // Skip if this exact command has already been processed (using the full match as key)
-                if (processedToolCalls.has(match[0])) {
-                    continue;
-                }
-                
-                // Mark as processed
-                processedToolCalls.add(match[0]);
-                
-                // Parse parameters
-                let parameters = {};
-                try {
-                    parameters = JSON.parse(parametersStr);
-                } catch (e) {
-                    console.error('Failed to parse tool parameters:', e);
-                }
-                
-                // Create HTML for the tool call
-                const toolCallHtml = createToolCallHTML(toolName, parameters, toolId);
-                
-                // Replace the tool call markup with the HTML
-                response = response.replace(match[0], toolCallHtml);
-                
-                // Execute the tool
-                executeToolCall(toolName, parameters, toolId);
             }
         }
         
-        // If tool calls were found and processed, update the response
-        if (hasToolCalls && !$toolCalls.length) {
-            // Add the processed message
-            if (messagesModule) {
-                messagesModule.addMessage('assistant', response);
-            }
+        // Check if tool call detector is available yet
+        if (!window.MPAI_ToolCallDetector || typeof window.MPAI_ToolCallDetector.processResponse !== 'function') {
+            // Wait for detector to load and try again
+            console.log('MPAI Tools - Tool call detector not available yet, retrying in 100ms');
+            
+            setTimeout(function() {
+                processToolCalls(response);
+            }, 100);
+            
+            return false;
         }
         
-        return hasToolCalls;
+        // Use the tool call detector
+        return window.MPAI_ToolCallDetector.processResponse(response);
     }
     
     /**
-     * Create HTML for a tool call
+     * Execute tool calls
      * 
-     * @param {string} toolName - The name of the tool
-     * @param {object} parameters - The parameters for the tool
-     * @param {string} toolId - The HTML element ID
-     * @return {string} HTML markup for the tool call
+     * @param {Array} toolCalls - Array of tool call objects
+     * @param {string} originalResponse - The original response containing the tool calls
      */
-    function createToolCallHTML(toolName, parameters, toolId) {
-        return `
-        <div id="${toolId}" class="mpai-tool-call" data-tool-name="${toolName}" data-tool-parameters='${JSON.stringify(parameters)}'>
-            <div class="mpai-tool-call-header">
-                <span class="mpai-tool-call-name">${toolName}</span>
-                <span class="mpai-tool-call-status mpai-tool-call-processing">Processing</span>
-            </div>
-            <div class="mpai-tool-call-parameters">
-                <pre>${JSON.stringify(parameters, null, 2)}</pre>
-            </div>
-            <div class="mpai-tool-call-result"></div>
-        </div>
-        `;
-    }
-    
-    /**
-     * Execute a tool call
-     * 
-     * @param {string} toolName - The name of the tool to execute
-     * @param {object} parameters - The parameters for the tool
-     * @param {string} toolId - The HTML element ID for updating the UI
-     */
-    function executeToolCall(toolName, parameters, toolId) {
-        if (!toolName || !parameters || !toolId) {
-            console.error('MPAI Tools: Missing required parameters for tool execution');
+    function executeToolCalls(toolCalls, originalResponse) {
+        if (!toolCalls || !Array.isArray(toolCalls) || toolCalls.length === 0) {
+            console.error('MPAI Tools - No tool calls to execute');
             return;
         }
         
-        // Log the tool call if logger is available
-        if (window.mpaiLogger) {
-            window.mpaiLogger.debug('Executing tool: ' + toolName, 'tool_usage');
-            window.mpaiLogger.logToolUsage(toolName, parameters);
-            window.mpaiLogger.startTimer('tool_' + toolId);
-            window.mpaiLogger.info('Tool execution detail for ' + toolName, 'tool_usage', {
-                toolId: toolId,
-                parameters: parameters,
-                timestamp: new Date().toISOString(),
-                execution_start: true
-            });
+        let updatedResponse = originalResponse;
+        
+        // Process each tool call
+        toolCalls.forEach(toolCall => {
+            // Handle membership creation as a special case
+            if (toolCall.name === 'memberpress_info' && 
+                toolCall.parameters && 
+                toolCall.parameters.type === 'create') {
+                
+                executeMembershipCreation(toolCall, updatedResponse);
+            } else {
+                // Standard tool execution
+                executeStandardTool(toolCall, updatedResponse);
+            }
+        });
+    }
+    
+    /**
+     * Execute a membership creation tool call with validation
+     * 
+     * @param {Object} toolCall - The tool call object
+     * @param {string} response - The response containing the tool call
+     */
+    function executeMembershipCreation(toolCall, response) {
+        console.log('MPAI Tools - Executing membership creation:', toolCall);
+        
+        // DIRECT FIX: Ensure parameters are properly formatted
+        if (toolCall.parameters) {
+            const params = toolCall.parameters;
+            
+            // Extract name from the response text if not in parameters
+            if (!params.name && response && response.includes('named')) {
+                const nameMatch = response.match(/named\s+['"]?([^'"]+)['"]?/i);
+                if (nameMatch && nameMatch[1]) {
+                    params.name = nameMatch[1].trim();
+                    console.log('MPAI Tools - DIRECT FIX - Extracted name from text:', params.name);
+                }
+            }
+            
+            // Extract price from the response text if not in parameters
+            if (!params.price && response && response.includes('$')) {
+                const priceMatch = response.match(/\$\s*(\d+(?:\.\d+)?)/);
+                if (priceMatch && priceMatch[1]) {
+                    params.price = parseFloat(priceMatch[1]);
+                    console.log('MPAI Tools - DIRECT FIX - Extracted price from text:', params.price);
+                }
+            } else if (typeof params.price === 'string' && !isNaN(parseFloat(params.price))) {
+                // Ensure price is a number
+                params.price = parseFloat(params.price);
+                console.log('MPAI Tools - DIRECT FIX - Converted price from string to number:', params.price);
+            }
+            
+            // Extract period_type from the response text if not in parameters
+            if (!params.period_type && response) {
+                if (response.includes('monthly')) {
+                    params.period_type = 'month';
+                    console.log('MPAI Tools - DIRECT FIX - Set period_type to month based on text');
+                } else if (response.includes('yearly')) {
+                    params.period_type = 'year';
+                    console.log('MPAI Tools - DIRECT FIX - Set period_type to year based on text');
+                } else if (response.includes('lifetime')) {
+                    params.period_type = 'lifetime';
+                    console.log('MPAI Tools - DIRECT FIX - Set period_type to lifetime based on text');
+                } else {
+                    // Default to month if not specified
+                    params.period_type = 'month';
+                    console.log('MPAI Tools - DIRECT FIX - Added default period_type: month');
+                }
+            } else if (!['month', 'year', 'lifetime'].includes(params.period_type)) {
+                console.log('MPAI Tools - DIRECT FIX - Invalid period_type:', params.period_type);
+                params.period_type = 'month'; // Default to month
+            }
+            
+            // Ensure type is set to 'create'
+            if (!params.type) {
+                params.type = 'create';
+                console.log('MPAI Tools - DIRECT FIX - Added missing type parameter');
+            }
+            
+            // Ensure name is set with a default if all else fails
+            if (!params.name) {
+                params.name = 'Gold Membership';
+                console.log('MPAI Tools - DIRECT FIX - Added default name: Gold Membership');
+            }
+            
+            // Log the final parameters
+            console.log('MPAI Tools - DIRECT FIX - Final parameters:', params);
         }
         
-        // Construct the tool request in the format expected by the backend
-        const toolRequest = {
-            name: toolName,
-            parameters: parameters
-        };
+        // Validate parameters
+        if (!window.MPAI_ParameterValidator) {
+            console.error('MPAI Tools - Parameter validator not available');
+            displayError('Parameter validation module not available', toolCall.name);
+            return;
+        }
         
+        console.log('MPAI Tools - CRITICAL FIX - Parameters before validation:', JSON.stringify(toolCall.parameters));
+        const validationResult = window.MPAI_ParameterValidator.validateMembershipParameters(toolCall.parameters);
+        console.log('MPAI Tools - CRITICAL FIX - Validation result:', validationResult);
+        
+        // If validation failed, display error and abort
+        if (!validationResult.isValid) {
+            console.error('MPAI Tools - Membership parameter validation failed:', validationResult.errors);
+            displayError(
+                'Membership parameter validation failed: ' + validationResult.errors.join('<br>'),
+                toolCall.name
+            );
+            return;
+        }
+        
+        // Replace the tool call in the response with a processing indicator
+        const toolCallHTML = window.MPAI_ToolCallDetector.formatToolCall({
+            name: toolCall.name,
+            parameters: validationResult.parameters
+        });
+        
+        // Find a DOM element for the tool call
+        const $toolCall = $(toolCallHTML);
+        const toolId = $toolCall.attr('id');
+        
+        // Append to messages if possible
+        if (messagesModule && typeof messagesModule.addMessage === 'function') {
+            // Append the tool call HTML to the last assistant message
+            messagesModule.appendToLastAssistantMessage(toolCallHTML);
+        }
+        
+        // Execute the tool with validated parameters
         $.ajax({
             url: mpai_chat_data.ajax_url,
             type: 'POST',
             data: {
                 action: 'mpai_execute_tool',
-                tool_request: JSON.stringify(toolRequest),
+                tool_request: JSON.stringify({
+                    name: toolCall.name,
+                    parameters: validationResult.parameters
+                }),
+                raw_request: response, // Include the raw response for parsing on the server
                 nonce: mpai_chat_data.nonce
             },
             success: function(response) {
-                if (window.mpaiLogger) {
-                    const elapsed = window.mpaiLogger.endTimer('tool_' + toolId);
-                    window.mpaiLogger.info(
-                        'Tool "' + toolName + '" executed in ' + (elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown time'), 
-                        'tool_usage'
-                    );
-                    window.mpaiLogger.info('Tool execution completed for ' + toolName, 'tool_usage', {
-                        toolId: toolId,
-                        success: true,
-                        elapsed: elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown',
-                        timestamp: new Date().toISOString(),
-                        execution_complete: true,
-                        result_summary: response.success ? 'success' : 'error',
-                        result_length: response.data && response.data.result ? 
-                            (typeof response.data.result === 'string' ? response.data.result.length : 'non-string result') : 
-                            'no result'
-                    });
-                }
+                console.log('MPAI Tools - Membership creation response:', response);
                 
                 const $toolCall = $('#' + toolId);
-                if (!$toolCall.length) return;
-                
                 const $status = $toolCall.find('.mpai-tool-call-status');
                 const $result = $toolCall.find('.mpai-tool-call-result');
                 
@@ -235,19 +404,47 @@ var MPAI_Tools = (function($) {
                     $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-success');
                     $status.html('Success');
                     
-                    // Format the result based on type and tool
-                    let resultContent = formatToolResult(toolName, response.data.result, parameters);
+                    // Format the result
+                    let resultContent = '';
+                    
+                    try {
+                        const resultData = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+                        
+                        if (resultData.success) {
+                            // Successful membership creation
+                            resultContent = `
+                                <div class="mpai-membership-created">
+                                    <p>Membership created successfully:</p>
+                                    <ul>
+                                        <li><strong>Name:</strong> ${resultData.name || validationResult.parameters.name}</li>
+                                        <li><strong>Price:</strong> $${resultData.price || validationResult.parameters.price}</li>
+                                        <li><strong>Period:</strong> ${validationResult.parameters.period_type}</li>
+                                    </ul>
+                                    <p class="mpai-membership-success">Membership ID: ${resultData.membership_id}</p>
+                                </div>
+                            `;
+                        } else {
+                            // Failed membership creation with error from server
+                            resultContent = `
+                                <div class="mpai-membership-error">
+                                    <p>Failed to create membership:</p>
+                                    <p class="mpai-error-message">${resultData.message || 'Unknown error'}</p>
+                                </div>
+                            `;
+                        }
+                    } catch (e) {
+                        // Error parsing result
+                        resultContent = `
+                            <div class="mpai-membership-error">
+                                <p>Error processing membership creation result:</p>
+                                <p class="mpai-error-message">${e.message}</p>
+                                <pre>${response.data}</pre>
+                            </div>
+                        `;
+                    }
                     
                     // Display the result
                     $result.html(resultContent);
-                    
-                    // Handle post-execution as needed (e.g., for chain of thought responses)
-                    if (response.data.final_response) {
-                        // Use the messages module to complete tool calls
-                        if (messagesModule) {
-                            messagesModule.completeToolCalls(response.data.final_response);
-                        }
-                    }
                 } else {
                     // Update status to error
                     $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-error');
@@ -260,31 +457,14 @@ var MPAI_Tools = (function($) {
                 }
                 
                 // Scroll to bottom to show results
-                setTimeout(function() {
-                    if (window.MPAI_UIUtils && typeof window.MPAI_UIUtils.scrollToBottom === 'function') {
-                        window.MPAI_UIUtils.scrollToBottom();
-                    }
-                }, 100);
+                if (window.MPAI_UIUtils && typeof window.MPAI_UIUtils.scrollToBottom === 'function') {
+                    window.MPAI_UIUtils.scrollToBottom();
+                }
             },
             error: function(xhr, status, error) {
-                if (window.mpaiLogger) {
-                    const elapsed = window.mpaiLogger.endTimer('tool_' + toolId);
-                    window.mpaiLogger.error('AJAX error executing tool ' + toolName, 'tool_usage');
-                    window.mpaiLogger.info('Tool execution failed for ' + toolName, 'tool_usage', {
-                        toolId: toolId,
-                        success: false,
-                        error: error,
-                        elapsed: elapsed ? elapsed.toFixed(2) + 'ms' : 'unknown',
-                        timestamp: new Date().toISOString(),
-                        execution_complete: true,
-                        xhr_status: xhr.status,
-                        xhr_statusText: xhr.statusText
-                    });
-                }
+                console.error('MPAI Tools - AJAX error:', error, xhr.responseText);
                 
                 const $toolCall = $('#' + toolId);
-                if (!$toolCall.length) return;
-                
                 const $status = $toolCall.find('.mpai-tool-call-status');
                 const $result = $toolCall.find('.mpai-tool-call-result');
                 
@@ -293,30 +473,139 @@ var MPAI_Tools = (function($) {
                 $status.html('Error');
                 
                 // Display the error
-                let errorMessage = `AJAX error: ${error}`;
-                if (xhr.responseText) {
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        if (response.data) {
-                            errorMessage += ` - ${response.data}`;
-                        }
-                    } catch (e) {
-                        // Can't parse response, use the raw text
-                        if (xhr.responseText.length < 100) {
-                            errorMessage += ` - ${xhr.responseText}`;
-                        }
-                    }
-                }
-                $result.html(`<div class="mpai-tool-call-error-message">${errorMessage}</div>`);
+                $result.html(`<div class="mpai-tool-call-error-message">AJAX error: ${error}</div>`);
                 
                 // Scroll to bottom to show error
-                setTimeout(function() {
-                    if (window.MPAI_UIUtils && typeof window.MPAI_UIUtils.scrollToBottom === 'function') {
-                        window.MPAI_UIUtils.scrollToBottom();
-                    }
-                }, 100);
+                if (window.MPAI_UIUtils && typeof window.MPAI_UIUtils.scrollToBottom === 'function') {
+                    window.MPAI_UIUtils.scrollToBottom();
+                }
             }
         });
+    }
+    
+    /**
+     * Execute a standard tool call
+     * 
+     * @param {Object} toolCall - The tool call object
+     * @param {string} response - The response containing the tool call
+     */
+    function executeStandardTool(toolCall, response) {
+        console.log('MPAI Tools - Executing standard tool:', toolCall);
+        
+        // Replace the tool call in the response with a processing indicator
+        const toolCallHTML = window.MPAI_ToolCallDetector.formatToolCall(toolCall);
+        
+        // Find a DOM element for the tool call
+        const $toolCall = $(toolCallHTML);
+        const toolId = $toolCall.attr('id');
+        
+        // Append to messages if possible
+        if (messagesModule && typeof messagesModule.addMessage === 'function') {
+            // Append the tool call HTML to the last assistant message
+            messagesModule.appendToLastAssistantMessage(toolCallHTML);
+        }
+        
+        // Execute the tool
+        $.ajax({
+            url: mpai_chat_data.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'mpai_execute_tool',
+                tool_request: JSON.stringify({
+                    name: toolCall.name,
+                    parameters: toolCall.parameters
+                }),
+                nonce: mpai_chat_data.nonce
+            },
+            success: function(response) {
+                console.log('MPAI Tools - Tool execution response:', response);
+                
+                const $toolCall = $('#' + toolId);
+                const $status = $toolCall.find('.mpai-tool-call-status');
+                const $result = $toolCall.find('.mpai-tool-call-result');
+                
+                if (response.success) {
+                    // Update status to success
+                    $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-success');
+                    $status.html('Success');
+                    
+                    // Format the result
+                    let resultContent = formatToolResult(toolCall.name, response.data);
+                    
+                    // Display the result
+                    $result.html(resultContent);
+                } else {
+                    // Update status to error
+                    $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-error');
+                    $status.html('Error');
+                    
+                    // Display the error
+                    const errorMessage = response.data && response.data.error ? response.data.error : 
+                                       (response.data || 'Unknown error executing tool');
+                    $result.html(`<div class="mpai-tool-call-error-message">${errorMessage}</div>`);
+                }
+                
+                // Scroll to bottom to show results
+                if (window.MPAI_UIUtils && typeof window.MPAI_UIUtils.scrollToBottom === 'function') {
+                    window.MPAI_UIUtils.scrollToBottom();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('MPAI Tools - AJAX error:', error, xhr.responseText);
+                
+                const $toolCall = $('#' + toolId);
+                const $status = $toolCall.find('.mpai-tool-call-status');
+                const $result = $toolCall.find('.mpai-tool-call-result');
+                
+                // Update status to error
+                $status.removeClass('mpai-tool-call-processing').addClass('mpai-tool-call-error');
+                $status.html('Error');
+                
+                // Display the error
+                $result.html(`<div class="mpai-tool-call-error-message">AJAX error: ${error}</div>`);
+                
+                // Scroll to bottom to show error
+                if (window.MPAI_UIUtils && typeof window.MPAI_UIUtils.scrollToBottom === 'function') {
+                    window.MPAI_UIUtils.scrollToBottom();
+                }
+            }
+        });
+    }
+    
+    /**
+     * Display an error message
+     * 
+     * @param {string} message - The error message
+     * @param {string} toolName - The name of the tool
+     */
+    function displayError(message, toolName) {
+        // Create an error element
+        const errorHTML = `
+            <div class="mpai-tool-call mpai-tool-call-error">
+                <div class="mpai-tool-call-header">
+                    <span class="mpai-tool-call-name">${toolName || 'Error'}</span>
+                    <span class="mpai-tool-call-status mpai-tool-call-error">Error</span>
+                </div>
+                <div class="mpai-tool-call-result">
+                    <div class="mpai-tool-call-error-message">${message}</div>
+                </div>
+            </div>
+        `;
+        
+        // Append to messages if possible
+        if (messagesModule && typeof messagesModule.appendToLastAssistantMessage === 'function') {
+            messagesModule.appendToLastAssistantMessage(errorHTML);
+        } else if (messagesModule && typeof messagesModule.addMessage === 'function') {
+            messagesModule.addMessage('assistant', errorHTML);
+        } else {
+            // If no message module, add to chat messages directly
+            $('.mpai-chat-messages').append(errorHTML);
+        }
+        
+        // Scroll to bottom
+        if (window.MPAI_UIUtils && typeof window.MPAI_UIUtils.scrollToBottom === 'function') {
+            window.MPAI_UIUtils.scrollToBottom();
+        }
     }
     
     /**
@@ -324,384 +613,43 @@ var MPAI_Tools = (function($) {
      * 
      * @param {string} toolName - The name of the tool
      * @param {*} result - The result data
-     * @param {Object} parameters - The tool parameters
      * @return {string} Formatted HTML for the result
      */
-    function formatToolResult(toolName, result, parameters) {
-        // Handle null/undefined results
+    function formatToolResult(toolName, result) {
         if (result === null || result === undefined) {
             return '<div class="mpai-tool-call-no-result">No result returned from tool</div>';
         }
         
-        // Format based on tool type
-        switch (toolName) {
-            case 'plugin_logs':
-                // Use the dedicated formatter for plugin logs
-                if (window.MPAI_Formatters && typeof window.MPAI_Formatters.formatPluginLogsResult === 'function') {
-                    return window.MPAI_Formatters.formatPluginLogsResult(result);
-                } else if (formattersModule && typeof formattersModule.formatPluginLogsResult === 'function') {
-                    return formattersModule.formatPluginLogsResult(result);
-                }
-                break;
-                
-            case 'wpcli':
-                // Format tabular data
-                if (result && typeof result === 'object' && result.result && result.command_type) {
-                    if (window.MPAI_Formatters && typeof window.MPAI_Formatters.formatTabularResult === 'function') {
-                        return window.MPAI_Formatters.formatTabularResult(result);
-                    } else if (formattersModule && typeof formattersModule.formatTabularResult === 'function') {
-                        return formattersModule.formatTabularResult(result);
-                    }
-                }
-                break;
-        }
+        // Handle different result types
+        let resultStr = '';
         
-        // Default formatting based on content type
         if (typeof result === 'string') {
-            return `<pre class="mpai-command-result"><code>${result}</code></pre>`;
-        } else {
-            // For objects, arrays, etc.
             try {
-                return `<pre class="mpai-command-result"><code>${JSON.stringify(result, null, 2)}</code></pre>`;
+                // Try to parse as JSON first
+                const jsonData = JSON.parse(result);
+                resultStr = `<pre class="mpai-tool-result-json">${JSON.stringify(jsonData, null, 2)}</pre>`;
             } catch (e) {
-                return `<div class="mpai-tool-call-error-message">Error formatting result: ${e.message}</div>`;
+                // Not valid JSON, display as pre-formatted text
+                resultStr = `<pre class="mpai-tool-result-text">${result}</pre>`;
             }
-        }
-    }
-    
-    /**
-     * Format tabular result data
-     *
-     * @param {object} resultData - The tabular result data object
-     * @return {string} Formatted HTML for the table
-     */
-    function formatTabularResult(resultData) {
-        if (!resultData || !resultData.result) {
-            return '<div class="mpai-tool-call-error-message">No result data to format</div>';
-        }
-        
-        const commandType = resultData.command_type || 'generic';
-        let result = resultData.result || '';
-        
-        // Process the result to handle escaped tabs and newlines
-        if (typeof result === 'string') {
-            if (result.includes('\\t')) {
-                result = result.replace(/\\t/g, '\t');
-            }
-            
-            if (result.includes('\\n')) {
-                result = result.replace(/\\n/g, '\n');
-            }
+        } else if (typeof result === 'object') {
+            // Format object as JSON
+            resultStr = `<pre class="mpai-tool-result-json">${JSON.stringify(result, null, 2)}</pre>`;
         } else {
-            // If result is not a string, return a simple display
-            return `<pre class="mpai-command-result"><code>${JSON.stringify(result, null, 2)}</code></pre>`;
+            // Convert to string for any other type
+            resultStr = `<pre class="mpai-tool-result-text">${String(result)}</pre>`;
         }
         
-        // Generate title based on command type
-        let tableTitle = '';
-        switch(commandType) {
-            case 'user_list':
-                tableTitle = '<h3>WordPress Users</h3>';
-                break;
-            case 'post_list':
-                tableTitle = '<h3>WordPress Posts</h3>';
-                break;
-            case 'plugin_list':
-                tableTitle = '<h3>WordPress Plugins</h3>';
-                break;
-            case 'membership_list':
-                tableTitle = '<h3>MemberPress Memberships</h3>';
-                break;
-            case 'transaction_list':
-                tableTitle = '<h3>MemberPress Transactions</h3>';
-                break;
-            default:
-                tableTitle = '<h3>Command Results</h3>';
-                break;
-        }
-        
-        // Format as table
-        const rows = result.trim().split('\n');
-        
-        let tableHtml = '<div class="mpai-result-table">';
-        tableHtml += tableTitle;
-        tableHtml += '<table>';
-        
-        // Skip empty rows
-        const nonEmptyRows = rows.filter(row => row.trim() !== '');
-        
-        nonEmptyRows.forEach((row, index) => {
-            // Try different delimiters to find the best match
-            let cells = [];
-            
-            // First try tab delimiter
-            if (row.includes('\t')) {
-                cells = row.split('\t');
-            } 
-            // Then try space delimiter with some intelligence
-            else if (commandType === 'plugin_list' && !row.includes('\t')) {
-                // For plugin list, we'll try to intelligently split by multi-spaces
-                // This matches the format: Name   Status   Version   Last Activity
-                const matches = row.match(/([^\s]+(?:\s+[^\s]+)*)\s{2,}/g);
-                
-                if (matches && matches.length > 0) {
-                    // Add the remainder of the string after the last match
-                    const matchedText = matches.join('');
-                    const remainder = row.substring(matchedText.length).trim();
-                    
-                    cells = matches.map(m => m.trim());
-                    
-                    if (remainder) {
-                        cells.push(remainder);
-                    }
-                } else {
-                    // Fallback to standard tab or 4+ space split
-                    cells = row.split(/\t|\s{4,}/);
-                }
-            } 
-            // Generic fallback
-            else {
-                // Split by multiple spaces (3 or more) for other types
-                cells = row.split(/\s{3,}/);
-                
-                // Fallback to basic split method if we didn't get at least 2 cells
-                if (cells.length < 2) {
-                    cells = row.split(/\s{2,}/);
-                }
-            }
-            
-            if (index === 0) {
-                // Header row
-                tableHtml += '<thead><tr>';
-                cells.forEach(cell => {
-                    tableHtml += `<th>${cell.trim()}</th>`;
-                });
-                tableHtml += '</tr></thead><tbody>';
-            } else {
-                // Handle status formatting for plugin list with special coloring
-                if (commandType === 'plugin_list') {
-                    tableHtml += '<tr>';
-                    cells.forEach((cell, cellIndex) => {
-                        cell = cell.trim();
-                        
-                        // Apply special formatting for Status column (typically index 1)
-                        if (cellIndex === 1 && (cell.toLowerCase() === 'active' || cell.toLowerCase() === 'inactive')) {
-                            const statusClass = cell.toLowerCase() === 'active' ? 'mpai-status-active' : 'mpai-status-inactive';
-                            tableHtml += `<td class="${statusClass}">${cell}</td>`;
-                        } else {
-                            tableHtml += `<td>${cell}</td>`;
-                        }
-                    });
-                    tableHtml += '</tr>';
-                } else {
-                    // Standard data row
-                    tableHtml += '<tr>';
-                    cells.forEach(cell => {
-                        tableHtml += `<td>${cell.trim()}</td>`;
-                    });
-                    tableHtml += '</tr>';
-                }
-            }
-        });
-        
-        tableHtml += '</tbody></table></div>';
-        
-        // Add CSS for status indicators
-        tableHtml += `
-        <style>
-            .mpai-result-table table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 10px 0;
-            }
-            .mpai-result-table th, .mpai-result-table td {
-                padding: 8px;
-                text-align: left;
-                border: 1px solid #ddd;
-            }
-            .mpai-result-table th {
-                background-color: #f2f2f2;
-                font-weight: bold;
-            }
-            .mpai-result-table .mpai-status-active {
-                color: green;
-                font-weight: bold;
-            }
-            .mpai-result-table .mpai-status-inactive {
-                color: #999;
-            }
-        </style>`;
-        
-        return tableHtml;
-    }
-    
-    /**
-     * Reset processed tool calls
-     */
-    function resetProcessedToolCalls() {
-        processedToolCalls.clear();
-    }
-    
-    /**
-     * Format plugin logs result
-     *
-     * @param {object} result - The plugin logs result data
-     * @return {string} Formatted HTML for the plugin logs
-     */
-    function formatPluginLogsResult(result) {
-        if (!result || (!result.logs && !result.summary)) {
-            return '<div class="mpai-tool-call-error-message">No plugin logs data to format</div>';
-        }
-        
-        let html = '<div class="mpai-plugin-logs-result">';
-        
-        // Add summary section
-        if (result.summary) {
-            html += '<div class="mpai-plugin-logs-summary">';
-            html += '<h3>Plugin Activity Summary</h3>';
-            html += '<p>Time period: ' + (result.time_period || 'All time') + '</p>';
-            
-            html += '<table class="mpai-summary-table">';
-            html += '<tr><th>Action</th><th>Count</th></tr>';
-            
-            if (typeof result.summary === 'object') {
-                html += '<tr><td>Total</td><td>' + (result.summary.total || 0) + '</td></tr>';
-                html += '<tr><td>Installed</td><td>' + (result.summary.installed || 0) + '</td></tr>';
-                html += '<tr><td>Activated</td><td>' + (result.summary.activated || 0) + '</td></tr>';
-                html += '<tr><td>Deactivated</td><td>' + (result.summary.deactivated || 0) + '</td></tr>';
-                html += '<tr><td>Updated</td><td>' + (result.summary.updated || 0) + '</td></tr>';
-                html += '<tr><td>Deleted</td><td>' + (result.summary.deleted || 0) + '</td></tr>';
-            }
-            
-            html += '</table>';
-            html += '</div>';
-        }
-        
-        // Add detailed logs section
-        if (result.logs && result.logs.length > 0) {
-            html += '<div class="mpai-plugin-logs-details">';
-            html += '<h3>Recent Plugin Activity</h3>';
-            
-            html += '<table class="mpai-logs-table">';
-            html += '<tr><th>Plugin</th><th>Action</th><th>Version</th><th>When</th><th>User</th></tr>';
-            
-            result.logs.forEach(function(log) {
-                const action = log.action ? log.action.charAt(0).toUpperCase() + log.action.slice(1) : 'Unknown';
-                const pluginName = log.plugin_name || 'Unknown';
-                const version = log.plugin_version || '';
-                const timeAgo = log.time_ago || '';
-                const user = log.user_login || '';
-                
-                // Determine status class for coloring
-                let actionClass = '';
-                switch(log.action) {
-                    case 'activated':
-                        actionClass = 'mpai-action-activated';
-                        break;
-                    case 'deactivated':
-                        actionClass = 'mpai-action-deactivated';
-                        break;
-                    case 'installed':
-                        actionClass = 'mpai-action-installed';
-                        break;
-                    case 'updated':
-                        actionClass = 'mpai-action-updated';
-                        break;
-                    case 'deleted':
-                        actionClass = 'mpai-action-deleted';
-                        break;
-                }
-                
-                html += '<tr>';
-                html += '<td>' + pluginName + '</td>';
-                html += '<td class="' + actionClass + '">' + action + '</td>';
-                html += '<td>' + version + '</td>';
-                html += '<td>' + timeAgo + '</td>';
-                html += '<td>' + user + '</td>';
-                html += '</tr>';
-            });
-            
-            html += '</table>';
-            
-            // Add pagination info if available
-            if (result.total_records && result.returned_records) {
-                html += '<p class="mpai-logs-pagination">';
-                html += 'Showing ' + result.returned_records + ' of ' + result.total_records + ' records';
-                if (result.has_more) {
-                    html += ' (more records available)';
-                }
-                html += '</p>';
-            }
-            
-            html += '</div>';
-        } else if (result.summary && result.summary.total === 0) {
-            html += '<div class="mpai-plugin-logs-empty">';
-            html += '<p>No plugin activity logs found for the specified criteria.</p>';
-            html += '</div>';
-        }
-        
-        // Add CSS for styling
-        html += `
-        <style>
-            .mpai-plugin-logs-result {
-                margin: 10px 0;
-            }
-            .mpai-plugin-logs-result h3 {
-                margin-top: 15px;
-                margin-bottom: 5px;
-            }
-            .mpai-summary-table, .mpai-logs-table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 10px 0;
-            }
-            .mpai-summary-table th, .mpai-summary-table td,
-            .mpai-logs-table th, .mpai-logs-table td {
-                padding: 8px;
-                text-align: left;
-                border: 1px solid #ddd;
-            }
-            .mpai-summary-table th, .mpai-logs-table th {
-                background-color: #f2f2f2;
-                font-weight: bold;
-            }
-            .mpai-action-activated {
-                color: green;
-                font-weight: bold;
-            }
-            .mpai-action-deactivated {
-                color: #999;
-            }
-            .mpai-action-installed {
-                color: blue;
-                font-weight: bold;
-            }
-            .mpai-action-updated {
-                color: purple;
-            }
-            .mpai-action-deleted {
-                color: red;
-            }
-            .mpai-logs-pagination {
-                font-size: 0.9em;
-                color: #666;
-                margin-top: 5px;
-            }
-        </style>`;
-        
-        html += '</div>';
-        
-        return html;
+        return resultStr;
     }
     
     // Public API
     return {
         init: init,
         processToolCalls: processToolCalls,
-        executeToolCall: executeToolCall,
-        formatTabularResult: formatTabularResult,
-        formatPluginLogsResult: formatPluginLogsResult,
-        resetProcessedToolCalls: resetProcessedToolCalls
+        executeToolCalls: executeToolCalls,
+        formatToolResult: formatToolResult,
+        displayError: displayError
     };
 })(jQuery);
 

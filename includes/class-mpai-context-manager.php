@@ -61,6 +61,13 @@ class MPAI_Context_Manager {
     private $error_recovery;
 
     /**
+     * Parameter validator instance
+     *
+     * @var MPAI_Parameter_Validator
+     */
+    private $parameter_validator;
+    
+    /**
      * Constructor
      */
     public function __construct() {
@@ -82,6 +89,15 @@ class MPAI_Context_Manager {
             mpai_log_debug('MemberPress Service initialized', 'context-manager');
         } else {
             mpai_log_warning('MemberPress Service class not found', 'context-manager');
+        }
+        
+        // Initialize parameter validator
+        if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-parameter-validator.php')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-parameter-validator.php';
+            $this->parameter_validator = mpai_init_parameter_validator();
+            mpai_log_debug('Parameter Validator initialized', 'context-manager');
+        } else {
+            mpai_log_warning('Parameter Validator class not found', 'context-manager');
         }
         
         $this->allowed_commands = get_option('mpai_allowed_cli_commands', array());
@@ -941,7 +957,62 @@ class MPAI_Context_Manager {
      * @param array $parameters Tool parameters
      * @return mixed MemberPress data
      */
+    /**
+     * Trace membership parameters for debugging (legacy method, forwards to parameter validator)
+     * 
+     * @param string $stage Current processing stage
+     * @param array $parameters Parameters to log
+     */
+    private function trace_membership_parameters($stage, $parameters) {
+        if (isset($this->parameter_validator)) {
+            // Forward to new method if available
+            $this->parameter_validator->trace_parameters($stage, $parameters);
+        } else {
+            // Fallback to basic logging
+            mpai_log_debug("MEMBERSHIP TRACE [{$stage}] - " . json_encode([
+                'raw' => $parameters,
+                'name' => isset($parameters['name']) ? $parameters['name'] : 'NOT SET',
+                'price' => isset($parameters['price']) ? $parameters['price'] : 'NOT SET',
+                'period_type' => isset($parameters['period_type']) ? $parameters['period_type'] : 'NOT SET',
+            ]), 'context-manager');
+        }
+    }
+    
+    /**
+     * Validate membership parameters (legacy method, forwards to parameter validator)
+     *
+     * @param array $parameters Parameters to validate
+     * @return array Array of error messages (empty if valid)
+     */
+    private function validate_membership_parameters($parameters) {
+        if (isset($this->parameter_validator)) {
+            // Forward to new validator if available
+            $validation_result = $this->parameter_validator->validate_membership_parameters($parameters);
+            return $validation_result['errors'];
+        } else {
+            // Basic validation as fallback
+            $errors = [];
+            
+            if (!isset($parameters['name']) || empty($parameters['name'])) {
+                $errors[] = "Missing membership name.";
+            }
+            
+            if (!isset($parameters['price'])) {
+                $errors[] = "Missing membership price.";
+            }
+            
+            if (!isset($parameters['period_type'])) {
+                $errors[] = "Missing period_type.";
+            }
+            
+            return $errors;
+        }
+    }
+    
     public function get_memberpress_info($parameters) {
+        // Trace initial parameters
+        $this->trace_membership_parameters('INITIAL PARAMETERS', $parameters);
+        
         // Extract parameters
         $type = isset($parameters['type']) ? $parameters['type'] : 'summary';
         $include_system_info = isset($parameters['include_system_info']) ? (bool)$parameters['include_system_info'] : false;
@@ -964,58 +1035,58 @@ class MPAI_Context_Manager {
                 // Handle membership creation
                 mpai_log_debug('Creating membership via memberpress_info tool', 'context-manager');
                 
-                // Extract membership parameters with extensive logging
-                mpai_log_debug('Membership creation parameters: ' . json_encode($parameters), 'context-manager');
+                // Check if parameter validator is available
+                if (!isset($this->parameter_validator)) {
+                    mpai_log_error('Parameter validator not available', 'context-manager');
+                    
+                    // Return error response
+                    $response = array(
+                        'success' => false,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'create',
+                        'error' => 'Parameter validator not available'
+                    );
+                    
+                    return json_encode($response);
+                }
                 
                 // CRITICAL FIX: Extract embedded parameters from any format sent by the AI
-                $extracted_parameters = $this->extract_membership_parameters($parameters);
+                $extracted_parameters = $this->parameter_validator->extract_membership_parameters($parameters);
                 
-                // Use extracted parameters or default values
-                $name = isset($extracted_parameters['name']) ? 
-                    $extracted_parameters['name'] : 
-                    (isset($parameters['name']) ? $parameters['name'] : 'New Membership');
-                mpai_log_debug('Name parameter extracted: ' . $name, 'context-manager');
-                
-                $price = isset($extracted_parameters['price']) ? 
-                    floatval($extracted_parameters['price']) : 
-                    (isset($parameters['price']) ? floatval($parameters['price']) : 19.99);
-                mpai_log_debug('Price parameter extracted: ' . $price, 'context-manager');
-                
-                // Extract period_type - handle both period_type and billing_type
-                $period_type = 'month'; // Default to month
-                if (isset($extracted_parameters['period_type'])) {
-                    $period_type = sanitize_text_field($extracted_parameters['period_type']);
-                    mpai_log_debug('Using extracted period_type parameter: ' . $period_type, 'context-manager');
-                } elseif (isset($parameters['period_type'])) {
-                    $period_type = sanitize_text_field($parameters['period_type']);
-                    mpai_log_debug('Using original period_type parameter: ' . $period_type, 'context-manager');
-                } elseif (isset($parameters['billing_type'])) {
-                    $period_type = sanitize_text_field($parameters['billing_type']);
-                    mpai_log_debug('Using billing_type parameter: ' . $period_type, 'context-manager');
-                } else {
-                    mpai_log_debug('Using default period_type: ' . $period_type, 'context-manager');
-                }
-                
-                // CRITICAL FIX: Ensure price is positive 
-                if ($price <= 0) {
-                    $price = 19.99; // Set a reasonable default price
-                    mpai_log_debug('Price was zero or negative, using default price: ' . $price, 'context-manager');
-                }
-                
-                mpai_log_debug("Creating membership with name: $name, price: $price, period_type: $period_type", 'context-manager');
-                
-                // Prepare arguments for membership creation
-                $membership_args = array(
-                    'name' => $name,
-                    'price' => $price,
-                    'period_type' => $period_type,
-                    'period' => isset($extracted_parameters['period']) ? 
-                        intval($extracted_parameters['period']) : 
-                        (isset($parameters['period']) ? intval($parameters['period']) : 1),
-                    'description' => isset($extracted_parameters['description']) ? 
-                        $extracted_parameters['description'] : 
-                        (isset($parameters['description']) ? $parameters['description'] : '')
+                // Merge parameters - prefer extracted parameters over original
+                $membership_params = array_merge(
+                    ['type' => 'create'], // Ensure type is set
+                    $parameters,          // Original parameters
+                    $extracted_parameters // Extracted parameters take precedence
                 );
+                
+                // Validate the parameters using the enhanced validator
+                $validation_result = $this->parameter_validator->validate_membership_parameters($membership_params);
+                
+                if (!$validation_result['isValid']) {
+                    mpai_log_error('Membership creation parameter validation failed: ' . 
+                        implode(', ', $validation_result['errors']), 'context-manager');
+                    
+                    // Return error response
+                    $response = array(
+                        'success' => false,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'create',
+                        'errors' => $validation_result['errors'],
+                        'error' => 'Parameter validation failed: ' . implode(' ', $validation_result['errors']),
+                        'parameters_received' => $membership_params
+                    );
+                    
+                    return json_encode($response);
+                }
+                
+                // Use the validated parameters from the validator
+                $membership_args = $validation_result['parameters'];
+                
+                // Add description if present but not included in validation
+                if (isset($membership_params['description']) && !isset($membership_args['description'])) {
+                    $membership_args['description'] = wp_kses_post($membership_params['description']);
+                }
                 
                 // Create the membership using the service
                 $result = $this->memberpress_service->create_membership($membership_args);
@@ -1029,19 +1100,54 @@ class MPAI_Context_Manager {
                         'error' => $result->get_error_message()
                     );
                 } else {
-                    mpai_log_debug('Successfully created membership with ID: ' . $result->ID, 'context-manager');
-                    $response = array(
-                        'success' => true,
-                        'tool' => 'memberpress_info',
-                        'command_type' => 'create',
-                        'result' => array(
-                            'id' => $result->ID,
-                            'title' => $result->post_title,
-                            'price' => $result->price,
-                            'period_type' => $result->period_type,
-                            'message' => "Successfully created membership '{$result->post_title}' with ID {$result->ID}"
-                        )
-                    );
+                    // Check if result is an object or array
+                    if (is_object($result)) {
+                        mpai_log_debug('Successfully created membership with ID: ' . $result->ID, 'context-manager');
+                        $response = array(
+                            'success' => true,
+                            'tool' => 'memberpress_info',
+                            'command_type' => 'create',
+                            'result' => array(
+                                'id' => $result->ID,
+                                'title' => $result->post_title,
+                                'price' => $result->price,
+                                'period_type' => $result->period_type,
+                                'message' => "Successfully created membership '{$result->post_title}' with ID {$result->ID}"
+                            )
+                        );
+                    } else if (is_array($result)) {
+                        // Handle array result format
+                        mpai_log_debug('Successfully created membership with array result: ' . json_encode($result), 'context-manager');
+                        $id = isset($result['ID']) ? $result['ID'] : (isset($result['id']) ? $result['id'] : 'unknown');
+                        $title = isset($result['post_title']) ? $result['post_title'] : (isset($result['title']) ? $result['title'] : 'New Membership');
+                        $price = isset($result['price']) ? $result['price'] : (isset($result['membership_price']) ? $result['membership_price'] : '0.00');
+                        $period_type = isset($result['period_type']) ? $result['period_type'] : 'month';
+                        
+                        $response = array(
+                            'success' => true,
+                            'tool' => 'memberpress_info',
+                            'command_type' => 'create',
+                            'result' => array(
+                                'id' => $id,
+                                'title' => $title,
+                                'price' => $price,
+                                'period_type' => $period_type,
+                                'message' => "Successfully created membership '{$title}' with ID {$id}"
+                            )
+                        );
+                    } else {
+                        // Handle unexpected result format
+                        mpai_log_warning('Unexpected result format from create_membership: ' . gettype($result), 'context-manager');
+                        $response = array(
+                            'success' => true,
+                            'tool' => 'memberpress_info',
+                            'command_type' => 'create',
+                            'result' => array(
+                                'message' => "Successfully created membership. (Note: Result format was unexpected.)",
+                                'raw_result' => $result
+                            )
+                        );
+                    }
                 }
                 
                 return json_encode($response);
@@ -2224,7 +2330,7 @@ class MPAI_Context_Manager {
      */
     public function generate_completion_with_context($prompt, $command_output) {
         // Get MemberPress data summary
-        $memberpress_data = $this->memberpress_api->get_data_summary();
+        $memberpress_data = $this->get_data_summary(); // Use the local method instead of non-existent property
         
         // Create system message with context
         $system_message = "You are an AI assistant for MemberPress. You have access to the following data:\n\n";
@@ -2290,109 +2396,49 @@ class MPAI_Context_Manager {
     }
 
     /**
-     * Extract membership parameters from various formats sent by AI
+     * Extract membership parameters from various formats sent by AI (legacy method, forwards to parameter validator)
      * 
      * @param array $parameters The input parameters
      * @return array Extracted parameters
      */
     private function extract_membership_parameters($parameters) {
-        $extracted = array();
-        mpai_log_debug('Extracting membership parameters from: ' . json_encode($parameters), 'context-manager');
-        
-        // Check all parameters for embedded data
-        foreach ($parameters as $key => $value) {
-            // 1. Check for string parameters that might contain JSON
-            if (is_string($value) && (strpos($value, '{') === 0 || strpos($value, '[') === 0)) {
-                mpai_log_debug('Found potential JSON in parameter ' . $key, 'context-manager');
-                try {
-                    $json_data = json_decode($value, true);
-                    if (json_last_error() === JSON_ERROR_NONE && is_array($json_data)) {
-                        mpai_log_debug('Successfully parsed JSON from ' . $key, 'context-manager');
-                        
-                        // Extract parameters based on various formats
-                        if (isset($json_data['parameters']) && is_array($json_data['parameters'])) {
-                            mpai_log_debug('Found nested parameters object', 'context-manager');
-                            foreach ($json_data['parameters'] as $param_key => $param_value) {
-                                $extracted[$param_key] = $param_value;
-                                mpai_log_debug('Extracted from JSON: ' . $param_key . ' = ' . json_encode($param_value), 'context-manager');
-                            }
-                        } elseif (isset($json_data['name']) && !isset($json_data['tool']) && !isset($json_data['parameters'])) {
-                            // This might be a direct parameters object
-                            foreach ($json_data as $param_key => $param_value) {
-                                $extracted[$param_key] = $param_value;
-                                mpai_log_debug('Extracted from direct JSON: ' . $param_key . ' = ' . json_encode($param_value), 'context-manager');
-                            }
-                        }
-                    }
-                } catch (Exception $e) {
-                    mpai_log_error('Error parsing JSON in parameter ' . $key . ': ' . $e->getMessage(), 'context-manager');
+        if (isset($this->parameter_validator)) {
+            // Forward to new method if available
+            return $this->parameter_validator->extract_membership_parameters($parameters);
+        } else {
+            // Basic extraction as fallback
+            $extracted = array();
+            mpai_log_debug('Using fallback parameter extraction (parameter validator not available)', 'context-manager');
+            
+            // Direct parameter extraction for critical fields
+            if (isset($parameters['name'])) {
+                $extracted['name'] = $parameters['name'];
+            }
+            
+            if (isset($parameters['price'])) {
+                // Ensure price is numeric
+                if (is_string($parameters['price']) && is_numeric($parameters['price'])) {
+                    $extracted['price'] = floatval($parameters['price']);
+                } else {
+                    $extracted['price'] = $parameters['price'];
                 }
             }
             
-            // 2. Look for nested parameters array
-            if ($key === 'parameters' && is_array($value)) {
-                mpai_log_debug('Found parameters array', 'context-manager');
-                foreach ($value as $param_key => $param_value) {
-                    $extracted[$param_key] = $param_value;
-                    mpai_log_debug('Extracted from parameters array: ' . $param_key . ' = ' . json_encode($param_value), 'context-manager');
+            if (isset($parameters['period_type'])) {
+                $extracted['period_type'] = $parameters['period_type'];
+            }
+            
+            // Look for nested parameters array
+            if (isset($parameters['parameters']) && is_array($parameters['parameters'])) {
+                foreach ($parameters['parameters'] as $key => $value) {
+                    $extracted[$key] = $value;
                 }
             }
             
-            // 3. Look for raw_request with embedded parameters
-            if ($key === 'raw_request' && is_string($value)) {
-                mpai_log_debug('Found raw_request, checking for embedded tool call', 'context-manager');
-                
-                // Look for memberpress_info tool call in various formats
-                $patterns = array(
-                    // JSON block format
-                    '/```(?:json)?\s*({[\s\n]*"(?:tool|name)"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*{[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?}[\s\n]*})\s*```/m',
-                    
-                    // Raw JSON format
-                    '/{[\s\n]*"(?:tool|name)"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*{[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?}[\s\n]*}/m',
-                    
-                    // XML-style tag format
-                    '/<(?:tool|function)>[\s\n]*memberpress_info[\s\n]*<\/(?:tool|function)>[\s\n]*<(?:parameters|arguments)>[\s\n]*({[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?})[\s\n]*<\/(?:parameters|arguments)>/m'
-                );
-                
-                foreach ($patterns as $pattern) {
-                    if (preg_match($pattern, $value, $matches)) {
-                        mpai_log_debug('Found match in raw_request with pattern', 'context-manager');
-                        if (isset($matches[1])) {
-                            try {
-                                $json_data = json_decode($matches[1], true);
-                                if (json_last_error() === JSON_ERROR_NONE && is_array($json_data)) {
-                                    mpai_log_debug('Parsed embedded JSON from raw_request', 'context-manager');
-                                    
-                                    // Extract depending on format
-                                    if (isset($json_data['type']) && $json_data['type'] === 'create') {
-                                        // This is a direct parameters object
-                                        foreach ($json_data as $param_key => $param_value) {
-                                            $extracted[$param_key] = $param_value;
-                                            mpai_log_debug('Extracted from raw_request direct: ' . $param_key . ' = ' . json_encode($param_value), 'context-manager');
-                                        }
-                                    } elseif (isset($json_data['parameters']) && is_array($json_data['parameters'])) {
-                                        foreach ($json_data['parameters'] as $param_key => $param_value) {
-                                            $extracted[$param_key] = $param_value;
-                                            mpai_log_debug('Extracted from raw_request parameters: ' . $param_key . ' = ' . json_encode($param_value), 'context-manager');
-                                        }
-                                    }
-                                }
-                            } catch (Exception $e) {
-                                mpai_log_error('Error parsing JSON from raw_request match: ' . $e->getMessage(), 'context-manager');
-                            }
-                        }
-                    }
-                }
-            }
+            return $extracted;
         }
-        
-        // If we found embedded parameters, ensure the type is set correctly
-        if (!empty($extracted)) {
-            $extracted['type'] = 'create';
-        }
-        
-        return $extracted;
     }
+    
     
     /**
      * Process a tool request in MCP format

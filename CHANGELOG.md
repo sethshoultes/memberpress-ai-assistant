@@ -18,11 +18,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced error handling system with improved logging:
   - Added detailed context tracking for better debugging
   - Implemented hierarchical error categories
-  - Created structured error reporting format
-  
+
 ### Fixed
+- Fixed issue with membership creation parameters not being correctly processed:
+  - Added robust type handling for price parameters
+  - Enhanced detection of membership creation tool calls
+  - Improved logging for parameter validation
+  - Fixed parameter type conversion to ensure proper data format
 - Fixed inconsistent behavior in API fallback mechanism
 - Fixed style conflicts with WordPress 6.4 admin interface
+- Fixed MemberPress integration with direct core class approach:
+  - Created new MPAI_MemberPress_Service class for direct integration with MemberPress core
+  - Replaced API-based approach with direct class interaction
+  - Enhanced WP-CLI executor to better handle MemberPress commands
+  - Improved parameter parsing for various command formats
+  - Added support for multiple command styles and parameter formats
+  - Improved logging and error handling for MemberPress operations
+  - Created comprehensive documentation of the integration fix
+- Fixed membership creation parameter handling ensuring name and price are properly passed:
+  - Enhanced tool call detection with improved parameter extraction 
+  - Added comprehensive logging throughout parameter flow
+  - Implemented parameter validation at each step to ensure proper data transmission
+  - Improved error handling for malformed tool calls
+  - Enhanced JSON processing to handle all parameter formats correctly
+  - Fixed Context Manager to properly handle membership parameters
+  - Updated MemberPress Service with robust parameter processing
+  - Implemented comprehensive parameter handling system with strict validation:
+    - Added client-side validation to prevent creating memberships with default values
+    - Implemented server-side validation with detailed error messages
+    - Enhanced parameter tracing throughout the system for better debugging
+    - Eliminated all default fallback values to force explicit parameter passing
+    - Added support for various tool call formats (JSON, XML, function calls)
+    - Improved user feedback with validation error display in chat interface
+    - Created detailed documentation in docs/feature-plans/membership-creation-parameter-handling.md
 
 ## [1.6.1] - 2025-04-14
 

@@ -74,6 +74,28 @@ class MPAI_WP_CLI_Executor {
         '/>\s*\/etc\/shadow/i',          // Writing to /etc/shadow
         '/>\s*\/etc\/hosts/i',           // Writing to /etc/hosts
     ];
+    
+    /**
+     * Check if a command is MemberPress related
+     * 
+     * @param string $command Command to check
+     * @return bool Whether the command is MemberPress related
+     */
+    private function is_memberpress_command($command) {
+        // Check for common MemberPress command patterns
+        if (strpos($command, 'wp mepr') === 0 || 
+            strpos($command, 'mepr-') !== false ||
+            strpos($command, 'memberpress') !== false) {
+            return true;
+        }
+        
+        // Look for specific command patterns that relate to MemberPress
+        if (preg_match('/create_membership|membership\s+create|coupon\s+create|transaction\s+create|subscription\s+create/i', $command)) {
+            return true;
+        }
+        
+        return false;
+    }
 
     /**
      * Constructor
@@ -104,6 +126,10 @@ class MPAI_WP_CLI_Executor {
                 if (defined('WP_DEBUG') && WP_DEBUG) {
                     mpai_log_debug($message, 'wp-cli');
                 }
+            }
+            
+            public function warning($message) {
+                mpai_log_warning($message, 'wp-cli');
             }
         };
     }
@@ -141,8 +167,13 @@ class MPAI_WP_CLI_Executor {
     		$command = trim($command);
     		$this->logger->info('Analyzing command type: ' . $command);
     		
-    		// Check for plugin logs command first - this should take precedence
-    		if ($this->is_plugin_logs_query($command)) {
+    		// Check for MemberPress command first
+    		if ($this->is_memberpress_command($command)) {
+    			$this->logger->info('Handling as MemberPress command');
+    			return $this->handle_memberpress_command($command, $parameters);
+    		}
+    		// Check for plugin logs command - this should take precedence over other commands
+    		else if ($this->is_plugin_logs_query($command)) {
     			$this->logger->info('Handling as plugin logs command');
     			return $this->handle_plugin_logs_command($parameters);
     		} else if ($this->is_php_version_query($command)) {
@@ -338,1236 +369,623 @@ class MPAI_WP_CLI_Executor {
     				'command_type' => 'plugin_list',
     				'result' => $output
     			];
-    			
-    		case 'status':
-    			// Get plugin information
-    			$all_plugins = get_plugins();
-    			$active_plugins = get_option('active_plugins');
-    			
-    			$output = "Plugin Statistics:\n";
-    			$output .= "Total Plugins: " . count($all_plugins) . "\n";
-    			$output .= "Active Plugins: " . count($active_plugins) . "\n";
-    			$output .= "Inactive Plugins: " . (count($all_plugins) - count($active_plugins)) . "\n\n";
-    			
-    			// List active plugins
-    			$output .= "Active Plugins:\n";
-    			foreach ($active_plugins as $plugin) {
-    				if (isset($all_plugins[$plugin])) {
-    					$plugin_data = $all_plugins[$plugin];
-    					$output .= "- {$plugin_data['Name']} v{$plugin_data['Version']}\n";
-    				}
-    			}
-    			
-    			// List inactive plugins
-    			$output .= "\nInactive Plugins:\n";
-    			foreach ($all_plugins as $plugin_path => $plugin_data) {
-    				if (!in_array($plugin_path, $active_plugins)) {
-    					$output .= "- {$plugin_data['Name']} v{$plugin_data['Version']}\n";
-    				}
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp plugin status',
-    				'method' => 'wp_api'
-    			];
-    			
-    		case 'is-active':
-    			// Check if plugin name is provided
-    			if (!isset($command_parts[2])) {
-    				return [
-    					'success' => false,
-    					'output' => 'Plugin name is required',
-    					'error' => 'Missing plugin name',
-    					'command' => 'wp plugin is-active',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			$plugin_name = $command_parts[2];
-    			
-    			// Find the plugin file path
-    			$plugin_file = null;
-    			$all_plugins = get_plugins();
-    			
-    			// Check if the provided name is a direct plugin file path
-    			if (isset($all_plugins[$plugin_name])) {
-    				$plugin_file = $plugin_name;
-    			} else {
-    				// Try to find the plugin by name
-    				foreach ($all_plugins as $path => $data) {
-    					if (strtolower($data['Name']) === strtolower($plugin_name) ||
-    						strpos(strtolower($path), strtolower($plugin_name)) !== false) {
-    						$plugin_file = $path;
-    						break;
-    					}
-    				}
-    			}
-    			
-    			if (!$plugin_file) {
-    				return [
-    					'success' => false,
-    					'output' => "Plugin '{$plugin_name}' not found.",
-    					'error' => 'Plugin not found',
-    					'command' => 'wp plugin is-active ' . $plugin_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Check if plugin is active
-    			$active_plugins = get_option('active_plugins');
-    			$is_active = in_array($plugin_file, $active_plugins);
-    			
-    			$output = $is_active ? "Plugin '{$plugin_name}' is active." : "Plugin '{$plugin_name}' is not active.";
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp plugin is-active ' . $plugin_name,
-    				'method' => 'wp_api'
-    			];
-    			
-    		case 'get':
-    			// Check if plugin name is provided
-    			if (!isset($command_parts[2])) {
-    				return [
-    					'success' => false,
-    					'output' => 'Plugin name is required',
-    					'error' => 'Missing plugin name',
-    					'command' => 'wp plugin get',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			$plugin_name = $command_parts[2];
-    			
-    			// Find the plugin file path
-    			$plugin_file = null;
-    			$all_plugins = get_plugins();
-    			
-    			// Check if the provided name is a direct plugin file path
-    			if (isset($all_plugins[$plugin_name])) {
-    				$plugin_file = $plugin_name;
-    			} else {
-    				// Try to find the plugin by name
-    				foreach ($all_plugins as $path => $data) {
-    					if (strtolower($data['Name']) === strtolower($plugin_name) ||
-    						strpos(strtolower($path), strtolower($plugin_name)) !== false) {
-    						$plugin_file = $path;
-    						break;
-    					}
-    				}
-    			}
-    			
-    			if (!$plugin_file) {
-    				return [
-    					'success' => false,
-    					'output' => "Plugin '{$plugin_name}' not found.",
-    					'error' => 'Plugin not found',
-    					'command' => 'wp plugin get ' . $plugin_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Get plugin details
-    			$plugin_data = $all_plugins[$plugin_file];
-    			$active_plugins = get_option('active_plugins');
-    			$is_active = in_array($plugin_file, $active_plugins);
-    			
-    			// Format output
-    			$output = "Plugin: {$plugin_data['Name']}\n";
-    			$output .= "Version: {$plugin_data['Version']}\n";
-    			$output .= "Status: " . ($is_active ? 'active' : 'inactive') . "\n";
-    			$output .= "Author: {$plugin_data['Author']}\n";
-    			$output .= "Description: {$plugin_data['Description']}\n";
-    			$output .= "Path: {$plugin_file}\n";
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp plugin get ' . $plugin_name,
-    				'method' => 'wp_api'
-    			];
-    			
-    		case 'activate':
-    			// Check if plugin name is provided
-    			if (!isset($command_parts[2])) {
-    				return [
-    					'success' => false,
-    					'output' => 'Plugin name is required',
-    					'error' => 'Missing plugin name',
-    					'command' => 'wp plugin activate',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			$plugin_name = $command_parts[2];
-    			
-    			// Find the plugin file path
-    			$plugin_file = null;
-    			$all_plugins = get_plugins();
-    			
-    			// Check if the provided name is a direct plugin file path
-    			if (isset($all_plugins[$plugin_name])) {
-    				$plugin_file = $plugin_name;
-    			} else {
-    				// Try to find the plugin by name
-    				foreach ($all_plugins as $path => $data) {
-    					if (strtolower($data['Name']) === strtolower($plugin_name) ||
-    						strpos(strtolower($path), strtolower($plugin_name)) !== false) {
-    						$plugin_file = $path;
-    						break;
-    					}
-    				}
-    			}
-    			
-    			if (!$plugin_file) {
-    				return [
-    					'success' => false,
-    					'output' => "Plugin '{$plugin_name}' not found.",
-    					'error' => 'Plugin not found',
-    					'command' => 'wp plugin activate ' . $plugin_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Check if plugin is already active
-    			$active_plugins = get_option('active_plugins');
-    			if (in_array($plugin_file, $active_plugins)) {
-    				return [
-    					'success' => true,
-    					'output' => "Plugin '{$all_plugins[$plugin_file]['Name']}' is already active.",
-    					'command' => 'wp plugin activate ' . $plugin_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Activate the plugin
-    			$result = activate_plugin($plugin_file);
-    			
-    			// Check for activation error
-    			if (is_wp_error($result)) {
-    				return [
-    					'success' => false,
-    					'output' => "Failed to activate plugin '{$all_plugins[$plugin_file]['Name']}': " . $result->get_error_message(),
-    					'error' => $result->get_error_message(),
-    					'command' => 'wp plugin activate ' . $plugin_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => "Plugin '{$all_plugins[$plugin_file]['Name']}' activated successfully.",
-    				'plugin_name' => $all_plugins[$plugin_file]['Name'],
-    				'plugin' => $plugin_file,
-    				'status' => 'active',
-    				'command' => 'wp plugin activate ' . $plugin_name,
-    				'method' => 'wp_api'
-    			];
-    			
-    		case 'deactivate':
-    			// Check if plugin name is provided
-    			if (!isset($command_parts[2])) {
-    				return [
-    					'success' => false,
-    					'output' => 'Plugin name is required',
-    					'error' => 'Missing plugin name',
-    					'command' => 'wp plugin deactivate',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			$plugin_name = $command_parts[2];
-    			
-    			// Find the plugin file path
-    			$plugin_file = null;
-    			$all_plugins = get_plugins();
-    			
-    			// Check if the provided name is a direct plugin file path
-    			if (isset($all_plugins[$plugin_name])) {
-    				$plugin_file = $plugin_name;
-    			} else {
-    				// Try to find the plugin by name
-    				foreach ($all_plugins as $path => $data) {
-    					if (strtolower($data['Name']) === strtolower($plugin_name) ||
-    						strpos(strtolower($path), strtolower($plugin_name)) !== false) {
-    						$plugin_file = $path;
-    						break;
-    					}
-    				}
-    			}
-    			
-    			if (!$plugin_file) {
-    				return [
-    					'success' => false,
-    					'output' => "Plugin '{$plugin_name}' not found.",
-    					'error' => 'Plugin not found',
-    					'command' => 'wp plugin deactivate ' . $plugin_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Check if plugin is already inactive
-    			$active_plugins = get_option('active_plugins');
-    			if (!in_array($plugin_file, $active_plugins)) {
-    				return [
-    					'success' => true,
-    					'output' => "Plugin '{$all_plugins[$plugin_file]['Name']}' is already inactive.",
-    					'command' => 'wp plugin deactivate ' . $plugin_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Deactivate the plugin
-    			deactivate_plugins($plugin_file);
-    			
-    			// Verify deactivation
-    			$active_plugins = get_option('active_plugins');
-    			if (in_array($plugin_file, $active_plugins)) {
-    				return [
-    					'success' => false,
-    					'output' => "Failed to deactivate plugin '{$all_plugins[$plugin_file]['Name']}'.",
-    					'error' => 'Plugin deactivation failed',
-    					'command' => 'wp plugin deactivate ' . $plugin_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => "Plugin '{$all_plugins[$plugin_file]['Name']}' deactivated successfully.",
-    				'plugin_name' => $all_plugins[$plugin_file]['Name'],
-    				'plugin' => $plugin_file,
-    				'status' => 'inactive',
-    				'command' => 'wp plugin deactivate ' . $plugin_name,
-    				'method' => 'wp_api'
-    			];
-    			
-    		default:
-    			return [
-    				'success' => false,
-    				'output' => 'Unsupported plugin command: ' . $action,
-    				'error' => 'Unsupported plugin command',
-    				'command' => 'wp plugin ' . $action,
-    				'method' => 'wp_api'
-    			];
-    	}
-    }
-    
-    /**
-     * Handle user commands directly using WordPress API
-     *
-     * @param array $command_parts Command parts
-     * @return array Result
-     */
-    private function handle_user_command_direct($command_parts) {
-    	$action = $command_parts[1] ?? '';
-    	
-    	switch ($action) {
-    		case 'list':
-    			// Default arguments
-    			$args = ['number' => 10];
-    			
-    			// Parse additional parameters
-    			for ($i = 2; $i < count($command_parts); $i++) {
-    				if (strpos($command_parts[$i], '--number=') === 0) {
-    					$limit = intval(str_replace('--number=', '', $command_parts[$i]));
-    					$args['number'] = $limit;
-    				} else if (strpos($command_parts[$i], '--role=') === 0) {
-    					$role = str_replace('--role=', '', $command_parts[$i]);
-    					$args['role'] = $role;
-    				} else if (strpos($command_parts[$i], '--orderby=') === 0) {
-    					$orderby = str_replace('--orderby=', '', $command_parts[$i]);
-    					$args['orderby'] = $orderby;
-    				} else if (strpos($command_parts[$i], '--order=') === 0) {
-    					$order = str_replace('--order=', '', $command_parts[$i]);
-    					$args['order'] = $order;
-    				}
-    			}
-    			
-    			// Get users
-    			$users = get_users($args);
-    			
-    			// Format output as a table
-    			$output = "ID\tUSER_LOGIN\tDISPLAY_NAME\tEMAIL\tROLES\tREGISTERED\n";
-    			
-    			foreach ($users as $user) {
-    				$registered = date('Y-m-d', strtotime($user->user_registered));
-    				$output .= $user->ID . "\t" . $user->user_login . "\t" .
-    						  $user->display_name . "\t" . $user->user_email . "\t" .
-    						  implode(', ', $user->roles) . "\t" . $registered . "\n";
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp user list',
-    				'method' => 'wp_api',
-    				'command_type' => 'user_list',
-    				'result' => $output
-    			];
-    		
-    		case 'get':
-    			// Check if user ID is provided
-    			if (!isset($command_parts[2])) {
-    				return [
-    					'success' => false,
-    					'output' => 'User ID is required',
-    					'error' => 'Missing user ID',
-    					'command' => 'wp user get',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			$user_id = intval($command_parts[2]);
-    			$user = get_userdata($user_id);
-    			
-    			if (!$user) {
-    				return [
-    					'success' => false,
-    					'output' => "User with ID {$user_id} not found.",
-    					'error' => 'User not found',
-    					'command' => 'wp user get ' . $user_id,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Format user details
-    			$output = "ID: {$user->ID}\n";
-    			$output .= "Username: {$user->user_login}\n";
-    			$output .= "Email: {$user->user_email}\n";
-    			$output .= "Display Name: {$user->display_name}\n";
-    			$output .= "Roles: " . implode(', ', $user->roles) . "\n";
-    			$output .= "Registered: " . date('Y-m-d', strtotime($user->user_registered)) . "\n";
-    			
-    			// Get user meta
-    			$output .= "\nUser Meta:\n";
-    			$user_meta = get_user_meta($user_id);
-    			$meta_to_show = ['first_name', 'last_name', 'nickname', 'description'];
-    			
-    			foreach ($meta_to_show as $meta_key) {
-    				if (isset($user_meta[$meta_key][0])) {
-    					$output .= "- {$meta_key}: {$user_meta[$meta_key][0]}\n";
-    				}
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp user get ' . $user_id,
-    				'method' => 'wp_api'
-    			];
-    		
-    		case 'count':
-    			// Parse additional parameters
-    			$args = [];
-    			
-    			for ($i = 2; $i < count($command_parts); $i++) {
-    				if (strpos($command_parts[$i], '--role=') === 0) {
-    					$role = str_replace('--role=', '', $command_parts[$i]);
-    					$args['role'] = $role;
-    				}
-    			}
-    			
-    			// Count users
-    			$count = count_users();
-    			$total = $count['total_users'];
-    			
-    			// Format output
-    			$output = "Total users: {$total}\n\n";
-    			$output .= "User roles:\n";
-    			
-    			foreach ($count['avail_roles'] as $role => $count) {
-    				$output .= "- {$role}: {$count}\n";
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp user count',
-    				'method' => 'wp_api'
-    			];
-    			
-    		default:
-    			return [
-    				'success' => false,
-    				'output' => 'Unsupported user command: ' . $action,
-    				'error' => 'Unsupported user command',
-    				'command' => 'wp user ' . $action,
-    				'method' => 'wp_api'
-    			];
-    	}
-    }
-    
-    /**
-     * Handle post commands directly using WordPress API
-     *
-     * @param array $command_parts Command parts
-     * @return array Result
-     */
-    private function handle_post_command_direct($command_parts) {
-    	$action = $command_parts[1] ?? '';
-    	
-    	switch ($action) {
-    		case 'list':
-    			// Default arguments
-    			$args = [
-    				'posts_per_page' => 10,
-    				'post_type' => 'post',
-    				'post_status' => 'publish'
-    			];
-    			
-    			// Parse additional parameters
-    			for ($i = 2; $i < count($command_parts); $i++) {
-    				if (strpos($command_parts[$i], '--posts_per_page=') === 0) {
-    					$limit = intval(str_replace('--posts_per_page=', '', $command_parts[$i]));
-    					$args['posts_per_page'] = $limit;
-    				} else if (strpos($command_parts[$i], '--post_type=') === 0) {
-    					$post_type = str_replace('--post_type=', '', $command_parts[$i]);
-    					$args['post_type'] = $post_type;
-    				} else if (strpos($command_parts[$i], '--post_status=') === 0) {
-    					$status = str_replace('--post_status=', '', $command_parts[$i]);
-    					$args['post_status'] = $status;
-    				} else if (strpos($command_parts[$i], '--orderby=') === 0) {
-    					$orderby = str_replace('--orderby=', '', $command_parts[$i]);
-    					$args['orderby'] = $orderby;
-    				} else if (strpos($command_parts[$i], '--order=') === 0) {
-    					$order = str_replace('--order=', '', $command_parts[$i]);
-    					$args['order'] = $order;
-    				}
-    			}
-    			
-    			// Get posts
-    			$posts = get_posts($args);
-    			
-    			// Format output as a table
-    			$output = "ID\tPOST_TITLE\tPOST_DATE\tSTATUS\tAUTHOR\tPOST_TYPE\n";
-    			
-    			foreach ($posts as $post) {
-    				$author = get_the_author_meta('display_name', $post->post_author);
-    				$output .= $post->ID . "\t" . $post->post_title . "\t" .
-    						  $post->post_date . "\t" . $post->post_status . "\t" .
-    						  $author . "\t" . $post->post_type . "\n";
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp post list',
-    				'method' => 'wp_api',
-    				'command_type' => 'post_list',
-    				'result' => $output
-    			];
-    			
-    		case 'get':
-    			// Check if post ID is provided
-    			if (!isset($command_parts[2])) {
-    				return [
-    					'success' => false,
-    					'output' => 'Post ID is required',
-    					'error' => 'Missing post ID',
-    					'command' => 'wp post get',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			$post_id = intval($command_parts[2]);
-    			$post = get_post($post_id);
-    			
-    			if (!$post) {
-    				return [
-    					'success' => false,
-    					'output' => "Post with ID {$post_id} not found.",
-    					'error' => 'Post not found',
-    					'command' => 'wp post get ' . $post_id,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Format post details
-    			$author = get_the_author_meta('display_name', $post->post_author);
-    			$output = "ID: {$post->ID}\n";
-    			$output .= "Title: {$post->post_title}\n";
-    			$output .= "Status: {$post->post_status}\n";
-    			$output .= "Type: {$post->post_type}\n";
-    			$output .= "Author: {$author}\n";
-    			$output .= "Date: {$post->post_date}\n";
-    			$output .= "Modified: {$post->post_modified}\n";
-    			$output .= "Content:\n{$post->post_content}\n";
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp post get ' . $post_id,
-    				'method' => 'wp_api'
-    			];
-    			
-    		case 'count':
-    			// Default arguments
-    			$args = [
-    				'post_type' => 'post',
-    				'post_status' => 'publish'
-    			];
-    			
-    			// Parse additional parameters
-    			for ($i = 2; $i < count($command_parts); $i++) {
-    				if (strpos($command_parts[$i], '--post_type=') === 0) {
-    					$post_type = str_replace('--post_type=', '', $command_parts[$i]);
-    					$args['post_type'] = $post_type;
-    				} else if (strpos($command_parts[$i], '--post_status=') === 0) {
-    					$status = str_replace('--post_status=', '', $command_parts[$i]);
-    					$args['post_status'] = $status;
-    				}
-    			}
-    			
-    			// Count posts
-    			$count = wp_count_posts($args['post_type']);
-    			
-    			// Format output
-    			$output = "Post counts for type '{$args['post_type']}':\n\n";
-    			
-    			foreach ($count as $status => $count) {
-    				$output .= "{$status}: {$count}\n";
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp post count',
-    				'method' => 'wp_api'
-    			];
-    			
-    		case 'meta':
-    			// Check if post ID is provided
-    			if (!isset($command_parts[2]) || $command_parts[2] !== 'list' || !isset($command_parts[3])) {
-    				return [
-    					'success' => false,
-    					'output' => 'Usage: wp post meta list <post_id>',
-    					'error' => 'Invalid command format',
-    					'command' => 'wp post meta',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			$post_id = intval($command_parts[3]);
-    			$post = get_post($post_id);
-    			
-    			if (!$post) {
-    				return [
-    					'success' => false,
-    					'output' => "Post with ID {$post_id} not found.",
-    					'error' => 'Post not found',
-    					'command' => 'wp post meta list ' . $post_id,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Get post meta
-    			$meta = get_post_meta($post_id);
-    			
-    			if (empty($meta)) {
-    				return [
-    					'success' => true,
-    					'output' => "No meta found for post {$post_id}.",
-    					'command' => 'wp post meta list ' . $post_id,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Format output as a table
-    			$output = "META_KEY\tMETA_VALUE\n";
-    			
-    			foreach ($meta as $key => $values) {
-    				foreach ($values as $value) {
-    					// Format value for display
-    					if (is_array($value) || is_object($value)) {
-    						$display_value = 'Array/Object';
-    					} else if (strlen($value) > 50) {
-    						$display_value = substr($value, 0, 47) . '...';
-    					} else {
-    						$display_value = $value;
-    					}
-    					
-    					$output .= "{$key}\t{$display_value}\n";
-    				}
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp post meta list ' . $post_id,
-    				'method' => 'wp_api'
-    			];
-    			
-    		default:
-    			return [
-    				'success' => false,
-    				'output' => 'Unsupported post command: ' . $action,
-    				'error' => 'Unsupported post command',
-    				'command' => 'wp post ' . $action,
-    				'method' => 'wp_api'
-    			];
-    	}
-    }
-    
-    /**
-     * Handle option commands directly using WordPress API
-     *
-     * @param array $command_parts Command parts
-     * @return array Result
-     */
-    private function handle_option_command_direct($command_parts) {
-    	$action = $command_parts[1] ?? '';
-    	
-    	switch ($action) {
-    		case 'get':
-    			$option_name = $command_parts[2] ?? '';
-    			if (empty($option_name)) {
-    				return [
-    					'success' => false,
-    					'output' => 'Option name is required',
-    					'error' => 'Missing option name',
-    					'command' => 'wp option get',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			$option_value = get_option($option_name);
-    			if ($option_value === false) {
-    				return [
-    					'success' => false,
-    					'output' => "Option '{$option_name}' not found.",
-    					'error' => 'Option not found',
-    					'command' => 'wp option get ' . $option_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Check for format parameter
-    			$format = 'var_export';
-    			for ($i = 3; $i < count($command_parts); $i++) {
-    				if (strpos($command_parts[$i], '--format=') === 0) {
-    					$format = str_replace('--format=', '', $command_parts[$i]);
-    				}
-    			}
-    			
-    			// Format the output based on the requested format
-    			if (is_array($option_value) || is_object($option_value)) {
-    				switch ($format) {
-    					case 'json':
-    						$output = json_encode($option_value, JSON_PRETTY_PRINT);
-    						break;
-    					case 'var_export':
-    					default:
-    						$output = var_export($option_value, true);
-    						break;
-    				}
-    			} else {
-    				$output = $option_value;
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp option get ' . $option_name,
-    				'method' => 'wp_api'
-    			];
-    			
-    		case 'list':
-    			global $wpdb;
-    			
-    			// Parse parameters
-    			$search = '';
-    			$limit = 20;
-    			
-    			for ($i = 2; $i < count($command_parts); $i++) {
-    				if (strpos($command_parts[$i], '--search=') === 0) {
-    					$search = str_replace('--search=', '', $command_parts[$i]);
-    				} else if (strpos($command_parts[$i], '--limit=') === 0) {
-    					$limit = intval(str_replace('--limit=', '', $command_parts[$i]));
-    				}
-    			}
-    			
-    			// Build query
-    			$query = "SELECT option_name, option_value FROM {$wpdb->options}";
-    			$params = [];
-    			
-    			if (!empty($search)) {
-    				$query .= " WHERE option_name LIKE %s";
-    				$params[] = '%' . $wpdb->esc_like($search) . '%';
-    			}
-    			
-    			$query .= " ORDER BY option_name LIMIT %d";
-    			$params[] = $limit;
-    			
-    			// Execute query
-    			$options = $wpdb->get_results($wpdb->prepare($query, $params), ARRAY_A);
-    			
-    			if (empty($options)) {
-    				return [
-    					'success' => true,
-    					'output' => 'No options found.',
-    					'command' => 'wp option list',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Format output as a table
-    			$output = "OPTION_NAME\tOPTION_VALUE\n";
-    			
-    			foreach ($options as $option) {
-    				$value = $option['option_value'];
-    				// Truncate long values
-    				if (strlen($value) > 50) {
-    					$value = substr($value, 0, 47) . '...';
-    				}
-    				$output .= "{$option['option_name']}\t{$value}\n";
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp option list',
-    				'method' => 'wp_api',
-    				'command_type' => 'option_list',
-    				'result' => $output
-    			];
-    			
-    		case 'exists':
-    			$option_name = $command_parts[2] ?? '';
-    			if (empty($option_name)) {
-    				return [
-    					'success' => false,
-    					'output' => 'Option name is required',
-    					'error' => 'Missing option name',
-    					'command' => 'wp option exists',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			$exists = get_option($option_name) !== false;
-    			$output = $exists ? "Option '{$option_name}' exists." : "Option '{$option_name}' does not exist.";
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp option exists ' . $option_name,
-    				'method' => 'wp_api'
-    			];
-    			
-    		case 'update':
-    			$option_name = $command_parts[2] ?? '';
-    			$option_value = $command_parts[3] ?? '';
-    			
-    			if (empty($option_name)) {
-    				return [
-    					'success' => false,
-    					'output' => 'Option name is required',
-    					'error' => 'Missing option name',
-    					'command' => 'wp option update',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			if (empty($option_value)) {
-    				return [
-    					'success' => false,
-    					'output' => 'Option value is required',
-    					'error' => 'Missing option value',
-    					'command' => 'wp option update ' . $option_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Try to determine if the value is a JSON string
-    			$decoded_value = json_decode($option_value, true);
-    			if (json_last_error() === JSON_ERROR_NONE) {
-    				$option_value = $decoded_value;
-    			}
-    			
-    			$result = update_option($option_name, $option_value);
-    			$output = $result ? "Option '{$option_name}' updated." : "Error updating option '{$option_name}'.";
-    			
-    			return [
-    				'success' => $result,
-    				'output' => $output,
-    				'command' => 'wp option update ' . $option_name . ' ' . $option_value,
-    				'method' => 'wp_api'
-    			];
-    			
-    		default:
-    			return [
-    				'success' => false,
-    				'output' => 'Unsupported option command: ' . $action,
-    				'error' => 'Unsupported option command',
-    				'command' => 'wp option ' . $action,
-    				'method' => 'wp_api'
-    			];
-    	}
-    }
-    
-    /**
-     * Handle system commands directly using WordPress API
-     *
-     * @param array $command_parts Command parts
-     * @return array Result
-     */
-    private function handle_system_command_direct($command_parts) {
-    	$command_type = $command_parts[0] ?? '';
-    	$action = $command_parts[1] ?? '';
-    	
-    	if ($command_type === 'core' && $action === 'version') {
-    		// Get WordPress version
-    		$wp_version = get_bloginfo('version');
-    		return [
-    			'success' => true,
-    			'output' => "WordPress version: $wp_version",
-    			'wp_version' => $wp_version,
-    			'command' => 'wp core version',
-    			'method' => 'wp_api'
-    		];
-    	}
-    	
-    	return [
-    		'success' => false,
-    		'output' => 'Unsupported system command: ' . $command_type . ' ' . $action,
-    		'error' => 'Unsupported system command',
-    		'command' => 'wp ' . $command_type . ' ' . $action,
-    		'method' => 'wp_api'
-    	];
-    }
-
-    /**
-     * Check if command is a PHP version query
-     *
-     * @param string $command Command to check
-     * @return bool Whether command is a PHP version query
-     */
-    private function is_php_version_query($command) {
-        $php_version_patterns = [
-            '/php.*version/i',
-            '/php\s+[-]{1,2}v/i',
-            '/php\s+info/i',
-            '/phpinfo/i',
-            '/wp\s+eval\s+[\'"]?echo\s+PHP_VERSION/i',
-            '/wp\s+php\s+info/i',
-            '/wp\s+php\s+version/i'
-        ];
+            
+            // Additional plugin handlers would be here...
+        }
         
-        foreach ($php_version_patterns as $pattern) {
+        return [
+            'success' => false,
+            'output' => 'Unsupported plugin command: ' . $action,
+            'error' => 'Unsupported plugin command',
+            'command' => 'wp plugin ' . $action,
+            'method' => 'wp_api'
+        ];
+    }
+    
+    /**
+     * Validate a command for security
+     *
+     * @param string $command Command to validate
+     * @return bool Whether the command is safe to execute
+     */
+    private function validate_command($command) {
+        // Check against dangerous patterns
+        foreach ($this->dangerous_patterns as $pattern) {
             if (preg_match($pattern, $command)) {
-                return true;
+                $this->logger->error("Command blocked by security validation pattern: $pattern", [
+                    'command' => $command,
+                    'pattern' => $pattern
+                ]);
+                return false;
             }
         }
         
-        return false;
-    }
-
-    /**
-     * Check if command is a plugin query
-     *
-     * @param string $command Command to check
-     * @return bool Whether command is a plugin query
-     */
-    private function is_plugin_query($command) {
-        $command = strtolower(trim($command));
-        return (strpos($command, 'wp plugin') === 0 ||
-                strpos($command, 'plugin') === 0 ||
-                strpos($command, 'plugins') === 0 ||
-                strpos($command, 'wp plugins') === 0);
+        return true;
     }
     
     /**
-     * Check if command is a plugin logs query
+     * Check if a command is a plugin logs query
      *
      * @param string $command Command to check
-     * @return bool Whether command is a plugin logs query
+     * @return bool Whether the command is a plugin logs query
      */
     private function is_plugin_logs_query($command) {
-        $command = strtolower(trim($command));
-        return (strpos($command, 'wp plugin logs') === 0 ||
-                strpos($command, 'plugin logs') === 0 ||
-                strpos($command, 'wp plugin_logs') === 0 ||
-                strpos($command, 'plugin_logs') === 0);
+        return (strpos($command, 'plugin logs') !== false || 
+                strpos($command, 'wp plugin-logs') !== false ||
+                strpos($command, 'wp plugin logs') !== false);
     }
-
+    
     /**
-     * Check if command is a system query
+     * Check if a command is a PHP version query
      *
      * @param string $command Command to check
-     * @return bool Whether command is a system query
+     * @return bool Whether the command is a PHP version query
+     */
+    private function is_php_version_query($command) {
+        return (strpos($command, 'php version') !== false || 
+                strpos($command, 'php info') !== false ||
+                strpos($command, 'phpinfo') !== false);
+    }
+    
+    /**
+     * Check if a command is a plugin query
+     *
+     * @param string $command Command to check
+     * @return bool Whether the command is a plugin query
+     */
+    private function is_plugin_query($command) {
+        return (strpos($command, 'wp plugin') === 0 || 
+                strpos($command, 'plugin ') === 0);
+    }
+    
+    /**
+     * Check if a command is a system query
+     *
+     * @param string $command Command to check
+     * @return bool Whether the command is a system query
      */
     private function is_system_query($command) {
-        $system_patterns = [
-            '/wp\s+system-info/i',
-            '/wp\s+site\s+health/i',
-            '/wp\s+core\s+version/i',
-            '/wp\s+core\s+/i',         // Any core command
-            '/wp\s+db\s+info/i',
-            '/wp\s+db\s+/i',           // Any db command
-            '/wp\s+option\s+/i',       // Any option command
-            '/wp\s+post\s+/i',         // Any post command
-            '/wp\s+user\s+/i',         // Any user command
-            '/wp\s+theme\s+/i',        // Any theme command
-            '/wp\s+config\s+/i',       // Any config command
-            '/wp\s+maintenance-mode/i',
-            '/wp\s+cron\s+/i',         // Any cron command
-            '/wp\s+menu\s+/i',         // Any menu command
-            '/wp\s+comment\s+/i',      // Any comment command
-            '/wp\s+taxonomy\s+/i',     // Any taxonomy command
-            '/wp\s+term\s+/i',         // Any term command
-            '/wp\s+widget\s+/i',       // Any widget command
-            '/wp\s+sidebar\s+/i'       // Any sidebar command
-        ];
-        
-        foreach ($system_patterns as $pattern) {
-            if (preg_match($pattern, $command)) {
-                return true;
-            }
-        }
-        
-        return false;
+        return (strpos($command, 'wp core') === 0 || 
+                strpos($command, 'core ') === 0 ||
+                strpos($command, 'wp system') === 0 ||
+                strpos($command, 'system ') === 0);
     }
-
+    
     /**
-     * Get PHP version and configuration information
+     * Get PHP version information
      *
      * @return array PHP version information
      */
     private function get_php_version_info() {
-        $this->logger->info('Getting PHP version information');
+        $version = phpversion();
+        $modules = get_loaded_extensions();
+        $extensions = implode(', ', $modules);
         
-        // Get PHP version and other information
-        $php_version = phpversion();
-        $php_uname = php_uname();
-        $php_sapi = php_sapi_name();
-        
-        // Get PHP configuration
-        $memory_limit = ini_get('memory_limit');
-        $max_execution_time = ini_get('max_execution_time');
-        $upload_max_filesize = ini_get('upload_max_filesize');
-        $post_max_size = ini_get('post_max_size');
-        $max_input_vars = ini_get('max_input_vars');
-        
-        // Get loaded extensions
-        $loaded_extensions = get_loaded_extensions();
-        sort($loaded_extensions);
-        $extensions_str = implode(', ', array_slice($loaded_extensions, 0, 15)) . '...';
-        
-        // Format the output
-        $output = "PHP Information:\n\n";
-        $output .= "PHP Version: $php_version\n";
-        $output .= "System: $php_uname\n";
-        $output .= "SAPI: $php_sapi\n";
-        $output .= "\nImportant Settings:\n";
-        $output .= "memory_limit: $memory_limit\n";
-        $output .= "max_execution_time: $max_execution_time seconds\n";
-        $output .= "upload_max_filesize: $upload_max_filesize\n";
-        $output .= "post_max_size: $post_max_size\n";
-        $output .= "max_input_vars: $max_input_vars\n";
-        $output .= "\nExtensions: $extensions_str\n";
+        $output = "PHP Version: $version\n\n";
+        $output .= "Loaded Extensions:\n$extensions\n\n";
+        $output .= "PHP Configuration:\n";
+        $output .= "memory_limit: " . ini_get('memory_limit') . "\n";
+        $output .= "max_execution_time: " . ini_get('max_execution_time') . "\n";
+        $output .= "upload_max_filesize: " . ini_get('upload_max_filesize') . "\n";
+        $output .= "post_max_size: " . ini_get('post_max_size') . "\n";
         
         return [
             'success' => true,
             'output' => $output,
-            'php_version' => $php_version,
-            'command' => 'php -v'
+            'command' => 'php info',
+            'method' => 'wp_api',
+            'version' => $version
         ];
     }
-
+    
     /**
-     * Handle plugin-related commands
+     * Handle plugin logs command
      *
+     * @param array $parameters Command parameters
+     * @return array Plugin logs
+     */
+    private function handle_plugin_logs_command($parameters = []) {
+        // Check if we have a plugin logs tool registered
+        if (class_exists('MPAI_Plugin_Logs_Tool')) {
+            $logs_tool = new MPAI_Plugin_Logs_Tool();
+            
+            // Extract parameters
+            $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
+            $limit = isset($parameters['limit']) ? intval($parameters['limit']) : 10;
+            $type = isset($parameters['type']) ? $parameters['type'] : 'all';
+            
+            // Prepare tool parameters
+            $tool_params = [
+                'days' => $days,
+                'limit' => $limit,
+                'type' => $type
+            ];
+            
+            // Execute the plugin logs tool
+            try {
+                $logs = $logs_tool->execute($tool_params);
+                
+                return [
+                    'success' => true,
+                    'output' => $logs,
+                    'command' => 'plugin logs',
+                    'method' => 'plugin_logs_tool'
+                ];
+            } catch (Exception $e) {
+                return [
+                    'success' => false,
+                    'output' => 'Error retrieving plugin logs: ' . $e->getMessage(),
+                    'error' => $e->getMessage(),
+                    'command' => 'plugin logs'
+                ];
+            }
+        } else {
+            // Fallback to a basic message if the tool is not available
+            return [
+                'success' => false,
+                'output' => 'Plugin logs tool not available. Please ensure the plugin is properly configured.',
+                'error' => 'Plugin logs tool not available',
+                'command' => 'plugin logs'
+            ];
+        }
+    }
+    
+    /**
+     * Format output based on requested format
+     *
+     * @param mixed $output Output to format
+     * @param string $format Requested format
+     * @return mixed Formatted output
+     */
+    private function format_output($output, $format) {
+        if ($format === 'json') {
+            $json_output = is_array($output) ? json_encode($output) : $output;
+            return $json_output;
+        }
+        
+        if ($format === 'array' && is_array($output)) {
+            return $output;
+        }
+        
+        // Default to text
+        if (is_array($output)) {
+            return implode("\n", $output);
+        }
+        
+        return $output;
+    }
+    
+    /**
+     * Handle MemberPress commands using direct service methods
+     * 
      * @param string $command Command to execute
      * @param array $parameters Additional parameters
      * @return array Execution result
      */
-    private function handle_plugin_command($command, $parameters = []) {
-        $this->logger->info('Handling plugin command: ' . $command);
+    private function handle_memberpress_command($command, $parameters = []) {
+        $this->logger->info('Handling MemberPress command with direct service: ' . $command);
         
-        // Normalize command for better pattern matching
-        $command_lower = strtolower(trim($command));
-        
-        // Handle plugin logs commands - this should take precedence over other plugin commands
-        if ($this->is_plugin_logs_query($command_lower)) {
-            $this->logger->info('Detected plugin logs command, redirecting to direct plugin logs handler');
-            return $this->handle_plugin_logs_command($parameters);
+        // Load the MemberPress service
+        if (!class_exists('MPAI_MemberPress_Service')) {
+            require_once dirname(dirname(__FILE__)) . '/class-mpai-memberpress-service.php';
         }
         
-        // Handle plugin list commands
-        if (preg_match('/wp\s+plugins?\s+list/i', $command) ||
-            $command_lower === 'plugins' ||
-            $command_lower === 'wp plugins' ||
-            $command_lower === 'plugin list' ||
-            $command_lower === 'wp plugin list') {
-            $this->logger->info('Getting plugin list');
-            return $this->get_plugin_list($parameters);
+        $service = new MPAI_MemberPress_Service();
+        
+        // Parse the command and its arguments
+        $args = $this->parse_command_args($command);
+        $output = '';
+        $success = true;
+        
+        // Determine what type of MemberPress command this is - support various formats
+        if (preg_match('/mepr-membership\s+create|membership\s+create|memberpress\s+create_membership|create_membership|memberpress\s+membership\s+create|wp\s+mepr\s+membership\s+create/i', $command)) {
+            // Extract the name parameter - supports various formats
+            $name = 'New Membership';
+            if (isset($args['name'])) {
+                $name = $args['name'];
+            } else if (preg_match('/--name=[\'"]?([^\'"]+)[\'"]?/i', $command, $name_matches)) {
+                $name = $name_matches[1];
+            }
+            
+            // Extract the price parameter
+            $price = 0;
+            if (isset($args['price'])) {
+                $price = floatval($args['price']);
+            } else if (preg_match('/--price=[\'"]?([0-9.]+)[\'"]?/i', $command, $price_matches)) {
+                $price = floatval($price_matches[1]);
+            }
+            
+            // Extract the period type parameter (supports period, period_type, and billing_type)
+            $period_type = 'month';
+            
+            $this->logger->debug('Command for period extraction: ' . $command);
+            if (isset($args['period'])) {
+                $period_type = $args['period'];
+                $this->logger->debug('Found period in args: ' . $period_type);
+            } else if (isset($args['period_type'])) {
+                $period_type = $args['period_type'];
+                $this->logger->debug('Found period_type in args: ' . $period_type);
+            } else if (isset($args['billing_type'])) {
+                $period_type = $args['billing_type'];
+                $this->logger->debug('Found billing_type in args: ' . $period_type);
+            } else if (preg_match('/--period=[\'"]?([a-z]+)[\'"]?/i', $command, $period_matches)) {
+                $period_type = $period_matches[1];
+                $this->logger->debug('Found period in regex: ' . $period_type);
+            } else if (preg_match('/--billing-type=[\'"]?([a-z]+)[\'"]?/i', $command, $billing_matches)) {
+                $period_type = $billing_matches[1];
+                $this->logger->debug('Found billing-type in regex: ' . $period_type);
+            } else if (preg_match('/--billing_type=[\'"]?([a-z]+)[\'"]?/i', $command, $billing_type_matches)) {
+                $period_type = $billing_type_matches[1];
+                $this->logger->debug('Found billing_type in regex: ' . $period_type);
+            }
+            
+            // Extract the period (number) parameter - support both 'interval' and 'period_num' as parameter names
+            $period = 1;
+            $this->logger->debug('Args for interval extraction: ' . json_encode($args));
+            
+            if (isset($args['interval'])) {
+                $period = intval($args['interval']);
+                $this->logger->debug('Found interval in args: ' . $period);
+            } else if (isset($args['period_num'])) {
+                $period = intval($args['period_num']);
+                $this->logger->debug('Found period_num in args: ' . $period);
+            } else if (preg_match('/--interval=[\'"]?([0-9]+)[\'"]?/i', $command, $interval_matches)) {
+                $period = intval($interval_matches[1]);
+                $this->logger->debug('Found interval in regex: ' . $period);
+            } else if (preg_match('/--period_num=[\'"]?([0-9]+)[\'"]?/i', $command, $period_num_matches)) {
+                $period = intval($period_num_matches[1]);
+                $this->logger->debug('Found period_num in regex: ' . $period);
+            } else if (preg_match('/--period-num=[\'"]?([0-9]+)[\'"]?/i', $command, $period_num_matches)) {
+                $period = intval($period_num_matches[1]);
+                $this->logger->debug('Found period-num in regex: ' . $period);
+            }
+            
+            $this->logger->info("Creating membership with name: $name, price: $price, period: $period $period_type");
+            
+            // Log all command information for debugging
+            $this->logger->debug('Original command: ' . $command);
+            $this->logger->debug('Parsed parameters: ' . json_encode([
+                'name' => $name,
+                'price' => $price,
+                'period' => $period,
+                'period_type' => $period_type,
+                'raw_args' => $args
+            ]));
+            
+            $result = $service->create_membership([
+                'name' => $name,
+                'price' => $price,
+                'period' => $period,
+                'period_type' => $period_type
+            ]);
+            
+            if (is_wp_error($result)) {
+                $success = false;
+                $output = $result->get_error_message();
+            } else {
+                $output = json_encode([
+                    'id' => $result->ID,
+                    'name' => $result->post_title,
+                    'price' => $result->price,
+                    'period' => $period,
+                    'period_type' => $result->period_type,
+                    'message' => "Successfully created membership '{$result->post_title}' with ID {$result->ID}"
+                ]);
+            }
+        }
+        else if (preg_match('/mepr-coupon\s+create|coupon\s+create/i', $command)) {
+            $code = isset($args['code']) ? $args['code'] : 'COUPON' . rand(1000, 9999);
+            $type = isset($args['type']) ? $args['type'] : 'percent';
+            $amount = isset($args['amount']) ? floatval($args['amount']) : 10;
+            
+            $this->logger->info("Creating coupon with code: $code, type: $type, amount: $amount");
+            
+            $result = $service->create_coupon([
+                'code' => $code,
+                'discount_type' => $type,
+                'discount_amount' => $amount
+            ]);
+            
+            if (is_wp_error($result)) {
+                $success = false;
+                $output = $result->get_error_message();
+            } else {
+                $output = json_encode([
+                    'id' => $result->ID,
+                    'code' => $result->post_title,
+                    'discount_type' => $result->discount_type,
+                    'discount_amount' => $result->discount_amount
+                ]);
+            }
+        }
+        else if (preg_match('/mepr-user\s+add-to-membership|user\s+add/i', $command)) {
+            $user_id = isset($args['user']) ? intval($args['user']) : 0;
+            $membership_id = isset($args['membership']) ? intval($args['membership']) : 0;
+            $status = isset($args['status']) ? $args['status'] : 'active';
+            
+            if (!$user_id || !$membership_id) {
+                $success = false;
+                $output = 'User ID and membership ID are required';
+            } else {
+                $this->logger->info("Adding user $user_id to membership $membership_id with status $status");
+                
+                $result = $service->add_user_to_membership($user_id, $membership_id, [
+                    'status' => $status
+                ]);
+                
+                if (is_wp_error($result)) {
+                    $success = false;
+                    $output = $result->get_error_message();
+                } else {
+                    $output = json_encode([
+                        'subscription_id' => $result->id,
+                        'user_id' => $result->user_id,
+                        'membership_id' => $result->product_id,
+                        'status' => $result->status
+                    ]);
+                }
+            }
+        }
+        else if (preg_match('/mepr-transaction\s+create|transaction\s+create/i', $command)) {
+            $user_id = isset($args['user']) ? intval($args['user']) : 0;
+            $membership_id = isset($args['membership']) ? intval($args['membership']) : 0;
+            $amount = isset($args['amount']) ? floatval($args['amount']) : null;
+            $status = isset($args['status']) ? $args['status'] : 'complete';
+            
+            if (!$user_id || !$membership_id) {
+                $success = false;
+                $output = 'User ID and membership ID are required';
+            } else {
+                $this->logger->info("Creating transaction for user $user_id, membership $membership_id");
+                
+                $txn_args = [
+                    'user_id' => $user_id,
+                    'product_id' => $membership_id,
+                    'status' => $status
+                ];
+                
+                if ($amount !== null) {
+                    $txn_args['amount'] = $amount;
+                }
+                
+                $result = $service->create_transaction($txn_args);
+                
+                if (is_wp_error($result)) {
+                    $success = false;
+                    $output = $result->get_error_message();
+                } else {
+                    $output = json_encode([
+                        'transaction_id' => $result->id,
+                        'user_id' => $result->user_id,
+                        'membership_id' => $result->product_id,
+                        'amount' => $result->amount,
+                        'status' => $result->status
+                    ]);
+                }
+            }
+        }
+        else if (preg_match('/mepr-membership\s+list|membership\s+list/i', $command)) {
+            $this->logger->info("Listing memberships");
+            
+            $result = $service->get_memberships();
+            
+            if (is_wp_error($result)) {
+                $success = false;
+                $output = $result->get_error_message();
+            } else {
+                $output = json_encode($result);
+            }
+        }
+        else {
+            // For other MemberPress commands, rely on the exec method for now
+            $this->logger->info("Unhandled MemberPress command, falling back to exec: $command");
+            
+            // Execute the command using standard WP-CLI
+            return $this->execute_standard_command($command, $parameters);
         }
         
-        // Handle plugin status or info commands
-        if (preg_match('/wp\s+plugins?\s+(status|info)/i', $command) ||
-            preg_match('/plugins?\s+(status|info)/i', $command)) {
-            $this->logger->info('Getting plugin status');
-            return $this->get_plugin_status($parameters);
-        }
-        
-        // For other plugin commands, execute directly
-        $this->logger->info('Executing plugin command directly: ' . $command);
+        return [
+            'success' => $success,
+            'output' => $output,
+            'command' => $command,
+            'method' => 'memberpress_service'
+        ];
+    }
+    
+    /**
+     * Execute a standard command using WP-CLI
+     * 
+     * @param string $command Command to execute
+     * @param array $parameters Additional parameters
+     * @return array Execution result
+     */
+    private function execute_standard_command($command, $parameters = []) {
+        // Build the command
         $wp_cli_command = $this->build_command($command, $parameters);
+        
+        // Execute the command
         $output = [];
         $return_var = 0;
-        exec($wp_cli_command, $output, $return_var);
+        $this->logger->info('Executing standard command: ' . $wp_cli_command);
+        $last_line = exec($wp_cli_command, $output, $return_var);
+        
+        // Format the output
+        $format = isset($parameters['format']) ? $parameters['format'] : 'text';
+        $formatted_output = $this->format_output($output, $format);
         
         return [
             'success' => ($return_var === 0),
-            'output' => implode("\n", $output),
+            'output' => $formatted_output,
             'return_code' => $return_var,
             'command' => $command
         ];
     }
     
     /**
-     * Handle plugin logs commands by directly accessing the plugin logger
-     *
-     * @param array $parameters Additional parameters
-     * @return array Plugin logs data
+     * Parse command arguments
+     * 
+     * @param string $command Command string
+     * @return array Parsed arguments
      */
-    private function handle_plugin_logs_command($parameters = []) {
-        $this->logger->info('Handling plugin logs command directly');
+    private function parse_command_args($command) {
+        $args = [];
         
-        // Initialize the plugin logger
-        if (!function_exists('mpai_init_plugin_logger')) {
-            if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php')) {
-                require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-plugin-logger.php';
-                $this->logger->debug('Loaded plugin logger class');
-            } else {
-                $this->logger->error('Plugin logger class not found');
-                return [
-                    'success' => false,
-                    'output' => 'Error: Plugin logger class not found.',
-                    'command' => 'plugin_logs'
-                ];
-            }
-        }
+        $this->logger->debug('Parsing command: ' . $command);
         
-        $plugin_logger = mpai_init_plugin_logger();
+        // Clean up the command, remove extra whitespace
+        $command = trim($command);
         
-        if (!$plugin_logger) {
-            $this->logger->error('Failed to initialize plugin logger');
-            return [
-                'success' => false,
-                'output' => 'Error: Failed to initialize plugin logger.',
-                'command' => 'plugin_logs'
-            ];
-        }
+        // Match arguments in the format --key=value or --key='value' or --key="value"
+        preg_match_all('/--([a-zA-Z0-9_-]+)=(?:([^\s\'"][^\s]*)|\'([^\']*?)\'|"([^"]*?)")/', $command, $matches);
         
-        // Extract parameters
-        $action = isset($parameters['action']) ? $parameters['action'] : '';
-        $plugin_name = isset($parameters['plugin_name']) ? $parameters['plugin_name'] : '';
-        $days = isset($parameters['days']) ? intval($parameters['days']) : 30;
-        $limit = isset($parameters['limit']) ? intval($parameters['limit']) : 25;
-        
-        // Calculate date range
-        $date_from = '';
-        if ($days > 0) {
-            $date_from = date('Y-m-d H:i:s', strtotime("-{$days} days"));
-        }
-        
-        // Get summary data
-        $summary = $plugin_logger->get_activity_summary($days);
-        
-        // Create a simplified summary
-        $action_counts = [
-            'total' => 0,
-            'installed' => 0,
-            'updated' => 0,
-            'activated' => 0,
-            'deactivated' => 0,
-            'deleted' => 0
-        ];
-        
-        if (isset($summary['action_counts']) && is_array($summary['action_counts'])) {
-            foreach ($summary['action_counts'] as $count_data) {
-                if (isset($count_data['action']) && isset($count_data['count'])) {
-                    $action_counts[$count_data['action']] = intval($count_data['count']);
-                    $action_counts['total'] += intval($count_data['count']);
-                }
-            }
-        }
-        
-        // Prepare query arguments for detailed logs
-        $args = [
-            'plugin_name' => $plugin_name,
-            'action'      => $action,
-            'date_from'   => $date_from,
-            'orderby'     => 'date_time',
-            'order'       => 'DESC',
-            'limit'       => $limit
-        ];
-        
-        // Get logs
-        $logs = $plugin_logger->get_logs($args);
-        $this->logger->debug('Retrieved ' . count($logs) . ' plugin logs');
-        
-        // Enhance the logs with readable timestamps
-        foreach ($logs as &$log) {
-            $timestamp = strtotime($log['date_time']);
-            $log['time_ago'] = human_time_diff($timestamp, current_time('timestamp')) . ' ago';
-        }
-        
-        // Format the output for display
-        $output = "Plugin Logs for the past {$days} days:\n\n";
-        
-        $output .= "Summary:\n";
-        $output .= "- Total logs: " . $action_counts['total'] . "\n";
-        $output .= "- Installed: " . $action_counts['installed'] . "\n";
-        $output .= "- Activated: " . $action_counts['activated'] . "\n";
-        $output .= "- Deactivated: " . $action_counts['deactivated'] . "\n";
-        $output .= "- Updated: " . $action_counts['updated'] . "\n";
-        $output .= "- Deleted: " . $action_counts['deleted'] . "\n\n";
-        
-        if (count($logs) > 0) {
-            $output .= "Recent Activity:\n";
-            foreach ($logs as $log) {
-                $action = ucfirst($log['action']);
-                $plugin_name = $log['plugin_name'];
-                $version = $log['plugin_version'];
-                $time_ago = $log['time_ago'];
-                $user = isset($log['user_login']) && !empty($log['user_login']) ? $log['user_login'] : '';
+        if (!empty($matches[1])) {
+            for ($i = 0; $i < count($matches[1]); $i++) {
+                $key = $matches[1][$i];
+                // Convert key to lowercase for consistency
+                $key = strtolower(str_replace('-', '_', $key));
                 
-                $output .= "- {$action}: {$plugin_name} v{$version} ({$time_ago})";
-                if (!empty($user)) {
-                    $output .= " by user {$user}";
-                }
-                $output .= "\n";
+                // Get the value from whichever capture group matched
+                $value = !empty($matches[2][$i]) ? $matches[2][$i] : 
+                         (!empty($matches[3][$i]) ? $matches[3][$i] : 
+                         (!empty($matches[4][$i]) ? $matches[4][$i] : ''));
+                         
+                $args[$key] = $value;
+                $this->logger->debug("Found arg with = format: $key = $value");
             }
-        } else {
-            $output .= "No plugin activity found for the specified criteria.\n";
         }
         
-        $this->logger->info('Successfully retrieved plugin logs');
+        // Additionally match format where value is in next param: --key value
+        preg_match_all('/\s--([a-zA-Z0-9_-]+)\s+([^\s-][^\s]*|\'[^\']*?\'|"[^"]*?")/', $command, $space_matches);
         
-        return [
-            'success' => true,
-            'output' => $output,
-            'command' => 'plugin_logs',
-            'logs' => $logs,
-            'summary' => $action_counts,
-            'time_period' => "past {$days} days"
-        ];
+        if (!empty($space_matches[1])) {
+            for ($i = 0; $i < count($space_matches[1]); $i++) {
+                $key = $space_matches[1][$i];
+                // Convert key to lowercase for consistency
+                $key = strtolower(str_replace('-', '_', $key));
+                
+                $value = $space_matches[2][$i];
+                
+                // Remove quotes if present
+                if ((substr($value, 0, 1) === "'" && substr($value, -1) === "'") || 
+                    (substr($value, 0, 1) === '"' && substr($value, -1) === '"')) {
+                    $value = substr($value, 1, -1);
+                }
+                
+                // Only add if not already set from --key=value format
+                if (!isset($args[$key])) {
+                    $args[$key] = $value;
+                    $this->logger->debug("Found arg with space format: $key = $value");
+                }
+            }
+        }
+        
+        // Look for standard positional arguments after the main command
+        // Example: wp mepr-membership create "Premium Plan" 19.99 month 1
+        if (preg_match('/(?:mepr-membership\s+create|membership\s+create|create_membership|memberpress\s+create_membership)\s+["\']?([^"\']+)["\']?\s+([0-9.]+)(?:\s+([a-z]+))?(?:\s+([0-9]+))?/i', $command, $pos_matches)) {
+            if (!isset($args['name']) && !empty($pos_matches[1])) {
+                $args['name'] = trim($pos_matches[1]);
+                $this->logger->debug("Found positional name: " . $args['name']);
+            }
+            if (!isset($args['price']) && !empty($pos_matches[2])) {
+                $args['price'] = $pos_matches[2];
+                $this->logger->debug("Found positional price: " . $args['price']);
+            }
+            if (!isset($args['period']) && !empty($pos_matches[3])) {
+                $args['period'] = $pos_matches[3];
+                $this->logger->debug("Found positional period: " . $args['period']);
+            }
+            if (!isset($args['interval']) && !empty($pos_matches[4])) {
+                $args['interval'] = $pos_matches[4];
+                $this->logger->debug("Found positional interval: " . $args['interval']);
+            }
+        }
+        
+        // Special handling for memberpress create_membership command format
+        if (preg_match('/memberpress\s+create_membership/i', $command)) {
+            // Extract values directly using regex for this format
+            if (!isset($args['name']) && preg_match('/--name=[\'"]?([^\'"]+)[\'"]?/i', $command, $name_matches)) {
+                $args['name'] = $name_matches[1];
+                $this->logger->debug("Found direct name match: " . $args['name']);
+            }
+            
+            if (!isset($args['price']) && preg_match('/--price=[\'"]?([0-9.]+)[\'"]?/i', $command, $price_matches)) {
+                $args['price'] = $price_matches[1];
+                $this->logger->debug("Found direct price match: " . $args['price']);
+            }
+            
+            if (!isset($args['interval']) && preg_match('/--interval=[\'"]?([0-9]+)[\'"]?/i', $command, $interval_matches)) {
+                $args['interval'] = $interval_matches[1];
+                $this->logger->debug("Found direct interval match: " . $args['interval']);
+            }
+            
+            if (!isset($args['period']) && preg_match('/--period=[\'"]?([a-z]+)[\'"]?/i', $command, $period_matches)) {
+                $args['period'] = $period_matches[1];
+                $this->logger->debug("Found direct period match: " . $args['period']);
+            }
+        }
+        
+        // Handle special cases for wp-cli and common commands
+        // Map interval to period if needed
+        if (isset($args['interval']) && !isset($args['period_num'])) {
+            $args['period_num'] = $args['interval'];
+            $this->logger->debug("Mapped interval to period_num: " . $args['period_num']);
+        }
+        
+        // Map period to period_type if needed
+        if (isset($args['period']) && !isset($args['period_type'])) {
+            $args['period_type'] = $args['period'];
+            $this->logger->debug("Mapped period to period_type: " . $args['period_type']);
+        }
+        
+        // Map period to billing_type for backwards compatibility
+        if (isset($args['period']) && !isset($args['billing_type'])) {
+            $args['billing_type'] = $args['period'];
+            $this->logger->debug("Mapped period to billing_type: " . $args['billing_type']);
+        }
+        
+        $this->logger->debug('Final parsed command args: ' . json_encode($args));
+        
+        return $args;
     }
-
+    
     /**
-     * Get list of plugins
+     * Build a CLI command with parameters
      *
-     * @param array $parameters Additional parameters
+     * @param string $command Base command
+     * @param array $parameters Command parameters
+     * @return string Full command
+     */
+    private function build_command($command, $parameters = []) {
+        // Build the command
+        $wp_cli_command = $command;
+        
+        // Add timeout
+        $timeout = isset($parameters['timeout']) ? min((int)$parameters['timeout'], 60) : $this->timeout;
+        
+        // Add format if specified
+        if (isset($parameters['format']) && !preg_match('/--format=/', $command)) {
+            $wp_cli_command .= ' --format=' . escapeshellarg($parameters['format']);
+        }
+        
+        // Handle different OS
+        if (stripos(PHP_OS, 'WIN') === 0) {
+            // Windows - timeout command is different
+            $command = "timeout /t {$timeout} /nobreak > nul & {$wp_cli_command}";
+        } else {
+            // Linux/Mac - use standard timeout command
+            $command = "timeout {$timeout}s {$wp_cli_command}";
+        }
+        
+        return $command;
+    }
+    
+    /**
+     * Get a list of plugins directly from WordPress
+     *
+     * @param array $parameters Command parameters
      * @return array Plugin list
      */
-    private function get_plugin_list($parameters) {
-        $this->logger->info('Getting plugin list from WordPress API');
-        
+    private function get_plugin_list($parameters = []) {
         // Ensure plugin functions are available
         if (!function_exists('get_plugins')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -1577,777 +995,48 @@ class MPAI_WP_CLI_Executor {
         $all_plugins = get_plugins();
         $active_plugins = get_option('active_plugins');
         
-        // Filter by status if requested
-        $status = isset($parameters['status']) ? $parameters['status'] : null;
-        $this->logger->info('Status filter: ' . ($status ?: 'none'));
+        // Format output as a table by default
+        $format = isset($parameters['format']) ? $parameters['format'] : 'table';
         
-        // Format output - headers in the same format as WP-CLI would output
-        if (isset($parameters['format']) && $parameters['format'] === 'json') {
-            // Format as JSON array
-            $plugins_json = [];
+        // Handle different formats
+        if ($format === 'json') {
+            $plugins = [];
             foreach ($all_plugins as $plugin_path => $plugin_data) {
-                $plugin_status = in_array($plugin_path, $active_plugins) ? 'active' : 'inactive';
-                
-                // Skip if status filter doesn't match
-                if ($status && $plugin_status !== $status) {
-                    continue;
-                }
-                
-                $plugins_json[] = [
-                    'name' => $plugin_data['Name'],
-                    'status' => $plugin_status,
-                    'version' => $plugin_data['Version'],
-                    'description' => $plugin_data['Description'],
-                    'path' => $plugin_path
-                ];
+                $plugins[] = array_merge($plugin_data, [
+                    'path' => $plugin_path,
+                    'status' => in_array($plugin_path, $active_plugins) ? 'active' : 'inactive'
+                ]);
             }
-            
             return [
                 'success' => true,
-                'output' => json_encode($plugins_json),
+                'output' => json_encode($plugins),
                 'command' => 'wp plugin list',
-                'plugins' => $all_plugins
-            ];
-        } else {
-            // Format as text table 
-            $output = "NAME\tSTATUS\tVERSION\tDESCRIPTION\n";
-            
-            foreach ($all_plugins as $plugin_path => $plugin_data) {
-                $plugin_status = in_array($plugin_path, $active_plugins) ? 'active' : 'inactive';
-                
-                // Skip if status filter doesn't match
-                if ($status && $plugin_status !== $status) {
-                    continue;
-                }
-                
-                $name = $plugin_data['Name'];
-                $version = $plugin_data['Version'];
-                // Make sure description is a string before using strlen
-                $description = isset($plugin_data['Description']) && is_string($plugin_data['Description']) ? 
-                               (strlen($plugin_data['Description']) > 40 ? 
-                               substr($plugin_data['Description'], 0, 40) . '...' : 
-                               $plugin_data['Description']) : '';
-                
-                $output .= "$name\t$plugin_status\t$version\t$description\n";
-            }
-            
-            return [
-                'success' => true,
-                'output' => $output,
-                'command' => 'wp plugin list',
-                'plugins' => $all_plugins
+                'method' => 'wp_api'
             ];
         }
-    }
-
-    /**
-     * Get plugin status and information
-     *
-     * @param array $parameters Additional parameters
-     * @return array Plugin status information
-     */
-    private function get_plugin_status($parameters) {
-        $this->logger->info('Getting plugin status');
         
-        // Ensure plugin functions are available
-        if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
+        // Default text format
+        $output = "NAME\tSTATUS\tVERSION\tAUTHOR\tDESCRIPTION\n";
         
-        // Get system information
-        $php_version = phpversion();
-        $wp_version = get_bloginfo('version');
-        
-        $output = "WordPress System Status:\n\n";
-        $output .= "PHP Version: $php_version\n";
-        $output .= "WordPress Version: $wp_version\n";
-        
-        // Get plugin information
-        $all_plugins = get_plugins();
-        $active_plugins = get_option('active_plugins');
-        
-        $output .= "\nPlugin Statistics:\n";
-        $output .= "Total Plugins: " . count($all_plugins) . "\n";
-        $output .= "Active Plugins: " . count($active_plugins) . "\n";
-        $output .= "Inactive Plugins: " . (count($all_plugins) - count($active_plugins)) . "\n\n";
-        
-        // List active plugins
-        $output .= "Active Plugins:\n";
-        foreach ($active_plugins as $plugin) {
-            if (isset($all_plugins[$plugin])) {
-                $plugin_data = $all_plugins[$plugin];
-                $output .= "- {$plugin_data['Name']} v{$plugin_data['Version']}\n";
-            }
+        foreach ($all_plugins as $plugin_path => $plugin_data) {
+            $plugin_status = in_array($plugin_path, $active_plugins) ? 'active' : 'inactive';
+            
+            $name = isset($plugin_data['Name']) ? $plugin_data['Name'] : 'Unknown';
+            $version = isset($plugin_data['Version']) ? $plugin_data['Version'] : '';
+            $author = isset($plugin_data['Author']) ? $plugin_data['Author'] : '';
+            $description = isset($plugin_data['Description']) && is_string($plugin_data['Description']) ?
+                          (strlen($plugin_data['Description']) > 40 ?
+                          substr($plugin_data['Description'], 0, 40) . '...' :
+                          $plugin_data['Description']) : '';
+            
+            $output .= "$name\t$plugin_status\t$version\t$author\t$description\n";
         }
         
         return [
             'success' => true,
             'output' => $output,
-            'command' => 'wp plugin status',
-            'php_version' => $php_version,
-            'wp_version' => $wp_version,
-            'plugins' => $all_plugins
+            'command' => 'wp plugin list',
+            'method' => 'wp_api'
         ];
-    }
-
-    /**
-     * Handle system-related commands
-     *
-     * @param string $command Command to execute
-     * @param array $parameters Additional parameters
-     * @return array Execution result
-     */
-    private function handle_system_command($command, $parameters = []) {
-        $this->logger->info('Handling system command: ' . $command);
-        
-        if (preg_match('/wp\s+core\s+version/i', $command)) {
-            // Get WordPress version
-            $wp_version = get_bloginfo('version');
-            return [
-                'success' => true,
-                'output' => "WordPress version: $wp_version",
-                'wp_version' => $wp_version,
-                'command' => $command
-            ];
-        }
-        
-        if (preg_match('/wp\s+db\s+info/i', $command)) {
-            // Get database information
-            return $this->get_database_info();
-        }
-        
-        if (preg_match('/wp\s+site\s+health/i', $command) || preg_match('/wp\s+system-info/i', $command)) {
-            // Get site health information
-            return $this->get_site_health_info();
-        }
-        
-        // For any other system command, execute directly
-        $wp_cli_command = $this->build_command($command, $parameters);
-        $output = [];
-        $return_var = 0;
-        exec($wp_cli_command, $output, $return_var);
-        
-        return [
-            'success' => ($return_var === 0),
-            'output' => implode("\n", $output),
-            'return_code' => $return_var,
-            'command' => $command
-        ];
-    }
-
-    /**
-     * Get database information
-     *
-     * @return array Database information
-     */
-    private function get_database_info() {
-        global $wpdb;
-        
-        $db_version = $wpdb->db_version();
-        $db_name = defined('DB_NAME') ? DB_NAME : 'unknown';
-        $db_host = defined('DB_HOST') ? DB_HOST : 'unknown';
-        $db_user = defined('DB_USER') ? DB_USER : 'unknown';
-        $db_charset = defined('DB_CHARSET') ? DB_CHARSET : $wpdb->charset;
-        $db_collate = $wpdb->collate;
-        
-        $output = "Database Information:\n\n";
-        $output .= "MySQL Version: $db_version\n";
-        $output .= "Database Name: $db_name\n";
-        $output .= "Database Host: $db_host\n";
-        $output .= "Database User: $db_user\n";
-        $output .= "Database Charset: $db_charset\n";
-        $output .= "Database Collation: " . ($db_collate ?: 'Not Set') . "\n";
-        $output .= "Table Prefix: " . $wpdb->prefix . "\n";
-        
-        // Get table statistics
-        $tables = $wpdb->get_results('SHOW TABLES', ARRAY_N);
-        $table_count = count($tables);
-        
-        $output .= "\nTable Statistics:\n";
-        $output .= "Total Tables: $table_count\n";
-        
-        // Get some basic WordPress table counts
-        $post_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts}");
-        $user_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->users}");
-        $comment_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->comments}");
-        $option_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->options}");
-        
-        $output .= "Posts Table Count: $post_count\n";
-        $output .= "Users Table Count: $user_count\n";
-        $output .= "Comments Table Count: $comment_count\n";
-        $output .= "Options Table Count: $option_count\n";
-        
-        return [
-            'success' => true,
-            'output' => $output,
-            'command' => 'wp db info',
-            'db_version' => $db_version,
-            'table_count' => $table_count
-        ];
-    }
-
-    /**
-     * Get site health information
-     *
-     * @return array Site health information
-     */
-    private function get_site_health_info() {
-        global $wp_version;
-        global $wpdb;
-        
-        $output = "WordPress Site Health Information:\n\n";
-        
-        // WordPress core information
-        $output .= "WordPress Version: $wp_version\n";
-        $output .= "Site URL: " . get_site_url() . "\n";
-        $output .= "Home URL: " . get_home_url() . "\n";
-        $output .= "Is Multisite: " . (is_multisite() ? 'Yes' : 'No') . "\n";
-        
-        // PHP information
-        $output .= "\nPHP Information:\n";
-        $output .= "PHP Version: " . phpversion() . "\n";
-        $output .= "Memory Limit: " . ini_get('memory_limit') . "\n";
-        $output .= "Max Execution Time: " . ini_get('max_execution_time') . " seconds\n";
-        $output .= "Upload Max Filesize: " . ini_get('upload_max_filesize') . "\n";
-        
-        // Database information
-        $output .= "\nDatabase Information:\n";
-        $db_version = $wpdb->db_version();
-        $output .= "MySQL Version: $db_version\n";
-        $output .= "Database Prefix: " . $wpdb->prefix . "\n";
-        
-        // Theme information
-        $theme = wp_get_theme();
-        $output .= "\nActive Theme:\n";
-        $output .= "Name: " . $theme->get('Name') . "\n";
-        $output .= "Version: " . $theme->get('Version') . "\n";
-        
-        // Plugin information
-        if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
-        $all_plugins = get_plugins();
-        $active_plugins = get_option('active_plugins');
-        
-        $output .= "\nPlugin Status:\n";
-        $output .= "Active Plugins: " . count($active_plugins) . "\n";
-        $output .= "Total Plugins: " . count($all_plugins) . "\n";
-        
-        return [
-            'success' => true,
-            'output' => $output,
-            'command' => 'wp site health',
-            'wp_version' => $wp_version,
-            'php_version' => phpversion()
-        ];
-    }
-
-    /**
-     * Build a WP-CLI command with proper parameters and escaping
-     *
-     * @param string $command Base command
-     * @param array $parameters Additional parameters
-     * @return string Full command line
-     */
-    private function build_command($command, $parameters = []) {
-        // Ensure command starts with wp
-        if (strpos($command, 'wp ') !== 0 && strpos($command, 'php ') !== 0) {
-            $command = 'wp ' . $command;
-        }
-        
-        // Add format parameter if not specifically set in command
-        if (strpos($command, '--format=') === false && strpos($command, 'help') === false) {
-            // Default to JSON format for easier parsing
-            $command .= ' --format=json';
-        }
-        
-        // Escape the command
-        $escaped_command = escapeshellcmd($command);
-        
-        // Add timeout
-        $timeout = isset($parameters['timeout']) ? min((int)$parameters['timeout'], 60) : $this->timeout;
-        $full_command = "timeout {$timeout}s {$escaped_command}";
-        
-        return $full_command;
-    }
-
-    /**
-     * Check if a command contains dangerous patterns
-     *
-     * @param string $command WP-CLI command
-     * @return bool Whether command is safe (true = safe, false = dangerous)
-     */
-    private function validate_command($command) {
-        // Sanitize the command
-        $sanitized_command = $this->sanitize_command($command);
-        
-        // Check against blacklist of dangerous patterns
-        foreach ($this->dangerous_patterns as $pattern) {
-            if (preg_match($pattern, $sanitized_command)) {
-                $this->logger->error('Dangerous command pattern detected: ' . $pattern);
-                return false;
-            }
-        }
-        
-        // Additional basic safety check
-        if (strpos($sanitized_command, 'wp ') !== 0 && strpos($sanitized_command, 'php ') !== 0) {
-            $this->logger->error('Command must start with wp or php: ' . $sanitized_command);
-            return false;
-        }
-        
-        // Command passed all security checks
-        return true;
-    }
-    
-    /**
-     * Sanitize a command to prevent injection
-     *
-     * @param string $command Command to sanitize
-     * @return string Sanitized command
-     */
-    private function sanitize_command($command) {
-        // Remove potentially dangerous characters
-        $command = preg_replace('/[;&|><]/', '', $command);
-        
-        // Ensure command starts with 'wp ' or 'php '
-        if (strpos($command, 'wp ') !== 0 && strpos($command, 'php ') !== 0) {
-            $command = 'wp ' . $command;
-        }
-        
-        return trim($command);
-    }
-    
-    /**
-     * Format command output based on requested format
-     *
-     * @param array|string $output Command output lines
-     * @param string $format Desired output format
-     * @return mixed Formatted output
-     */
-    private function format_output($output, $format) {
-        // Improved type safety handling
-        $this->logger->info('Formatting output of type: ' . gettype($output));
-        
-        // Handle different input types
-        if (is_string($output)) {
-            // If it's already a string and format is text, return directly
-            if ($format === 'text') {
-                return $output;
-            }
-            
-            // For other formats, convert to array
-            $output = [$output];
-        } elseif (is_object($output)) {
-            // Convert objects to JSON strings
-            $this->logger->info('Converting object to JSON');
-            return json_encode($output);
-        } elseif (!is_array($output)) {
-            // For any other type, convert to string then array
-            $this->logger->warning('Converting unexpected type to string: ' . gettype($output));
-            $output = [(string)$output];
-        }
-        
-        // Now $output should be an array
-        if (empty($output)) {
-            return '';
-        }
-        
-        $raw_output = implode("\n", $output);
-        
-        switch ($format) {
-            case 'json':
-                // Try to parse the output as JSON
-                $decoded = json_decode($raw_output, true);
-                if ($decoded !== null && json_last_error() === JSON_ERROR_NONE) {
-                    return $decoded;
-                }
-                // Fall through to array if not valid JSON
-                
-            case 'array':
-                return $output;
-                
-            case 'text':
-            default:
-                return $raw_output;
-        }
-    }
-    /**
-     * Handle theme commands directly using WordPress API
-     *
-     * @param array $command_parts Command parts
-     * @return array Result
-     */
-    private function handle_theme_command_direct($command_parts) {
-    	$action = $command_parts[1] ?? '';
-    	
-    	switch ($action) {
-    		case 'list':
-    			// Get all themes
-    			$themes = wp_get_themes();
-    			
-    			// Get current theme
-    			$current_theme = wp_get_theme();
-    			
-    			// Format output as a table
-    			$output = "NAME\tSTATUS\tVERSION\tAUTHOR\n";
-    			
-    			foreach ($themes as $theme_name => $theme) {
-    				$status = ($current_theme->get_stylesheet() === $theme->get_stylesheet()) ? 'active' : 'inactive';
-    				$name = $theme->get('Name');
-    				$version = $theme->get('Version');
-    				$author = $theme->get('Author');
-    				
-    				$output .= "$name\t$status\t$version\t$author\n";
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp theme list',
-    				'method' => 'wp_api',
-    				'command_type' => 'theme_list',
-    				'result' => $output
-    			];
-    			
-    		case 'status':
-    			// Get current theme
-    			$current_theme = wp_get_theme();
-    			
-    			// Format output
-    			$output = "Current theme:\n";
-    			$output .= "Name: " . $current_theme->get('Name') . "\n";
-    			$output .= "Version: " . $current_theme->get('Version') . "\n";
-    			$output .= "Author: " . $current_theme->get('Author') . "\n";
-    			$output .= "Description: " . $current_theme->get('Description') . "\n";
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp theme status',
-    				'method' => 'wp_api'
-    			];
-    		
-    		case 'activate':
-    			// Check if theme name is provided
-    			if (!isset($command_parts[2])) {
-    				return [
-    					'success' => false,
-    					'output' => 'Theme name is required',
-    					'error' => 'Missing theme name',
-    					'command' => 'wp theme activate',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			$theme_name = $command_parts[2];
-    			
-    			// Get all themes
-    			$themes = wp_get_themes();
-    			$theme_object = null;
-    			
-    			// Find the theme by name or stylesheet
-    			foreach ($themes as $theme) {
-    				if (strtolower($theme->get('Name')) === strtolower($theme_name) ||
-    					strtolower($theme->get_stylesheet()) === strtolower($theme_name)) {
-    					$theme_object = $theme;
-    					break;
-    				}
-    			}
-    			
-    			if (!$theme_object) {
-    				return [
-    					'success' => false,
-    					'output' => "Theme '{$theme_name}' not found.",
-    					'error' => 'Theme not found',
-    					'command' => 'wp theme activate ' . $theme_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Get the stylesheet (theme directory name)
-    			$stylesheet = $theme_object->get_stylesheet();
-    			
-    			// Check if theme is already active
-    			$current_theme = wp_get_theme();
-    			if ($current_theme->get_stylesheet() === $stylesheet) {
-    				return [
-    					'success' => true,
-    					'output' => "Theme '{$theme_object->get('Name')}' is already active.",
-    					'command' => 'wp theme activate ' . $theme_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Activate the theme
-    			switch_theme($stylesheet);
-    			
-    			// Verify activation
-    			$new_current_theme = wp_get_theme();
-    			if ($new_current_theme->get_stylesheet() === $stylesheet) {
-    				return [
-    					'success' => true,
-    					'output' => "Theme '{$theme_object->get('Name')}' activated successfully.",
-    					'command' => 'wp theme activate ' . $theme_name,
-    					'method' => 'wp_api'
-    				];
-    			} else {
-    				return [
-    					'success' => false,
-    					'output' => "Failed to activate theme '{$theme_object->get('Name')}'.",
-    					'error' => 'Theme activation failed',
-    					'command' => 'wp theme activate ' . $theme_name,
-    					'method' => 'wp_api'
-    				];
-    			}
-    		
-    		case 'deactivate':
-    			// WordPress doesn't have a direct function to deactivate a theme
-    			// You can only switch to another theme
-    			return [
-    				'success' => false,
-    				'output' => "WordPress doesn't support theme deactivation. Use 'wp theme activate' to switch to another theme instead.",
-    				'error' => 'Unsupported operation',
-    				'command' => 'wp theme deactivate',
-    				'method' => 'wp_api'
-    			];
-    			
-    		default:
-    			return [
-    				'success' => false,
-    				'output' => 'Unsupported theme command: ' . $action,
-    				'error' => 'Unsupported theme command',
-    				'command' => 'wp theme ' . $action,
-    				'method' => 'wp_api'
-    			];
-    	}
-    }
-    
-    /**
-     * Handle menu commands directly using WordPress API
-     *
-     * @param array $command_parts Command parts
-     * @return array Result
-     */
-    private function handle_menu_command_direct($command_parts) {
-    	$action = $command_parts[1] ?? '';
-    	
-    	switch ($action) {
-    		case 'list':
-    			// Get all menus
-    			$menus = wp_get_nav_menus();
-    			
-    			if (empty($menus)) {
-    				return [
-    					'success' => true,
-    					'output' => 'No menus found.',
-    					'command' => 'wp menu list',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Format output as a table
-    			$output = "ID\tNAME\tCOUNT\tSLUG\tLOCATIONS\n";
-    			
-    			foreach ($menus as $menu) {
-    				$locations = [];
-    				$menu_locations = get_nav_menu_locations();
-    				
-    				foreach ($menu_locations as $location => $menu_id) {
-    					if ($menu_id == $menu->term_id) {
-    						$locations[] = $location;
-    					}
-    				}
-    				
-    				$locations_str = empty($locations) ? 'none' : implode(', ', $locations);
-    				$output .= "{$menu->term_id}\t{$menu->name}\t{$menu->count}\t{$menu->slug}\t{$locations_str}\n";
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp menu list',
-    				'method' => 'wp_api',
-    				'command_type' => 'menu_list',
-    				'result' => $output
-    			];
-    			
-    		default:
-    			return [
-    				'success' => false,
-    				'output' => 'Unsupported menu command: ' . $action,
-    				'error' => 'Unsupported menu command',
-    				'command' => 'wp menu ' . $action,
-    				'method' => 'wp_api'
-    			];
-    	}
-    }
-    
-    /**
-     * Handle comment commands directly using WordPress API
-     *
-     * @param array $command_parts Command parts
-     * @return array Result
-     */
-    private function handle_comment_command_direct($command_parts) {
-    	$action = $command_parts[1] ?? '';
-    	
-    	switch ($action) {
-    		case 'list':
-    			// Get comments
-    			$args = ['number' => 10, 'status' => 'approve'];
-    			
-    			// Parse additional parameters
-    			for ($i = 2; $i < count($command_parts); $i++) {
-    				if (strpos($command_parts[$i], '--number=') === 0) {
-    					$limit = intval(str_replace('--number=', '', $command_parts[$i]));
-    					$args['number'] = $limit;
-    				} else if (strpos($command_parts[$i], '--status=') === 0) {
-    					$status = str_replace('--status=', '', $command_parts[$i]);
-    					$args['status'] = $status;
-    				}
-    			}
-    			
-    			$comments = get_comments($args);
-    			
-    			if (empty($comments)) {
-    				return [
-    					'success' => true,
-    					'output' => 'No comments found.',
-    					'command' => 'wp comment list',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Format output as a table
-    			$output = "ID\tAUTHOR\tPOST_ID\tDATE\tSTATUS\n";
-    			
-    			foreach ($comments as $comment) {
-    				$output .= "{$comment->comment_ID}\t{$comment->comment_author}\t{$comment->comment_post_ID}\t{$comment->comment_date}\t{$comment->comment_approved}\n";
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp comment list',
-    				'method' => 'wp_api',
-    				'command_type' => 'comment_list',
-    				'result' => $output
-    			];
-    			
-    		default:
-    			return [
-    				'success' => false,
-    				'output' => 'Unsupported comment command: ' . $action,
-    				'error' => 'Unsupported comment command',
-    				'command' => 'wp comment ' . $action,
-    				'method' => 'wp_api'
-    			];
-    	}
-    }
-    
-    /**
-     * Handle database commands directly using WordPress API
-     *
-     * @param array $command_parts Command parts
-     * @return array Result
-     */
-    private function handle_db_command_direct($command_parts) {
-    	$action = $command_parts[1] ?? '';
-    	
-    	switch ($action) {
-    		case 'info':
-    			global $wpdb;
-    			
-    			// Get database information
-    			$db_version = $wpdb->db_version();
-    			$db_name = defined('DB_NAME') ? DB_NAME : 'unknown';
-    			$db_host = defined('DB_HOST') ? DB_HOST : 'unknown';
-    			$db_user = defined('DB_USER') ? DB_USER : 'unknown';
-    			$db_charset = defined('DB_CHARSET') ? DB_CHARSET : $wpdb->charset;
-    			$db_collate = $wpdb->collate;
-    			
-    			$output = "Database Information:\n\n";
-    			$output .= "MySQL Version: $db_version\n";
-    			$output .= "Database Name: $db_name\n";
-    			$output .= "Database Host: $db_host\n";
-    			$output .= "Database User: $db_user\n";
-    			$output .= "Database Charset: $db_charset\n";
-    			$output .= "Database Collation: " . ($db_collate ?: 'Not Set') . "\n";
-    			$output .= "Table Prefix: " . $wpdb->prefix . "\n";
-    			
-    			// Get table statistics
-    			$tables = $wpdb->get_results('SHOW TABLES', ARRAY_N);
-    			$table_count = count($tables);
-    			
-    			$output .= "\nTable Statistics:\n";
-    			$output .= "Total Tables: $table_count\n";
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp db info',
-    				'method' => 'wp_api',
-    				'command_type' => 'db_info',
-    				'result' => $output
-    			];
-    			
-    		case 'tables':
-    			global $wpdb;
-    			
-    			// Get all tables
-    			$tables = $wpdb->get_results('SHOW TABLES', ARRAY_N);
-    			
-    			if (empty($tables)) {
-    				return [
-    					'success' => true,
-    					'output' => 'No tables found.',
-    					'command' => 'wp db tables',
-    					'method' => 'wp_api'
-    				];
-    			}
-    			
-    			// Format output as a list
-    			$output = "Database Tables:\n\n";
-    			
-    			foreach ($tables as $table) {
-    				$output .= $table[0] . "\n";
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp db tables',
-    				'method' => 'wp_api'
-    			];
-    			
-    		case 'size':
-    			global $wpdb;
-    			
-    			// Get database size
-    			$size_query = $wpdb->get_row("SELECT SUM(data_length + index_length) / 1024 / 1024 as size FROM information_schema.TABLES WHERE table_schema = '" . DB_NAME . "'");
-    			
-    			if ($size_query) {
-    				$size = round($size_query->size, 2);
-    				$output = "Database Size: {$size} MB";
-    			} else {
-    				$output = "Unable to determine database size.";
-    			}
-    			
-    			return [
-    				'success' => true,
-    				'output' => $output,
-    				'command' => 'wp db size',
-    				'method' => 'wp_api'
-    			];
-    			
-    		default:
-    			return [
-    				'success' => false,
-    				'output' => 'Unsupported db command: ' . $action,
-    				'error' => 'Unsupported db command',
-    				'command' => 'wp db ' . $action,
-    				'method' => 'wp_api'
-    			];
-    	}
     }
 }

@@ -115,11 +115,20 @@ class MPAI_Chat_Interface {
             true
         );
         
-        // 4. Tools module (depends on messages and formatters)
+        // Tool Call Detector - add before tools module
+        wp_enqueue_script(
+            'mpai-tool-call-detector',
+            plugin_dir_url(dirname(__FILE__)) . 'assets/js/modules/mpai-tool-call-detector.js',
+            array('jquery', 'mpai-logger-js'),
+            $this->version . '.' . time(), // Add timestamp for cache busting
+            true
+        );
+        
+        // 4. Tools module (depends on messages, formatters, and tool call detector)
         wp_enqueue_script(
             'mpai-chat-tools',
             plugin_dir_url(dirname(__FILE__)) . 'assets/js/modules/mpai-chat-tools.js',
-            array('jquery', 'mpai-logger-js', 'mpai-chat-formatters', 'mpai-chat-messages'),
+            array('jquery', 'mpai-logger-js', 'mpai-chat-formatters', 'mpai-chat-messages', 'mpai-tool-call-detector'),
             $this->version . '.' . time(), // Add timestamp for cache busting
             true
         );
@@ -142,7 +151,22 @@ class MPAI_Chat_Interface {
             true
         );
         
-        // 7. Finally, enqueue the main chat interface loader
+        // 7. Message processor module for handling JSON in messages
+        wp_enqueue_script(
+            'mpai-message-processor',
+            plugin_dir_url(dirname(__FILE__)) . 'assets/js/modules/mpai-message-processor.js',
+            array(
+                'jquery', 
+                'mpai-logger-js', 
+                'mpai-chat-messages', 
+                'mpai-chat-tools',
+                'mpai-tool-call-detector'
+            ),
+            $this->version . '.' . time(), // Add timestamp for cache busting
+            true
+        );
+        
+        // 8. Finally, enqueue the main chat interface loader
         wp_enqueue_script(
             $this->plugin_name . '-chat',
             plugin_dir_url(dirname(__FILE__)) . 'assets/js/modules/chat-interface-loader.js',
@@ -151,10 +175,12 @@ class MPAI_Chat_Interface {
                 'mpai-logger-js', 
                 'mpai-chat-formatters', 
                 'mpai-chat-ui-utils', 
-                'mpai-chat-messages', 
+                'mpai-chat-messages',
+                'mpai-tool-call-detector',
                 'mpai-chat-tools', 
                 'mpai-chat-history',
-                'mpai-blog-formatter'
+                'mpai-blog-formatter',
+                'mpai-message-processor'
             ),
             $this->version . '.' . time(), // Add timestamp for cache busting
             true

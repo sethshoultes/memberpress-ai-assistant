@@ -29,143 +29,139 @@ class MPAI_MemberPress_Service {
     }
     
     /**
-     * Create a new membership level
+     * Create a new membership level with strict parameter validation
      * 
      * @param array $args Membership arguments
-     * @return MeprProduct|WP_Error New membership or error
+     * @return array|WP_Error Result with success/error status and message
      */
     public function create_membership($args) {
         if (!class_exists('MeprProduct')) {
-            return new WP_Error('memberpress_missing', 'MemberPress is not available');
+            mpai_log_error('MemberPress is not available for membership creation', 'memberpress-service');
+            return [
+                'error' => true,
+                'message' => 'MemberPress is not available'
+            ];
         }
         
-        // CRITICAL FIX: Check for JSON string in any parameter and extract real parameters
+        // Log incoming parameters
+        mpai_log_debug('MEMBERSHIP CREATE - Raw arguments: ' . json_encode($args), 'memberpress-service');
+        
+        // PHASE 1: Parameter extraction from different formats
         $this->check_and_extract_json_parameters($args);
         
-        // Create a new product/membership
-        $membership = new MeprProduct();
-        
-        // Dump complete args array for debugging
-        error_log('MEMBERSHIP CREATE - FULL ARGUMENTS: ' . var_export($args, true));
-        error_log('MEMBERSHIP CREATE - JSON ARGUMENTS: ' . json_encode($args));
-        error_log('MEMBERSHIP CREATE - BACKTRACE: ' . wp_debug_backtrace_summary());
-        
-        // Log individual parameters by name to spot potential naming issues
-        foreach ($args as $key => $value) {
-            error_log('MEMBERSHIP CREATE - Parameter [' . $key . '] = ' . var_export($value, true) . ' (type: ' . gettype($value) . ')');
-        }
-        
-        // CRITICAL FIX: Special debug for tool_request parameter that may contain actual parameters
+        // Check for tool_request parameter that may contain actual parameters
         if (isset($args['tool_request'])) {
-            error_log('MEMBERSHIP CREATE - Found tool_request parameter, checking for embedded parameters');
+            mpai_log_debug('MEMBERSHIP CREATE - Found tool_request parameter, extracting parameters', 'memberpress-service');
             $this->extract_parameters_from_tool_request($args);
         }
         
-        // CRITICAL FIX: Check for parameters array
-        if (isset($args['parameters']) && is_array($args['parameters']) && isset($args['parameters']['name'])) {
-            error_log('MEMBERSHIP CREATE - Found parameters array with name, using these values');
-            $args['name'] = $args['parameters']['name'];
-            $args['price'] = $args['parameters']['price'] ?? 0;
-            $args['period_type'] = $args['parameters']['period_type'] ?? 'month';
-            $args['period'] = $args['parameters']['period'] ?? 1;
+        // Handle nested parameters array
+        if (isset($args['parameters']) && is_array($args['parameters']) && isset($args['parameters']['type'])) {
+            mpai_log_debug('MEMBERSHIP CREATE - Found nested parameters array, extracting values', 'memberpress-service');
+            foreach ($args['parameters'] as $key => $value) {
+                $args[$key] = $value;
+            }
         }
         
-        // Set title with thorough checking
-        if (isset($args['name']) && !empty($args['name'])) {
-            error_log('MEMBERSHIP CREATE - Using name parameter value: ' . var_export($args['name'], true));
-            $membership->post_title = sanitize_text_field($args['name']);
-            error_log('MEMBERSHIP CREATE - Set title to: ' . $membership->post_title);
-        } else {
-            error_log('MEMBERSHIP CREATE - Name parameter missing or empty!');
-            error_log('MEMBERSHIP CREATE - Available parameter keys: ' . implode(', ', array_keys($args)));
-            $membership->post_title = 'New Membership';
-            error_log('MEMBERSHIP CREATE - Using default title: New Membership');
+        // PHASE 2: Parameter validation
+        $validation_errors = [];
+        
+        // Validate name - reject default or empty
+        if (!isset($args['name']) || empty($args['name']) || $args['name'] === 'New Membership') {
+            $validation_errors[] = "Missing or invalid membership name. Default 'New Membership' is not allowed.";
+            mpai_log_error('MEMBERSHIP CREATE - Missing or invalid name parameter: ' . (isset($args['name']) ? $args['name'] : 'NOT SET'), 'memberpress-service');
         }
         
-        // Set content
-        if (isset($args['description'])) {
-            error_log('MEMBERSHIP CREATE - Using description parameter: ' . substr(var_export($args['description'], true), 0, 100) . '...');
-            $membership->post_content = wp_kses_post($args['description']);
-        } else {
-            error_log('MEMBERSHIP CREATE - Description parameter missing');
-            $membership->post_content = '';
+        // Validate price - must be positive number
+        if (!isset($args['price']) || 
+            (is_string($args['price']) && !is_numeric($args['price'])) || 
+            floatval($args['price']) <= 0) {
+            $validation_errors[] = "Missing or invalid membership price. Price must be a positive number.";
+            mpai_log_error('MEMBERSHIP CREATE - Missing or invalid price parameter: ' . (isset($args['price']) ? var_export($args['price'], true) : 'NOT SET'), 'memberpress-service');
         }
         
-        // Set price with thorough checking
-        if (isset($args['price'])) {
-            $raw_price = $args['price'];
-            error_log('MEMBERSHIP CREATE - Raw price value: ' . var_export($raw_price, true) . ' (type: ' . gettype($raw_price) . ')');
+        // Validate period_type
+        if (!isset($args['period_type']) || 
+            !in_array($args['period_type'], ['month', 'year', 'lifetime'])) {
+            $validation_errors[] = "Missing or invalid period_type. Must be 'month', 'year', or 'lifetime'.";
+            mpai_log_error('MEMBERSHIP CREATE - Missing or invalid period_type: ' . (isset($args['period_type']) ? $args['period_type'] : 'NOT SET'), 'memberpress-service');
+        }
+        
+        // Return early if validation fails
+        if (!empty($validation_errors)) {
+            mpai_log_error('MEMBERSHIP CREATE - Validation failed: ' . implode(' ', $validation_errors), 'memberpress-service');
+            return [
+                'error' => true,
+                'message' => 'Validation failed: ' . implode(' ', $validation_errors),
+                'validation_errors' => $validation_errors
+            ];
+        }
+        
+        // PHASE 3: Create membership object with validated parameters
+        try {
+            // Create a new product/membership
+            $membership = new MeprProduct();
             
-            // Check if price might be in a different format or key
-            if ($raw_price === '' || $raw_price === null) {
-                error_log('MEMBERSHIP CREATE - Empty price value detected, checking for alternative keys');
-                if (isset($args['amount'])) {
-                    error_log('MEMBERSHIP CREATE - Found alternative "amount" key with value: ' . var_export($args['amount'], true));
-                    $raw_price = $args['amount'];
-                }
+            // Set basic properties with validated parameters
+            $membership->post_title = sanitize_text_field($args['name']);
+            $membership->post_status = 'publish';
+            
+            // Set description if provided
+            $membership->post_content = isset($args['description']) ? wp_kses_post($args['description']) : '';
+            
+            // Ensure price is numeric and positive
+            $raw_price = $args['price'];
+            if (is_string($raw_price) && is_numeric($raw_price)) {
+                $raw_price = floatval($raw_price);
+            }
+            $membership->price = $raw_price;
+            
+            // Set period type and period
+            $membership->period_type = sanitize_text_field($args['period_type']);
+            $membership->period = isset($args['period']) ? intval($args['period']) : 1;
+            
+            // Set trial parameters if provided
+            if (isset($args['trial']) && $args['trial']) {
+                $membership->trial = true;
+                $membership->trial_days = isset($args['trial_days']) ? intval($args['trial_days']) : 14;
+                $membership->trial_amount = isset($args['trial_amount']) ? floatval($args['trial_amount']) : 0.00;
             }
             
-            // CRITICAL FIX: Ensure price is a positive number greater than zero
-            $membership->price = max(0.01, floatval($raw_price));
-            error_log('MEMBERSHIP CREATE - Final price value after conversion: ' . $membership->price);
-        } else {
-            error_log('MEMBERSHIP CREATE - Price parameter completely missing!');
-            error_log('MEMBERSHIP CREATE - Available parameters: ' . implode(', ', array_keys($args)));
-            $membership->price = 9.99; // Default to reasonable price instead of zero
-            error_log('MEMBERSHIP CREATE - Using default price: 9.99');
-        }
-        
-        // Set period type (month, year, etc.) - handle both period_type and billing_type
-        if (isset($args['period_type'])) {
-            error_log('MEMBERSHIP CREATE - Using period_type: ' . var_export($args['period_type'], true));
-            $membership->period_type = sanitize_text_field($args['period_type']);
-        } elseif (isset($args['billing_type'])) {
-            error_log('MEMBERSHIP CREATE - Using billing_type instead: ' . var_export($args['billing_type'], true));
-            $membership->period_type = sanitize_text_field($args['billing_type']);
-        } else {
-            error_log('MEMBERSHIP CREATE - Both period_type and billing_type missing');
-            $membership->period_type = 'month'; // Default to month instead of lifetime
-            error_log('MEMBERSHIP CREATE - Using default period_type: month');
-        }
-        
-        mpai_log_debug('Setting period_type to: ' . $membership->period_type, 'memberpress-service');
-        
-        // Set period (number of periods)
-        if (isset($args['period'])) {
-            error_log('MEMBERSHIP CREATE - Using period: ' . var_export($args['period'], true));
-            $membership->period = intval($args['period']);
-        } else {
-            error_log('MEMBERSHIP CREATE - Period parameter missing');
-            $membership->period = 1; // Default to 1 period
-            error_log('MEMBERSHIP CREATE - Using default period: 1');
-        }
-        
-        // Set trial parameters if provided
-        if (isset($args['trial']) && $args['trial']) {
-            error_log('MEMBERSHIP CREATE - Trial enabled: ' . var_export($args['trial'], true));
-            $membership->trial = true;
-            $membership->trial_days = isset($args['trial_days']) ? intval($args['trial_days']) : 14;
-            $membership->trial_amount = isset($args['trial_amount']) ? floatval($args['trial_amount']) : 0.00;
-            error_log('MEMBERSHIP CREATE - Trial days: ' . $membership->trial_days . ', Trial amount: ' . $membership->trial_amount);
-        } else {
-            error_log('MEMBERSHIP CREATE - Trial not enabled or missing');
-        }
-        
-        // Save the membership
-        error_log('MEMBERSHIP CREATE - Attempting to save membership object');
-        error_log('MEMBERSHIP CREATE - Final title: ' . $membership->post_title);
-        error_log('MEMBERSHIP CREATE - Final price: ' . $membership->price);
-        error_log('MEMBERSHIP CREATE - Final period_type: ' . $membership->period_type);
-        error_log('MEMBERSHIP CREATE - Final period: ' . $membership->period);
-        
-        $result = $membership->save();
-        
-        if ($result) {
-            error_log('MEMBERSHIP CREATE - Successfully saved membership with ID: ' . $membership->ID);
-            return $membership;
-        } else {
-            error_log('MEMBERSHIP CREATE - Failed to save membership');
-            return new WP_Error('save_failed', 'Failed to save membership');
+            // Log final values before saving
+            mpai_log_debug('MEMBERSHIP CREATE - Final values before save: ' . json_encode([
+                'title' => $membership->post_title,
+                'price' => $membership->price,
+                'period_type' => $membership->period_type,
+                'period' => $membership->period,
+                'price_type' => gettype($membership->price)
+            ]), 'memberpress-service');
+            
+            // Save the membership
+            $result = $membership->save();
+            
+            if ($result) {
+                mpai_log_info('MEMBERSHIP CREATE - Successfully created membership ID: ' . $membership->ID, 'memberpress-service');
+                return [
+                    'success' => true,
+                    'message' => 'Membership created successfully',
+                    'membership_id' => $membership->ID,
+                    'name' => $membership->post_title,
+                    'price' => $membership->price,
+                    'period_type' => $membership->period_type
+                ];
+            } else {
+                mpai_log_error('MEMBERSHIP CREATE - Failed to save membership', 'memberpress-service');
+                return [
+                    'error' => true,
+                    'message' => 'Failed to save membership'
+                ];
+            }
+        } catch (Exception $e) {
+            mpai_log_error('MEMBERSHIP CREATE - Exception: ' . $e->getMessage(), 'memberpress-service');
+            return [
+                'error' => true,
+                'message' => 'Exception: ' . $e->getMessage()
+            ];
         }
     }
     

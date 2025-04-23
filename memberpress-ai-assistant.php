@@ -773,18 +773,68 @@ class MemberPress_AI_Assistant {
         );
 
         // Load the main chat interface loader script
+        // Load the parameter validator
+        wp_enqueue_script(
+            'mpai-parameter-validator',
+            MPAI_PLUGIN_URL . 'assets/js/modules/mpai-parameter-validator.js',
+            array('jquery', 'mpai-logger-js'),
+            MPAI_VERSION,
+            true
+        );
+        
+        // Load the tool call detector
+        wp_enqueue_script(
+            'mpai-tool-call-detector',
+            MPAI_PLUGIN_URL . 'assets/js/modules/mpai-tool-call-detector.js',
+            array('jquery', 'mpai-logger-js'),
+            MPAI_VERSION,
+            true
+        );
+        
+        // Load the message processor
+        wp_enqueue_script(
+            'mpai-message-processor',
+            MPAI_PLUGIN_URL . 'assets/js/modules/mpai-message-processor.js',
+            array('jquery', 'mpai-logger-js', 'mpai-tool-call-detector', 'mpai-parameter-validator'),
+            MPAI_VERSION,
+            true
+        );
+        
+        // Load the module loader to ensure all modules are loaded before initializing the chat interface
+        wp_enqueue_script(
+            'mpai-module-loader',
+            MPAI_PLUGIN_URL . 'assets/js/mpai-module-loader.js',
+            array(
+                'jquery',
+                'mpai-logger-js',
+                'mpai-chat-formatters',
+                'mpai-chat-ui-utils',
+                'mpai-chat-messages',
+                'mpai-chat-tools',
+                'mpai-chat-history',
+                'mpai-blog-formatter',
+                'mpai-parameter-validator',
+                'mpai-tool-call-detector',
+                'mpai-message-processor'
+            ),
+            MPAI_VERSION,
+            true
+        );
+
+        // Load the main chat interface loader script
         wp_enqueue_script(
             'mpai-chat-js',
             MPAI_PLUGIN_URL . 'assets/js/modules/chat-interface-loader.js',
             array(
-                'jquery', 
-                'mpai-logger-js', 
-                'mpai-chat-formatters', 
-                'mpai-chat-ui-utils', 
-                'mpai-chat-messages', 
-                'mpai-chat-tools', 
+                'jquery',
+                'mpai-logger-js',
+                'mpai-chat-formatters',
+                'mpai-chat-ui-utils',
+                'mpai-chat-messages',
+                'mpai-chat-tools',
                 'mpai-chat-history',
-                'mpai-blog-formatter'
+                'mpai-blog-formatter',
+                'mpai-module-loader'
             ),
             MPAI_VERSION,
             true
@@ -966,7 +1016,7 @@ class MemberPress_AI_Assistant {
     public function process_chat_ajax() {
         try {
             // Check nonce for security
-            check_ajax_referer('mpai_nonce', 'nonce');
+            check_ajax_referer('mpai_chat_nonce', 'nonce');
             
             mpai_log_debug('AJAX process_chat_ajax started', 'chat');
 
@@ -1516,9 +1566,8 @@ class MemberPress_AI_Assistant {
     public function clear_chat_history_ajax() {
         global $wpdb;
         
-        // Check nonce for security 
-        // Using mpai_nonce instead of mpai_chat_nonce to match what's in admin.js
-        check_ajax_referer('mpai_nonce', 'nonce');
+        // Check nonce for security
+        check_ajax_referer('mpai_chat_nonce', 'nonce');
 
         // Only allow logged-in users with appropriate capabilities
         if (!current_user_can('edit_posts')) {
@@ -1600,7 +1649,7 @@ class MemberPress_AI_Assistant {
      */
     public function get_chat_history_ajax() {
         // Check nonce for security
-        check_ajax_referer('mpai_nonce', 'nonce');
+        check_ajax_referer('mpai_chat_nonce', 'nonce');
 
         // Only allow logged-in users with appropriate capabilities
         if (!current_user_can('edit_posts')) {
