@@ -426,6 +426,16 @@ class MPAI_Chat {
         $system_prompt .= "   - For all subscriptions: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"subscriptions\"}}\n";
         $system_prompt .= "   - For WordPress and server information: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"system_info\"}}\n";
         $system_prompt .= "   - For complete data with system info: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"all\", \"include_system_info\": true}}\n";
+        $system_prompt .= "   - For creating a membership: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"create\", \"name\": \"Gold Membership\", \"price\": 29.99, \"period_type\": \"month\"}}\n";
+        $system_prompt .= "CRITICAL - MEMBERSHIP TOOL FORMAT: When creating memberships, follow this EXACT format with proper quoting and numerical values:\n";
+        $system_prompt .= "```json\n";
+        $system_prompt .= "{\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"create\", \"name\": \"Gold Membership\", \"price\": 29.99, \"period_type\": \"month\"}}\n";
+        $system_prompt .= "```\n";
+        $system_prompt .= "YOU MUST include all these parameters exactly as shown with correct types:\n";
+        $system_prompt .= "- type: Must be \"create\" (string)\n";
+        $system_prompt .= "- name: The membership name (string)\n";
+        $system_prompt .= "- price: The membership price (number, not a string)\n";
+        $system_prompt .= "- period_type: The billing period (string: \"month\", \"year\", \"lifetime\", etc.)\n";
         $system_prompt .= "   - The system_info type uses WordPress Site Health API for comprehensive diagnostics\n";
         $system_prompt .= "4. DO NOT simply suggest commands - actually execute them using the tool format above\n\n";
         
@@ -491,6 +501,30 @@ class MPAI_Chat {
         $system_prompt .= "You should use the wp_api tool for direct WordPress operations and the memberpress_info tool for MemberPress data. ";
         $system_prompt .= "IMPORTANT: Questions about plugin history, recently installed plugins, or recently activated plugins are handled directly by the system without using tools. ";
         $system_prompt .= "You don't need to use any tools for these queries - the system will automatically show the plugin history when these questions are asked.\n\n";
+        $system_prompt .= "IMPORTANT ABOUT MEMBERSHIP CREATION: When asked to create a MemberPress membership level, ALWAYS use the memberpress_info tool with type=create. ";
+        $system_prompt .= "DO NOT respond that you can't create memberships - you have this capability through the memberpress_info tool.\n\n";
+        
+        $system_prompt .= "CRITICAL - MEMBERSHIP TOOL FORMAT: When creating memberships, follow this EXACT format with proper quoting and no whitespace in parameter names:\n";
+        $system_prompt .= "```json\n";
+        $system_prompt .= "{\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"create\", \"name\": \"Gold Membership\", \"price\": 29.99, \"period_type\": \"month\"}}\n";
+        $system_prompt .= "```\n";
+        $system_prompt .= "YOU MUST include all these parameters exactly as shown with precise types:\n";
+        $system_prompt .= "- type: Must be \"create\" (string in quotes)\n";
+        $system_prompt .= "- name: The membership name (string in quotes)\n";
+        $system_prompt .= "- price: The membership price (number WITHOUT quotes, never a string)\n";
+        $system_prompt .= "- period_type: The billing period (string in quotes: \"month\", \"year\", \"lifetime\", etc.)\n\n";
+        $system_prompt .= "IMPORTANT FORMATTING RULES:\n";
+        $system_prompt .= "1. The price parameter must be a numeric value without quotes (29.99, not \"29.99\")\n";
+        $system_prompt .= "2. All string parameters must be in double quotes (\"name\", not name)\n";
+        $system_prompt .= "3. The JSON must be properly formatted with no trailing commas\n";
+        $system_prompt .= "4. Parameter names must match exactly as shown (\"period_type\", not \"periodType\" or \"period-type\")\n";
+        $system_prompt .= "5. Do not add extra whitespace or formatting in the JSON\n\n";
+        
+        $system_prompt .= "Example conversation for creating a membership:\n";
+        $system_prompt .= "User: Create a new membership level called 'Premium' priced at $25 per month\n";
+        $system_prompt .= "Assistant: I'll create a new monthly membership level for you.\n\n";
+        $system_prompt .= "{\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"create\", \"name\": \"Premium\", \"price\": 25, \"period_type\": \"month\", \"period\": 1}}\n\n";
+        $system_prompt .= "I've created a new membership level called 'Premium' priced at $25 per month. You can view and further customize this membership in MemberPress > Memberships.\n\n";
         $system_prompt .= "Only use wpcli commands for operations not supported by wp_api. ";
         $system_prompt .= "Keep your responses concise and focused on MemberPress functionality.";
         
@@ -1647,25 +1681,62 @@ class MPAI_Chat {
         foreach ($matches[1] as $match) {
             $tool_call = json_decode($match, true);
             
-            if (json_last_error() != JSON_ERROR_NONE || !isset($tool_call['tool'])) {
+            if (json_last_error() != JSON_ERROR_NONE) {
+                mpai_log_error('Failed to parse JSON tool call: ' . json_last_error_msg() . ' for: ' . $match, 'chat');
                 continue;
             }
             
+            // Log the entire tool call structure for debugging
+            mpai_log_debug('Detected tool call JSON: ' . json_encode($tool_call), 'chat');
+            
+            // Both 'tool' and 'tool_name' are supported formats
+            $tool_name = null;
+            if (isset($tool_call['tool'])) {
+                $tool_name = $tool_call['tool'];
+                mpai_log_debug('Tool name extracted from "tool" field: ' . $tool_name, 'chat');
+            } else if (isset($tool_call['name'])) {
+                $tool_name = $tool_call['name'];
+                mpai_log_debug('Tool name extracted from "name" field: ' . $tool_name, 'chat');
+            } else {
+                mpai_log_warning('No tool name found in JSON', 'chat');
+                continue; // Skip if no tool name found
+            }
+            
+            // Extract parameters, with support for different parameter formats
+            $parameters = array();
+            if (isset($tool_call['parameters'])) {
+                $parameters = $tool_call['parameters'];
+                mpai_log_debug('Parameters extracted directly from "parameters" field', 'chat');
+            } else if (isset($tool_call['args'])) {
+                $parameters = $tool_call['args'];
+                mpai_log_debug('Parameters extracted from "args" field', 'chat');
+            }
+            
+            // Log extracted parameters
+            mpai_log_debug('Extracted parameters: ' . json_encode($parameters), 'chat');
+            
             // Clean up any escaped slashes in plugin paths
-            if (isset($tool_call['parameters']) && isset($tool_call['parameters']['plugin'])) {
-                $tool_call['parameters']['plugin'] = str_replace('\\/', '/', $tool_call['parameters']['plugin']);
-                mpai_log_debug('Unescaped plugin path for tool call: ' . $tool_call['parameters']['plugin'], 'chat');
+            if (isset($parameters['plugin'])) {
+                $parameters['plugin'] = str_replace('\\/', '/', $parameters['plugin']);
+                mpai_log_debug('Unescaped plugin path for tool call: ' . $parameters['plugin'], 'chat');
             }
             
             // Clean up any escaped slashes in theme names
-            if (isset($tool_call['parameters']) && isset($tool_call['parameters']['theme'])) {
-                $tool_call['parameters']['theme'] = str_replace('\\/', '/', $tool_call['parameters']['theme']);
-                mpai_log_debug('Unescaped theme name for tool call: ' . $tool_call['parameters']['theme'], 'chat');
+            if (isset($parameters['theme'])) {
+                $parameters['theme'] = str_replace('\\/', '/', $parameters['theme']);
+                mpai_log_debug('Unescaped theme name for tool call: ' . $parameters['theme'], 'chat');
+            }
+            
+            // Special handling for membership creation
+            if ($tool_name === 'memberpress_info' && isset($parameters['type']) && $parameters['type'] === 'create') {
+                mpai_log_debug('Membership creation detected, ensuring name and price are passed correctly', 'chat');
+                mpai_log_debug('Name: ' . (isset($parameters['name']) ? $parameters['name'] : 'Not set'), 'chat');
+                mpai_log_debug('Price: ' . (isset($parameters['price']) ? $parameters['price'] : 'Not set'), 'chat');
             }
             
             $tool_request = array(
-                'name' => $tool_call['tool'],
-                'parameters' => isset($tool_call['parameters']) ? $tool_call['parameters'] : array()
+                'name' => $tool_name,
+                'parameters' => $parameters
             );
             
             // Execute the tool
