@@ -117,8 +117,16 @@
             'MPAI_BlogFormatter'
         ];
         
+        // Optional modules that will be loaded by the module loader
+        const optionalModules = [
+            'MPAI_MessageProcessor',
+            'MPAI_ToolCallDetector',
+            'MPAI_ParameterValidator'
+        ];
+        
         let allAvailable = true;
         
+        // Check required modules
         requiredModules.forEach(function(moduleName) {
             if (!window[moduleName]) {
                 console.error('MPAI: Required module not available: ' + moduleName);
@@ -126,6 +134,17 @@
             } else {
                 // Store reference
                 modules[moduleName] = window[moduleName];
+            }
+        });
+        
+        // Check optional modules but don't fail if they're not available
+        optionalModules.forEach(function(moduleName) {
+            if (window[moduleName]) {
+                // Store reference if available
+                modules[moduleName] = window[moduleName];
+                console.log('MPAI: Optional module available: ' + moduleName);
+            } else {
+                console.log('MPAI: Optional module not available yet: ' + moduleName);
             }
         });
         
@@ -186,6 +205,12 @@
             if (window.mpaiLogger) {
                 window.mpaiLogger.debug('MPAI_BlogFormatter module initialized', 'ui');
             }
+        }
+        
+        // These modules are now initialized by the module loader
+        // Skip initialization here to avoid conflicts
+        if (window.mpaiLogger) {
+            window.mpaiLogger.debug('Skipping initialization of modules handled by module loader', 'ui');
         }
     }
     

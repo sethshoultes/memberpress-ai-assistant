@@ -29,7 +29,7 @@ class MPAI_AJAX_Handler {
         mpai_log_debug('execute_tool called. POST data: ' . json_encode($_POST), 'ajax-handler');
         
         // Check nonce
-        check_ajax_referer('mpai_nonce', 'nonce');
+        check_ajax_referer('mpai_chat_nonce', 'nonce');
         
         // Only allow logged-in users with appropriate capabilities
         if (!current_user_can('edit_posts')) {
@@ -45,6 +45,10 @@ class MPAI_AJAX_Handler {
             return;
         }
 
+        // Store raw tool request for debugging
+        $raw_tool_request = $_POST['tool_request'];
+        mpai_log_debug('RAW tool request: ' . $raw_tool_request, 'ajax-handler');
+        
         // Parse the tool request
         $tool_request = json_decode(stripslashes($_POST['tool_request']), true);
         
@@ -53,9 +57,43 @@ class MPAI_AJAX_Handler {
             $tool_request = json_decode($_POST['tool_request'], true);
             
             if (json_last_error() !== JSON_ERROR_NONE) {
-                mpai_log_warning('Invalid JSON in tool request: ' . json_last_error_msg(), 'ajax-handler');
-                wp_send_json_error('Invalid JSON in tool request: ' . json_last_error_msg());
-                return;
+                // Store the error details for debugging
+                $json_error = json_last_error_msg();
+                mpai_log_warning('Invalid JSON in tool request: ' . $json_error, 'ajax-handler');
+                
+                // Try to salvage the request by looking for XML or function call format
+                // This handles cases where the AI uses a different format for tool calls
+                if (strpos($raw_tool_request, '<') === 0 || 
+                    strpos($raw_tool_request, 'function(') !== false ||
+                    strpos($raw_tool_request, 'create_membership') !== false) {
+                    
+                    mpai_log_debug('Attempting to salvage non-JSON tool request', 'ajax-handler');
+                    
+                    // Initialize parameter validator if available
+                    if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-parameter-validator.php')) {
+                        require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-parameter-validator.php';
+                        $parameter_validator = mpai_init_parameter_validator();
+                        
+                        // Create a minimal tool request with the raw request as parameter
+                        $tool_request = [
+                            'name' => 'memberpress_info',
+                            'raw_request' => $raw_tool_request,
+                            'parameters' => [
+                                'type' => 'create'
+                            ]
+                        ];
+                        
+                        mpai_log_debug('Created fallback tool request for parameter extraction', 'ajax-handler');
+                    } else {
+                        // Cannot salvage without parameter validator
+                        wp_send_json_error('Invalid JSON in tool request and parameter validator not available: ' . $json_error);
+                        return;
+                    }
+                } else {
+                    // Not a salvageable format
+                    wp_send_json_error('Invalid JSON in tool request: ' . $json_error);
+                    return;
+                }
             }
         }
         

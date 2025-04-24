@@ -32,7 +32,7 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 	public function get_tool_definition() {
 		return [
 			'name' => 'wp_api',
-			'description' => 'Executes WordPress API functions for common operations like creating posts and managing plugins and themes',
+			'description' => 'Executes WordPress API functions for common operations like creating posts and managing plugins and themes. Note: For MemberPress operations use the memberpress_info tool instead.',
 			'parameters' => [
 				'type' => 'object',
 				'properties' => [
@@ -45,17 +45,13 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 							'create_page',
 							'create_user',
 							'get_users',
-							'get_memberships',
-							'create_membership',
-							'get_transactions',
-							'get_subscriptions',
 							'activate_plugin',
 							'deactivate_plugin',
 							'get_plugins',
 							'activate_theme',
 							'get_themes',
 						],
-						'description' => 'The action to perform'
+						'description' => 'The action to perform. Note: For MemberPress operations like create_membership, use the memberpress_info tool instead.'
 					],
 					'plugin' => [
 						'type' => 'string',
@@ -84,10 +80,10 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					'limit' => [
 						'type' => 'integer',
 						'description' => 'Number of items to retrieve for listing operations'
-					],
+					]
 				],
 				'required' => ['action']
-			],
+			]
 		];
 	}
 
@@ -124,6 +120,13 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			
 			$action = $parameters['action'];
 			mpai_log_debug('Processing action: ' . $action);
+			
+			// IMPORTANT: Intercept and redirect MemberPress-related actions
+			if ($this->is_memberpress_action($action)) {
+				mpai_log_warning('MemberPress-related action detected in wp_api tool: ' . $action, 'wp-api-tool');
+				$memberpress_guidance = $this->get_memberpress_guidance($action);
+				throw new Exception($memberpress_guidance);
+			}
 			
 			// Validate specific action parameters
 			switch ($action) {
@@ -179,14 +182,6 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					return $this->create_user( $parameters );
 				case 'get_users':
 					return $this->get_users( $parameters );
-				case 'get_memberships':
-					return $this->get_memberships( $parameters );
-				case 'create_membership':
-					return $this->create_membership( $parameters );
-				case 'get_transactions':
-					return $this->get_transactions( $parameters );
-				case 'get_subscriptions':
-					return $this->get_subscriptions( $parameters );
 				case 'activate_plugin':
 					return $this->activate_plugin( $parameters );
 				case 'deactivate_plugin':
@@ -207,6 +202,64 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 				'trace' => $e->getTraceAsString()
 			));
 			throw $e;
+		}
+	}
+	
+	/**
+	 * Check if an action is MemberPress-related
+	 *
+	 * @param string $action Action to check
+	 * @return bool Whether the action is MemberPress-related
+	 */
+	private function is_memberpress_action($action) {
+		$memberpress_actions = array(
+			'get_memberships',
+			'create_membership',
+			'get_transactions',
+			'get_subscriptions',
+			'update_membership',
+			'delete_membership',
+			'get_membership',
+			'add_user_to_membership',
+			'remove_user_from_membership',
+			'create_coupon',
+			'apply_coupon',
+			'mepr_',  // Prefix for any other MemberPress actions
+		);
+		
+		foreach ($memberpress_actions as $mp_action) {
+			if (strpos($action, $mp_action) !== false) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * Get guidance message for MemberPress actions
+	 *
+	 * @param string $action MemberPress action that was attempted
+	 * @return string Guidance message with correct tool to use
+	 */
+	private function get_memberpress_guidance($action) {
+		$base_message = "MemberPress operations should not use the wp_api tool. ";
+		
+		switch ($action) {
+			case 'create_membership':
+				return $base_message . "To create a membership, use: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"create\", \"name\": \"Gold Membership\", \"price\": 29.99}}";
+				
+			case 'get_memberships':
+				return $base_message . "To get memberships, use: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}";
+				
+			case 'get_transactions':
+				return $base_message . "To get transactions, use: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"transactions\"}}";
+				
+			case 'get_subscriptions':
+				return $base_message . "To get subscriptions, use: {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"subscriptions\"}}";
+				
+			default:
+				return $base_message . "Please use the memberpress_info tool for all MemberPress operations.";
 		}
 	}
 
@@ -682,257 +735,6 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 			'success' => true,
 			'count'   => count( $result ),
 			'users'   => $result,
-		);
-	}
-
-	/**
-	 * Get MemberPress memberships
-	 *
-	 * @param array $parameters Parameters for retrieving memberships
-	 * @return array Memberships data
-	 */
-	private function get_memberships( $parameters ) {
-		// Check if MemberPress is active
-		if ( ! class_exists( 'MeprOptions' ) ) {
-			throw new Exception( 'MemberPress is not active' );
-		}
-
-		$args = array(
-			'post_type'      => 'memberpressproduct',
-			'posts_per_page' => isset( $parameters['limit'] ) ? intval( $parameters['limit'] ) : -1,
-			'post_status'    => isset( $parameters['status'] ) ? $parameters['status'] : 'publish',
-		);
-
-		$memberships = get_posts( $args );
-		$result = array();
-		$mepr_options = MeprOptions::fetch();
-
-		foreach ( $memberships as $membership ) {
-			$product = new MeprProduct( $membership->ID );
-			
-			$result[] = array(
-				'ID'              => $membership->ID,
-				'title'           => $membership->post_title,
-				'description'     => $membership->post_content,
-				'price'           => $product->price,
-				'period'          => $product->period,
-				'period_type'     => $product->period_type,
-				'billing_type'    => $product->billing_type,
-				'status'          => $membership->post_status,
-				'created'         => $membership->post_date,
-				'currency_symbol' => $mepr_options->currency_symbol,
-			);
-		}
-
-		return array(
-			'success'     => true,
-			'count'       => count( $result ),
-			'memberships' => $result,
-		);
-	}
-
-	/**
-	 * Create a MemberPress membership
-	 *
-	 * @param array $parameters Parameters for membership creation
-	 * @return array Created membership data
-	 */
-	private function create_membership( $parameters ) {
-		// Check if MemberPress is active
-		if ( ! class_exists( 'MeprOptions' ) ) {
-			throw new Exception( 'MemberPress is not active' );
-		}
-
-		$post_data = array(
-			'post_title'   => isset( $parameters['title'] ) ? $parameters['title'] : 'New Membership',
-			'post_content' => isset( $parameters['description'] ) ? $parameters['description'] : '',
-			'post_status'  => isset( $parameters['status'] ) ? $parameters['status'] : 'publish',
-			'post_type'    => 'memberpressproduct',
-		);
-
-		// Insert the post
-		$product_id = wp_insert_post( $post_data );
-
-		if ( is_wp_error( $product_id ) ) {
-			throw new Exception( 'Failed to create membership: ' . $product_id->get_error_message() );
-		}
-
-		// Set price
-		$price = isset( $parameters['price'] ) ? floatval( $parameters['price'] ) : 9.99;
-		update_post_meta( $product_id, '_mepr_product_price', $price );
-
-		// Set billing type
-		$billing_type = isset( $parameters['billing_type'] ) ? $parameters['billing_type'] : 'recurring';
-		update_post_meta( $product_id, '_mepr_billing_type', $billing_type );
-
-		// Set period
-		$period = isset( $parameters['period'] ) ? intval( $parameters['period'] ) : 1;
-		update_post_meta( $product_id, '_mepr_product_period', $period );
-
-		// Set period type
-		$period_type = isset( $parameters['period_type'] ) ? $parameters['period_type'] : 'month';
-		update_post_meta( $product_id, '_mepr_product_period_type', $period_type );
-
-		// Get the created membership
-		$product = new MeprProduct( $product_id );
-		$edit_url = admin_url( "post.php?post={$product_id}&action=edit" );
-
-		return array(
-			'success'     => true,
-			'product_id'  => $product_id,
-			'title'       => $post_data['post_title'],
-			'price'       => $price,
-			'billing_type' => $billing_type,
-			'period'      => $period,
-			'period_type' => $period_type,
-			'edit_url'    => $edit_url,
-			'message'     => "Successfully created membership '{$post_data['post_title']}' with ID {$product_id}",
-		);
-	}
-
-	/**
-	 * Get MemberPress transactions
-	 *
-	 * @param array $parameters Parameters for retrieving transactions
-	 * @return array Transactions data
-	 */
-	private function get_transactions( $parameters ) {
-		// Check if MemberPress is active
-		if ( ! class_exists( 'MeprDb' ) ) {
-			throw new Exception( 'MemberPress is not active' );
-		}
-
-		global $wpdb;
-		$mepr_db = new MeprDb();
-		$limit = isset( $parameters['limit'] ) ? intval( $parameters['limit'] ) : 20;
-		
-		// Date filtering
-		$where_clauses = array();
-		$query_args = array();
-		
-		// Handle start_date filter
-		if ( isset( $parameters['start_date'] ) ) {
-			$where_clauses[] = "created_at >= %s";
-			$query_args[] = $parameters['start_date'];
-		}
-		
-		// Handle end_date filter
-		if ( isset( $parameters['end_date'] ) ) {
-			$where_clauses[] = "created_at <= %s";
-			$query_args[] = $parameters['end_date'];
-		}
-		
-		// Handle month filter (current month)
-		if ( isset( $parameters['month'] ) && $parameters['month'] === 'current' ) {
-			$where_clauses[] = "MONTH(created_at) = MONTH(CURRENT_DATE())";
-			$where_clauses[] = "YEAR(created_at) = YEAR(CURRENT_DATE())";
-		}
-		
-		// Handle month filter (previous month)
-		if ( isset( $parameters['month'] ) && $parameters['month'] === 'previous' ) {
-			$where_clauses[] = "(
-				(MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)) 
-				AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)))
-				OR
-				(MONTH(created_at) = 12 
-				AND MONTH(CURRENT_DATE()) = 1 
-				AND YEAR(created_at) = YEAR(CURRENT_DATE()) - 1)
-			)";
-		}
-		
-		// Build the query
-		$query = "SELECT id, user_id, product_id, amount, status, created_at FROM {$mepr_db->transactions}";
-		
-		if ( !empty( $where_clauses ) ) {
-			$query .= " WHERE " . implode( " AND ", $where_clauses );
-		}
-		
-		$query .= " ORDER BY created_at DESC LIMIT %d";
-		$query_args[] = $limit;
-		
-		// Execute the query with all parameters
-		$transactions = $wpdb->get_results( $wpdb->prepare( $query, $query_args ) );
-		$result = array();
-		$mepr_options = MeprOptions::fetch();
-
-		foreach ( $transactions as $txn ) {
-			$user = get_user_by( 'id', $txn->user_id );
-			$username = $user ? $user->user_email : "User #{$txn->user_id}";
-
-			$membership = get_post( $txn->product_id );
-			$membership_title = $membership ? $membership->post_title : "Product #{$txn->product_id}";
-
-			$result[] = array(
-				'id'             => $txn->id,
-				'user_id'        => $txn->user_id,
-				'username'       => $username,
-				'product_id'     => $txn->product_id,
-				'product_title'  => $membership_title,
-				'amount'         => $txn->amount,
-				'formatted_amount' => $mepr_options->currency_symbol . $txn->amount,
-				'status'         => $txn->status,
-				'created_at'     => $txn->created_at,
-				'created_date'   => date( 'Y-m-d', strtotime( $txn->created_at ) ),
-			);
-		}
-
-		return array(
-			'success'      => true,
-			'count'        => count( $result ),
-			'transactions' => $result,
-		);
-	}
-
-	/**
-	 * Get MemberPress subscriptions
-	 *
-	 * @param array $parameters Parameters for retrieving subscriptions
-	 * @return array Subscriptions data
-	 */
-	private function get_subscriptions( $parameters ) {
-		// Check if MemberPress is active
-		if ( ! class_exists( 'MeprDb' ) ) {
-			throw new Exception( 'MemberPress is not active' );
-		}
-
-		global $wpdb;
-		$mepr_db = new MeprDb();
-		$limit = isset( $parameters['limit'] ) ? intval( $parameters['limit'] ) : 20;
-		$status = isset( $parameters['status'] ) ? $parameters['status'] : 'all';
-
-		$query = "SELECT id, user_id, product_id, status, created_at FROM {$mepr_db->subscriptions}";
-		
-		if ( $status !== 'all' ) {
-			$query .= $wpdb->prepare( " WHERE status = %s", $status );
-		}
-		
-		$query .= " ORDER BY created_at DESC LIMIT %d";
-		$subscriptions = $wpdb->get_results( $wpdb->prepare( $query, $limit ) );
-		$result = array();
-
-		foreach ( $subscriptions as $sub ) {
-			$user = get_user_by( 'id', $sub->user_id );
-			$username = $user ? $user->user_email : "User #{$sub->user_id}";
-
-			$membership = get_post( $sub->product_id );
-			$membership_title = $membership ? $membership->post_title : "Product #{$sub->product_id}";
-
-			$result[] = array(
-				'id'             => $sub->id,
-				'user_id'        => $sub->user_id,
-				'username'       => $username,
-				'product_id'     => $sub->product_id,
-				'product_title'  => $membership_title,
-				'status'         => $sub->status,
-				'created_at'     => $sub->created_at,
-				'created_date'   => date( 'Y-m-d', strtotime( $sub->created_at ) ),
-			);
-		}
-
-		return array(
-			'success'      => true,
-			'count'        => count( $result ),
-			'subscriptions' => $result,
 		);
 	}
 
@@ -1719,10 +1521,6 @@ class MPAI_WP_API_Tool extends MPAI_Base_Tool {
 					'create_page',
 					'create_user',
 					'get_users',
-					'get_memberships',
-					'create_membership',
-					'get_transactions',
-					'get_subscriptions',
 					'activate_plugin',
 					'deactivate_plugin',
 					'get_plugins',

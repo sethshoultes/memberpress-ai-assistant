@@ -26,11 +26,11 @@ class MPAI_Context_Manager {
     private $openai;
 
     /**
-     * MemberPress API integration instance
+     * MemberPress Service instance
      *
-     * @var MPAI_MemberPress_API
+     * @var MPAI_MemberPress_Service
      */
-    private $memberpress_api;
+    private $memberpress_service;
 
     /**
      * Allowed commands
@@ -61,6 +61,13 @@ class MPAI_Context_Manager {
     private $error_recovery;
 
     /**
+     * Parameter validator instance
+     *
+     * @var MPAI_Parameter_Validator
+     */
+    private $parameter_validator;
+    
+    /**
      * Constructor
      */
     public function __construct() {
@@ -74,7 +81,25 @@ class MPAI_Context_Manager {
         }
         
         $this->openai = new MPAI_OpenAI();
-        $this->memberpress_api = new MPAI_MemberPress_API();
+        
+        // Initialize MemberPress Service if available
+        if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-memberpress-service.php')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-memberpress-service.php';
+            $this->memberpress_service = new MPAI_MemberPress_Service();
+            mpai_log_debug('MemberPress Service initialized', 'context-manager');
+        } else {
+            mpai_log_warning('MemberPress Service class not found', 'context-manager');
+        }
+        
+        // Initialize parameter validator
+        if (file_exists(MPAI_PLUGIN_DIR . 'includes/class-mpai-parameter-validator.php')) {
+            require_once MPAI_PLUGIN_DIR . 'includes/class-mpai-parameter-validator.php';
+            $this->parameter_validator = mpai_init_parameter_validator();
+            mpai_log_debug('Parameter Validator initialized', 'context-manager');
+        } else {
+            mpai_log_warning('Parameter Validator class not found', 'context-manager');
+        }
+        
         $this->allowed_commands = get_option('mpai_allowed_cli_commands', array());
         $this->init_tools();
     }
@@ -932,14 +957,214 @@ class MPAI_Context_Manager {
      * @param array $parameters Tool parameters
      * @return mixed MemberPress data
      */
+    /**
+     * Trace membership parameters for debugging (legacy method, forwards to parameter validator)
+     * 
+     * @param string $stage Current processing stage
+     * @param array $parameters Parameters to log
+     */
+    private function trace_membership_parameters($stage, $parameters) {
+        if (isset($this->parameter_validator)) {
+            // Forward to new method if available
+            $this->parameter_validator->trace_parameters($stage, $parameters);
+        } else {
+            // Fallback to basic logging
+            mpai_log_debug("MEMBERSHIP TRACE [{$stage}] - " . json_encode([
+                'raw' => $parameters,
+                'name' => isset($parameters['name']) ? $parameters['name'] : 'NOT SET',
+                'price' => isset($parameters['price']) ? $parameters['price'] : 'NOT SET',
+                'period_type' => isset($parameters['period_type']) ? $parameters['period_type'] : 'NOT SET',
+            ]), 'context-manager');
+        }
+    }
+    
+    /**
+     * Validate membership parameters (legacy method, forwards to parameter validator)
+     *
+     * @param array $parameters Parameters to validate
+     * @return array Array of error messages (empty if valid)
+     */
+    private function validate_membership_parameters($parameters) {
+        if (isset($this->parameter_validator)) {
+            // Forward to new validator if available
+            $validation_result = $this->parameter_validator->validate_membership_parameters($parameters);
+            return $validation_result['errors'];
+        } else {
+            // Basic validation as fallback
+            $errors = [];
+            
+            if (!isset($parameters['name']) || empty($parameters['name'])) {
+                $errors[] = "Missing membership name.";
+            }
+            
+            if (!isset($parameters['price'])) {
+                $errors[] = "Missing membership price.";
+            }
+            
+            if (!isset($parameters['period_type'])) {
+                $errors[] = "Missing period_type.";
+            }
+            
+            return $errors;
+        }
+    }
+    
     public function get_memberpress_info($parameters) {
+        // Trace initial parameters
+        $this->trace_membership_parameters('INITIAL PARAMETERS', $parameters);
+        
         // Extract parameters
         $type = isset($parameters['type']) ? $parameters['type'] : 'summary';
         $include_system_info = isset($parameters['include_system_info']) ? (bool)$parameters['include_system_info'] : false;
         
         mpai_log_debug('Getting MemberPress info for type: ' . $type . ', include_system_info: ' . ($include_system_info ? 'true' : 'false'), 'context-manager');
         
+        // Check if MemberPress Service is available
+        if (!$this->memberpress_service) {
+            mpai_log_error('MemberPress Service not available for get_memberpress_info', 'context-manager');
+            $response = array(
+                'success' => false,
+                'tool' => 'memberpress_info',
+                'error' => 'MemberPress Service not available'
+            );
+            return json_encode($response);
+        }
+        
         switch($type) {
+            case 'create':
+                // Handle membership creation
+                mpai_log_debug('Creating membership via memberpress_info tool', 'context-manager');
+                
+                // Check if parameter validator is available
+                if (!isset($this->parameter_validator)) {
+                    mpai_log_error('Parameter validator not available', 'context-manager');
+                    
+                    // Return error response
+                    $response = array(
+                        'success' => false,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'create',
+                        'error' => 'Parameter validator not available'
+                    );
+                    
+                    return json_encode($response);
+                }
+                
+                // CRITICAL FIX: Extract embedded parameters from any format sent by the AI
+                $extracted_parameters = $this->parameter_validator->extract_membership_parameters($parameters);
+                
+                // Merge parameters - prefer extracted parameters over original
+                $membership_params = array_merge(
+                    ['type' => 'create'], // Ensure type is set
+                    $parameters,          // Original parameters
+                    $extracted_parameters // Extracted parameters take precedence
+                );
+                
+                // Validate the parameters using the enhanced validator
+                $validation_result = $this->parameter_validator->validate_membership_parameters($membership_params);
+                
+                if (!$validation_result['isValid']) {
+                    mpai_log_error('Membership creation parameter validation failed: ' . 
+                        implode(', ', $validation_result['errors']), 'context-manager');
+                    
+                    // Return error response
+                    $response = array(
+                        'success' => false,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'create',
+                        'errors' => $validation_result['errors'],
+                        'error' => 'Parameter validation failed: ' . implode(' ', $validation_result['errors']),
+                        'parameters_received' => $membership_params
+                    );
+                    
+                    return json_encode($response);
+                }
+                
+                // Use the validated parameters from the validator
+                $membership_args = $validation_result['parameters'];
+                
+                // Add description if present but not included in validation
+                if (isset($membership_params['description']) && !isset($membership_args['description'])) {
+                    $membership_args['description'] = wp_kses_post($membership_params['description']);
+                }
+                
+                // Create the membership using the service
+                $result = $this->memberpress_service->create_membership($membership_args);
+                
+                if (is_wp_error($result)) {
+                    mpai_log_error('Failed to create membership: ' . $result->get_error_message(), 'context-manager');
+                    $response = array(
+                        'success' => false,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'create',
+                        'error' => $result->get_error_message()
+                    );
+                } else {
+                    // Check if result is an object or array
+                    if (is_object($result)) {
+                        mpai_log_debug('Successfully created membership with ID: ' . $result->ID, 'context-manager');
+                        $response = array(
+                            'success' => true,
+                            'tool' => 'memberpress_info',
+                            'command_type' => 'create',
+                            'result' => array(
+                                'id' => $result->ID,
+                                'title' => $result->post_title,
+                                'price' => $result->price,
+                                'period_type' => $result->period_type,
+                                'message' => "Successfully created membership '{$result->post_title}' with ID {$result->ID}"
+                            )
+                        );
+                    } else if (is_array($result)) {
+                        // Handle array result format
+                        mpai_log_debug('Successfully created membership with array result: ' . json_encode($result), 'context-manager');
+                        
+                        // Log the keys available in the result array for debugging
+                        mpai_log_debug('Available keys in result array: ' . implode(', ', array_keys($result)), 'context-manager');
+                        $id = isset($result['membership_id']) ? $result['membership_id'] :
+                             (isset($result['ID']) ? $result['ID'] :
+                             (isset($result['id']) ? $result['id'] : 'unknown'));
+                        
+                        $title = isset($result['name']) ? $result['name'] :
+                                (isset($result['post_title']) ? $result['post_title'] :
+                                (isset($result['title']) ? $result['title'] : 'New Membership'));
+                        
+                        $price = isset($result['price']) ? $result['price'] :
+                               (isset($result['membership_price']) ? $result['membership_price'] : '0.00');
+                        $period_type = isset($result['period_type']) ? $result['period_type'] : 'month';
+                        
+                        // Log the extracted values for debugging
+                        mpai_log_debug('Extracted values - id: ' . $id . ', title: ' . $title . ', price: ' . $price . ', period_type: ' . $period_type, 'context-manager');
+                        
+                        $response = array(
+                            'success' => true,
+                            'tool' => 'memberpress_info',
+                            'command_type' => 'create',
+                            'result' => array(
+                                'id' => $id,
+                                'title' => $title,
+                                'price' => $price,
+                                'period_type' => $period_type,
+                                'message' => "Successfully created membership '{$title}' with ID {$id}"
+                            )
+                        );
+                    } else {
+                        // Handle unexpected result format
+                        mpai_log_warning('Unexpected result format from create_membership: ' . gettype($result), 'context-manager');
+                        $response = array(
+                            'success' => true,
+                            'tool' => 'memberpress_info',
+                            'command_type' => 'create',
+                            'result' => array(
+                                'message' => "Successfully created membership. (Note: Result format was unexpected.)",
+                                'raw_result' => $result
+                            )
+                        );
+                    }
+                }
+                
+                return json_encode($response);
+                
             case 'system_info':
                 // Handle system_info type - get Site Health data
                 if (!class_exists('MPAI_Site_Health')) {
@@ -1006,7 +1231,8 @@ class MPAI_Context_Manager {
                 
             case 'all':
                 // Get MemberPress data
-                $summary = $this->memberpress_api->get_data_summary();
+                // Create a data summary from MemberPress core data
+                $summary = $this->get_data_summary();
                 
                 // Add system info if requested
                 if ($include_system_info) {
@@ -1076,7 +1302,7 @@ class MPAI_Context_Manager {
                 
             case 'memberships':
                 // Get formatted memberships as table
-                $memberships = $this->memberpress_api->get_memberships(array(), true);
+                $memberships = $this->memberpress_service->get_memberships(array(), true);
                 
                 if (is_string($memberships)) {
                     mpai_log_debug('Returning formatted memberships table', 'context-manager');
@@ -1094,7 +1320,7 @@ class MPAI_Context_Manager {
                 }
                 
             case 'members':
-                $members = $this->memberpress_api->get_members(array(), true);
+                $members = $this->memberpress_service->get_members(array(), true);
                 
                 if (is_string($members)) {
                     mpai_log_debug('Returning formatted members table', 'context-manager');
@@ -1145,102 +1371,233 @@ class MPAI_Context_Manager {
                 
             case 'new_members_this_month':
                 // Get new members who joined this month
-                $new_members = $this->memberpress_api->get_new_members_this_month(true);
+                // Calculate the first day of the current month
+                $first_day_of_month = date('Y-m-01 00:00:00');
                 
-                if (is_string($new_members)) {
+                // Get members who joined this month
+                $params = array(
+                    'start_date' => $first_day_of_month,
+                    'per_page' => 100
+                );
+                
+                $members = $this->memberpress_service->get_members($params, true);
+                
+                if (is_string($members)) {
                     mpai_log_debug('Returning formatted new members this month', 'context-manager');
                     // Already formatted as human readable text
                     $response = array(
                         'success' => true,
                         'tool' => 'memberpress_info',
                         'command_type' => 'new_members_this_month',
-                        'result' => $new_members
+                        'result' => "New Members This Month:\n\n" . $members
                     );
                     return json_encode($response);
                 } else {
                     mpai_log_debug('Returning regular new members JSON', 'context-manager');
-                    return json_encode($new_members);
+                    return json_encode($members);
                 }
                 
             case 'transactions':
-                // Get formatted transactions as table
-                $transactions = $this->memberpress_api->get_transactions(array(), true);
+                // Get transactions using WordPress API since service doesn't have this yet
+                // This should be updated when transaction methods are added to the service
+                global $wpdb;
+                $mepr_db = new MeprDb();
                 
-                if (is_string($transactions)) {
-                    mpai_log_debug('Returning formatted transactions table', 'context-manager');
-                    // Already formatted as tabular data
+                if (!isset($mepr_db->transactions)) {
                     $response = array(
-                        'success' => true,
+                        'success' => false,
                         'tool' => 'memberpress_info',
                         'command_type' => 'transaction_list',
-                        'result' => $transactions
+                        'error' => 'Transactions table not available'
                     );
                     return json_encode($response);
-                } else {
-                    mpai_log_debug('Returning regular transactions JSON', 'context-manager');
-                    return json_encode($transactions);
                 }
+                
+                $transactions_table = $mepr_db->transactions;
+                $query = "SELECT * FROM {$transactions_table} ORDER BY created_at DESC LIMIT 20";
+                $transactions_data = $wpdb->get_results($query, ARRAY_A);
+                
+                if (empty($transactions_data)) {
+                    $output = "ID\tAmount\tStatus\tCreated\nNo transactions found.";
+                } else {
+                    $output = "ID\tAmount\tStatus\tCreated\n";
+                    foreach ($transactions_data as $txn) {
+                        $id = isset($txn['id']) ? $txn['id'] : 'N/A';
+                        $amount = isset($txn['total']) ? '$' . number_format((float)$txn['total'], 2) : 'N/A';
+                        $status = isset($txn['status']) ? $txn['status'] : 'N/A';
+                        $created = isset($txn['created_at']) ? date('Y-m-d', strtotime($txn['created_at'])) : 'N/A';
+                        
+                        $output .= "$id\t$amount\t$status\t$created\n";
+                    }
+                }
+                
+                $response = array(
+                    'success' => true,
+                    'tool' => 'memberpress_info',
+                    'command_type' => 'transaction_list',
+                    'result' => $output
+                );
+                return json_encode($response);
                 
             case 'subscriptions':
-                // Get formatted subscriptions as table
-                $subscriptions = $this->memberpress_api->get_subscriptions(array(), true);
+                // Get subscriptions using WordPress API since service doesn't have this yet
+                // This should be updated when subscription methods are added to the service
+                global $wpdb;
+                $mepr_db = new MeprDb();
                 
-                if (is_string($subscriptions)) {
-                    mpai_log_debug('Returning formatted subscriptions table', 'context-manager');
-                    // Already formatted as tabular data
+                if (!isset($mepr_db->subscriptions)) {
                     $response = array(
-                        'success' => true,
+                        'success' => false,
                         'tool' => 'memberpress_info',
                         'command_type' => 'subscription_list',
-                        'result' => $subscriptions
+                        'error' => 'Subscriptions table not available'
                     );
                     return json_encode($response);
-                } else {
-                    mpai_log_debug('Returning regular subscriptions JSON', 'context-manager');
-                    return json_encode($subscriptions);
                 }
+                
+                $subscriptions_table = $mepr_db->subscriptions;
+                $query = "SELECT * FROM {$subscriptions_table} ORDER BY created_at DESC LIMIT 20";
+                $subscriptions_data = $wpdb->get_results($query, ARRAY_A);
+                
+                if (empty($subscriptions_data)) {
+                    $output = "ID\tStatus\tCreated\tProduct\nNo subscriptions found.";
+                } else {
+                    $output = "ID\tStatus\tCreated\tProduct\n";
+                    foreach ($subscriptions_data as $sub) {
+                        $id = isset($sub['id']) ? $sub['id'] : 'N/A';
+                        $status = isset($sub['status']) ? $sub['status'] : 'N/A';
+                        $created = isset($sub['created_at']) ? date('Y-m-d', strtotime($sub['created_at'])) : 'N/A';
+                        
+                        // Get product name
+                        $product_id = isset($sub['product_id']) ? $sub['product_id'] : 0;
+                        $product_name = 'N/A';
+                        if ($product_id > 0) {
+                            $product_name = get_the_title($product_id);
+                        }
+                        
+                        $output .= "$id\t$status\t$created\t$product_name\n";
+                    }
+                }
+                
+                $response = array(
+                    'success' => true,
+                    'tool' => 'memberpress_info',
+                    'command_type' => 'subscription_list',
+                    'result' => $output
+                );
+                return json_encode($response);
                 
             case 'active_subscriptions':
-                // Get active subscriptions
-                $active_subscriptions = $this->memberpress_api->get_active_subscriptions(array(), true);
+                // Get active subscriptions using WordPress API
+                global $wpdb;
+                $mepr_db = new MeprDb();
                 
-                if (is_string($active_subscriptions)) {
-                    mpai_log_debug('Returning formatted active subscriptions table', 'context-manager');
-                    // Already formatted as tabular data
+                if (!isset($mepr_db->subscriptions)) {
                     $response = array(
-                        'success' => true,
+                        'success' => false,
                         'tool' => 'memberpress_info',
                         'command_type' => 'active_subscription_list',
-                        'result' => $active_subscriptions
+                        'error' => 'Subscriptions table not available'
                     );
                     return json_encode($response);
-                } else {
-                    mpai_log_debug('Returning regular active subscriptions JSON', 'context-manager');
-                    return json_encode($active_subscriptions);
                 }
+                
+                $subscriptions_table = $mepr_db->subscriptions;
+                $query = "SELECT * FROM {$subscriptions_table} WHERE status = 'active' ORDER BY created_at DESC LIMIT 20";
+                $subscriptions_data = $wpdb->get_results($query, ARRAY_A);
+                
+                if (empty($subscriptions_data)) {
+                    $output = "ID\tStatus\tCreated\tProduct\nNo active subscriptions found.";
+                } else {
+                    $output = "ID\tStatus\tCreated\tProduct\n";
+                    foreach ($subscriptions_data as $sub) {
+                        $id = isset($sub['id']) ? $sub['id'] : 'N/A';
+                        $status = isset($sub['status']) ? $sub['status'] : 'N/A';
+                        $created = isset($sub['created_at']) ? date('Y-m-d', strtotime($sub['created_at'])) : 'N/A';
+                        
+                        // Get product name
+                        $product_id = isset($sub['product_id']) ? $sub['product_id'] : 0;
+                        $product_name = 'N/A';
+                        if ($product_id > 0) {
+                            $product_name = get_the_title($product_id);
+                        }
+                        
+                        $output .= "$id\t$status\t$created\t$product_name\n";
+                    }
+                }
+                
+                $response = array(
+                    'success' => true,
+                    'tool' => 'memberpress_info',
+                    'command_type' => 'active_subscription_list',
+                    'result' => $output
+                );
+                return json_encode($response);
                 
             case 'best_selling':
-                // Get best-selling memberships
-                $best_selling = $this->memberpress_api->get_best_selling_membership(array(), true);
+                // Calculate best selling memberships
+                global $wpdb;
                 
-                if (is_string($best_selling)) {
-                    mpai_log_debug('Returning formatted best-selling memberships table', 'context-manager');
-                    // Already formatted as tabular data
+                if (!class_exists('MeprDb')) {
                     $response = array(
-                        'success' => true,
+                        'success' => false,
                         'tool' => 'memberpress_info',
                         'command_type' => 'best_selling_list',
-                        'result' => $best_selling
+                        'error' => 'MemberPress database class not available'
                     );
                     return json_encode($response);
-                } else {
-                    mpai_log_debug('Returning regular best-selling memberships JSON', 'context-manager');
-                    return json_encode($best_selling);
                 }
+                
+                $mepr_db = new MeprDb();
+                
+                if (!isset($mepr_db->transactions)) {
+                    $response = array(
+                        'success' => false,
+                        'tool' => 'memberpress_info',
+                        'command_type' => 'best_selling_list',
+                        'error' => 'Transactions table not available'
+                    );
+                    return json_encode($response);
+                }
+                
+                $transactions_table = $mepr_db->transactions;
+                $query = "SELECT product_id, COUNT(*) as sales_count 
+                          FROM {$transactions_table} 
+                          WHERE status = 'complete' 
+                          GROUP BY product_id 
+                          ORDER BY sales_count DESC";
+                $best_selling_data = $wpdb->get_results($query, ARRAY_A);
+                
+                if (empty($best_selling_data)) {
+                    $output = "Membership ID\tTitle\tSales Count\nNo sales data found.";
+                } else {
+                    $output = "Membership ID\tTitle\tSales Count\n";
+                    foreach ($best_selling_data as $item) {
+                        $id = isset($item['product_id']) ? $item['product_id'] : 'N/A';
+                        $sales_count = isset($item['sales_count']) ? $item['sales_count'] : '0';
+                        
+                        // Get product name
+                        $title = 'N/A';
+                        if ($id && $id !== 'N/A') {
+                            $title = get_the_title($id);
+                        }
+                        
+                        $output .= "$id\t$title\t$sales_count\n";
+                    }
+                }
+                
+                $response = array(
+                    'success' => true,
+                    'tool' => 'memberpress_info',
+                    'command_type' => 'best_selling_list',
+                    'result' => $output
+                );
+                return json_encode($response);
                 
             case 'summary':
             default:
-                $summary = $this->memberpress_api->get_data_summary();
+                // Get summary data
+                $summary = $this->get_data_summary();
                 
                 // Add system info if requested
                 if ($include_system_info) {
@@ -1326,6 +1683,62 @@ class MPAI_Context_Manager {
                 );
                 return json_encode($response);
         }
+    }
+    
+    /**
+     * Generate a data summary from MemberPress core data
+     * 
+     * @return array Data summary
+     */
+    private function get_data_summary() {
+        // Initialize summary data
+        $summary = array(
+            'total_members' => 0,
+            'total_memberships' => 0,
+            'transaction_count' => 0,
+            'subscription_count' => 0,
+            'memberships' => array()
+        );
+        
+        // Get members count
+        if (class_exists('MeprUser')) {
+            $summary['total_members'] = count(get_users(array('fields' => 'ID')));
+        }
+        
+        // Get membership products count and details
+        if (class_exists('MeprProduct')) {
+            $products = MeprProduct::all('objects');
+            $summary['total_memberships'] = count($products);
+            
+            foreach ($products as $product) {
+                $summary['memberships'][] = array(
+                    'id' => $product->ID,
+                    'title' => $product->post_title,
+                    'price' => $product->price
+                );
+            }
+        }
+        
+        // Get transactions count
+        if (class_exists('MeprDb')) {
+            global $wpdb;
+            $mepr_db = new MeprDb();
+            
+            if (isset($mepr_db->transactions)) {
+                $transactions_table = $mepr_db->transactions;
+                $query = "SELECT COUNT(*) FROM {$transactions_table}";
+                $summary['transaction_count'] = $wpdb->get_var($query);
+            }
+            
+            // Get subscription count
+            if (isset($mepr_db->subscriptions)) {
+                $subscriptions_table = $mepr_db->subscriptions;
+                $query = "SELECT COUNT(*) FROM {$subscriptions_table}";
+                $summary['subscription_count'] = $wpdb->get_var($query);
+            }
+        }
+        
+        return $summary;
     }
 
     /**
@@ -1555,11 +1968,38 @@ class MPAI_Context_Manager {
             $message .= "1. For user operations, you can use the WordPress API:\n";
             $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_users\", \"limit\": 10}}\n   ```\n\n";
             $message .= "2. Available user actions: create_user, get_users\n";
-        } else if (strpos($command, 'wp mepr') !== false || strpos($command, 'memberpress') !== false) {
+        } else if (strpos($command, 'wp mepr') !== false || strpos($command, 'memberpress') !== false || 
+                  strpos($command, 'mepr membership create') !== false || strpos($command, 'create_membership') !== false) {
             $message .= "1. For MemberPress operations, use the memberpress_info tool:\n";
-            $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n\n";
-            $message .= "2. Available types: memberships, members, transactions, subscriptions, active_subscriptions, summary, new_members_this_month, system_info, best_selling, all\n";
-            $message .= "3. You can get system information along with MemberPress data:\n";
+            
+            // If this looks like a membership creation command, provide that example
+            if (preg_match('/create|add|new/i', $command)) {
+                $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"create\", \"name\": \"Gold Membership\", \"price\": 29.99}}\n   ```\n\n";
+                $message .= "2. Parameters for membership creation:\n";
+                $message .= "   - type: \"create\" (required)\n";
+                $message .= "   - name: Name of the membership (required)\n";
+                $message .= "   - price: Price of the membership (required)\n";
+                $message .= "   - period_type: Billing period (month, year, week) - defaults to month\n";
+                $message .= "   - period: Number of periods (defaults to 1)\n";
+                $message .= "   - description: Membership description\n\n";
+            } else {
+                $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n\n";
+            }
+            
+            $message .= "3. Available types for memberpress_info:\n";
+            $message .= "   - create: Create a new membership\n";
+            $message .= "   - memberships: List all memberships\n";
+            $message .= "   - members: List all members\n";
+            $message .= "   - transactions: List transactions\n";
+            $message .= "   - subscriptions: List all subscriptions\n";
+            $message .= "   - active_subscriptions: List active subscriptions\n";
+            $message .= "   - summary: Get a summary of MemberPress data\n";
+            $message .= "   - new_members_this_month: List members who joined this month\n";
+            $message .= "   - system_info: Get system information\n";
+            $message .= "   - best_selling: Get best-selling memberships\n";
+            $message .= "   - all: Get comprehensive MemberPress data\n\n";
+            
+            $message .= "4. You can include system information with many requests:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"all\", \"include_system_info\": true}}\n   ```\n";
         } else {
             $message .= "1. For WordPress operations, you can use the WordPress API:\n";
@@ -1567,8 +2007,10 @@ class MPAI_Context_Manager {
             $message .= "2. For plugin information, use:\n";
             $message .= "   ```json\n   {\"tool\": \"wp_api\", \"parameters\": {\"action\": \"get_plugins\", \"format\": \"table\"}}\n   ```\n\n";
             $message .= "3. For MemberPress operations, use the memberpress_info tool:\n";
-            $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"memberships\"}}\n   ```\n";
-            $message .= "   - Available types: memberships, members, transactions, subscriptions, active_subscriptions, summary, new_members_this_month, system_info, best_selling, all\n";
+            $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"create\", \"name\": \"Gold Membership\", \"price\": 29.99}}\n   ```\n";
+            $message .= "   - For creating memberships: type=\"create\"\n";
+            $message .= "   - For listing memberships: type=\"memberships\"\n";
+            $message .= "   - Other available types: members, transactions, subscriptions, active_subscriptions, summary, new_members_this_month, system_info, best_selling, all\n";
             $message .= "4. For system information, use:\n";
             $message .= "   ```json\n   {\"tool\": \"memberpress_info\", \"parameters\": {\"type\": \"system_info\"}}\n   ```\n\n";
         }
@@ -1901,7 +2343,7 @@ class MPAI_Context_Manager {
      */
     public function generate_completion_with_context($prompt, $command_output) {
         // Get MemberPress data summary
-        $memberpress_data = $this->memberpress_api->get_data_summary();
+        $memberpress_data = $this->get_data_summary(); // Use the local method instead of non-existent property
         
         // Create system message with context
         $system_message = "You are an AI assistant for MemberPress. You have access to the following data:\n\n";
@@ -1966,6 +2408,51 @@ class MPAI_Context_Manager {
         );
     }
 
+    /**
+     * Extract membership parameters from various formats sent by AI (legacy method, forwards to parameter validator)
+     * 
+     * @param array $parameters The input parameters
+     * @return array Extracted parameters
+     */
+    private function extract_membership_parameters($parameters) {
+        if (isset($this->parameter_validator)) {
+            // Forward to new method if available
+            return $this->parameter_validator->extract_membership_parameters($parameters);
+        } else {
+            // Basic extraction as fallback
+            $extracted = array();
+            mpai_log_debug('Using fallback parameter extraction (parameter validator not available)', 'context-manager');
+            
+            // Direct parameter extraction for critical fields
+            if (isset($parameters['name'])) {
+                $extracted['name'] = $parameters['name'];
+            }
+            
+            if (isset($parameters['price'])) {
+                // Ensure price is numeric
+                if (is_string($parameters['price']) && is_numeric($parameters['price'])) {
+                    $extracted['price'] = floatval($parameters['price']);
+                } else {
+                    $extracted['price'] = $parameters['price'];
+                }
+            }
+            
+            if (isset($parameters['period_type'])) {
+                $extracted['period_type'] = $parameters['period_type'];
+            }
+            
+            // Look for nested parameters array
+            if (isset($parameters['parameters']) && is_array($parameters['parameters'])) {
+                foreach ($parameters['parameters'] as $key => $value) {
+                    $extracted[$key] = $value;
+                }
+            }
+            
+            return $extracted;
+        }
+    }
+    
+    
     /**
      * Process a tool request in MCP format
      * 

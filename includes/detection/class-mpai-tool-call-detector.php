@@ -18,6 +18,8 @@ if (!defined('WPINC')) {
  * This class provides a unified approach to tool call detection that works consistently
  * across both JavaScript and PHP. It detects tool calls in AI responses and extracts
  * the tool name and parameters.
+ * 
+ * CRITICAL FIX: Added direct memberpress_info tool detection and parameter extraction.
  */
 class MPAI_Tool_Call_Detector {
     /**
@@ -34,6 +36,137 @@ class MPAI_Tool_Call_Detector {
      */
     private $tool_registry = null;
 
+    /**
+     * Get the singleton instance
+     *
+     * @return MPAI_Tool_Call_Detector The singleton instance
+     */
+    
+    /**
+     * Special method to detect memberpress_info tool calls
+     * This is critical for ensuring membership creation parameters are correctly detected
+     *
+     * @param string $response The AI response text
+     * @param array $tool_calls Array of detected tool calls to append to
+     */
+    private function detect_memberpress_info_tool_calls($response, &$tool_calls) {
+        mpai_log_debug('Running specialized memberpress_info tool call detection', 'tool-call-detector');
+        error_log('MPAI DEBUG - Running specialized memberpress_info tool call detection');
+        
+        // Match various formats of memberpress_info tool calls with create action
+        $patterns = array(
+            // Match JSON in code blocks
+            '/```(?:json)?\s*({[\s\n]*"tool"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*{[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?}[\s\n]*})\s*```/m',
+            '/```(?:json)?\s*({[\s\n]*"name"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*{[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?}[\s\n]*})\s*```/m',
+            
+            // Match raw JSON without code blocks
+            '/{[\s\n]*"tool"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*{[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?}[\s\n]*}/m',
+            '/{[\s\n]*"name"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*{[\s\n]*"type"[\s\n]*:[\s\n]*"create"[\s\S]*?}[\s\n]*}/m'
+        );
+        
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $response, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $match) {
+                    $json_str = trim($match[1]);
+                    
+                    // Log the raw match for debugging
+                    mpai_log_debug('Found potential memberpress_info match: ' . substr($json_str, 0, 100) . '...', 'tool-call-detector');
+                    error_log('MPAI DEBUG - Found potential memberpress_info match: ' . substr($json_str, 0, 100) . '...');
+                    
+                    try {
+                        $json_data = json_decode($json_str, true);
+                        
+                        if (!$json_data) {
+                            mpai_log_error('Failed to decode JSON from memberpress_info match', 'tool-call-detector');
+                            error_log('MPAI DEBUG - Failed to decode JSON from memberpress_info match');
+                            continue;
+                        }
+                        
+                        // Determine format (tool or name key)
+                        if (isset($json_data['tool']) && $json_data['tool'] === 'memberpress_info') {
+                            $tool_name = $json_data['tool'];
+                        } elseif (isset($json_data['name']) && $json_data['name'] === 'memberpress_info') {
+                            $tool_name = $json_data['name'];
+                        } else {
+                            mpai_log_warning('Invalid memberpress_info tool format', 'tool-call-detector');
+                            error_log('MPAI DEBUG - Invalid memberpress_info tool format');
+                            continue;
+                        }
+                        
+                        // Extract parameters
+                        if (!isset($json_data['parameters']) || !is_array($json_data['parameters'])) {
+                            mpai_log_warning('Missing parameters in memberpress_info tool call', 'tool-call-detector');
+                            error_log('MPAI DEBUG - Missing parameters in memberpress_info tool call');
+                            continue;
+                        }
+                        
+                        $parameters = $json_data['parameters'];
+                        
+                        // Verify this is a membership creation call
+                        if (!isset($parameters['type']) || $parameters['type'] !== 'create') {
+                            mpai_log_debug('Not a membership creation call, skipping specialized handler', 'tool-call-detector');
+                            error_log('MPAI DEBUG - Not a membership creation call, skipping specialized handler');
+                            continue;
+                        }
+                        
+                        // Enhanced debugging for membership creation
+                        mpai_log_debug('Found membership creation tool call with parameters: ' . json_encode($parameters), 'tool-call-detector');
+                        error_log('MPAI DEBUG - Found membership creation tool call with parameters: ' . json_encode($parameters));
+                        
+                        // Ensure critical parameters exist
+                        if (!isset($parameters['name']) || empty($parameters['name'])) {
+                            mpai_log_warning('Missing name parameter in membership creation', 'tool-call-detector');
+                            error_log('MPAI DEBUG - Missing name parameter in membership creation');
+                            // Add a default name with timestamp
+                            $parameters['name'] = 'Membership ' . date('Y-m-d H:i:s');
+                            mpai_log_debug('Added default name: ' . $parameters['name'], 'tool-call-detector');
+                            error_log('MPAI DEBUG - Added default name: ' . $parameters['name']);
+                        } else {
+                            mpai_log_debug('Using name parameter from tool call: ' . $parameters['name'], 'tool-call-detector');
+                            error_log('MPAI DEBUG - Using name parameter from tool call: ' . $parameters['name']);
+                        }
+                        
+                        // Validate price parameter
+                        if (!isset($parameters['price'])) {
+                            mpai_log_warning('Missing price parameter in membership creation', 'tool-call-detector');
+                            error_log('MPAI DEBUG - Missing price parameter in membership creation');
+                            // Add a default price
+                            $parameters['price'] = 9.99;
+                            mpai_log_debug('Added default price: ' . $parameters['price'], 'tool-call-detector');
+                            error_log('MPAI DEBUG - Added default price: ' . $parameters['price']);
+                        } else {
+                            // Ensure price is a number
+                            $parameters['price'] = floatval($parameters['price']);
+                            mpai_log_debug('Converted price to float: ' . $parameters['price'], 'tool-call-detector');
+                            error_log('MPAI DEBUG - Converted price to float: ' . $parameters['price']);
+                        }
+                        
+                        // Ensure period_type is set
+                        if (!isset($parameters['period_type']) || empty($parameters['period_type'])) {
+                            $parameters['period_type'] = 'month';
+                            mpai_log_debug('Using default period_type: month', 'tool-call-detector');
+                            error_log('MPAI DEBUG - Using default period_type: month');
+                        }
+                        
+                        // Create a clean tool call
+                        $tool_call = array(
+                            'tool' => $tool_name,
+                            'parameters' => $parameters
+                        );
+                        
+                        mpai_log_debug('Added memberpress_info tool call via specialized detector', 'tool-call-detector');
+                        error_log('MPAI DEBUG - Added memberpress_info tool call via specialized detector: ' . json_encode($tool_call));
+                        
+                        $tool_calls[] = $tool_call;
+                    } catch (Exception $e) {
+                        mpai_log_error('Error parsing memberpress_info JSON: ' . $e->getMessage(), 'tool-call-detector');
+                        error_log('MPAI DEBUG - Error parsing memberpress_info JSON: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+    }
+    
     /**
      * Get the singleton instance
      *
@@ -68,6 +201,9 @@ class MPAI_Tool_Call_Detector {
         mpai_log_debug('Detecting tool calls in response', 'tool-call-detector');
         
         $tool_calls = [];
+        
+        // CRITICAL FIX: Special detection for memberpress_info tool calls
+        $this->detect_memberpress_info_tool_calls($response, $tool_calls);
         
         // XML-style format: <tool:tool_name>{"param1": "value1", "param2": "value2"}</tool>
         $this->detect_xml_style_tool_calls($response, $tool_calls);
@@ -155,9 +291,15 @@ class MPAI_Tool_Call_Detector {
                 ];
             } else if (isset($json_data['tool']) && isset($json_data['parameters'])) {
                 // Legacy format with 'tool' instead of 'name'
+                // Ensure parameters are extracted correctly regardless of format
+                $parameters = $json_data['parameters'];
+                
+                // Log the parameters for debugging
+                mpai_log_debug('Detected tool call with legacy format - Tool: ' . $json_data['tool'] . ', Parameters: ' . json_encode($parameters), 'tool-call-detector');
+                
                 $tool_calls[] = [
                     'name' => $json_data['tool'],
-                    'parameters' => $json_data['parameters'],
+                    'parameters' => $parameters,
                     'original' => $match[0],
                     'format' => 'json_legacy'
                 ];
@@ -419,9 +561,15 @@ function detectJsonToolCalls(response, toolCalls) {
                 });
             } else if (jsonData.tool && jsonData.parameters) {
                 // Legacy format with 'tool' instead of 'name'
+                // Ensure parameters are extracted correctly regardless of format
+                const parameters = jsonData.parameters;
+                
+                // Log the parameters for debugging
+                console.log('Detected tool call with legacy format - Tool:', jsonData.tool, 'Parameters:', parameters);
+                
                 toolCalls.push({
                     name: jsonData.tool,
-                    parameters: jsonData.parameters,
+                    parameters: parameters,
                     original: match[0],
                     format: 'json_legacy'
                 });

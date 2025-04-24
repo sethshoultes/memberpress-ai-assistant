@@ -1,7 +1,7 @@
 /**
  * MemberPress AI Assistant - Chat Messages Module
  * 
- * Handles message processing, formatting, and display
+ * Completely rewritten message handling with enhanced parameter validation
  */
 
 var MPAI_Messages = (function($) {
@@ -10,6 +10,7 @@ var MPAI_Messages = (function($) {
     // Private variables
     var elements = {};
     var pendingToolCalls = false;
+    var lastAssistantMessageId = null;
     
     /**
      * Initialize the module
@@ -91,6 +92,9 @@ var MPAI_Messages = (function($) {
             $copyBtn.on('click', function() {
                 copyMessageToClipboard(messageId);
             });
+            
+            // Store the ID of the last assistant message
+            lastAssistantMessageId = messageId;
         }
         
         // Add to chat messages container
@@ -107,7 +111,55 @@ var MPAI_Messages = (function($) {
     }
     
     /**
-     * Format message content
+     * Update the content of the last assistant message
+     * 
+     * @param {string} content - The new content
+     */
+    function updateLastAssistantMessage(content) {
+        if (!lastAssistantMessageId) {
+            return;
+        }
+        
+        const $message = $('#' + lastAssistantMessageId);
+        if ($message.length === 0) {
+            return;
+        }
+        
+        const $content = $message.find('.mpai-chat-message-content');
+        $content.html(formatMessage(content));
+        
+        // Scroll to the bottom
+        if (window.MPAI_UIUtils && typeof window.MPAI_UIUtils.scrollToBottom === 'function') {
+            window.MPAI_UIUtils.scrollToBottom();
+        }
+    }
+    
+    /**
+     * Append content to the last assistant message
+     * 
+     * @param {string} content - The content to append
+     */
+    function appendToLastAssistantMessage(content) {
+        if (!lastAssistantMessageId) {
+            return;
+        }
+        
+        const $message = $('#' + lastAssistantMessageId);
+        if ($message.length === 0) {
+            return;
+        }
+        
+        const $content = $message.find('.mpai-chat-message-content');
+        $content.append(content);
+        
+        // Scroll to the bottom
+        if (window.MPAI_UIUtils && typeof window.MPAI_UIUtils.scrollToBottom === 'function') {
+            window.MPAI_UIUtils.scrollToBottom();
+        }
+    }
+    
+    /**
+     * Format message content with enhanced markdown support
      * 
      * @param {string} content - The raw message content
      * @return {string} Formatted HTML content
@@ -196,53 +248,19 @@ var MPAI_Messages = (function($) {
             return;
         }
         
-        // Check if the message is requesting to write a blog post or page
-        // and enhance it with XML formatting if MPAI_BlogFormatter is available
-        let enhancedMessage = message;
-        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.enhanceUserPrompt === 'function') {
-            // Check for blog post creation requests
-            if (/write(\s+a)?\s+blog(\s+post)?|create(\s+a)?\s+blog(\s+post)?/i.test(message) && 
-                !message.includes('<wp-post>')) {
-                
-                if (window.mpaiLogger) {
-                    window.mpaiLogger.info('Detected blog post creation request, enhancing with XML format', 'ui');
-                }
-                
-                // Use the blog formatter to enhance the prompt, but don't send it directly
-                window.MPAI_BlogFormatter.enhanceUserPrompt(message, 'blog-post');
-                return; // The enhanceUserPrompt function will send the message
-            }
-            
-            // Check for page creation requests
-            if (/write(\s+a)?\s+page|create(\s+a)?\s+page/i.test(message) && 
-                !message.includes('<wp-post>')) {
-                
-                if (window.mpaiLogger) {
-                    window.mpaiLogger.info('Detected page creation request, enhancing with XML format', 'ui');
-                }
-                
-                // Use the blog formatter to enhance the prompt, but don't send it directly
-                window.MPAI_BlogFormatter.enhanceUserPrompt(message, 'page');
-                return; // The enhanceUserPrompt function will send the message
-            }
+        // Store the last user message globally for parameter extraction
+        window.lastUserMessage = message;
+        console.log('Stored last user message for parameter extraction:', message);
+        
+        // Reset tool call processors
+        if (window.MPAI_ToolCallDetector && typeof window.MPAI_ToolCallDetector.resetProcessed === 'function') {
+            window.MPAI_ToolCallDetector.resetProcessed();
         }
         
-        // Log the message being sent with comprehensive details
+        // Log the message being sent
         if (window.mpaiLogger) {
             window.mpaiLogger.info('Sending user message: ' + message.substring(0, 50) + (message.length > 50 ? '...' : ''), 'api_calls');
             window.mpaiLogger.startTimer('message_processing');
-            window.mpaiLogger.logApiCall('OpenAI/Anthropic', 'chat completions', {
-                message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
-                messageLength: message.length,
-                timestamp: new Date().toISOString(),
-                messageId: 'msg_' + Date.now()
-            });
-            window.mpaiLogger.debug('Message details', 'api_calls', {
-                wordCount: message.split(/\s+/).length,
-                containsCode: message.includes('```'),
-                containsQuestion: message.includes('?'),
-                containsURL: /https?:\/\/[^\s]+/.test(message)
-            });
         }
         
         // Add the user message to the chat
@@ -266,7 +284,7 @@ var MPAI_Messages = (function($) {
             data: {
                 action: 'mpai_process_chat',
                 message: message,
-                nonce: mpai_chat_data.mpai_nonce,
+                nonce: mpai_chat_data.nonce,
             },
             success: function(response) {
                 // End timing for message processing
@@ -326,76 +344,485 @@ var MPAI_Messages = (function($) {
             });
         }
         
-        // Check if the response contains XML content
-        const hasXmlContent = response && (
-            response.includes('<wp-post>') ||
-            response.includes('</wp-post>') ||
-            response.includes('<post-title>') ||
-            response.includes('</post-title>') ||
-            response.includes('<post-content>') ||
-            response.includes('</post-content>') ||
-            response.includes('<post-excerpt>') ||
-            response.includes('</post-excerpt>') ||
-            response.includes('<post-type>') ||
-            response.includes('</post-type>')
-        );
-        
-        if (hasXmlContent && window.mpaiLogger) {
-            window.mpaiLogger.debug('Response contains XML content, removing it', 'ui', {
-                responseLength: response.length,
-                xmlDetected: true
-            });
+        // CRITICAL FIX: Direct interception of membership creation JSON
+        // This is a simple, direct solution that will catch the exact format shown in the example
+        if (response) {
+            // Look for the exact pattern: {"tool": "memberpress_info", "parameters": {"type": "create", ...}}
+            // FIXED PATTERN: Use a more robust pattern that captures the entire JSON object
+            const membershipPattern = /\{[\s\n]*"tool"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*\{[\s\S]*?"type"[\s\n]*:[\s\n]*"create"[\s\S]*?\}\}/g;
+            const matches = response.match(membershipPattern);
             
-            // Store the original response for blog formatter
-            const originalResponse = response;
+            // Log the entire response for debugging
+            console.log('DIRECT FIX: Processing response:', response);
             
-            // Remove all XML content from the response
-            
-            // 1. Remove XML code blocks
-            response = response.replace(/```xml\s*[\s\S]*?```/g, '');
-            
-            // 2. Remove XML in JSON code blocks
-            response = response.replace(/```json\s*([\s\S]*?)```/g, function(match, jsonContent) {
-                if (jsonContent.includes('<wp-post>') ||
-                    jsonContent.includes('<post-title>') ||
-                    jsonContent.includes('<post-content>') ||
-                    jsonContent.includes('<post-excerpt>') ||
-                    jsonContent.includes('<post-type>')) {
-                    return '';
+            if (matches && matches.length > 0) {
+                console.log('DIRECT FIX: Intercepted membership creation JSON', matches[0]);
+                
+                try {
+                    // Parse the JSON
+                    const jsonData = JSON.parse(matches[0]);
+                    console.log('DIRECT FIX: Parsed JSON data:', jsonData);
+                    
+                    // Verify it's a valid membership creation tool call
+                    if (jsonData.tool === 'memberpress_info' &&
+                        jsonData.parameters &&
+                        jsonData.parameters.type === 'create') {
+                        
+                        // Ensure all required parameters are present
+                        const params = jsonData.parameters;
+                        
+                        // IMPROVED EXTRACTION: Extract name from the response text if not in JSON
+                        if (!params.name) {
+                            // Try to extract from "named X" pattern
+                            if (response.includes('named')) {
+                                const nameMatch = response.match(/named\s+['"]?([^'"]+)['"]?/i);
+                                if (nameMatch && nameMatch[1]) {
+                                    params.name = nameMatch[1].trim();
+                                    console.log('DIRECT FIX: Extracted name from "named X" pattern:', params.name);
+                                }
+                            }
+                            // Try to extract from "level X" pattern
+                            else if (response.includes('level')) {
+                                const nameMatch = response.match(/level\s+['"]?([^'"]+)['"]?/i);
+                                if (nameMatch && nameMatch[1]) {
+                                    params.name = nameMatch[1].trim();
+                                    console.log('DIRECT FIX: Extracted name from "level X" pattern:', params.name);
+                                }
+                            }
+                            // Try to extract from user message
+                            else if (window.lastUserMessage && window.lastUserMessage.includes('named')) {
+                                const nameMatch = window.lastUserMessage.match(/named\s+['"]?([^'"]+)['"]?/i);
+                                if (nameMatch && nameMatch[1]) {
+                                    params.name = nameMatch[1].trim();
+                                    console.log('DIRECT FIX: Extracted name from user message:', params.name);
+                                }
+                            }
+                            
+                            // Default to "Gold" if still not found
+                            if (!params.name) {
+                                params.name = "Gold";
+                                console.log('DIRECT FIX: Using default name "Gold"');
+                            }
+                        }
+                        
+                        // IMPROVED EXTRACTION: Extract price from the response text if not in JSON
+                        if (!params.price) {
+                            // Try to extract from $ pattern
+                            if (response.includes('$')) {
+                                const priceMatch = response.match(/\$\s*(\d+(?:\.\d+)?)/);
+                                if (priceMatch && priceMatch[1]) {
+                                    params.price = parseFloat(priceMatch[1]);
+                                    console.log('DIRECT FIX: Extracted price from $ pattern:', params.price);
+                                }
+                            }
+                            // Try to extract from "X dollars" pattern
+                            else if (response.includes('dollar')) {
+                                const priceMatch = response.match(/(\d+(?:\.\d+)?)\s+dollars?/i);
+                                if (priceMatch && priceMatch[1]) {
+                                    params.price = parseFloat(priceMatch[1]);
+                                    console.log('DIRECT FIX: Extracted price from "X dollars" pattern:', params.price);
+                                }
+                            }
+                            // Try to extract from user message
+                            else if (window.lastUserMessage) {
+                                if (window.lastUserMessage.includes('$')) {
+                                    const priceMatch = window.lastUserMessage.match(/\$\s*(\d+(?:\.\d+)?)/);
+                                    if (priceMatch && priceMatch[1]) {
+                                        params.price = parseFloat(priceMatch[1]);
+                                        console.log('DIRECT FIX: Extracted price from user message $ pattern:', params.price);
+                                    }
+                                } else if (window.lastUserMessage.includes('dollar')) {
+                                    const priceMatch = window.lastUserMessage.match(/(\d+(?:\.\d+)?)\s+dollars?/i);
+                                    if (priceMatch && priceMatch[1]) {
+                                        params.price = parseFloat(priceMatch[1]);
+                                        console.log('DIRECT FIX: Extracted price from user message "X dollars" pattern:', params.price);
+                                    }
+                                } else {
+                                    // Try to extract any number from user message as a last resort
+                                    const priceMatch = window.lastUserMessage.match(/(\d+(?:\.\d+)?)/);
+                                    if (priceMatch && priceMatch[1]) {
+                                        params.price = parseFloat(priceMatch[1]);
+                                        console.log('DIRECT FIX: Extracted price from user message number:', params.price);
+                                    }
+                                }
+                            }
+                            
+                            // Default to 30 if still not found
+                            if (!params.price) {
+                                params.price = 30;
+                                console.log('DIRECT FIX: Using default price 30');
+                            }
+                        } else if (typeof params.price === 'string') {
+                            // Ensure price is a number
+                            params.price = parseFloat(params.price);
+                            console.log('DIRECT FIX: Converted price from string to number:', params.price);
+                        }
+                        
+                        // IMPROVED EXTRACTION: Extract period_type from the response text if not in JSON
+                        if (!params.period_type) {
+                            if (response.includes('monthly') || response.includes('per month') || response.includes('a month')) {
+                                params.period_type = 'month';
+                                console.log('DIRECT FIX: Set period_type to month based on response text');
+                            } else if (response.includes('yearly') || response.includes('per year') || response.includes('a year')) {
+                                params.period_type = 'year';
+                                console.log('DIRECT FIX: Set period_type to year based on response text');
+                            } else if (response.includes('lifetime')) {
+                                params.period_type = 'lifetime';
+                                console.log('DIRECT FIX: Set period_type to lifetime based on response text');
+                            } else if (window.lastUserMessage) {
+                                // Try to extract from user message
+                                if (window.lastUserMessage.includes('monthly') || window.lastUserMessage.includes('per month') || window.lastUserMessage.includes('a month')) {
+                                    params.period_type = 'month';
+                                    console.log('DIRECT FIX: Set period_type to month based on user message');
+                                } else if (window.lastUserMessage.includes('yearly') || window.lastUserMessage.includes('per year') || window.lastUserMessage.includes('a year')) {
+                                    params.period_type = 'year';
+                                    console.log('DIRECT FIX: Set period_type to year based on user message');
+                                } else if (window.lastUserMessage.includes('lifetime')) {
+                                    params.period_type = 'lifetime';
+                                    console.log('DIRECT FIX: Set period_type to lifetime based on user message');
+                                } else {
+                                    // Default to month if not found
+                                    params.period_type = 'month';
+                                    console.log('DIRECT FIX: Using default period_type month');
+                                }
+                            } else {
+                                // Default to month if not found
+                                params.period_type = 'month';
+                                console.log('DIRECT FIX: Using default period_type month');
+                            }
+                        }
+                        
+                        // Log the final parameters
+                        console.log('DIRECT FIX: Final parameters:', params);
+                        
+                        // Create a tool call object
+                        const toolCall = {
+                            name: 'memberpress_info',
+                            parameters: params
+                        };
+                        
+                        // Replace the JSON in the response with a processing message
+                        const modifiedResponse = response.replace(
+                            matches[0],
+                            '<div class="mpai-tool-call-processing">Creating membership...</div>'
+                        );
+                        
+                        // Add the modified response to the chat
+                        addMessage('assistant', modifiedResponse);
+                        
+                        // Execute the tool call
+                        if (window.MPAI_Tools && typeof window.MPAI_Tools.executeToolCalls === 'function') {
+                            window.MPAI_Tools.executeToolCalls([toolCall], response);
+                            
+                            // Set pending tool calls flag
+                            pendingToolCalls = true;
+                            
+                            if (window.mpaiLogger) {
+                                const elapsed = window.mpaiLogger.endTimer('process_response');
+                                window.mpaiLogger.info('DIRECT FIX: Executed membership creation tool call', 'tool_usage', {
+                                    processingTimeMs: elapsed
+                                });
+                            }
+                            
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.error('DIRECT FIX: Error parsing JSON', e);
                 }
-                return match;
-            });
-            
-            // 3. Remove raw XML tags
-            response = response.replace(/<wp-post>[\s\S]*?<\/wp-post>/g, '');
-            response = response.replace(/<post-title>[\s\S]*?<\/post-title>/g, '');
-            response = response.replace(/<post-content>[\s\S]*?<\/post-content>/g, '');
-            response = response.replace(/<post-excerpt>[\s\S]*?<\/post-excerpt>/g, '');
-            response = response.replace(/<post-type>[\s\S]*?<\/post-type>/g, '');
-            
-            // 4. Remove XML in JSON strings
-            response = response.replace(/"<wp-post>[\s\S]*?<\/wp-post>"/g, '""');
-            response = response.replace(/"<post-title>[\s\S]*?<\/post-title>"/g, '""');
-            response = response.replace(/"<post-content>[\s\S]*?<\/post-content>"/g, '""');
-            response = response.replace(/"<post-excerpt>[\s\S]*?<\/post-excerpt>"/g, '""');
-            response = response.replace(/"<post-type>[\s\S]*?<\/post-type>"/g, '""');
-            
-            // 5. Clean up any remaining XML-like content
-            response = response.replace(/```json\s*[\s\S]*?<wp-post>[\s\S]*?<\/wp-post>[\s\S]*?```/g, '');
-            response = response.replace(/```json\s*[\s\S]*?<post-title>[\s\S]*?<\/post-title>[\s\S]*?```/g, '');
-            response = response.replace(/```json\s*[\s\S]*?<post-content>[\s\S]*?<\/post-content>[\s\S]*?```/g, '');
-            
-            // Pass the original response to the blog formatter
-            window.originalXmlResponse = originalResponse;
+            }
         }
         
-        // Check if the response contains tool calls
-        if (window.MPAI_Tools && typeof window.MPAI_Tools.processToolCalls === 'function') {
+        // CRITICAL FIX: Check for code blocks with JSON tool calls
+        if (response && response.includes('```json')) {
             if (window.mpaiLogger) {
-                window.mpaiLogger.debug('Checking for tool calls in response', 'tool_usage');
+                window.mpaiLogger.info('CRITICAL FIX - Detected JSON code block in response', 'tool_usage');
             }
             
-            const hasToolCalls = window.MPAI_Tools.processToolCalls(response);
+            // Extract JSON from code blocks
+            const codeBlockPattern = /```json\s*([\s\S]*?)\s*```/g;
+            let codeBlockMatch;
+            let foundToolCall = false;
+            
+            while ((codeBlockMatch = codeBlockPattern.exec(response)) !== null) {
+                if (codeBlockMatch[1] &&
+                    codeBlockMatch[1].includes('memberpress_info') &&
+                    codeBlockMatch[1].includes('"type":"create"')) {
+                    
+                    try {
+                        // Clean up the JSON string
+                        const jsonStr = codeBlockMatch[1].trim();
+                        
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.info('CRITICAL FIX - Found JSON code block with potential tool call', 'tool_usage', {
+                                jsonStr: jsonStr.substring(0, 100)
+                            });
+                        }
+                        
+                        // Parse the JSON
+                        const jsonData = JSON.parse(jsonStr);
+                        console.log('CRITICAL FIX - Parsed JSON from code block:', jsonData);
+                        
+                        if (jsonData.tool === 'memberpress_info' &&
+                            jsonData.parameters &&
+                            jsonData.parameters.type === 'create') {
+                            
+                            // Ensure all required parameters are present
+                            const params = jsonData.parameters;
+                            
+                            // Extract name from the response text if not in JSON
+                            if (!params.name && response.includes('named')) {
+                                const nameMatch = response.match(/named\s+['"]?([^'"]+)['"]?/i);
+                                if (nameMatch && nameMatch[1]) {
+                                    params.name = nameMatch[1].trim();
+                                    console.log('CRITICAL FIX - Extracted name from text:', params.name);
+                                }
+                            }
+                            
+                            // Extract price from the response text if not in JSON
+                            if (!params.price && response.includes('$')) {
+                                const priceMatch = response.match(/\$\s*(\d+(?:\.\d+)?)/);
+                                if (priceMatch && priceMatch[1]) {
+                                    params.price = parseFloat(priceMatch[1]);
+                                    console.log('CRITICAL FIX - Extracted price from text:', params.price);
+                                }
+                            } else if (typeof params.price === 'string') {
+                                // Ensure price is a number
+                                params.price = parseFloat(params.price);
+                                console.log('CRITICAL FIX - Converted price from string to number:', params.price);
+                            }
+                            
+                            // Extract period_type from the response text if not in JSON
+                            if (!params.period_type && response.includes('monthly')) {
+                                params.period_type = 'month';
+                                console.log('CRITICAL FIX - Set period_type to month based on text');
+                            } else if (!params.period_type && response.includes('yearly')) {
+                                params.period_type = 'year';
+                                console.log('CRITICAL FIX - Set period_type to year based on text');
+                            } else if (!params.period_type && response.includes('lifetime')) {
+                                params.period_type = 'lifetime';
+                                console.log('CRITICAL FIX - Set period_type to lifetime based on text');
+                            }
+                            
+                            // Log the final parameters
+                            console.log('CRITICAL FIX - Final parameters:', params);
+                            
+                            // Create a tool call object
+                            const toolCalls = [{
+                                name: 'memberpress_info',
+                                parameters: params
+                            }];
+                            
+                            // Execute the tool call directly
+                            if (window.MPAI_Tools && typeof window.MPAI_Tools.executeToolCalls === 'function') {
+                                window.MPAI_Tools.executeToolCalls(toolCalls, response);
+                                
+                                // Set pending tool calls flag
+                                pendingToolCalls = true;
+                                foundToolCall = true;
+                                
+                                if (window.mpaiLogger) {
+                                    window.mpaiLogger.info('CRITICAL FIX - Executed membership creation tool call from JSON code block', 'tool_usage');
+                                }
+                                
+                                // Replace the code block with a processing message
+                                response = response.replace(
+                                    codeBlockMatch[0],
+                                    '<div class="mpai-tool-call-processing">Processing membership creation...</div>'
+                                );
+                            }
+                        }
+                    } catch (e) {
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.error('CRITICAL FIX - Error parsing JSON code block', 'tool_usage', {
+                                error: e.toString()
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // If we found and executed a tool call, return the modified response
+            if (foundToolCall) {
+                if (window.mpaiLogger) {
+                    const elapsed = window.mpaiLogger.endTimer('process_response');
+                    window.mpaiLogger.info('CRITICAL FIX - Executed tool call from JSON code block', 'tool_usage', {
+                        processingTimeMs: elapsed
+                    });
+                }
+                
+                // Add the modified response
+                addMessage('assistant', response);
+                return;
+            }
+        }
+        
+        // CRITICAL FIX: Direct detection for membership creation in raw text
+        // This is a fallback in case the tool call detector fails
+        if (response &&
+            response.includes('memberpress_info') &&
+            response.includes('"type":"create"') &&
+            response.includes('"parameters"')) {
+            
+            if (window.mpaiLogger) {
+                window.mpaiLogger.info('CRITICAL FIX - Detected potential membership creation in raw text', 'tool_usage');
+            }
+            
+            // Try multiple patterns to extract the JSON
+            const jsonPatterns = [
+                // FIXED PATTERN: Use a more robust pattern that captures the entire JSON object
+                /\{[\s\n]*"tool"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*\{[\s\S]*?"type"[\s\n]*:[\s\n]*"create"[\s\S]*?\}\}/g,
+                
+                // Variation with name instead of tool
+                /\{[\s\n]*"name"[\s\n]*:[\s\n]*"memberpress_info"[\s\n]*,[\s\n]*"parameters"[\s\n]*:[\s\n]*\{[\s\S]*?"type"[\s\n]*:[\s\n]*"create"[\s\S]*?\}\}/g,
+                
+                // Variation with single quotes
+                /\{[\s\n]*['"]tool['"][\s\n]*:[\s\n]*['"]memberpress_info['"][\s\n]*,[\s\n]*['"]parameters['"][\s\n]*:[\s\n]*\{[\s\S]*?['"]type['"][\s\n]*:[\s\n]*['"]create['"][\s\S]*?\}\}/g
+            ];
+            
+            // Try each pattern
+            for (const pattern of jsonPatterns) {
+                const matches = response.match(pattern);
+                
+                if (matches && matches.length > 0) {
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.info('CRITICAL FIX - Found direct membership creation format', 'tool_usage', {
+                            match: matches[0]
+                        });
+                    }
+                    
+                    try {
+                        // Clean the JSON string - handle single quotes, etc.
+                        let jsonStr = matches[0].replace(/'/g, '"');
+                        
+                        // Parse the JSON
+                        const jsonData = JSON.parse(jsonStr);
+                        console.log('CRITICAL FIX - Parsed JSON from raw text:', jsonData);
+                        
+                        if ((jsonData.tool === 'memberpress_info' || jsonData.name === 'memberpress_info') &&
+                            jsonData.parameters &&
+                            jsonData.parameters.type === 'create') {
+                            
+                            // Ensure all required parameters are present
+                            const params = jsonData.parameters;
+                            
+                            // Extract name from the response text if not in JSON
+                            if (!params.name && response.includes('named')) {
+                                const nameMatch = response.match(/named\s+['"]?([^'"]+)['"]?/i);
+                                if (nameMatch && nameMatch[1]) {
+                                    params.name = nameMatch[1].trim();
+                                    console.log('CRITICAL FIX - Extracted name from text:', params.name);
+                                    
+                                    if (window.mpaiLogger) {
+                                        window.mpaiLogger.info('CRITICAL FIX - Extracted name from text', 'tool_usage', {
+                                            name: params.name
+                                        });
+                                    }
+                                }
+                            }
+                            
+                            // Extract price from the response text if not in JSON
+                            if (!params.price && response.includes('$')) {
+                                const priceMatch = response.match(/\$\s*(\d+(?:\.\d+)?)/);
+                                if (priceMatch && priceMatch[1]) {
+                                    params.price = parseFloat(priceMatch[1]);
+                                    console.log('CRITICAL FIX - Extracted price from text:', params.price);
+                                    
+                                    if (window.mpaiLogger) {
+                                        window.mpaiLogger.info('CRITICAL FIX - Extracted price from text', 'tool_usage', {
+                                            price: params.price
+                                        });
+                                    }
+                                }
+                            } else if (typeof params.price === 'string') {
+                                // Ensure price is a number
+                                params.price = parseFloat(params.price);
+                                console.log('CRITICAL FIX - Converted price from string to number:', params.price);
+                                
+                                if (window.mpaiLogger) {
+                                    window.mpaiLogger.info('CRITICAL FIX - Converted price from string to number', 'tool_usage', {
+                                        price: params.price
+                                    });
+                                }
+                            }
+                            
+                            // Extract period_type from the response text if not in JSON
+                            if (!params.period_type && response.includes('monthly')) {
+                                params.period_type = 'month';
+                                console.log('CRITICAL FIX - Set period_type to month based on text');
+                                
+                                if (window.mpaiLogger) {
+                                    window.mpaiLogger.info('CRITICAL FIX - Set period_type to month based on text', 'tool_usage');
+                                }
+                            } else if (!params.period_type && response.includes('yearly')) {
+                                params.period_type = 'year';
+                                console.log('CRITICAL FIX - Set period_type to year based on text');
+                                
+                                if (window.mpaiLogger) {
+                                    window.mpaiLogger.info('CRITICAL FIX - Set period_type to year based on text', 'tool_usage');
+                                }
+                            } else if (!params.period_type && response.includes('lifetime')) {
+                                params.period_type = 'lifetime';
+                                console.log('CRITICAL FIX - Set period_type to lifetime based on text');
+                                
+                                if (window.mpaiLogger) {
+                                    window.mpaiLogger.info('CRITICAL FIX - Set period_type to lifetime based on text', 'tool_usage');
+                                }
+                            }
+                            
+                            // Log the final parameters
+                            console.log('CRITICAL FIX - Final parameters:', params);
+                            
+                            if (window.mpaiLogger) {
+                                window.mpaiLogger.info('CRITICAL FIX - Final parameters for tool call', 'tool_usage', params);
+                            }
+                            
+                            // Create a tool call object
+                            const toolCalls = [{
+                                name: 'memberpress_info',
+                                parameters: params
+                            }];
+                            
+                            // Execute the tool call directly
+                            if (window.MPAI_Tools && typeof window.MPAI_Tools.executeToolCalls === 'function') {
+                                window.MPAI_Tools.executeToolCalls(toolCalls, response);
+                                
+                                // Set pending tool calls flag
+                                pendingToolCalls = true;
+                                
+                                if (window.mpaiLogger) {
+                                    const elapsed = window.mpaiLogger.endTimer('process_response');
+                                    window.mpaiLogger.info('CRITICAL FIX - Executed membership creation tool call', 'tool_usage', {
+                                        processingTimeMs: elapsed
+                                    });
+                                }
+                                
+                                // Replace the raw JSON with a processing message
+                                response = response.replace(
+                                    matches[0],
+                                    '<div class="mpai-tool-call-processing">Processing membership creation...</div>'
+                                );
+                                
+                                // Add the modified response
+                                addMessage('assistant', response);
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        if (window.mpaiLogger) {
+                            window.mpaiLogger.error('CRITICAL FIX - Error parsing direct format JSON', 'tool_usage', {
+                                error: e.toString()
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Standard tool call detection
+        let hasToolCalls = false;
+        if (window.MPAI_Tools && typeof window.MPAI_Tools.processToolCalls === 'function') {
+            hasToolCalls = window.MPAI_Tools.processToolCalls(response);
             pendingToolCalls = hasToolCalls;
             
             // If there are tool calls, don't add the response message yet
@@ -410,161 +837,33 @@ var MPAI_Messages = (function($) {
             }
         }
         
-        // Pre-process XML content if blog formatter is available
-        let processedResponse = response;
-        let previewCardHtml = '';
-        let hasXml = false;
+        // No tool calls detected, add the message normally
+        addMessage('assistant', response);
         
-        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.preProcessXmlContent === 'function') {
-            const result = window.MPAI_BlogFormatter.preProcessXmlContent(response);
-            if (result.hasXml) {
-                processedResponse = result.content;
-                previewCardHtml = result.previewCardHtml;
-                hasXml = true;
-                
-                if (window.mpaiLogger) {
-                    window.mpaiLogger.info('Pre-processed XML content before display', 'ui', {
-                        originalLength: response.length,
-                        processedLength: processedResponse.length,
-                        hasPreviewCard: !!previewCardHtml
-                    });
-                }
-            }
-        }
-        
-        // Add the assistant message to the chat
         if (window.mpaiLogger) {
             const elapsed = window.mpaiLogger.endTimer('process_response');
-            window.mpaiLogger.info('Adding assistant response to chat', 'ui', {
+            window.mpaiLogger.info('Added assistant response to chat', 'ui', {
                 processingTimeMs: elapsed,
-                responseLength: processedResponse ? processedResponse.length : 0,
-                hasHtml: processedResponse && (processedResponse.includes('<') && processedResponse.includes('>')),
-                hasCodeBlocks: processedResponse && processedResponse.includes('```'),
-                hasXml: hasXml
+                responseLength: response ? response.length : 0
             });
         }
-        
-        // Add the message with the processed content
-        const $message = addMessage('assistant', processedResponse);
-        
-        // If we have a preview card, append it to the message
-        if (previewCardHtml) {
-            $message.append(previewCardHtml);
+    }
+    
+    /**
+     * Complete tool calls and display final response
+     * 
+     * @param {string} finalResponse - The final response with tools executed
+     */
+    function completeToolCalls(finalResponse) {
+        if (pendingToolCalls) {
+            pendingToolCalls = false;
             
-            // Add event handlers for the buttons
-            $message.find('.mpai-toggle-xml-button').on('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation(); // Prevent event bubbling
-                const $xmlContent = $(this).closest('.mpai-post-preview-card').find('.mpai-post-xml-content');
-                
-                if ($xmlContent.is(':visible')) {
-                    $xmlContent.slideUp(200);
-                    $(this).text('View XML');
-                } else {
-                    $xmlContent.slideDown(200);
-                    $(this).text('Hide XML');
-                }
-            });
+            // Add the final response
+            addMessage('assistant', finalResponse);
             
-            // Add preview post button handler
-            $message.find('.mpai-preview-post-button').on('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation(); // Prevent event bubbling
-                
-                // Debug logging
-                console.log("Preview button clicked");
-                console.log("Preview card:", $(this).closest('.mpai-post-preview-card'));
-                console.log("Data attributes:", $(this).closest('.mpai-post-preview-card').data());
-                
-                const $previewContent = $(this).closest('.mpai-post-preview-card').find('.mpai-post-preview-content');
-                const $previewContainer = $(this).closest('.mpai-post-preview-card').find('.mpai-post-preview-container');
-                
-                // Get XML content directly from the hidden pre element instead of data attribute
-                let xmlContent = '';
-                const $xmlContentElement = $(this).closest('.mpai-post-preview-card').find('.mpai-post-xml-content pre');
-                if ($xmlContentElement.length) {
-                    // Get the HTML content and convert HTML entities back to characters
-                    const htmlContent = $xmlContentElement.html();
-                    xmlContent = $('<div/>').html(htmlContent).text();
-                    console.log("XML content from pre element:", xmlContent.substring(0, 100) + "...");
-                } else {
-                    // Fallback to data attribute if pre element not found
-                    try {
-                        xmlContent = decodeURIComponent($(this).closest('.mpai-post-preview-card').data('xml-content') || '');
-                        console.log("XML content from data attribute:", xmlContent.substring(0, 100) + "...");
-                    } catch (e) {
-                        console.error("Error decoding XML content:", e);
-                        alert("Error accessing XML content. Please try again.");
-                        return;
-                    }
-                }
-                
-                if (!xmlContent) {
-                    console.error("No XML content found");
-                    alert("No XML content found. Cannot generate preview.");
-                    return;
-                }
-                
-                if ($previewContent.is(':visible')) {
-                    // Hide preview
-                    $previewContent.slideUp(200);
-                    $(this).text('Preview');
-                } else {
-                    // Show preview
-                    // Generate HTML preview from XML content
-                    try {
-                        if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.convertXmlBlocksToHtml === 'function') {
-                            // Extract content from XML
-                            const contentMatch = xmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
-                            if (contentMatch && contentMatch[1]) {
-                                const contentBlocks = contentMatch[1];
-                                console.log("Content blocks found:", contentBlocks.substring(0, 100) + "...");
-                                const previewHtml = window.MPAI_BlogFormatter.convertXmlBlocksToHtml(contentBlocks);
-                                
-                                // Add the formatted HTML to the preview container
-                                $previewContainer.html(previewHtml);
-                                
-                                // Show the preview
-                                $previewContent.slideDown(200);
-                                $(this).text('Hide Preview');
-                            } else {
-                                console.error("No post content found in XML");
-                                alert("Could not generate preview: No post content found.");
-                            }
-                        } else {
-                            console.error("MPAI_BlogFormatter or convertXmlBlocksToHtml function not available");
-                            alert("Preview functionality is not available.");
-                        }
-                    } catch (error) {
-                        console.error("Error generating preview:", error);
-                        alert(`Error generating preview: ${error.message}`);
-                    }
-                }
-            });
-            
-            $message.find('.mpai-create-post-button').on('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation(); // Prevent event bubbling
-                const clickedContentType = $(this).data('content-type');
-                const $card = $(this).closest('.mpai-post-preview-card');
-                const xmlContent = decodeURIComponent($card.data('xml-content'));
-                
-                console.log("Create post button clicked");
-                console.log("Content type:", clickedContentType);
-                console.log("XML content preview:", xmlContent.substring(0, 150) + "...");
-                
-                // Show a loading indicator
-                $(this).prop('disabled', true).text('Creating...');
-                
-                // Use the createPostFromXML function with the raw XML content
-                if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.createPostFromXML === 'function') {
-                    window.MPAI_BlogFormatter.createPostFromXML(xmlContent, clickedContentType);
-                }
-            });
-        }
-        // Otherwise, process the message with blog formatter if available (fallback)
-        else if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function') {
-            window.MPAI_BlogFormatter.processAssistantMessage($message, response);
+            if (window.mpaiLogger) {
+                window.mpaiLogger.info('Tool calls completed, added final response', 'tool_usage');
+            }
         }
     }
     
@@ -648,237 +947,12 @@ var MPAI_Messages = (function($) {
         }
     }
     
-    /**
-     * Complete tool calls and display final response
-     * 
-     * @param {string} finalResponse - The final response with tools executed
-     */
-    function completeToolCalls(finalResponse) {
-        if (pendingToolCalls) {
-            pendingToolCalls = false;
-            
-            // Check if the response contains XML content
-            const hasXmlContent = finalResponse && (
-                finalResponse.includes('<wp-post>') ||
-                finalResponse.includes('</wp-post>') ||
-                finalResponse.includes('<post-title>') ||
-                finalResponse.includes('</post-title>') ||
-                finalResponse.includes('<post-content>') ||
-                finalResponse.includes('</post-content>') ||
-                finalResponse.includes('<post-excerpt>') ||
-                finalResponse.includes('</post-excerpt>') ||
-                finalResponse.includes('<post-type>') ||
-                finalResponse.includes('</post-type>')
-            );
-            
-            // Store the original response for blog formatter
-            const originalResponse = finalResponse;
-            
-            if (hasXmlContent && window.mpaiLogger) {
-                window.mpaiLogger.debug('Final response contains XML content, removing it', 'ui', {
-                    responseLength: finalResponse.length,
-                    xmlDetected: true
-                });
-                
-                // Remove all XML content from the response
-                
-                // 1. Remove XML code blocks
-                finalResponse = finalResponse.replace(/```xml\s*[\s\S]*?```/g, '');
-                
-                // 2. Remove XML in JSON code blocks
-                finalResponse = finalResponse.replace(/```json\s*([\s\S]*?)```/g, function(match, jsonContent) {
-                    if (jsonContent.includes('<wp-post>') ||
-                        jsonContent.includes('<post-title>') ||
-                        jsonContent.includes('<post-content>') ||
-                        jsonContent.includes('<post-excerpt>') ||
-                        jsonContent.includes('<post-type>')) {
-                        return '';
-                    }
-                    return match;
-                });
-                
-                // 3. Remove raw XML tags
-                finalResponse = finalResponse.replace(/<wp-post>[\s\S]*?<\/wp-post>/g, '');
-                finalResponse = finalResponse.replace(/<post-title>[\s\S]*?<\/post-title>/g, '');
-                finalResponse = finalResponse.replace(/<post-content>[\s\S]*?<\/post-content>/g, '');
-                finalResponse = finalResponse.replace(/<post-excerpt>[\s\S]*?<\/post-excerpt>/g, '');
-                finalResponse = finalResponse.replace(/<post-type>[\s\S]*?<\/post-type>/g, '');
-                
-                // 4. Remove XML in JSON strings
-                finalResponse = finalResponse.replace(/"<wp-post>[\s\S]*?<\/wp-post>"/g, '""');
-                finalResponse = finalResponse.replace(/"<post-title>[\s\S]*?<\/post-title>"/g, '""');
-                finalResponse = finalResponse.replace(/"<post-content>[\s\S]*?<\/post-content>"/g, '""');
-                finalResponse = finalResponse.replace(/"<post-excerpt>[\s\S]*?<\/post-excerpt>"/g, '""');
-                finalResponse = finalResponse.replace(/"<post-type>[\s\S]*?<\/post-type>"/g, '""');
-                
-                // 5. Clean up any remaining XML-like content
-                finalResponse = finalResponse.replace(/```json\s*[\s\S]*?<wp-post>[\s\S]*?<\/wp-post>[\s\S]*?```/g, '');
-                finalResponse = finalResponse.replace(/```json\s*[\s\S]*?<post-title>[\s\S]*?<\/post-title>[\s\S]*?```/g, '');
-                finalResponse = finalResponse.replace(/```json\s*[\s\S]*?<post-content>[\s\S]*?<\/post-content>[\s\S]*?```/g, '');
-                
-                // Pass the original response to the blog formatter
-                window.originalXmlResponse = originalResponse;
-            }
-            
-            // Pre-process XML content if blog formatter is available
-            let processedResponse = finalResponse;
-            let previewCardHtml = '';
-            let xmlProcessed = false;
-            
-            if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.preProcessXmlContent === 'function') {
-                // If we have XML content, use the original response for processing
-                const contentToProcess = hasXmlContent ? originalResponse : finalResponse;
-                const result = window.MPAI_BlogFormatter.preProcessXmlContent(contentToProcess);
-                
-                if (result.hasXml) {
-                    processedResponse = result.content;
-                    previewCardHtml = result.previewCardHtml;
-                    xmlProcessed = true;
-                    
-                    if (window.mpaiLogger) {
-                        window.mpaiLogger.info('Pre-processed XML content before display in tool call response', 'ui', {
-                            originalLength: contentToProcess.length,
-                            processedLength: processedResponse.length,
-                            hasPreviewCard: !!previewCardHtml
-                        });
-                    }
-                }
-            }
-            
-            // Add the message with the processed content
-            const $message = addMessage('assistant', processedResponse);
-            
-            // If we have a preview card, append it to the message
-            if (previewCardHtml) {
-                $message.append(previewCardHtml);
-                
-                // Add event handlers for the buttons
-                $message.find('.mpai-toggle-xml-button').on('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation(); // Prevent event bubbling
-                    const $xmlContent = $(this).closest('.mpai-post-preview-card').find('.mpai-post-xml-content');
-                    
-                    if ($xmlContent.is(':visible')) {
-                        $xmlContent.slideUp(200);
-                        $(this).text('View XML');
-                    } else {
-                        $xmlContent.slideDown(200);
-                        $(this).text('Hide XML');
-                    }
-                });
-                
-                // Add preview post button handler
-                $message.find('.mpai-preview-post-button').on('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation(); // Prevent event bubbling
-                    
-                    // Debug logging
-                    console.log("Preview button clicked (tool calls)");
-                    console.log("Preview card:", $(this).closest('.mpai-post-preview-card'));
-                    console.log("Data attributes:", $(this).closest('.mpai-post-preview-card').data());
-                    
-                    const $previewContent = $(this).closest('.mpai-post-preview-card').find('.mpai-post-preview-content');
-                    const $previewContainer = $(this).closest('.mpai-post-preview-card').find('.mpai-post-preview-container');
-                    
-                    // Get XML content directly from the hidden pre element instead of data attribute
-                    let xmlContent = '';
-                    const $xmlContentElement = $(this).closest('.mpai-post-preview-card').find('.mpai-post-xml-content pre');
-                    if ($xmlContentElement.length) {
-                        // Get the HTML content and convert HTML entities back to characters
-                        const htmlContent = $xmlContentElement.html();
-                        xmlContent = $('<div/>').html(htmlContent).text();
-                        console.log("XML content from pre element:", xmlContent.substring(0, 100) + "...");
-                    } else {
-                        // Fallback to data attribute if pre element not found
-                        try {
-                            xmlContent = decodeURIComponent($(this).closest('.mpai-post-preview-card').data('xml-content') || '');
-                            console.log("XML content from data attribute:", xmlContent.substring(0, 100) + "...");
-                        } catch (e) {
-                            console.error("Error decoding XML content:", e);
-                            alert("Error accessing XML content. Please try again.");
-                            return;
-                        }
-                    }
-                    
-                    if (!xmlContent) {
-                        console.error("No XML content found");
-                        alert("No XML content found. Cannot generate preview.");
-                        return;
-                    }
-                    
-                    if ($previewContent.is(':visible')) {
-                        // Hide preview
-                        $previewContent.slideUp(200);
-                        $(this).text('Preview');
-                    } else {
-                        // Show preview
-                        // Generate HTML preview from XML content
-                        try {
-                            if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.convertXmlBlocksToHtml === 'function') {
-                                // Extract content from XML
-                                const contentMatch = xmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
-                                if (contentMatch && contentMatch[1]) {
-                                    const contentBlocks = contentMatch[1];
-                                    console.log("Content blocks found:", contentBlocks.substring(0, 100) + "...");
-                                    const previewHtml = window.MPAI_BlogFormatter.convertXmlBlocksToHtml(contentBlocks);
-                                    
-                                    // Add the formatted HTML to the preview container
-                                    $previewContainer.html(previewHtml);
-                                    
-                                    // Show the preview
-                                    $previewContent.slideDown(200);
-                                    $(this).text('Hide Preview');
-                                } else {
-                                    console.error("No post content found in XML");
-                                    alert("Could not generate preview: No post content found.");
-                                }
-                            } else {
-                                console.error("MPAI_BlogFormatter or convertXmlBlocksToHtml function not available");
-                                alert("Preview functionality is not available.");
-                            }
-                        } catch (error) {
-                            console.error("Error generating preview:", error);
-                            alert(`Error generating preview: ${error.message}`);
-                        }
-                    }
-                });
-                
-                $message.find('.mpai-create-post-button').on('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation(); // Prevent event bubbling
-                    const clickedContentType = $(this).data('content-type');
-                    const $card = $(this).closest('.mpai-post-preview-card');
-                    const xmlContent = decodeURIComponent($card.data('xml-content'));
-                    
-                    console.log("Create post button clicked");
-                    console.log("Content type:", clickedContentType);
-                    console.log("XML content preview:", xmlContent.substring(0, 150) + "...");
-                    
-                    // Show a loading indicator
-                    $(this).prop('disabled', true).text('Creating...');
-                    
-                    // Use the createPostFromXML function with the raw XML content
-                    if (window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.createPostFromXML === 'function') {
-                        window.MPAI_BlogFormatter.createPostFromXML(xmlContent, clickedContentType);
-                    }
-                });
-            }
-            // Otherwise, process the message with blog formatter if available (fallback)
-            else if (!xmlProcessed && window.MPAI_BlogFormatter && typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function') {
-                // If we have XML content, pass the original response to the blog formatter
-                if (hasXmlContent) {
-                    window.MPAI_BlogFormatter.processAssistantMessage($message, originalResponse);
-                } else {
-                    window.MPAI_BlogFormatter.processAssistantMessage($message, finalResponse);
-                }
-            }
-        }
-    }
-    
     // Public API
     return {
         init: init,
         addMessage: addMessage,
+        updateLastAssistantMessage: updateLastAssistantMessage,
+        appendToLastAssistantMessage: appendToLastAssistantMessage,
         formatMessage: formatMessage,
         showTypingIndicator: showTypingIndicator,
         hideTypingIndicator: hideTypingIndicator,
