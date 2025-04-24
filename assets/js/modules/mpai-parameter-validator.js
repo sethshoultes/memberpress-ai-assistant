@@ -87,11 +87,32 @@ var MPAI_ParameterValidator = (function($) {
             if ((value === undefined || value === null || value === '') && userMessage) {
                 console.log(`MPAI Parameter Validation - Attempting to extract ${paramName} from user message`);
                 
-                if (paramName === 'name' && userMessage.match(/named|called/i)) {
-                    const nameMatch = userMessage.match(/(?:named|called)\s+['"]?([^'"]+?)['"]?(?:\s|$)/i);
+                if (paramName === 'name' && userMessage.match(/named|called|name/i)) {
+                    // First try to match quoted strings (for multi-word names)
+                    let nameMatch = userMessage.match(/(?:named|called|name)\s+['"]([^'"]+)['"]/i);
+                    
+                    // If no quoted string found, try to capture everything until a natural boundary
+                    if (!nameMatch) {
+                        // Match everything after "named/called/name" until price indicators, period indicators, or punctuation
+                        // Use a more conservative approach with a maximum of 5 words to avoid capturing too much text
+                        nameMatch = userMessage.match(/(?:named|called|name)\s+([^\s.,;:!?]{1,30}(?:\s+[^\s.,;:!?]{1,30}){0,4})(?:\s+(?:for|at|price|costs?|with|and|monthly|yearly|annually|lifetime|\$)|$|[.,;:!?])/i);
+                        
+                        // If still no match, fall back to capturing just the next word
+                        if (!nameMatch) {
+                            nameMatch = userMessage.match(/(?:named|called|name)\s+([^\s.,;:!?]+)/i);
+                        }
+                    }
+                    
                     if (nameMatch && nameMatch[1]) {
-                        value = nameMatch[1].trim();
-                        console.log(`MPAI Parameter Validation - Extracted name from user message: ${value}`);
+                        // Extract the name and remove any quotes and slashes
+                        value = nameMatch[1].trim().replace(/^['"`]|['"`]$|\\+/g, '');
+                        
+                        // Capitalize the first letter of each word
+                        value = value.split(' ').map(word =>
+                            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                        ).join(' ');
+                        
+                        console.log(`MPAI Parameter Validation - Extracted and capitalized name from user message: ${value}`);
                     }
                 } else if (paramName === 'price' && (userMessage.includes('$') || userMessage.includes('dollar'))) {
                     let priceMatch = userMessage.match(/\$\s*(\d+(?:\.\d+)?)/i);
@@ -471,11 +492,32 @@ var MPAI_ParameterValidator = (function($) {
         // Try to extract missing parameters from user message
         if (userMessage) {
             // Extract name if missing
-            if (!extracted.name && userMessage.match(/named|called/i)) {
-                const nameMatch = userMessage.match(/(?:named|called)\s+['"]?([^'"]+?)['"]?(?:\s|$)/i);
+            if (!extracted.name && userMessage.match(/named|called|name/i)) {
+                // First try to match quoted strings (for multi-word names)
+                let nameMatch = userMessage.match(/(?:named|called|name)\s+['"]([^'"]+)['"]/i);
+                
+                // If no quoted string found, try to capture everything until a natural boundary
+                if (!nameMatch) {
+                    // Match everything after "named/called/name" until price indicators, period indicators, or punctuation
+                    // Use a more conservative approach with a maximum of 5 words to avoid capturing too much text
+                    nameMatch = userMessage.match(/(?:named|called|name)\s+([^\s.,;:!?]{1,30}(?:\s+[^\s.,;:!?]{1,30}){0,4})(?:\s+(?:for|at|price|costs?|with|and|monthly|yearly|annually|lifetime|\$)|$|[.,;:!?])/i);
+                    
+                    // If still no match, fall back to capturing just the next word
+                    if (!nameMatch) {
+                        nameMatch = userMessage.match(/(?:named|called|name)\s+([^\s.,;:!?]+)/i);
+                    }
+                }
+                
                 if (nameMatch && nameMatch[1]) {
-                    extracted.name = nameMatch[1].trim();
-                    console.log('MPAI Parameter Validation - Extracted name from user message:', extracted.name);
+                    // Extract the name and remove any quotes and slashes
+                    extracted.name = nameMatch[1].trim().replace(/^['"`]|['"`]$|\\+/g, '');
+                    
+                    // Capitalize the first letter of each word
+                    extracted.name = extracted.name.split(' ').map(word =>
+                        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                    ).join(' ');
+                    
+                    console.log('MPAI Parameter Validation - Extracted and capitalized name from user message:', extracted.name);
                 }
             }
             

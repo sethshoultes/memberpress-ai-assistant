@@ -85,11 +85,32 @@ var MPAI_Tools = (function($) {
                             const params = jsonData.parameters;
                             
                             // Extract name from the response text if not in parameters
-                            if (!params.name && response && response.includes('named')) {
-                                const nameMatch = response.match(/named\s+['"]?([^'"]+)['"]?/i);
+                            if (!params.name && response && (response.includes('named') || response.includes('called') || response.includes('name'))) {
+                                // First try to match quoted strings (for multi-word names)
+                                let nameMatch = response.match(/(?:named|called|name)\s+['"]([^'"]+)['"]/i);
+                                
+                                // If no quoted string found, try to capture everything until a natural boundary
+                                if (!nameMatch) {
+                                    // Match everything after "named/called/name" until price indicators, period indicators, or punctuation
+                                    // Use a more conservative approach with a maximum of 5 words to avoid capturing too much text
+                                    nameMatch = response.match(/(?:named|called|name)\s+([^\s.,;:!?]{1,30}(?:\s+[^\s.,;:!?]{1,30}){0,4})(?:\s+(?:for|at|price|costs?|with|and|monthly|yearly|annually|lifetime|\$)|$|[.,;:!?])/i);
+                                    
+                                    // If still no match, fall back to capturing just the next word
+                                    if (!nameMatch) {
+                                        nameMatch = response.match(/(?:named|called|name)\s+([^\s.,;:!?]+)/i);
+                                    }
+                                }
+                                
                                 if (nameMatch && nameMatch[1]) {
-                                    params.name = nameMatch[1].trim();
-                                    console.log('MPAI Tools - CRITICAL FIX - Extracted name from text:', params.name);
+                                    // Extract the name and remove any quotes and slashes
+                                    params.name = nameMatch[1].trim().replace(/^['"`]|['"`]$|\\+/g, '');
+                                    
+                                    // Capitalize the first letter of each word
+                                    params.name = params.name.split(' ').map(word =>
+                                        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                                    ).join(' ');
+                                    
+                                    console.log('MPAI Tools - CRITICAL FIX - Extracted and capitalized name from text:', params.name);
                                 }
                             }
                             
@@ -169,11 +190,32 @@ var MPAI_Tools = (function($) {
                                 const params = jsonData.parameters;
                                 
                                 // Extract name from the response text if not in parameters
-                                if (!params.name && response && response.includes('named')) {
-                                    const nameMatch = response.match(/named\s+['"]?([^'"]+)['"]?/i);
+                                if (!params.name && response && (response.includes('named') || response.includes('called') || response.includes('name'))) {
+                                    // First try to match quoted strings (for multi-word names)
+                                    let nameMatch = response.match(/(?:named|called|name)\s+['"]([^'"]+)['"]/i);
+                                    
+                                    // If no quoted string found, try to capture everything until a natural boundary
+                                    if (!nameMatch) {
+                                        // Match everything after "named/called/name" until price indicators, period indicators, or punctuation
+                                        // Use a more conservative approach with a maximum of 5 words to avoid capturing too much text
+                                        nameMatch = response.match(/(?:named|called|name)\s+([^\s.,;:!?]{1,30}(?:\s+[^\s.,;:!?]{1,30}){0,4})(?:\s+(?:for|at|price|costs?|with|and|monthly|yearly|annually|lifetime|\$)|$|[.,;:!?])/i);
+                                        
+                                        // If still no match, fall back to capturing just the next word
+                                        if (!nameMatch) {
+                                            nameMatch = response.match(/(?:named|called|name)\s+([^\s.,;:!?]+)/i);
+                                        }
+                                    }
+                                    
                                     if (nameMatch && nameMatch[1]) {
-                                        params.name = nameMatch[1].trim();
-                                        console.log('MPAI Tools - CRITICAL FIX - Extracted name from text:', params.name);
+                                        // Extract the name and remove any quotes and slashes
+                                        params.name = nameMatch[1].trim().replace(/^['"`]|['"`]$|\\+/g, '');
+                                        
+                                        // Capitalize the first letter of each word
+                                        params.name = params.name.split(' ').map(word =>
+                                            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                                        ).join(' ');
+                                        
+                                        console.log('MPAI Tools - CRITICAL FIX - Extracted and capitalized name from text:', params.name);
                                     }
                                 }
                                 
@@ -284,11 +326,32 @@ var MPAI_Tools = (function($) {
             const params = toolCall.parameters;
             
             // Extract name from the response text if not in parameters
-            if (!params.name && response && response.includes('named')) {
-                const nameMatch = response.match(/named\s+['"]?([^'"]+)['"]?/i);
+            if (!params.name && response && (response.includes('named') || response.includes('called') || response.includes('name'))) {
+                // First try to match quoted strings (for multi-word names)
+                let nameMatch = response.match(/(?:named|called|name)\s+['"]([^'"]+)['"]/i);
+                
+                // If no quoted string found, try to capture everything until a natural boundary
+                if (!nameMatch) {
+                    // Match everything after "named/called/name" until price indicators, period indicators, or punctuation
+                    // Use a more conservative approach with a maximum of 5 words to avoid capturing too much text
+                    nameMatch = response.match(/(?:named|called|name)\s+([^\s.,;:!?]{1,30}(?:\s+[^\s.,;:!?]{1,30}){0,4})(?:\s+(?:for|at|price|costs?|with|and|monthly|yearly|annually|lifetime|\$)|$|[.,;:!?])/i);
+                    
+                    // If still no match, fall back to capturing just the next word
+                    if (!nameMatch) {
+                        nameMatch = response.match(/(?:named|called|name)\s+([^\s.,;:!?]+)/i);
+                    }
+                }
+                
                 if (nameMatch && nameMatch[1]) {
-                    params.name = nameMatch[1].trim();
-                    console.log('MPAI Tools - DIRECT FIX - Extracted name from text:', params.name);
+                    // Extract the name and remove any quotes and slashes
+                    params.name = nameMatch[1].trim().replace(/^['"`]|['"`]$|\\+/g, '');
+                    
+                    // Capitalize the first letter of each word
+                    params.name = params.name.split(' ').map(word =>
+                        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                    ).join(' ');
+                    
+                    console.log('MPAI Tools - DIRECT FIX - Extracted and capitalized name from text:', params.name);
                 }
             }
             

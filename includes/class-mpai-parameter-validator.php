@@ -43,11 +43,40 @@ class MPAI_Parameter_Validator {
         if (!isset($parameters['name']) || empty($parameters['name']) || $parameters['name'] === 'New Membership') {
             // Try to extract name from user message
             $extracted_name = '';
-            if (!empty($user_message) && preg_match('/(?:named|called)\s+[\'"]?([^\'"\s]+(?:\s+[^\'"\s]+)*)[\'"]?/i', $user_message, $matches)) {
-                $extracted_name = trim($matches[1]);
-                mpai_log_debug('Extracted name from user message: ' . $extracted_name, 'parameter-validator');
-                $result['parameters']['name'] = sanitize_text_field($extracted_name);
-                $result['warnings'][] = "Name was extracted from user message: " . $extracted_name;
+            // First try to match quoted strings (for multi-word names)
+            if (!empty($user_message)) {
+                $found_name = false;
+                
+                // Try to match quoted strings first
+                if (preg_match('/(?:named|called|name)\s+[\'"]([^\'"]+)[\'"]/i', $user_message, $matches)) {
+                    $extracted_name = trim($matches[1]);
+                    $found_name = true;
+                    mpai_log_debug('Extracted quoted name from user message: ' . $extracted_name, 'parameter-validator');
+                }
+                // If no quoted string found, try to capture everything until a natural boundary
+                // Use a more conservative approach with a maximum of 5 words to avoid capturing too much text
+                elseif (preg_match('/(?:named|called|name)\s+([^\s.,;:!?]{1,30}(?:\s+[^\s.,;:!?]{1,30}){0,4})(?:\s+(?:for|at|price|costs?|with|and|monthly|yearly|annually|lifetime|\$)|$|[.,;:!?])/i', $user_message, $matches)) {
+                    $extracted_name = trim($matches[1]);
+                    $found_name = true;
+                    mpai_log_debug('Extracted multi-word name from user message: ' . $extracted_name, 'parameter-validator');
+                }
+                // If still no match, fall back to capturing just the next word
+                elseif (preg_match('/(?:named|called|name)\s+([^\s.,;:!?]+)/i', $user_message, $matches)) {
+                    $extracted_name = trim($matches[1]);
+                    $found_name = true;
+                    mpai_log_debug('Extracted single word name from user message: ' . $extracted_name, 'parameter-validator');
+                }
+                
+                if ($found_name) {
+                    // Remove any quotes and slashes from the name
+                    $extracted_name = trim(preg_replace('/^[\'"`]|[\'"`]$|\\\\+/', '', $extracted_name));
+                    
+                    // Capitalize each word in the name
+                    $extracted_name = implode(' ', array_map('ucfirst', explode(' ', strtolower($extracted_name))));
+                    mpai_log_debug('Capitalized name from user message: ' . $extracted_name, 'parameter-validator');
+                    $result['parameters']['name'] = sanitize_text_field($extracted_name);
+                    $result['warnings'][] = "Name was extracted from user message: " . $extracted_name;
+                }
             } else {
                 // Generate a name based on period_type and price if available
                 $period_display = isset($parameters['period_type']) ? ucfirst($parameters['period_type']) : 'Monthly';
@@ -284,9 +313,35 @@ class MPAI_Parameter_Validator {
             if (!empty($user_message)) {
                 // Extract name if missing
                 if (empty($extracted['name'])) {
-                    if (preg_match('/(?:named|called)\s+[\'"]?([^\'"\s]+(?:\s+[^\'"\s]+)*)[\'"]?/i', $user_message, $matches)) {
+                    $found_name = false;
+                    
+                    // Try to match quoted strings first
+                    if (preg_match('/(?:named|called|name)\s+[\'"]([^\'"]+)[\'"]/i', $user_message, $matches)) {
                         $extracted['name'] = trim($matches[1]);
-                        mpai_log_debug('Extracted name from user message: ' . $extracted['name'], 'parameter-validator');
+                        $found_name = true;
+                        mpai_log_debug('Extracted quoted name from user message: ' . $extracted['name'], 'parameter-validator');
+                    }
+                    // If no quoted string found, try to capture everything until a natural boundary
+                    // Use a more conservative approach with a maximum of 5 words to avoid capturing too much text
+                    elseif (preg_match('/(?:named|called|name)\s+([^\s.,;:!?]{1,30}(?:\s+[^\s.,;:!?]{1,30}){0,4})(?:\s+(?:for|at|price|costs?|with|and|monthly|yearly|annually|lifetime|\$)|$|[.,;:!?])/i', $user_message, $matches)) {
+                        $extracted['name'] = trim($matches[1]);
+                        $found_name = true;
+                        mpai_log_debug('Extracted multi-word name from user message: ' . $extracted['name'], 'parameter-validator');
+                    }
+                    // If still no match, fall back to capturing just the next word
+                    elseif (preg_match('/(?:named|called|name)\s+([^\s.,;:!?]+)/i', $user_message, $matches)) {
+                        $extracted['name'] = trim($matches[1]);
+                        $found_name = true;
+                        mpai_log_debug('Extracted single word name from user message: ' . $extracted['name'], 'parameter-validator');
+                    }
+                    
+                    if ($found_name) {
+                        // Remove any quotes and slashes from the name
+                        $extracted['name'] = trim(preg_replace('/^[\'"`]|[\'"`]$|\\\\+/', '', $extracted['name']));
+                        
+                        // Capitalize each word in the name
+                        $extracted['name'] = implode(' ', array_map('ucfirst', explode(' ', strtolower($extracted['name']))));
+                        mpai_log_debug('Capitalized name from user message: ' . $extracted['name'], 'parameter-validator');
                     }
                 }
                 

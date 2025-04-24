@@ -53,8 +53,28 @@ var MPAI_Messages = (function($) {
             'class': 'mpai-chat-message-content'
         });
         
-        // Format the message content
-        $content.html(formatMessage(content));
+        // Check if this is an assistant message with XML content
+        if (role === 'assistant' && window.MPAI_BlogFormatter &&
+            typeof window.MPAI_BlogFormatter.preProcessXmlContent === 'function' &&
+            (content.includes('<wp-post>') ||
+             content.includes('</wp-post>') ||
+             content.includes('<post-title>') ||
+             content.includes('<post-content>'))) {
+            
+            // Pre-process XML content
+            const processResult = window.MPAI_BlogFormatter.preProcessXmlContent(content);
+            
+            // Format the cleaned content
+            $content.html(formatMessage(processResult.content));
+            
+            // Store the original XML content for later use
+            if (processResult.hasXml) {
+                window.originalXmlResponse = content;
+            }
+        } else {
+            // Format the message content normally
+            $content.html(formatMessage(content));
+        }
         
         // Add content to message
         $message.append($content);
@@ -837,8 +857,31 @@ var MPAI_Messages = (function($) {
             }
         }
         
-        // No tool calls detected, add the message normally
-        addMessage('assistant', response);
+        // No tool calls detected, check for XML content before adding the message
+        if (window.MPAI_BlogFormatter &&
+            typeof window.MPAI_BlogFormatter.preProcessXmlContent === 'function' &&
+            (response.includes('<wp-post>') ||
+             response.includes('</wp-post>') ||
+             response.includes('<post-title>') ||
+             response.includes('<post-content>'))) {
+            
+            // Store the original XML response for later processing
+            window.originalXmlResponse = response;
+            
+            // Pre-process XML content
+            const processResult = window.MPAI_BlogFormatter.preProcessXmlContent(response);
+            
+            // Add the message with the cleaned content
+            const $message = addMessage('assistant', processResult.content);
+            
+            // If XML was found and processed, append the preview card
+            if (processResult.hasXml && processResult.previewCardHtml) {
+                $message.append(processResult.previewCardHtml);
+            }
+        } else {
+            // Add the message normally
+            addMessage('assistant', response);
+        }
         
         if (window.mpaiLogger) {
             const elapsed = window.mpaiLogger.endTimer('process_response');

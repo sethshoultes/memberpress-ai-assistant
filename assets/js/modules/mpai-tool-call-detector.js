@@ -311,6 +311,13 @@ var MPAI_ToolCallDetector = (function($) {
                     extractedParams.price = parseFloat(extractedParams.price);
                 }
                 
+                // Ensure name is properly capitalized
+                if (extractedParams.name) {
+                    extractedParams.name = extractedParams.name.charAt(0).toUpperCase() +
+                                          extractedParams.name.slice(1).toLowerCase();
+                    logInfo('PARAMETER EXTRACTION - Capitalized name: ' + extractedParams.name);
+                }
+                
                 return extractedParams;
             }
             
@@ -324,6 +331,13 @@ var MPAI_ToolCallDetector = (function($) {
                 // Ensure price is a number
                 if (typeof extractedParams.price === 'string' && !isNaN(parseFloat(extractedParams.price))) {
                     extractedParams.price = parseFloat(extractedParams.price);
+                }
+                
+                // Ensure name is properly capitalized
+                if (extractedParams.name) {
+                    extractedParams.name = extractedParams.name.charAt(0).toUpperCase() +
+                                          extractedParams.name.slice(1).toLowerCase();
+                    logInfo('PARAMETER EXTRACTION - Capitalized name: ' + extractedParams.name);
                 }
                 
                 logInfo('PARAMETER EXTRACTION - Found nested parameters in tool object', extractedParams);
@@ -358,6 +372,13 @@ var MPAI_ToolCallDetector = (function($) {
                         extractedParams.price = parseFloat(extractedParams.price);
                     }
                     
+                    // Ensure name is properly capitalized
+                    if (extractedParams.name) {
+                        extractedParams.name = extractedParams.name.charAt(0).toUpperCase() +
+                                              extractedParams.name.slice(1).toLowerCase();
+                        logInfo('PARAMETER EXTRACTION - Capitalized name: ' + extractedParams.name);
+                    }
+                    
                     logInfo('PARAMETER EXTRACTION - Found parameters in function_call arguments', extractedParams);
                     return extractedParams;
                 }
@@ -377,6 +398,13 @@ var MPAI_ToolCallDetector = (function($) {
                     extractedParams.price = parseFloat(extractedParams.price);
                 }
                 
+                // Ensure name is properly capitalized
+                if (extractedParams.name) {
+                    extractedParams.name = extractedParams.name.charAt(0).toUpperCase() +
+                                          extractedParams.name.slice(1).toLowerCase();
+                    logInfo('PARAMETER EXTRACTION - Capitalized name: ' + extractedParams.name);
+                }
+                
                 logInfo('PARAMETER EXTRACTION - Found parameters in tool_use format', extractedParams);
                 return extractedParams;
             }
@@ -393,6 +421,13 @@ var MPAI_ToolCallDetector = (function($) {
             if (extractedParams.name && extractedParams.price) {
                 // Set default period_type if not provided
                 if (!extractedParams.period_type) extractedParams.period_type = 'month';
+                
+                // Ensure name is properly capitalized
+                if (extractedParams.name) {
+                    extractedParams.name = extractedParams.name.charAt(0).toUpperCase() +
+                                          extractedParams.name.slice(1).toLowerCase();
+                    logInfo('PARAMETER EXTRACTION - Capitalized name: ' + extractedParams.name);
+                }
                 
                 logInfo('PARAMETER EXTRACTION - Extracted partial parameters', extractedParams);
                 return extractedParams;
@@ -588,6 +623,13 @@ var MPAI_ToolCallDetector = (function($) {
                                 logInfo('CRITICAL FIX - Converted price from string to number: ' + jsonData.parameters.price);
                             }
                             
+                            // Ensure name is properly capitalized
+                            if (jsonData.parameters.name) {
+                                jsonData.parameters.name = jsonData.parameters.name.charAt(0).toUpperCase() +
+                                                          jsonData.parameters.name.slice(1).toLowerCase();
+                                logInfo('CRITICAL FIX - Capitalized name: ' + jsonData.parameters.name);
+                            }
+                            
                             // Create a tool call object
                             const toolCalls = [{
                                 name: 'memberpress_info',
@@ -635,6 +677,13 @@ var MPAI_ToolCallDetector = (function($) {
                                 if (typeof jsonData.parameters.price === 'string' && !isNaN(parseFloat(jsonData.parameters.price))) {
                                     jsonData.parameters.price = parseFloat(jsonData.parameters.price);
                                     logInfo('CRITICAL FIX - Converted price from string to number: ' + jsonData.parameters.price);
+                                }
+                                
+                                // Ensure name is properly capitalized
+                                if (jsonData.parameters.name) {
+                                    jsonData.parameters.name = jsonData.parameters.name.charAt(0).toUpperCase() +
+                                                              jsonData.parameters.name.slice(1).toLowerCase();
+                                    logInfo('CRITICAL FIX - Capitalized name: ' + jsonData.parameters.name);
                                 }
                                 
                                 // Create a tool call object
