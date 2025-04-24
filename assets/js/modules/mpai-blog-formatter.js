@@ -64,6 +64,12 @@ var MPAI_BlogFormatter = (function($) {
             console.log("MPAI: Checking for XML content on page load");
             $('.mpai-chat-message-assistant').each(function() {
                 const $message = $(this);
+                
+                // Skip messages that already have a post preview card
+                if ($message.find('.mpai-post-preview-card').length > 0) {
+                    return;
+                }
+                
                 const content = $message.find('.mpai-chat-message-content').html();
                 
                 if (content && (
@@ -78,6 +84,9 @@ var MPAI_BlogFormatter = (function($) {
                     processAssistantMessage($message, content);
                 }
             });
+            
+            // Set up a mutation observer to watch for new messages
+            setupMutationObserver();
         }, 500); // Short delay to ensure DOM is ready
     }
     
@@ -1004,6 +1013,88 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
         };
     }
     
+    /**
+     * Set up a mutation observer to watch for new messages with XML content
+     */
+    function setupMutationObserver() {
+        console.log("MPAI: Setting up mutation observer for blog formatter");
+        
+        const config = { childList: true, subtree: true, characterData: true };
+        
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes.length) {
+                    // Check if any added nodes are messages or contain messages
+                    Array.from(mutation.addedNodes).forEach(function(node) {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            // Check if this is a message element
+                            if ($(node).hasClass('mpai-chat-message-assistant')) {
+                                const $message = $(node);
+                                
+                                // Skip if already processed
+                                if ($message.find('.mpai-post-preview-card').length > 0) {
+                                    return;
+                                }
+                                
+                                const content = $message.find('.mpai-chat-message-content').html();
+                                
+                                if (content && (
+                                    content.includes('<wp-post>') ||
+                                    content.includes('</wp-post>') ||
+                                    content.includes('<post-title>') ||
+                                    content.includes('</post-title>') ||
+                                    content.includes('<post-content>') ||
+                                    content.includes('</post-content>')
+                                )) {
+                                    console.log("MPAI: Found XML content in new message, processing");
+                                    processAssistantMessage($message, content);
+                                }
+                            }
+                            // Check if this contains message elements
+                            else {
+                                const $messages = $(node).find('.mpai-chat-message-assistant');
+                                
+                                if ($messages.length) {
+                                    $messages.each(function() {
+                                        const $message = $(this);
+                                        
+                                        // Skip if already processed
+                                        if ($message.find('.mpai-post-preview-card').length > 0) {
+                                            return;
+                                        }
+                                        
+                                        const content = $message.find('.mpai-chat-message-content').html();
+                                        
+                                        if (content && (
+                                            content.includes('<wp-post>') ||
+                                            content.includes('</wp-post>') ||
+                                            content.includes('<post-title>') ||
+                                            content.includes('</post-title>') ||
+                                            content.includes('<post-content>') ||
+                                            content.includes('</post-content>')
+                                        )) {
+                                            console.log("MPAI: Found XML content in new message, processing");
+                                            processAssistantMessage($message, content);
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Start observing the chat messages container
+        const chatMessages = $('.mpai-messages');
+        if (chatMessages.length) {
+            observer.observe(chatMessages[0], config);
+            console.log("MPAI: Mutation observer started for blog formatter");
+        } else {
+            console.log("MPAI: Chat messages container not found, mutation observer not started");
+        }
+    }
+    
     // Public API
     return {
         init: init,
@@ -1011,7 +1102,8 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
         processAssistantMessage: processAssistantMessage,
         createPostFromXML: createPostFromXML,
         preProcessXmlContent: preProcessXmlContent,
-        convertXmlBlocksToHtml: convertXmlBlocksToHtml
+        convertXmlBlocksToHtml: convertXmlBlocksToHtml,
+        setupMutationObserver: setupMutationObserver
     };
 })(jQuery);
 

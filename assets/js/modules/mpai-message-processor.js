@@ -108,8 +108,29 @@ var MPAI_MessageProcessor = (function($) {
     function processMessageContent($messageContent) {
         const content = $messageContent.html();
         
-        // Skip already processed content
-        if (!content || content.includes('mpai-tool-call') || !content.includes('memberpress_info')) {
+        // Skip if no content
+        if (!content) {
+            return;
+        }
+        
+        // Check for blog post XML content first
+        if (window.MPAI_BlogFormatter &&
+            typeof window.MPAI_BlogFormatter.processAssistantMessage === 'function' &&
+            (content.includes('<wp-post>') ||
+             content.includes('</wp-post>') ||
+             content.includes('<post-title>') ||
+             content.includes('</post-content>'))) {
+            
+            log('Found XML blog post content, processing with BlogFormatter');
+            // Get the parent message element
+            const $message = $messageContent.closest('.mpai-chat-message-assistant');
+            if ($message.length > 0) {
+                window.MPAI_BlogFormatter.processAssistantMessage($message, content);
+            }
+        }
+        
+        // Skip already processed tool call content
+        if (content.includes('mpai-tool-call') || !content.includes('memberpress_info')) {
             return;
         }
         
