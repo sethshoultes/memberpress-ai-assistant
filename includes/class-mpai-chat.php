@@ -1531,6 +1531,12 @@ class MPAI_Chat {
                 // Format the result
                 $formatted_result = $this->format_result_content($result);
                 
+                // Ensure the formatted result is a string
+                if (is_array($formatted_result) || is_object($formatted_result)) {
+                    mpai_log_debug('Converting formatted result to JSON string in structured tool calls', 'chat');
+                    $formatted_result = json_encode($formatted_result, JSON_PRETTY_PRINT);
+                }
+                
                 // Add the result to the message
                 if (strpos($processed_message, "I'll use the {$function['name']} tool") != false ||
                     strpos($processed_message, "Using the {$function['name']} tool") != false) {
@@ -1822,7 +1828,7 @@ class MPAI_Chat {
             }
             
             // Check if we got a tabular result
-            if (isset($result['result']) && is_array($result['result']) && 
+            if (isset($result['result']) && is_array($result['result']) &&
                 isset($result['result']['command_type']) && isset($result['result']['result'])) {
                 // This is a tabular result, present it directly without JSON wrapping
                 $command_type = $result['result']['command_type'];
@@ -1830,6 +1836,12 @@ class MPAI_Chat {
                 
                 // Create a formatted display with title based on command type
                 $title = $this->get_title_for_command_type($command_type);
+                
+                // Handle array data properly - CRITICAL FIX: Check and convert array to string BEFORE using it
+                if (is_array($tabular_data) || is_object($tabular_data)) {
+                    $tabular_data = json_encode($tabular_data, JSON_PRETTY_PRINT);
+                }
+                
                 $formatted_result = "{$title}\n\n```\n{$tabular_data}\n```";
                 
                 // Replace the tool call with the formatted table
@@ -1860,7 +1872,14 @@ class MPAI_Chat {
                     $result_block = "```\n" . $user_friendly_result . "\n```";
                 } else {
                     // Standard JSON result formatting
-                    $result_block = "```\n" . $this->format_result_content($result) . "\n```";
+                    $formatted_content = $this->format_result_content($result);
+                    
+                    // Ensure the formatted content is a string
+                    if (is_array($formatted_content) || is_object($formatted_content)) {
+                        $formatted_content = json_encode($formatted_content, JSON_PRETTY_PRINT);
+                    }
+                    
+                    $result_block = "```\n" . $formatted_content . "\n```";
                 }
                 
                 // Replace the tool call with the result
@@ -2009,11 +2028,18 @@ class MPAI_Chat {
      * @return string Formatted content
      */
     private function format_result_content($result) {
+        // Ensure we return a string even for complex nested arrays
+        mpai_log_debug('Formatting result content of type: ' . gettype($result), 'chat');
         
         // Check if this is a plugin_logs tool result with formatted output
         if (isset($result['tool']) && $result['tool'] == 'plugin_logs' && isset($result['formatted_output'])) {
             mpai_log_debug('Using formatted output for plugin_logs tool result', 'chat');
             return $result['formatted_output'];
+        }
+        
+        // Handle array result directly
+        if (is_array($result)) {
+            mpai_log_debug('Result is an array, checking for special formats', 'chat');
         }
         
         // Check for wp_api tool results
@@ -2232,7 +2258,16 @@ class MPAI_Chat {
         }
         
         // Default to pretty-printed JSON for other results
-        return json_encode($result, JSON_PRETTY_PRINT);
+        if (is_array($result) || is_object($result)) {
+            mpai_log_debug('Converting complex result to JSON string', 'chat');
+            return json_encode($result, JSON_PRETTY_PRINT);
+        } else if (is_string($result)) {
+            return $result;
+        } else {
+            // Convert any other type to string
+            mpai_log_debug('Converting ' . gettype($result) . ' to string', 'chat');
+            return (string)$result;
+        }
     }
     
     /**

@@ -1118,10 +1118,23 @@ class MPAI_Context_Manager {
                     } else if (is_array($result)) {
                         // Handle array result format
                         mpai_log_debug('Successfully created membership with array result: ' . json_encode($result), 'context-manager');
-                        $id = isset($result['ID']) ? $result['ID'] : (isset($result['id']) ? $result['id'] : 'unknown');
-                        $title = isset($result['post_title']) ? $result['post_title'] : (isset($result['title']) ? $result['title'] : 'New Membership');
-                        $price = isset($result['price']) ? $result['price'] : (isset($result['membership_price']) ? $result['membership_price'] : '0.00');
+                        
+                        // Log the keys available in the result array for debugging
+                        mpai_log_debug('Available keys in result array: ' . implode(', ', array_keys($result)), 'context-manager');
+                        $id = isset($result['membership_id']) ? $result['membership_id'] :
+                             (isset($result['ID']) ? $result['ID'] :
+                             (isset($result['id']) ? $result['id'] : 'unknown'));
+                        
+                        $title = isset($result['name']) ? $result['name'] :
+                                (isset($result['post_title']) ? $result['post_title'] :
+                                (isset($result['title']) ? $result['title'] : 'New Membership'));
+                        
+                        $price = isset($result['price']) ? $result['price'] :
+                               (isset($result['membership_price']) ? $result['membership_price'] : '0.00');
                         $period_type = isset($result['period_type']) ? $result['period_type'] : 'month';
+                        
+                        // Log the extracted values for debugging
+                        mpai_log_debug('Extracted values - id: ' . $id . ', title: ' . $title . ', price: ' . $price . ', period_type: ' . $period_type, 'context-manager');
                         
                         $response = array(
                             'success' => true,
