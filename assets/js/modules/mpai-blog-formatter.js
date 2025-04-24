@@ -16,18 +16,21 @@ var MPAI_BlogFormatter = (function($) {
         }
         
         // Register event handlers for the "Create blog post" and "Create page" buttons in the chat interface
-        $(document).on('click', '.mpai-command-item[data-command*="Create blog post"], .mpai-command-item[data-command*="Create a blog post"]', function(e) {
-            e.preventDefault();
-            enhanceUserPrompt($(this).data('command'), 'blog-post');
-        });
+        // Use namespaced events to prevent duplicate handlers
+        $(document).off('click.mpai', '.mpai-command-item[data-command*="Create blog post"], .mpai-command-item[data-command*="Create a blog post"]')
+            .on('click.mpai', '.mpai-command-item[data-command*="Create blog post"], .mpai-command-item[data-command*="Create a blog post"]', function(e) {
+                e.preventDefault();
+                enhanceUserPrompt($(this).data('command'), 'blog-post');
+            });
         
-        $(document).on('click', '.mpai-command-item[data-command*="Create page"], .mpai-command-item[data-command*="Create a page"]', function(e) {
-            e.preventDefault();
-            enhanceUserPrompt($(this).data('command'), 'page');
-        });
+        $(document).off('click.mpai', '.mpai-command-item[data-command*="Create page"], .mpai-command-item[data-command*="Create a page"]')
+            .on('click.mpai', '.mpai-command-item[data-command*="Create page"], .mpai-command-item[data-command*="Create a page"]', function(e) {
+                e.preventDefault();
+                enhanceUserPrompt($(this).data('command'), 'page');
+            });
         
-        // Add event handlers for all buttons using event delegation
-        $(document).on('click', '.mpai-toggle-xml-button', function(e) {
+        // Add event handlers for all buttons using event delegation with namespace
+        $(document).off('click.mpai', '.mpai-toggle-xml-button').on('click.mpai', '.mpai-toggle-xml-button', function(e) {
             e.preventDefault();
             e.stopPropagation(); // Prevent event bubbling
             const $xmlContent = $(this).closest('.mpai-post-preview-card').find('.mpai-post-xml-content');
@@ -41,9 +44,17 @@ var MPAI_BlogFormatter = (function($) {
             }
         });
         
-        $(document).on('click', '.mpai-create-post-button', function(e) {
+        // Use a namespace for the event to prevent duplicate handlers
+        $(document).off('click.mpai', '.mpai-create-post-button').on('click.mpai', '.mpai-create-post-button', function(e) {
             e.preventDefault();
             e.stopPropagation(); // Prevent event bubbling
+            
+            // Check if this button is already disabled (to prevent double-clicks)
+            if ($(this).prop('disabled')) {
+                console.log("Button already disabled, ignoring click");
+                return;
+            }
+            
             const clickedContentType = $(this).data('content-type');
             const $card = $(this).closest('.mpai-post-preview-card');
             const xmlContent = $card.find('.mpai-post-xml-content pre').text();
@@ -59,8 +70,8 @@ var MPAI_BlogFormatter = (function($) {
             createPostFromXML(xmlContent, clickedContentType);
         });
         
-        // Add event handler for preview button using event delegation
-        $(document).on('click', '.mpai-preview-post-button', function(e) {
+        // Add event handler for preview button using event delegation with namespace
+        $(document).off('click.mpai', '.mpai-preview-post-button').on('click.mpai', '.mpai-preview-post-button', function(e) {
             e.preventDefault();
             e.stopPropagation(); // Prevent event bubbling
             
@@ -342,30 +353,34 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
                 postType = "page";
             }
             
-            // Create the preview card with simplified approach
-            const $previewCard = $(`
-                <div class="mpai-post-preview-card">
-                    <div class="mpai-post-preview-header">
-                        <div class="mpai-post-preview-type">${postType === "page" ? "Page" : "Blog Post"}</div>
-                        <div class="mpai-post-preview-icon">${postType === "page" ? '<span class="dashicons dashicons-page"></span>' : '<span class="dashicons dashicons-admin-post"></span>'}</div>
-                    </div>
-                    <h3 class="mpai-post-preview-title">${title}</h3>
-                    <div class="mpai-post-preview-excerpt">${excerpt}</div>
-                    <div class="mpai-post-preview-actions">
-                        <button class="mpai-create-post-button" data-content-type="${postType}">
-                            Create ${postType === "page" ? "Page" : "Post"}
-                        </button>
-                        <button class="mpai-preview-post-button">Preview</button>
-                        <button class="mpai-toggle-xml-button">View XML</button>
-                    </div>
-                    <div class="mpai-post-xml-content" style="display:none;">
-                        <pre>${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                    </div>
-                    <div class="mpai-post-preview-content" style="display:none;">
-                        <div class="mpai-post-preview-container"></div>
-                    </div>
-                </div>
-            `);
+            // Create the preview card with a more reliable approach
+            const previewCardHtml = '<div class="mpai-post-preview-card">' +
+                '<div class="mpai-post-preview-header">' +
+                    '<div class="mpai-post-preview-type">' + (postType === "page" ? "Page" : "Blog Post") + '</div>' +
+                    '<div class="mpai-post-preview-icon">' + (postType === "page" ? '<span class="dashicons dashicons-page"></span>' : '<span class="dashicons dashicons-admin-post"></span>') + '</div>' +
+                '</div>' +
+                '<h3 class="mpai-post-preview-title">' + title + '</h3>' +
+                '<div class="mpai-post-preview-excerpt">' + excerpt + '</div>' +
+                '<div class="mpai-post-preview-actions">' +
+                    '<button class="mpai-create-post-button" data-content-type="' + postType + '">' +
+                        'Create ' + (postType === "page" ? "Page" : "Post") +
+                    '</button>' +
+                    '<button class="mpai-preview-post-button">Preview</button>' +
+                    '<button class="mpai-toggle-xml-button">View XML</button>' +
+                '</div>' +
+                '<div class="mpai-post-xml-content" style="display:none;">' +
+                    '<pre>' + xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>' +
+                '</div>' +
+                '<div class="mpai-post-preview-content" style="display:none;">' +
+                    '<div class="mpai-post-preview-container"></div>' +
+                '</div>' +
+            '</div>';
+            
+            // Create jQuery object from HTML
+            const $previewCard = $(previewCardHtml);
+            
+            // Log for debugging
+            console.log("Created preview card with XML content length:", xmlContent.length);
             
             // We're now using event delegation for all button handlers
             // No need to attach handlers directly to the elements
@@ -381,7 +396,19 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
      * @param {string} xmlContent - The XML formatted content
      * @param {string} contentType - The type of content ('post' or 'page')
      */
+    // Track post creation to prevent duplicates
+    let isCreatingPost = false;
+    
     function createPostFromXML(xmlContent, contentType) {
+        // Prevent duplicate post creation
+        if (isCreatingPost) {
+            console.log("Post creation already in progress, ignoring duplicate request");
+            return;
+        }
+        
+        // Set flag to prevent duplicate creation
+        isCreatingPost = true;
+        
         // Log the XML content for debugging
         if (window.mpaiLogger) {
             window.mpaiLogger.debug('XML content received', 'tool_usage', {
@@ -648,6 +675,9 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             success: function(response) {
                 console.log("Post created successfully with direct AJAX:", response);
                 
+                // Reset the flag to allow future post creation
+                isCreatingPost = false;
+                
                 if (window.mpaiLogger) {
                     window.mpaiLogger.info(`${contentType} created successfully with direct AJAX`, 'api_calls', {
                         response: response
@@ -662,6 +692,9 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             },
             error: function(xhr, status, error) {
                 console.error("Error creating post with direct AJAX:", xhr.responseText);
+                
+                // Reset the flag to allow future post creation
+                isCreatingPost = false;
                 
                 if (window.mpaiLogger) {
                     window.mpaiLogger.error(`Error creating ${contentType} with direct AJAX`, 'api_calls', {
@@ -720,6 +753,9 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             success: function(response) {
                 console.log("Post created successfully with test_simple action:", response);
                 
+                // Reset the flag to allow future post creation
+                isCreatingPost = false;
+                
                 if (window.mpaiLogger) {
                     window.mpaiLogger.info(`${contentType} created with test_simple action`, 'api_calls', {
                         response: response
@@ -734,6 +770,9 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             },
             error: function(xhr, status, error) {
                 console.error("Final attempt failed:", xhr.responseText);
+                
+                // Reset the flag to allow future post creation
+                isCreatingPost = false;
                 
                 if (window.mpaiLogger) {
                     window.mpaiLogger.error(`Final attempt failed`, 'api_calls', {
@@ -910,29 +949,38 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
             
             // Create the preview card HTML with debug logging
             console.log("Creating preview card HTML with XML content length:", xmlContent.length);
-            previewCardHtml = `
-                <div class="mpai-post-preview-card">
-                    <div class="mpai-post-preview-header">
-                        <div class="mpai-post-preview-type">${postType === "page" ? "Page" : "Blog Post"}</div>
-                        <div class="mpai-post-preview-icon">${postType === "page" ? '<span class="dashicons dashicons-page"></span>' : '<span class="dashicons dashicons-admin-post"></span>'}</div>
-                    </div>
-                    <h3 class="mpai-post-preview-title">${title}</h3>
-                    <div class="mpai-post-preview-excerpt">${excerpt}</div>
-                    <div class="mpai-post-preview-actions">
-                        <button class="mpai-create-post-button" data-content-type="${postType}">
-                            Create ${postType === "page" ? "Page" : "Post"}
-                        </button>
-                        <button class="mpai-preview-post-button">Preview</button>
-                        <button class="mpai-toggle-xml-button">View XML</button>
-                    </div>
-                    <div class="mpai-post-xml-content" style="display:none;">
-                        <pre>${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                    </div>
-                    <div class="mpai-post-preview-content" style="display:none;">
-                        <div class="mpai-post-preview-container"></div>
-                    </div>
-                </div>
-            `;
+            
+            // Use a more reliable approach to create HTML
+            previewCardHtml = '<div class="mpai-post-preview-card">' +
+                '<div class="mpai-post-preview-header">' +
+                    '<div class="mpai-post-preview-type">' + (postType === "page" ? "Page" : "Blog Post") + '</div>' +
+                    '<div class="mpai-post-preview-icon">' + (postType === "page" ? '<span class="dashicons dashicons-page"></span>' : '<span class="dashicons dashicons-admin-post"></span>') + '</div>' +
+                '</div>' +
+                '<h3 class="mpai-post-preview-title">' + title + '</h3>' +
+                '<div class="mpai-post-preview-excerpt">' + excerpt + '</div>' +
+                '<div class="mpai-post-preview-actions">' +
+                    '<button class="mpai-create-post-button" data-content-type="' + postType + '">' +
+                        'Create ' + (postType === "page" ? "Page" : "Post") +
+                    '</button>' +
+                    '<button class="mpai-preview-post-button">Preview</button>' +
+                    '<button class="mpai-toggle-xml-button">View XML</button>' +
+                '</div>' +
+                '<div class="mpai-post-xml-content" style="display:none;">' +
+                    '<pre>' + xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>' +
+                '</div>' +
+                '<div class="mpai-post-preview-content" style="display:none;">' +
+                    '<div class="mpai-post-preview-container"></div>' +
+                '</div>' +
+            '</div>';
+            
+            // Verify the HTML is valid
+            try {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = previewCardHtml;
+                console.log("Preview card HTML is valid");
+            } catch (error) {
+                console.error("Error validating preview card HTML:", error);
+            }
             
             // Clean up any remaining XML tags in the content
             cleanedContent = cleanedContent.replace(/<post-title>[\s\S]*?<\/post-title>/g, '');
