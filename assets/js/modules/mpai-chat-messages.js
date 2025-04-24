@@ -876,7 +876,44 @@ var MPAI_Messages = (function($) {
             
             // If XML was found and processed, append the preview card
             if (processResult.hasXml && processResult.previewCardHtml) {
-                $message.append(processResult.previewCardHtml);
+                try {
+                    console.log("Appending preview card HTML:", processResult.previewCardHtml.substring(0, 100) + "...");
+                    
+                    // Make sure the HTML is properly formatted
+                    const cleanHtml = processResult.previewCardHtml.trim();
+                    
+                    // Create the jQuery object safely
+                    const $previewCard = $(cleanHtml);
+                    
+                    // Verify the jQuery object was created successfully
+                    if ($previewCard.length > 0) {
+                        console.log("Preview card jQuery object created successfully");
+                        
+                        // Store the XML content directly in the pre element
+                        if (processResult.xmlContent) {
+                            const $pre = $previewCard.find('.mpai-post-xml-content pre');
+                            if ($pre.length > 0) {
+                                $pre.text(processResult.xmlContent);
+                            }
+                        }
+                        
+                        // Append the preview card to the message
+                        $message.append($previewCard);
+                        console.log("Preview card appended to message");
+                    } else {
+                        console.error("Failed to create jQuery object from HTML");
+                        // Fallback: append the HTML directly
+                        $message.append(cleanHtml);
+                    }
+                } catch (error) {
+                    console.error("Error appending preview card:", error);
+                    // Add the message without the preview card
+                    if (window.mpaiLogger) {
+                        window.mpaiLogger.error('Error appending preview card', 'ui', {
+                            error: error.toString()
+                        });
+                    }
+                }
             }
         } else {
             // Add the message normally
