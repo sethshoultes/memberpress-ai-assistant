@@ -874,9 +874,16 @@ var MPAI_Messages = (function($) {
             // Add the message with the cleaned content
             const $message = addMessage('assistant', processResult.content);
             
-            // If XML was found and processed, append the preview card
+            // If XML was found and processed, append the preview card and store XML content
             if (processResult.hasXml && processResult.previewCardHtml) {
-                $message.append(processResult.previewCardHtml);
+                const $previewCard = $(processResult.previewCardHtml);
+                
+                // Store the XML content in the data attribute
+                if (processResult.xmlContent) {
+                    $previewCard.data('xml-content', processResult.xmlContent);
+                }
+                
+                $message.append($previewCard);
             }
         } else {
             // Add the message normally

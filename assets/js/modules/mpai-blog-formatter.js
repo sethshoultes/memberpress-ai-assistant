@@ -26,7 +26,7 @@ var MPAI_BlogFormatter = (function($) {
             enhanceUserPrompt($(this).data('command'), 'page');
         });
         
-        // Add event handlers for the XML buttons
+        // Add event handlers for all buttons using event delegation
         $(document).on('click', '.mpai-toggle-xml-button', function(e) {
             e.preventDefault();
             e.stopPropagation(); // Prevent event bubbling
@@ -46,7 +46,7 @@ var MPAI_BlogFormatter = (function($) {
             e.stopPropagation(); // Prevent event bubbling
             const clickedContentType = $(this).data('content-type');
             const $card = $(this).closest('.mpai-post-preview-card');
-            const xmlContent = decodeURIComponent($(this).data('xml') || $card.data('xml-content'));
+            const xmlContent = $card.find('.mpai-post-xml-content pre').text();
             
             console.log("Create post button clicked");
             console.log("Content type:", clickedContentType);
@@ -57,6 +57,60 @@ var MPAI_BlogFormatter = (function($) {
             
             // Use the createPostFromXML function with the raw XML content
             createPostFromXML(xmlContent, clickedContentType);
+        });
+        
+        // Add event handler for preview button using event delegation
+        $(document).on('click', '.mpai-preview-post-button', function(e) {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent event bubbling
+            
+            console.log("Preview button clicked (global handler)");
+            
+            const $card = $(this).closest('.mpai-post-preview-card');
+            const $previewContent = $card.find('.mpai-post-preview-content');
+            const $previewContainer = $card.find('.mpai-post-preview-container');
+            
+            // Get XML content from the pre element
+            const xmlContent = $card.find('.mpai-post-xml-content pre').text();
+            
+            if (!xmlContent) {
+                console.error("No XML content found");
+                alert("No XML content found. Cannot generate preview.");
+                return;
+            }
+            
+            if ($previewContent.hasClass('show-preview')) {
+                // Hide preview
+                $previewContent.removeClass('show-preview');
+                $previewContent.slideUp(200);
+                $(this).text('Preview');
+            } else {
+                // Show preview
+                // Generate HTML preview from XML content
+                try {
+                    // Extract content from XML
+                    const contentMatch = xmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
+                    if (contentMatch && contentMatch[1]) {
+                        const contentBlocks = contentMatch[1];
+                        console.log("Content blocks found:", contentBlocks.substring(0, 100) + "...");
+                        const previewHtml = convertXmlBlocksToHtml(contentBlocks);
+                        
+                        // Add the formatted HTML to the preview container
+                        $previewContainer.html(previewHtml);
+                        
+                        // Show the preview
+                        $previewContent.addClass('show-preview');
+                        $previewContent.slideDown(200);
+                        $(this).text('Hide Preview');
+                    } else {
+                        console.error("No post content found in XML");
+                        alert("Could not generate preview: No post content found.");
+                    }
+                } catch (error) {
+                    console.error("Error generating preview:", error);
+                    alert(`Error generating preview: ${error.message}`);
+                }
+            }
         });
         
         // Process any existing XML content on page load
@@ -288,7 +342,7 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
                 postType = "page";
             }
             
-            // Create the preview card
+            // Create the preview card with simplified approach
             const $previewCard = $(`
                 <div class="mpai-post-preview-card">
                     <div class="mpai-post-preview-header">
@@ -313,116 +367,8 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
                 </div>
             `);
             
-            // Store the raw XML content for use by the button handler
-            $previewCard.data('xml-content', xmlContent);
-            
-            // Add toggle XML button handler
-            $previewCard.find('.mpai-toggle-xml-button').on('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation(); // Prevent event bubbling
-                const $xmlContent = $previewCard.find('.mpai-post-xml-content');
-                
-                if ($xmlContent.hasClass('show-xml')) {
-                    $xmlContent.removeClass('show-xml');
-                    $xmlContent.slideUp(200);
-                    $(this).text('View XML');
-                } else {
-                    $xmlContent.addClass('show-xml');
-                    $xmlContent.slideDown(200);
-                    $(this).text('Hide XML');
-                }
-            });
-            
-            // Add preview post button handler
-            $previewCard.find('.mpai-preview-post-button').on('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation(); // Prevent event bubbling
-                
-                // Debug logging
-                console.log("Preview button clicked (blog formatter)");
-                console.log("Preview card:", $previewCard);
-                console.log("Data attributes:", $previewCard.data());
-                
-                const $previewContent = $previewCard.find('.mpai-post-preview-content');
-                const $previewContainer = $previewCard.find('.mpai-post-preview-container');
-                
-                // Get XML content directly from the hidden pre element instead of data attribute
-                let actualXmlContent = '';
-                const $xmlContentElement = $previewCard.find('.mpai-post-xml-content pre');
-                if ($xmlContentElement.length) {
-                    // Get the HTML content and convert HTML entities back to characters
-                    const htmlContent = $xmlContentElement.html();
-                    actualXmlContent = $('<div/>').html(htmlContent).text();
-                    console.log("XML content from pre element:", actualXmlContent.substring(0, 100) + "...");
-                } else {
-                    // Fallback to data attribute if pre element not found
-                    try {
-                        actualXmlContent = $previewCard.data('xml-content') || '';
-                        console.log("XML content from data attribute:", actualXmlContent.substring(0, 100) + "...");
-                    } catch (e) {
-                        console.error("Error accessing XML content:", e);
-                        alert("Error accessing XML content. Please try again.");
-                        return;
-                    }
-                }
-                
-                if (!actualXmlContent) {
-                    console.error("No XML content found");
-                    alert("No XML content found. Cannot generate preview.");
-                    return;
-                }
-                
-                if ($previewContent.hasClass('show-preview')) {
-                    // Hide preview
-                    $previewContent.removeClass('show-preview');
-                    $previewContent.slideUp(200);
-                    $(this).text('Preview');
-                } else {
-                    // Show preview
-                    // Generate HTML preview from XML content
-                    try {
-                        // Extract content from XML
-                        const contentMatch = actualXmlContent.match(/<post-content[^>]*>([\s\S]*?)<\/post-content>/i);
-                        if (contentMatch && contentMatch[1]) {
-                            const contentBlocks = contentMatch[1];
-                            console.log("Content blocks found:", contentBlocks.substring(0, 100) + "...");
-                            const previewHtml = convertXmlBlocksToHtml(contentBlocks);
-                            
-                            // Add the formatted HTML to the preview container
-                            $previewContainer.html(previewHtml);
-                            
-                            // Show the preview
-                            $previewContent.addClass('show-preview');
-                            $previewContent.slideDown(200);
-                            $(this).text('Hide Preview');
-                        } else {
-                            console.error("No post content found in XML");
-                            alert("Could not generate preview: No post content found.");
-                        }
-                    } catch (error) {
-                        console.error("Error generating preview:", error);
-                        alert(`Error generating preview: ${error.message}`);
-                    }
-                }
-            });
-            
-            // Add create post button handler
-            $previewCard.find('.mpai-create-post-button').on('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation(); // Prevent event bubbling
-                const clickedContentType = $(this).data('content-type');
-                const actualXmlContent = $previewCard.data('xml-content');
-                
-                console.log("Create post button clicked");
-                console.log("Content type:", clickedContentType);
-                console.log("XML content preview:", actualXmlContent.substring(0, 150) + "...");
-                
-                // Show a loading indicator
-                $(this).prop('disabled', true).text('Creating...');
-                
-                // Use the createPostFromXML function with the raw XML content
-                createPostFromXML(actualXmlContent, clickedContentType);
-            });
+            // We're now using event delegation for all button handlers
+            // No need to attach handlers directly to the elements
             
             // Add the preview card to the message
             $message.append($previewCard);
@@ -962,9 +908,10 @@ The XML structure is required for proper WordPress integration. IMPORTANT: The o
                 postType = "page";
             }
             
-            // Create the preview card HTML
+            // Create the preview card HTML with debug logging
+            console.log("Creating preview card HTML with XML content length:", xmlContent.length);
             previewCardHtml = `
-                <div class="mpai-post-preview-card" data-xml-content="${encodeURIComponent(xmlContent)}">
+                <div class="mpai-post-preview-card">
                     <div class="mpai-post-preview-header">
                         <div class="mpai-post-preview-type">${postType === "page" ? "Page" : "Blog Post"}</div>
                         <div class="mpai-post-preview-icon">${postType === "page" ? '<span class="dashicons dashicons-page"></span>' : '<span class="dashicons dashicons-admin-post"></span>'}</div>
