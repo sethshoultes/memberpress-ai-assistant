@@ -49,6 +49,9 @@ class MPAISettingsStorage extends AbstractService {
         'anthropic_temperature' => 0.7,
         'anthropic_max_tokens' => 1000,
         'primary_api' => 'openai',
+        
+        // Consent settings
+        'consent_required' => true,
     ];
 
     /**
@@ -625,5 +628,25 @@ class MPAISettingsStorage extends AbstractService {
         $max_tokens = max(1, $max_tokens);
         
         return $this->set_setting('anthropic_max_tokens', $max_tokens, $save);
+    }
+    
+    /**
+     * Get the consent required setting
+     *
+     * @return bool Whether consent is required
+     */
+    public function is_consent_required(): bool {
+        return (bool) $this->get_setting('consent_required', true);
+    }
+    
+    /**
+     * Set the consent required setting
+     *
+     * @param bool $required Whether consent is required
+     * @param bool $save Whether to save settings to database
+     * @return bool Whether the setting was set successfully
+     */
+    public function set_consent_required(bool $required, bool $save = true): bool {
+        return $this->set_setting('consent_required', $required, $save);
     }
 }

@@ -8,8 +8,16 @@
 namespace MemberpressAiAssistant\DI;
 
 use MemberpressAiAssistant\Interfaces\ServiceInterface;
+use MemberpressAiAssistant\Admin\MPAIAdminMenu;
+use MemberpressAiAssistant\Admin\MPAISettingsStorage;
+use MemberpressAiAssistant\Admin\MPAISettingsController;
+use MemberpressAiAssistant\Admin\MPAISettingsRenderer;
+use MemberpressAiAssistant\Admin\MPAISettingsCoordinator;
+use MemberpressAiAssistant\Admin\Settings\MPAISettingsModel;
+use MemberpressAiAssistant\Admin\Settings\MPAISettingsView;
+use MemberpressAiAssistant\Admin\Settings\MPAISettingsController as MVCSettingsController;
 use ReflectionClass;
-use ReflectionMethod; // Add this use statement
+use ReflectionMethod;
 
 /**
  * Service provider for registering services with the container
@@ -82,6 +90,28 @@ class ServiceProvider {
                     // Log to WordPress debug log if enabled
                     if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
                         error_log(sprintf('[ERROR] %s: %s %s', 
+                            date('Y-m-d H:i:s'),
+                            $message,
+                            !empty($context) ? json_encode($context) : ''
+                        ));
+                    }
+                }
+                
+                public function warning($message, array $context = []) {
+                    // Log to WordPress debug log if enabled
+                    if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log(sprintf('[WARNING] %s: %s %s', 
+                            date('Y-m-d H:i:s'),
+                            $message,
+                            !empty($context) ? json_encode($context) : ''
+                        ));
+                    }
+                }
+                
+                public function debug($message, array $context = []) {
+                    // Log to WordPress debug log if enabled
+                    if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log(sprintf('[DEBUG] %s: %s %s', 
                             date('Y-m-d H:i:s'),
                             $message,
                             !empty($context) ? json_encode($context) : ''
@@ -217,7 +247,164 @@ class ServiceProvider {
      * @return void
      */
     protected function resolveAndSetDependencies(Container $container, $logger): void {
+        // We don't need recursion detection anymore as we're going to properly handle the dependency graph
+        $logger->info('Starting dependency resolution in ServiceProvider');
+        
+        // Create and register new MVC settings components
+        // First, locate and register the admin menu instance before we create other services
+        // to avoid circular dependencies
+        $adminMenu = null;
         foreach ($this->services as $serviceName => $service) {
+            if ($service instanceof \MemberpressAiAssistant\Admin\MPAIAdminMenu) {
+                $adminMenu = $service;
+                $logger->info('Found admin menu instance');
+                break;
+            }
+        }
+        
+        // Register Settings MVC components with proper dependency order
+        try {
+            // First create and register the model - it has no dependencies
+            $settings_model = new \MemberpressAiAssistant\Admin\Settings\MPAISettingsModel($logger);
+            $container->singleton('settings_model', function() use ($settings_model) {
+                return $settings_model;
+            });
+            $logger->info('Registered settings model');
+            
+            // Next create and register the view - it depends only on the model
+            $settings_view = new \MemberpressAiAssistant\Admin\Settings\MPAISettingsView($logger);
+            $container->singleton('settings_view', function() use ($settings_view) {
+                return $settings_view;
+            });
+            $logger->info('Registered settings view');
+            
+            // Finally create and register the controller - it depends on model and view
+            $settings_controller = new \MemberpressAiAssistant\Admin\Settings\MPAISettingsController(
+                $settings_model, 
+                $settings_view, 
+                $logger
+            );
+            $container->singleton('settings_controller', function() use ($settings_controller) {
+                return $settings_controller;
+            });
+            $logger->info('Registered settings controller');
+            
+            // Initialize the controller after all components are registered
+            $settings_controller->init();
+            $logger->info('Successfully initialized settings controller');
+        } catch (\Exception $e) {
+            $logger->error('Error creating MVC settings components: ' . $e->getMessage(), [
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            // Do not attempt to use the settings components if there was an error
+            $settings_model = null;
+            $settings_view = null;
+            $settings_controller = null;
+        }
+        
+        // Now update the admin menu with the controller if it exists
+        if ($adminMenu && $settings_controller) {
+            // Only set the controller if the menu exists and we successfully created the controller
+            if (method_exists($adminMenu, 'set_settings_controller')) {
+                $adminMenu->set_settings_controller($settings_controller);
+                $logger->info('Updated admin menu with settings controller');
+            }
+        }
+        
+        // We already found the admin menu instance, so we don't need to look for it again
+        
+        // For backward compatibility, also handle the old settings components
+        $settingsStorage = null;
+        $settingsController = null;
+        $settingsRenderer = null;
+        $settingsCoordinator = null;
+        
+        // Find the instances of old components
+        foreach ($this->services as $serviceName => $service) {
+            if ($service instanceof MPAISettingsStorage) {
+                $settingsStorage = $service;
+            } elseif ($service instanceof MPAISettingsController) {
+                $settingsController = $service;
+            } elseif ($service instanceof MPAISettingsRenderer) {
+                $settingsRenderer = $service;
+            } elseif ($service instanceof MPAISettingsCoordinator) {
+                $settingsCoordinator = $service;
+            }
+        }
+        
+        // Log the component status
+        $logger->info('Settings components status', [
+            'new_mvc_components' => 'available',
+            'old_storage' => isset($settingsStorage) ? 'available' : 'missing',
+            'old_controller' => isset($settingsController) ? 'available' : 'missing',
+            'old_renderer' => isset($settingsRenderer) ? 'available' : 'missing',
+            'old_coordinator' => isset($settingsCoordinator) ? 'available' : 'missing'
+        ]);
+        
+        // Update admin menu to use the new controller if available
+        if ($adminMenu) {
+            // Set the new MVC controller directly if the method exists
+            if (method_exists($adminMenu, 'set_settings_controller')) {
+                $adminMenu->set_settings_controller($settings_controller);
+                $logger->info('Set new MVC controller for MPAIAdminMenu');
+            }
+            
+            // For backward compatibility, if the old coordinator exists, also set it in the admin menu
+            if ($adminMenu && method_exists($adminMenu, 'set_settings_coordinator') && $settingsCoordinator) {
+                $adminMenu->set_settings_coordinator($settingsCoordinator);
+                $logger->info('Set old coordinator for MPAIAdminMenu for backward compatibility');
+            }
+        } else {
+            $logger->warning('MPAIAdminMenu not found in services');
+        }
+        
+        // For backward compatibility, set up the old components if they exist
+        if ($settingsStorage && $settingsController && $settingsRenderer && $settingsCoordinator) {
+            try {
+                // First, set dependencies for the coordinator
+                if (method_exists($settingsCoordinator, 'set_dependencies')) {
+                    $settingsCoordinator->set_dependencies($settingsStorage, $settingsController, $settingsRenderer);
+                    $logger->info('Set dependencies for old MPAISettingsCoordinator');
+                }
+                
+                // Now set the coordinator in the controller
+                if (method_exists($settingsController, 'set_settings_coordinator')) {
+                    $settingsController->set_settings_coordinator($settingsCoordinator);
+                    $logger->info('Set coordinator for old MPAISettingsController');
+                }
+                
+                // Set the coordinator in the renderer
+                if (method_exists($settingsRenderer, 'set_dependencies')) {
+                    $settingsRenderer->set_dependencies($settingsCoordinator);
+                    $logger->info('Set coordinator for old MPAISettingsRenderer');
+                }
+                
+                // Initialize the coordinator
+                if (method_exists($settingsCoordinator, 'initialize')) {
+                    $settingsCoordinator->initialize();
+                    $logger->info('Initialized old MPAISettingsCoordinator');
+                }
+            } catch (\Exception $e) {
+                $logger->error('Error during old settings components initialization', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        }
+        
+        // Now handle all other services normally
+        foreach ($this->services as $serviceName => $service) {
+            // Skip the settings components as we've already handled them
+            if ($service instanceof MPAISettingsController ||
+                $service instanceof MPAISettingsRenderer ||
+                $service instanceof MPAISettingsStorage ||
+                $service instanceof MPAISettingsCoordinator ||
+                $service instanceof MPAIAdminMenu) {
+                continue;
+            }
+            
             if (method_exists($service, 'set_dependencies')) {
                 try {
                     $method = new ReflectionMethod($service, 'set_dependencies');
@@ -232,29 +419,31 @@ class ServiceProvider {
                             // Resolve the dependency from the container
                             // Use class name or registered service name
                             $dependenciesToInject[] = $container->make($dependencyClassOrName);
-                             $logger->info('Resolving dependency ' . $dependencyClassOrName . ' for ' . get_class($service));
+                            $logger->info('Resolving dependency ' . $dependencyClassOrName . ' for ' . get_class($service));
                         } else {
                             $paramName = $param->getName();
                             $className = get_class($service);
-                             $logger->error("Cannot resolve dependency for parameter '{$paramName}' in {$className}::set_dependencies. Is it type-hinted correctly?");
+                            $logger->error("Cannot resolve dependency for parameter '{$paramName}' in {$className}::set_dependencies. Is it type-hinted correctly?");
                             throw new \Exception("Cannot resolve dependency '{$paramName}' for {$className}::set_dependencies.");
                         }
                     }
 
                     // Call set_dependencies with resolved dependencies
                     $service->set_dependencies(...$dependenciesToInject);
-                     $logger->info('Successfully called set_dependencies for: ' . get_class($service));
+                    $logger->info('Successfully called set_dependencies for: ' . get_class($service));
 
                 } catch (\Exception $e) {
                     $logger->error('Failed during set_dependencies for service: ' . get_class($service), [
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString(),
                     ]);
-                     // Re-throw or handle as appropriate for the application
-                     // throw $e; 
+                    // Re-throw or handle as appropriate for the application
+                    // throw $e;
                 }
             }
         }
+        
+        // No recursion flag to reset
     }
     
     /**

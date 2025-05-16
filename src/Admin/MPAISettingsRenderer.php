@@ -8,14 +8,17 @@
 namespace MemberpressAiAssistant\Admin;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
+use MemberpressAiAssistant\Interfaces\SettingsProviderInterface;
+use MemberpressAiAssistant\Interfaces\SettingsRendererInterface;
+use MemberpressAiAssistant\Interfaces\SettingsCoordinatorInterface;
 
 /**
  * Class for rendering MemberPress AI Assistant settings page and form fields
- * 
+ *
  * This class handles the rendering of the settings page, tabs, and form fields
  * for the MemberPress AI Assistant plugin.
  */
-class MPAISettingsRenderer extends AbstractService {
+class MPAISettingsRenderer extends AbstractService implements SettingsRendererInterface {
     /**
      * Settings storage instance
      *
@@ -24,11 +27,11 @@ class MPAISettingsRenderer extends AbstractService {
     protected $settings_storage;
 
     /**
-     * Settings controller instance
+     * Settings coordinator instance
      *
-     * @var MPAISettingsController
+     * @var SettingsCoordinatorInterface
      */
-    protected $settings_controller;
+    protected $settings_coordinator;
 
     /**
      * Constructor
@@ -51,8 +54,7 @@ class MPAISettingsRenderer extends AbstractService {
 
         // Add dependencies to the dependencies array
         $this->dependencies = [
-            'settings_storage',
-            'settings_controller',
+            'settings_coordinator',
         ];
 
         // Log registration
@@ -62,16 +64,13 @@ class MPAISettingsRenderer extends AbstractService {
     /**
      * Set dependencies after they've been registered
      *
-     * @param MPAISettingsStorage $settings_storage The settings storage service
-     * @param MPAISettingsController $settings_controller The settings controller service
+     * @param SettingsCoordinatorInterface $settings_coordinator The settings coordinator service
      * @return void
      */
-    public function set_dependencies(
-        MPAISettingsStorage $settings_storage,
-        MPAISettingsController $settings_controller
-    ): void {
-        $this->settings_storage = $settings_storage;
-        $this->settings_controller = $settings_controller;
+    public function set_dependencies(SettingsCoordinatorInterface $settings_coordinator): void {
+        $this->settings_coordinator = $settings_coordinator;
+        // Get the storage from the coordinator
+        $this->settings_storage = $settings_coordinator->getStorage();
     }
 
     /**
@@ -86,6 +85,26 @@ class MPAISettingsRenderer extends AbstractService {
         // Log boot
         $this->log('Settings renderer service booted');
     }
+    
+    /**
+     * Get the settings provider from the coordinator
+     *
+     * @return SettingsProviderInterface|null
+     */
+    protected function getSettingsProvider(): ?SettingsProviderInterface {
+        if (!$this->settings_coordinator) {
+            $this->log('Warning: Settings coordinator not available when trying to get provider', ['level' => 'warning']);
+            return null;
+        }
+        
+        $provider = $this->settings_coordinator->getController();
+        
+        if (!$provider) {
+            $this->log('Warning: Settings provider not available from coordinator', ['level' => 'warning']);
+        }
+        
+        return $provider;
+    }
 
     /**
      * Add hooks and filters for this service
@@ -93,9 +112,6 @@ class MPAISettingsRenderer extends AbstractService {
      * @return void
      */
     protected function addHooks(): void {
-        // Override the settings controller render_settings_page method
-        add_filter('mpai_render_settings_page', [$this, 'render_settings_page']);
-        
         // Add hooks for rendering form fields
         add_action('mpai_render_settings_tabs', [$this, 'render_settings_tabs']);
         add_action('mpai_render_settings_fields', [$this, 'render_settings_fields']);
@@ -108,21 +124,87 @@ class MPAISettingsRenderer extends AbstractService {
      * @return void
      */
     public function render_settings_page(): void {
-        // Get current tab from the settings controller
-        $tabs = $this->settings_controller->get_tabs();
-        $current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general';
-        
-        // Ensure the tab is valid
-        if (!isset($tabs[$current_tab])) {
-            $current_tab = 'general';
+        // Check if coordinator is available
+        if (!$this->settings_coordinator) {
+            $this->log('Error: Settings coordinator not available in renderer', ['level' => 'error']);
+            echo '<div class="notice notice-error"><p>';
+            echo esc_html__('Error: Settings coordinator not available. Please try again later or contact support.', 'memberpress-ai-assistant');
+            echo '</p></div>';
+            return;
         }
         
-        // Set up template variables
-        $renderer = $this;
-        $controller = $this->settings_controller;
+        // Get provider from coordinator
+        $provider = $this->settings_coordinator->getController();
         
-        // Load the template
-        include(MPAI_PLUGIN_DIR . 'templates/settings-page.php');
+        if (!$provider) {
+            $this->log('Error: Settings provider not available from coordinator', ['level' => 'error']);
+            echo '<div class="notice notice-error"><p>';
+            echo esc_html__('Error: Settings provider not available. Please try again later or contact support.', 'memberpress-ai-assistant');
+            echo '</p></div>';
+            return;
+        }
+        
+        try {
+            // Get current tab from the provider
+            $tabs = $provider->get_tabs();
+            $current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general';
+            
+            // Ensure the tab is valid
+            if (!isset($tabs[$current_tab])) {
+                $current_tab = 'general';
+            }
+            
+            // Set up template variables with explicit context
+            $renderer = $this;
+            
+            // Create template variables array with explicit context
+            $template_vars = [
+                'renderer' => $renderer,
+                'provider' => $provider,
+                'current_tab' => $current_tab,
+                'tabs' => $tabs
+            ];
+            
+            // Log template variables
+            $this->log('Rendering settings page with variables: ' .
+                json_encode(array_keys($template_vars)));
+            
+            // Pass variables directly to the template without extract()
+            $this->render_template($template_vars);
+        } catch (\Exception $e) {
+            $this->log('Error preparing template variables: ' . $e->getMessage(), ['level' => 'error']);
+            echo '<div class="notice notice-error"><p>';
+            echo esc_html__('An error occurred while preparing the settings page. Please try again later or contact support.', 'memberpress-ai-assistant');
+            echo '</p></div>';
+        }
+    }
+    
+    /**
+     * Render the template with explicit variables
+     *
+     * @param array $vars Template variables
+     * @return void
+     */
+    protected function render_template(array $vars): void {
+        $template_path = MPAI_PLUGIN_DIR . 'templates/settings-page.php';
+        
+        if (!file_exists($template_path)) {
+            $this->log('Error: Template file not found: ' . $template_path, ['level' => 'error']);
+            echo '<div class="notice notice-error"><p>';
+            echo esc_html__('Error: Settings template file not found. Please reinstall the plugin or contact support.', 'memberpress-ai-assistant');
+            echo '</p></div>';
+            return;
+        }
+        
+        try {
+            // Include the template with variables in scope
+            include($template_path);
+        } catch (\Exception $e) {
+            $this->log('Error rendering template: ' . $e->getMessage(), ['level' => 'error']);
+            echo '<div class="notice notice-error"><p>';
+            echo esc_html__('An error occurred while rendering the settings page. Please try again later or contact support.', 'memberpress-ai-assistant');
+            echo '</p></div>';
+        }
     }
 
     /**
@@ -132,7 +214,17 @@ class MPAISettingsRenderer extends AbstractService {
      * @return void
      */
     public function render_settings_form(string $current_tab): void {
-        $page_slug = $this->settings_controller->get_page_slug();
+        // Get the provider from the coordinator
+        $provider = $this->getSettingsProvider();
+        
+        if (!$provider) {
+            echo '<div class="notice notice-error"><p>';
+            echo esc_html__('Error: Settings provider not available. Please try again later.', 'memberpress-ai-assistant');
+            echo '</p></div>';
+            return;
+        }
+        
+        $page_slug = $provider->get_page_slug();
         
         // Start the form
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
@@ -171,7 +263,7 @@ class MPAISettingsRenderer extends AbstractService {
                 'tab' => $tab_id,
             ], admin_url('admin.php'));
             
-            echo '<a href="' . esc_url($url) . '" class="nav-tab ' . esc_attr($active) . '">' . 
+            echo '<a href="' . esc_url($url) . '" class="nav-tab ' . esc_attr($active) . '">' .
                 esc_html($tab_name) . '</a>';
         }
         
@@ -185,7 +277,17 @@ class MPAISettingsRenderer extends AbstractService {
      * @return void
      */
     public function render_settings_fields(string $current_tab): void {
-        $page_slug = $this->settings_controller->get_page_slug();
+        // Get the provider from the coordinator
+        $provider = $this->getSettingsProvider();
+        
+        if (!$provider) {
+            echo '<div class="notice notice-error"><p>';
+            echo esc_html__('Error: Settings provider not available. Please try again later.', 'memberpress-ai-assistant');
+            echo '</p></div>';
+            return;
+        }
+        
+        $page_slug = $provider->get_page_slug();
         
         echo '<table class="form-table" role="presentation">';
         
@@ -208,6 +310,14 @@ class MPAISettingsRenderer extends AbstractService {
             case 'access':
                 // Only show the access section
                 $this->render_section('mpai_access_section', $page_slug);
+                break;
+                
+            case 'consent':
+                // Log that we're rendering the consent section
+                $this->log('Rendering consent section for tab: ' . $current_tab, ['tab' => $current_tab]);
+                
+                // Only show the consent section
+                $this->render_section('mpai_consent_section', $page_slug);
                 break;
                 
             default:
@@ -636,5 +746,99 @@ class MPAISettingsRenderer extends AbstractService {
             <?php esc_html_e('Set the maximum number of tokens for Anthropic responses. This limits the length of the generated text.', 'memberpress-ai-assistant'); ?>
         </p>
         <?php
+    }
+    /**
+     * Render the consent section
+     *
+     * @return void
+     */
+    public function render_consent_section(): void {
+        echo '<p>' . esc_html__('Configure consent settings for the MemberPress AI Assistant. These settings control how user consent is managed.', 'memberpress-ai-assistant') . '</p>';
+    }
+    
+    /**
+     * Render the consent required field
+     *
+     * @return void
+     */
+    public function render_consent_required_field(): void {
+        $consent_required = $this->settings_storage->is_consent_required();
+        ?>
+        <label for="mpai_consent_required">
+            <input type="checkbox" id="mpai_consent_required" name="mpai_settings[consent_required]" value="1" <?php checked($consent_required, true); ?> />
+            <?php esc_html_e('Require users to consent before using the AI Assistant', 'memberpress-ai-assistant'); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e('When enabled, users will be required to agree to the terms before using the AI Assistant.', 'memberpress-ai-assistant'); ?>
+        </p>
+        <?php
+    }
+    
+    /**
+     * Render the consent form preview field
+     *
+     * @return void
+     */
+    public function render_consent_form_preview_field(): void {
+        ?>
+        <div class="mpai-consent-preview">
+            <p><?php esc_html_e('This is a preview of the consent form that users will see:', 'memberpress-ai-assistant'); ?></p>
+            <div class="mpai-consent-preview-frame">
+                <iframe src="<?php echo esc_url(admin_url('admin.php?page=mpai-consent-preview')); ?>" width="100%" height="400" style="border: 1px solid #ddd; background: #fff;"></iframe>
+            </div>
+            <p class="description">
+                <?php esc_html_e('The consent form template can be customized by adding a filter to the "mpai_consent_form_template" hook.', 'memberpress-ai-assistant'); ?>
+            </p>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Render the reset all consents field
+     *
+     * @return void
+     */
+    public function render_reset_all_consents_field(): void {
+        $reset_url = wp_nonce_url(
+            add_query_arg(
+                [
+                    'page' => 'mpai-settings',
+                    'tab' => 'consent',
+                    'action' => 'mpai_reset_all_consents',
+                ],
+                admin_url('admin.php')
+            ),
+            'mpai_reset_all_consents_nonce'
+        );
+        ?>
+        <div class="mpai-reset-consents">
+            <p><?php esc_html_e('This will reset consent status for all users. They will need to agree to the terms again before using the AI Assistant.', 'memberpress-ai-assistant'); ?></p>
+            <a href="<?php echo esc_url($reset_url); ?>" class="button button-secondary mpai-reset-consents-button" onclick="return confirm('<?php esc_attr_e('Are you sure you want to reset consent for all users? This action cannot be undone.', 'memberpress-ai-assistant'); ?>');">
+                <?php esc_html_e('Reset All User Consents', 'memberpress-ai-assistant'); ?>
+            </a>
+        </div>
+        <?php
+    }
+
+    /**
+     * Enhanced logging method
+     *
+     * @param string $message The message to log
+     * @param array $context Additional context data
+     * @return void
+     */
+    protected function log($message, array $context = []): void {
+        if ($this->logger) {
+            $level = isset($context['level']) ? $context['level'] : 'info';
+            unset($context['level']);
+            
+            if ($level === 'error') {
+                $this->logger->error($message, $context);
+            } else if ($level === 'warning') {
+                $this->logger->warning($message, $context);
+            } else {
+                $this->logger->info($message, $context);
+            }
+        }
     }
 }

@@ -8,6 +8,7 @@
 namespace MemberpressAiAssistant\Admin;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
+use MemberpressAiAssistant\Interfaces\SettingsCoordinatorInterface;
 
 /**
  * Class for handling MemberPress AI Assistant admin menu
@@ -29,6 +30,20 @@ class MPAIAdminMenu extends AbstractService {
      * @var string
      */
     protected $parent_menu_slug = 'memberpress';
+    
+    /**
+     * Settings coordinator instance
+     *
+     * @var SettingsCoordinatorInterface
+     */
+    protected $settings_coordinator;
+    
+    /**
+     * Settings controller instance (for new MVC architecture)
+     *
+     * @var \MemberpressAiAssistant\Admin\Settings\MPAISettingsController
+     */
+    protected $settings_controller;
 
     /**
      * Constructor
@@ -39,6 +54,27 @@ class MPAIAdminMenu extends AbstractService {
     public function __construct(string $name = 'admin_menu', $logger = null) {
         parent::__construct($name, $logger);
     }
+    
+    /**
+     * Set the settings coordinator
+     *
+     * @param SettingsCoordinatorInterface $settings_coordinator Settings coordinator instance
+     * @return void
+     */
+    public function set_settings_coordinator(SettingsCoordinatorInterface $settings_coordinator): void {
+        $this->settings_coordinator = $settings_coordinator;
+    }
+    
+    /**
+     * Set the settings controller (for new MVC architecture)
+     *
+     * @param \MemberpressAiAssistant\Admin\Settings\MPAISettingsController $settings_controller Settings controller instance
+     * @return void
+     */
+    public function set_settings_controller(\MemberpressAiAssistant\Admin\Settings\MPAISettingsController $settings_controller): void {
+        $this->settings_controller = $settings_controller;
+        $this->logWithLevel('New MVC settings controller set in admin menu', 'info');
+    }
 
     /**
      * {@inheritdoc}
@@ -48,9 +84,15 @@ class MPAIAdminMenu extends AbstractService {
         $container->singleton('admin_menu', function() {
             return $this;
         });
+        
+        // Add dependencies to the dependencies array
+        $this->dependencies = [
+            'settings_coordinator',
+            'settings_controller', // Add the new MVC controller as a dependency
+        ];
 
         // Log registration
-        $this->log('Admin menu service registered');
+        $this->log('Admin menu service registered', ['level' => 'info']);
     }
 
     /**
@@ -63,7 +105,7 @@ class MPAIAdminMenu extends AbstractService {
         $this->addHooks();
         
         // Log boot
-        $this->log('Admin menu service booted');
+        $this->log('Admin menu service booted', ['level' => 'info']);
     }
 
     /**
@@ -110,7 +152,7 @@ class MPAIAdminMenu extends AbstractService {
             [$this, 'render_settings_page']
         );
         
-        $this->log('Registered as MemberPress submenu');
+        $this->log('Registered as MemberPress submenu', ['level' => 'info']);
     }
 
     /**
@@ -129,7 +171,7 @@ class MPAIAdminMenu extends AbstractService {
             30
         );
         
-        $this->log('Registered as top-level menu');
+        $this->log('Registered as top-level menu', ['level' => 'info']);
     }
 
     /**
@@ -138,11 +180,92 @@ class MPAIAdminMenu extends AbstractService {
      * @return void
      */
     public function render_settings_page(): void {
-        // This will be implemented in a separate class
+        // Emergency fallback to show basic settings
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('MemberPress AI Assistant Settings', 'memberpress-ai-assistant') . '</h1>';
-        echo '<p>' . esc_html__('Configure your MemberPress AI Assistant settings here.', 'memberpress-ai-assistant') . '</p>';
+        echo '<div class="notice notice-info">';
+        echo '<p><strong>' . esc_html__('Settings system is being upgraded', 'memberpress-ai-assistant') . '</strong></p>';
+        echo '<p>' . esc_html__('The settings system is currently under maintenance. Basic functionality is available.', 'memberpress-ai-assistant') . '</p>';
         echo '</div>';
+        echo '<p>' . esc_html__('Please check back soon for full settings functionality.', 'memberpress-ai-assistant') . '</p>';
+        echo '</div>';
+        return;
+        
+        try {
+            // First try to use the new MVC controller if available
+            if ($this->settings_controller) {
+                $this->logWithLevel('Using new MVC settings controller for rendering', 'info');
+                $this->settings_controller->render_page();
+                return;
+            }
+            
+            // Fall back to the old coordinator pattern if the new controller is not available
+            if (!$this->settings_coordinator) {
+                $this->logWithLevel('Neither settings controller nor coordinator available in admin menu', 'error');
+                $this->logWithLevel('This indicates a potential service container initialization issue', 'warning');
+                $this->render_fallback_settings_page();
+                return;
+            }
+            
+            $this->logWithLevel('Using settings coordinator for backward compatibility', 'info');
+            
+            // Get the controller from the coordinator with validation
+            try {
+                $controller = $this->settings_coordinator->getController();
+                
+                if (!$controller) {
+                    $this->logWithLevel('Controller retrieval failed - null controller returned from coordinator', 'error');
+                    $this->render_fallback_settings_page();
+                    return;
+                }
+                
+                $this->logWithLevel('Controller successfully retrieved, delegating rendering', 'info');
+                
+                // Delegate rendering to the controller
+                $controller->render_settings_page();
+                
+            } catch (\Exception $controller_exception) {
+                $this->logWithLevel('Exception while retrieving controller: ' . $controller_exception->getMessage(), 'error');
+                $this->logWithLevel('Exception trace: ' . $controller_exception->getTraceAsString(), 'debug');
+                $this->render_fallback_settings_page();
+            }
+            
+        } catch (\Exception $e) {
+            $this->logWithLevel('Unhandled exception in render_settings_page: ' . $e->getMessage(), 'error');
+            $this->logWithLevel('Exception class: ' . get_class($e), 'error');
+            $this->logWithLevel('Exception trace: ' . $e->getTraceAsString(), 'debug');
+            $this->render_fallback_settings_page();
+        } catch (\Error $error) {
+            $this->logWithLevel('Critical PHP error in render_settings_page: ' . $error->getMessage(), 'error');
+            $this->logWithLevel('Error class: ' . get_class($error), 'error');
+            $this->logWithLevel('Error trace: ' . $error->getTraceAsString(), 'debug');
+            $this->render_fallback_settings_page();
+        } // No finally block needed
+    }
+    
+    /**
+     * Render a fallback settings page when the regular one can't be displayed
+     *
+     * @return void
+     */
+    protected function render_fallback_settings_page(): void {
+        echo '<div class="wrap">';
+        echo '<h1>' . esc_html__('MemberPress AI Assistant Settings', 'memberpress-ai-assistant') . '</h1>';
+        
+        echo '<div class="notice notice-error">';
+        echo '<p><strong>' . esc_html__('Settings System Error', 'memberpress-ai-assistant') . '</strong></p>';
+        echo '<p>' . esc_html__('The MemberPress AI Assistant settings system could not be initialized properly.', 'memberpress-ai-assistant') . '</p>';
+        echo '<p>' . esc_html__('Please try the following:', 'memberpress-ai-assistant') . '</p>';
+        echo '<ul style="list-style-type: disc; margin-left: 20px;">';
+        echo '<li>' . esc_html__('Refresh this page', 'memberpress-ai-assistant') . '</li>';
+        echo '<li>' . esc_html__('Deactivate and reactivate the plugin', 'memberpress-ai-assistant') . '</li>';
+        echo '<li>' . esc_html__('Contact MemberPress support if the issue persists', 'memberpress-ai-assistant') . '</li>';
+        echo '</ul>';
+        echo '</div>';
+        
+        echo '</div>';
+        
+        $this->logWithLevel('Fallback settings page rendered due to initialization error', 'warning');
     }
 
     /**
@@ -181,6 +304,66 @@ class MPAIAdminMenu extends AbstractService {
         }
 
         return $submenu_file;
+    }
+    
+    /**
+     * Log service activity
+     *
+     * @param string $message The log message
+     * @param array $context The log context
+     * @return void
+     */
+    protected function log(string $message, array $context = []): void {
+        // Add log level from context if available, default to info
+        $level = isset($context['level']) ? $context['level'] : 'info';
+        
+        // Remove level from context to avoid duplication
+        if (isset($context['level'])) {
+            unset($context['level']);
+        }
+        
+        $this->logWithLevel($message, $level, $context);
+    }
+    
+    /**
+     * Enhanced logging method with level support
+     *
+     * @param string $message The message to log
+     * @param string $level The log level (debug, info, warning, error)
+     * @param array $context Additional context data
+     * @return void
+     */
+    protected function logWithLevel(string $message, string $level = 'info', array $context = []): void {
+        if (!$this->logger) {
+            return;
+        }
+        
+        // Add service identifier to message
+        $prefixedMessage = '[MPAIAdminMenu] ' . $message;
+        
+        // Merge service name into context
+        $mergedContext = array_merge(['service' => $this->getServiceName()], $context);
+        
+        switch ($level) {
+            case 'error':
+                $this->logger->error($prefixedMessage, $mergedContext);
+                break;
+            case 'warning':
+                $this->logger->warning($prefixedMessage, $mergedContext);
+                break;
+            case 'debug':
+                // Check if debug method exists, otherwise fall back to info
+                if (method_exists($this->logger, 'debug')) {
+                    $this->logger->debug($prefixedMessage, $mergedContext);
+                } else {
+                    $this->logger->info('DEBUG: ' . $prefixedMessage, $mergedContext);
+                }
+                break;
+            case 'info':
+            default:
+                $this->logger->info($prefixedMessage, $mergedContext);
+                break;
+        }
     }
 }
 
