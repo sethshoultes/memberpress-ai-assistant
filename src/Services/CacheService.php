@@ -8,7 +8,7 @@
 namespace MemberpressAiAssistant\Services;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
-use MemberpressAiAssistant\DI\Container;
+use MemberpressAiAssistant\DI\ServiceLocator;
 
 /**
  * Service for caching data throughout the system
@@ -60,9 +60,9 @@ class CacheService extends AbstractService {
     /**
      * {@inheritdoc}
      */
-    public function register($container): void {
-        // Register this service with the container
-        $container->singleton('cache', function() {
+    public function register($serviceLocator): void {
+        // Register this service with the service locator
+        $serviceLocator->register('cache', function() {
             return $this;
         });
 

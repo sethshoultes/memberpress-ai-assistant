@@ -40,11 +40,22 @@ class CachedToolExample {
         // Get the logger
         $logger = $mpai_container->make('logger');
         
+        // Get the required services for CachedToolWrapper
+        $cacheStrategy = $mpai_container->make('advanced_cache_strategy');
+        $cacheWarmer = $mpai_container->make('cache_warmer');
+        $configService = $mpai_container->make('configuration');
+        
         // Create the cached tool wrapper
-        $cachedToolWrapper = new CachedToolWrapper($cacheService, $logger);
+        $cachedToolWrapper = new CachedToolWrapper(
+            $cacheService,
+            $cacheStrategy,
+            $cacheWarmer,
+            $configService,
+            $logger
+        );
         
         // Register the wrapper with the container
-        $mpai_container->singleton('cached_tool_wrapper', function() use ($cachedToolWrapper) {
+        $mpai_container->register('cached_tool_wrapper', function() use ($cachedToolWrapper) {
             return $cachedToolWrapper;
         });
         

@@ -61,10 +61,13 @@ class MPAIAdminMenu extends AbstractService {
     /**
      * {@inheritdoc}
      */
-    public function register($container): void {
-        // Register this service with the container
-        $container->singleton('admin_menu', function() {
-            return $this;
+    public function register($serviceLocator): void {
+        // Store reference to this for use in closures
+        $self = $this;
+        
+        // Register this service with the service locator
+        $serviceLocator->register('admin_menu', function() use ($self) {
+            return $self;
         });
         
         // Add dependencies to the dependencies array

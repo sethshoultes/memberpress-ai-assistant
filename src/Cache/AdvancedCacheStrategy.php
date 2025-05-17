@@ -156,7 +156,7 @@ class AdvancedCacheStrategy extends AbstractService {
      */
     public function register($container): void {
         // Register this service with the container
-        $container->singleton('advanced_cache_strategy', function() {
+        $container->register('advanced_cache_strategy', function() {
             return $this;
         });
 

@@ -9,6 +9,9 @@ namespace MemberpressAiAssistant\Services;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
 use MemberpressAiAssistant\Admin\MPAIAdminMenu;
+use MemberpressAiAssistant\Admin\Settings\MPAISettingsController;
+use MemberpressAiAssistant\Admin\Settings\MPAISettingsModel;
+use MemberpressAiAssistant\Admin\Settings\MPAISettingsView;
 
 /**
  * Service for registering Admin services
@@ -30,14 +33,17 @@ class AdminServicesRegistrar extends AbstractService {
     /**
      * {@inheritdoc}
      */
-    public function register($container): void {
-        // Register this service with the container
-        $container->singleton('admin_services_registrar', function() {
-            return $this;
+    public function register($serviceLocator): void {
+        // Store reference to this for use in closures
+        $self = $this;
+        
+        // Register this service with the service locator
+        $serviceLocator->register('admin_services_registrar', function() use ($self) {
+            return $self;
         });
 
         // Register Admin services
-        $this->registerAdminServices($container);
+        $this->registerAdminServices($serviceLocator);
         
         // Log registration
         $this->log('Admin services registrar registered');
@@ -56,16 +62,32 @@ class AdminServicesRegistrar extends AbstractService {
     /**
      * Register Admin services with the container
      *
-     * @param \MemberpressAiAssistant\DI\Container $container The DI container
+     * @param \MemberpressAiAssistant\DI\ServiceLocator $serviceLocator The service locator
      * @return void
      */
-    protected function registerAdminServices($container): void {
+    protected function registerAdminServices($serviceLocator): void {
         // Get the logger
-        $logger = $container->bound('logger') ? $container->make('logger') : null;
+        $logger = $serviceLocator->has('logger') ? $serviceLocator->get('logger') : null;
+        
+        // Register settings components
+        $settings_model = new MPAISettingsModel($logger);
+        $settings_view = new MPAISettingsView();
+        $settings_controller = new MPAISettingsController($settings_model, $settings_view, $logger);
+        
+        // Register settings controller with the service locator
+        $serviceLocator->register('settings_controller', function() use ($settings_controller) {
+            return $settings_controller;
+        });
+        
+        // Initialize settings controller
+        $settings_controller->init();
         
         // Register admin menu
         $admin_menu = new MPAIAdminMenu('admin_menu', $logger);
-        $admin_menu->register($container);
+        $admin_menu->register($serviceLocator);
+        
+        // Set the settings controller in the admin menu
+        $admin_menu->set_settings_controller($settings_controller);
         
         // Boot services
         $admin_menu->boot();
@@ -73,7 +95,8 @@ class AdminServicesRegistrar extends AbstractService {
         // Log registration
         $this->log('Admin services registered', [
             'services' => [
-                'admin_menu'
+                'admin_menu',
+                'settings_controller'
             ]
         ]);
     }

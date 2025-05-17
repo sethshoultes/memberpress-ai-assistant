@@ -160,7 +160,7 @@ class CacheWarmer extends AbstractService {
      */
     public function register($container): void {
         // Register this service with the container
-        $container->singleton('cache_warmer', function() {
+        $container->register('cache_warmer', function() {
             return $this;
         });
 

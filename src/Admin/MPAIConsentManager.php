@@ -54,7 +54,7 @@ class MPAIConsentManager extends AbstractService {
      */
     public function register($container): void {
         // Register this service with the container
-        $container->singleton('consent_manager', function() {
+        $container->register('consent_manager', function() {
             return $this;
         });
         

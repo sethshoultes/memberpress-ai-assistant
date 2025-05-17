@@ -7,7 +7,7 @@
 
 namespace MemberpressAiAssistant\Factory;
 
-use MemberpressAiAssistant\DI\Container;
+use MemberpressAiAssistant\DI\ServiceLocator;
 use MemberpressAiAssistant\Interfaces\AgentInterface;
 use MemberpressAiAssistant\Registry\AgentRegistry;
 
@@ -16,9 +16,9 @@ use MemberpressAiAssistant\Registry\AgentRegistry;
  */
 class AgentFactory {
     /**
-     * Dependency injection container
+     * Service locator
      *
-     * @var Container
+     * @var ServiceLocator
      */
     protected $container;
 
@@ -32,11 +32,11 @@ class AgentFactory {
     /**
      * Constructor
      *
-     * @param Container $container Dependency injection container
+     * @param ServiceLocator $serviceLocator Service locator
      * @param AgentRegistry|null $registry Agent registry instance
      */
-    public function __construct(Container $container, AgentRegistry $registry = null) {
-        $this->container = $container;
+    public function __construct(ServiceLocator $serviceLocator, ?AgentRegistry $registry = null) {
+        $this->container = $serviceLocator;
         $this->registry = $registry ?? AgentRegistry::getInstance();
     }
 
@@ -52,8 +52,8 @@ class AgentFactory {
         // Validate the agent class
         $this->validateAgentClass($agentClass);
 
-        // Create the agent instance using the DI container
-        $agent = $this->container->make($agentClass, $parameters);
+        // Create the agent instance using the service locator
+        $agent = $this->container->get($agentClass);
 
         return $agent;
     }

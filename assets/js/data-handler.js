@@ -6,8 +6,15 @@
  * sorting and filtering capabilities for tabular data.
  */
 
-(function() {
+// Immediately log when the file loads
+console.log('data-handler.js loading...');
+
+// Use a named IIFE to avoid scope issues
+(function MPAIDataHandlerModule() {
     'use strict';
+    
+    // Log when the module initializes
+    console.log('MPAIDataHandlerModule initializing...');
 
     /**
      * Data visualization types
@@ -21,8 +28,51 @@
     };
 
     /**
+     * Detect the most appropriate visualization type for the data
+     *
+     * @param {Object|Array} data The data to analyze
+     * @returns {string} The detected visualization type
+     */
+    function detectVisualizationType(data) {
+        if (Array.isArray(data)) {
+            // Check if array contains objects with consistent keys (table)
+            if (data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+                const firstItemKeys = Object.keys(data[0]);
+                const allHaveSameKeys = data.every(item => {
+                    if (typeof item !== 'object' || item === null) return false;
+                    const itemKeys = Object.keys(item);
+                    return itemKeys.length === firstItemKeys.length &&
+                           firstItemKeys.every(key => itemKeys.includes(key));
+                });
+
+                if (allHaveSameKeys) {
+                    return VISUALIZATION_TYPES.TABLE;
+                }
+            }
+
+            // Simple array of primitives or mixed objects
+            return VISUALIZATION_TYPES.LIST;
+        } else if (typeof data === 'object' && data !== null) {
+            // Check if object has simple key-value pairs
+            const hasComplexValues = Object.values(data).some(value =>
+                typeof value === 'object' && value !== null
+            );
+
+            if (!hasComplexValues) {
+                return VISUALIZATION_TYPES.KEY_VALUE;
+            }
+
+            // Complex nested object
+            return VISUALIZATION_TYPES.TREE;
+        }
+
+        // Fallback to JSON for other types
+        return VISUALIZATION_TYPES.JSON;
+    }
+
+    /**
      * Process structured data and create appropriate visualization
-     * 
+     *
      * @param {Object|Array} data The structured data to process
      * @param {Object} options Configuration options
      * @returns {HTMLElement} The visualization element
@@ -97,52 +147,16 @@
                     expandable,
                     maxDepth
                 });
-/**
-     * Detect the most appropriate visualization type for the data
-     * 
-     * @param {Object|Array} data The data to analyze
-     * @returns {string} The detected visualization type
-     */
-    function detectVisualizationType(data) {
-        if (Array.isArray(data)) {
-            // Check if array contains objects with consistent keys (table)
-            if (data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
-                const firstItemKeys = Object.keys(data[0]);
-                const allHaveSameKeys = data.every(item => {
-                    if (typeof item !== 'object' || item === null) return false;
-                    const itemKeys = Object.keys(item);
-                    return itemKeys.length === firstItemKeys.length &&
-                           firstItemKeys.every(key => itemKeys.includes(key));
-                });
-
-                if (allHaveSameKeys) {
-                    return VISUALIZATION_TYPES.TABLE;
-                }
-            }
-
-            // Simple array of primitives or mixed objects
-            return VISUALIZATION_TYPES.LIST;
-        } else if (typeof data === 'object' && data !== null) {
-            // Check if object has simple key-value pairs
-            const hasComplexValues = Object.values(data).some(value => 
-                typeof value === 'object' && value !== null
-            );
-
-            if (!hasComplexValues) {
-                return VISUALIZATION_TYPES.KEY_VALUE;
-            }
-
-            // Complex nested object
-            return VISUALIZATION_TYPES.TREE;
+                break;
         }
 
-        // Fallback to JSON for other types
-        return VISUALIZATION_TYPES.JSON;
+        container.appendChild(visualizationElement);
+        return container;
     }
 
     /**
      * Create a table visualization for array data
-     * 
+     *
      * @param {Array} data Array of objects to display as a table
      * @param {Object} options Configuration options
      * @returns {HTMLElement} The table element
@@ -289,9 +303,10 @@
         container.appendChild(visualizationElement);
         return container;
     }
-/**
+
+    /**
      * Filter table rows based on input value
-     * 
+     *
      * @param {HTMLElement} tableBody The table body element
      * @param {Array} data The original data array
      * @param {string} filterValue The filter value
@@ -1171,5 +1186,10 @@
         createTreeVisualization,
         VISUALIZATION_TYPES
     };
+    
+    // Add debugging to help identify the issue
+    console.log('MPAIDataHandler initialized with functions:',
+        Object.keys(window.MPAIDataHandler).join(', '));
+    console.log('detectVisualizationType defined:', typeof detectVisualizationType);
 
 })();

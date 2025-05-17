@@ -8,7 +8,7 @@
 namespace MemberpressAiAssistant\Services;
 
 use MemberpressAiAssistant\ChatInterface;
-use MemberpressAiAssistant\DI\Container;
+use MemberpressAiAssistant\DI\ServiceLocator;
 use MemberpressAiAssistant\Interfaces\ServiceInterface;
 
 /**
@@ -48,9 +48,9 @@ class ChatInterfaceService implements ServiceInterface {
      * @param mixed $container The DI container
      * @return void
      */
-    public function register($container): void {
+    public function register($serviceLocator): void {
         // Register the chat interface as a singleton
-        $container->singleton('chat_interface', function() {
+        $serviceLocator->register('chat_interface', function() {
             return ChatInterface::getInstance();
         });
 

@@ -40,11 +40,11 @@ class MemberpressAiAssistant {
     private static $instance = null;
 
     /**
-     * DI Container
+     * Service Locator
      *
-     * @var \MemberpressAiAssistant\DI\Container
+     * @var \MemberpressAiAssistant\DI\ServiceLocator
      */
-    private $container;
+    private $serviceLocator;
 
     /**
      * Get the singleton instance of the plugin
@@ -189,61 +189,137 @@ class MemberpressAiAssistant {
      * Initialize the DI container
      */
     private function init_container() {
-        $this->container = new \MemberpressAiAssistant\DI\Container();
+        $this->serviceLocator = new \MemberpressAiAssistant\DI\ServiceLocator();
         
-        // Make container available globally for tools that need it
-        global $mpai_container;
-        $mpai_container = $this->container;
+        // Make service locator available globally for tools that need it
+        global $mpai_service_locator;
+        $mpai_service_locator = $this->serviceLocator;
         
         // Add debug hook to enable debug mode
         add_filter('mpai_debug_mode', '__return_true');
         
-        // Log container initialization
+        // Log service locator initialization
         if (apply_filters('mpai_debug_mode', false)) {
-            error_log('MPAI: Initializing container');
+            error_log('MPAI: Initializing service locator');
         }
         
-        // Register service provider
-        $service_provider = new \MemberpressAiAssistant\DI\ServiceProvider();
+        // Register core services
+        $this->register_core_services();
         
-        try {
-            $service_provider->register($this->container);
-            
-            if (apply_filters('mpai_debug_mode', false)) {
-                // Log registered services
-                $services = $service_provider->getServices();
-                error_log('MPAI: Registered services: ' . implode(', ', array_keys($services)));
-            }
-        } catch (\Exception $e) {
-            error_log('MPAI: Error in service registration: ' . $e->getMessage());
-            
-            // Add admin notice about service registration error
-            add_action('admin_notices', function() use ($e) {
-                echo '<div class="notice notice-error">';
-                echo '<p><strong>' . esc_html__('MemberPress AI Assistant Error', 'memberpress-ai-assistant') . '</strong></p>';
-                echo '<p>' . esc_html__('Service registration failed. Please check the debug log for details.', 'memberpress-ai-assistant') . '</p>';
-                echo '</div>';
-            });
+        if (apply_filters('mpai_debug_mode', false)) {
+            // Log registered services
+            $definitions = $this->serviceLocator->getDefinitions();
+            error_log('MPAI: Registered services: ' . implode(', ', array_keys($definitions)));
         }
+    }
+    
+    /**
+     * Register core services with the service locator
+     */
+    private function register_core_services() {
+        // Register logger service
+        $this->serviceLocator->register('logger', function() {
+            // Simple logger implementation
+            return new class {
+                public function info($message, array $context = []) {
+                    // Log to WordPress debug log if enabled
+                    if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log(sprintf('[INFO] %s: %s %s',
+                            date('Y-m-d H:i:s'),
+                            $message,
+                            !empty($context) ? json_encode($context) : ''
+                        ));
+                    }
+                }
+
+                public function error($message, array $context = []) {
+                    // Log to WordPress debug log if enabled
+                    if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log(sprintf('[ERROR] %s: %s %s',
+                            date('Y-m-d H:i:s'),
+                            $message,
+                            !empty($context) ? json_encode($context) : ''
+                        ));
+                    }
+                }
+                
+                public function warning($message, array $context = []) {
+                    // Log to WordPress debug log if enabled
+                    if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log(sprintf('[WARNING] %s: %s %s',
+                            date('Y-m-d H:i:s'),
+                            $message,
+                            !empty($context) ? json_encode($context) : ''
+                        ));
+                    }
+                }
+                
+                public function debug($message, array $context = []) {
+                    // Log to WordPress debug log if enabled
+                    if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log(sprintf('[DEBUG] %s: %s %s',
+                            date('Y-m-d H:i:s'),
+                            $message,
+                            !empty($context) ? json_encode($context) : ''
+                        ));
+                    }
+                }
+            };
+        });
     }
 
     /**
      * Initialize services
      */
     private function init_services() {
-        // Initialize services from the container
+        // Initialize services from the service locator
         
         // Initialize the ToolRegistry
-        $logger = $this->container->bound('logger') ? $this->container->make('logger') : null;
+        $logger = $this->serviceLocator->has('logger') ? $this->serviceLocator->get('logger') : null;
         $toolRegistry = \MemberpressAiAssistant\Registry\ToolRegistry::getInstance($logger);
         
         // Discover and register tools
         $toolRegistry->discoverTools();
         
-        // Register the ToolRegistry with the container
-        $this->container->singleton('tool_registry', function() use ($toolRegistry) {
+        // Register the ToolRegistry with the service locator
+        $this->serviceLocator->register('tool_registry', function() use ($toolRegistry) {
             return $toolRegistry;
         });
+        
+        // Register and initialize admin services
+        $admin_services_registrar = new \MemberpressAiAssistant\Services\AdminServicesRegistrar('admin_services_registrar', $logger);
+        $admin_services_registrar->register($this->serviceLocator);
+        $admin_services_registrar->boot();
+        
+        // Register key manager service
+        $key_manager = new \MemberpressAiAssistant\Admin\MPAIKeyManager('key_manager', $logger);
+        $key_manager->register($this->serviceLocator);
+        $key_manager->boot();
+        
+        // Register AJAX handler service
+        $ajax_handler = new \MemberpressAiAssistant\Admin\MPAIAjaxHandler('ajax_handler', $logger);
+        $ajax_handler->register($this->serviceLocator);
+        $ajax_handler->boot();
+        
+        // Register cache service
+        $cache_service = new \MemberpressAiAssistant\Services\CacheService('cache', $logger);
+        $cache_service->register($this->serviceLocator);
+        $cache_service->boot();
+        
+        // Register MemberPress service
+        $memberpress_service = new \MemberpressAiAssistant\Services\MemberPressService('memberpress', $logger);
+        $memberpress_service->register($this->serviceLocator);
+        $memberpress_service->boot();
+        
+        // Register orchestrator service
+        $orchestrator_service = new \MemberpressAiAssistant\Services\OrchestratorService('orchestrator', $logger);
+        $orchestrator_service->register($this->serviceLocator);
+        $orchestrator_service->boot();
+        
+        // Register chat interface service
+        $chat_interface_service = new \MemberpressAiAssistant\Services\ChatInterfaceService('chat_interface', $logger);
+        $chat_interface_service->register($this->serviceLocator);
+        $chat_interface_service->boot();
     }
 
     /**
@@ -268,74 +344,7 @@ class MemberpressAiAssistant {
     }
 }
 
-// Register emergency settings page handler
-add_action('admin_menu', function() {
-    add_submenu_page(
-        'memberpress',
-        __('AI Assistant', 'memberpress-ai-assistant'),
-        __('AI Assistant', 'memberpress-ai-assistant'),
-        'manage_options',
-        'mpai-settings',
-        'memberpress_ai_assistant_emergency_settings'
-    );
-}, 999); // Very high priority to override the regular handler
+// Initialize the plugin
 
-function memberpress_ai_assistant_emergency_settings() {
-    echo '<div class="wrap">';
-    echo '<h1>' . esc_html__('MemberPress AI Assistant Settings', 'memberpress-ai-assistant') . '</h1>';
-    echo '<div class="notice notice-warning">';
-    echo '<p><strong>' . esc_html__('Settings system is being repaired', 'memberpress-ai-assistant') . '</strong></p>';
-    echo '<p>' . esc_html__('The settings system is currently being repaired to fix memory issues. Basic functionality is provided.', 'memberpress-ai-assistant') . '</p>';
-    echo '</div>';
-    echo '<form method="post" action="">';
-    echo '<table class="form-table" role="presentation">';
-    echo '<tr><th scope="row">' . esc_html__('Enable AI Assistant', 'memberpress-ai-assistant') . '</th>';
-    echo '<td><fieldset><legend class="screen-reader-text"><span>' . esc_html__('Enable AI Assistant', 'memberpress-ai-assistant') . '</span></legend>';
-    echo '<label for="mpai_enabled"><input name="mpai_enabled" type="checkbox" id="mpai_enabled" value="1" checked="checked">' . esc_html__('Enable', 'memberpress-ai-assistant') . '</label>';
-    echo '<p class="description">' . esc_html__('Enable or disable the AI assistant functionality.', 'memberpress-ai-assistant') . '</p>';
-    echo '</fieldset></td></tr>';
-    echo '</table>';
-    echo '<p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="' . esc_attr__('Save Changes', 'memberpress-ai-assistant') . '" /></p>';
-    echo '</form>';
-    echo '</div>';
-}
-
-// EMERGENCY OVERRIDE - Disable normal initialization to prevent memory issues
-
-// Add a notice about emergency mode
-add_action('admin_notices', function() {
-    // Only show on relevant pages
-    if (!is_admin() || !current_user_can('manage_options')) {
-        return;
-    }
-    
-    echo '<div class="notice notice-error">';
-    echo '<p><strong>' . esc_html__('MemberPress AI Assistant in Emergency Mode', 'memberpress-ai-assistant') . '</strong></p>';
-    echo '<p>' . esc_html__('The plugin is currently running in emergency mode due to memory issues. Only basic functionality is available.', 'memberpress-ai-assistant') . '</p>';
-    echo '<p>' . esc_html__('The development team has been notified and is working on a fix.', 'memberpress-ai-assistant') . '</p>';
-    echo '</div>';
-});
-
-// Initialize only critical parts of the plugin
-function memberpress_ai_assistant_emergency_init() {
-    // Register our emergency admin page
-    add_action('admin_menu', 'memberpress_ai_assistant_register_admin_page');
-    
-    // Log initialization in emergency mode
-    error_log('MPAI: Initialized in emergency mode due to memory issues');
-}
-
-// Register the emergency admin menu
-function memberpress_ai_assistant_register_admin_page() {
-    add_submenu_page(
-        'memberpress',
-        __('AI Assistant', 'memberpress-ai-assistant'),
-        __('AI Assistant', 'memberpress-ai-assistant'),
-        'manage_options',
-        'mpai-settings',
-        'memberpress_ai_assistant_emergency_settings'
-    );
-}
-
-// Start the plugin in emergency mode
-memberpress_ai_assistant_emergency_init();
+// Initialize the plugin
+MemberpressAiAssistant::instance();

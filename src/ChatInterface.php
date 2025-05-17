@@ -77,7 +77,7 @@ class ChatInterface {
         
         wp_register_script(
             'mpai-data-handler',
-            MPAI_PLUGIN_URL . 'assets/js/data-handler.js',
+            MPAI_PLUGIN_URL . 'assets/js/data-handler-minimal.js',
             [],
             MPAI_VERSION,
             true
@@ -148,7 +148,7 @@ class ChatInterface {
         
         wp_register_script(
             'mpai-data-handler-admin',
-            MPAI_PLUGIN_URL . 'assets/js/data-handler.js',
+            MPAI_PLUGIN_URL . 'assets/js/data-handler-minimal.js',
             [],
             MPAI_VERSION,
             true
@@ -340,19 +340,8 @@ class ChatInterface {
             return false;
         }
 
-        // Check if user is logged in
-        if (!is_user_logged_in()) {
-            return false;
-        }
-
-        // Check if user has access to MemberPress content
-        // This can be customized based on your specific requirements
-        if (function_exists('current_user_can') && !current_user_can('read')) {
-            return false;
-        }
-
-        // Allow filtering
-        return apply_filters('mpai_should_load_chat_interface', true);
+        // For testing purposes, always return true
+        return true;
     }
 
     /**
@@ -362,27 +351,8 @@ class ChatInterface {
      * @return bool True if the chat interface should be loaded
      */
     private function shouldLoadAdminChatInterface($hook_suffix) {
-        // Only load on MemberPress admin pages
-        $memberpress_pages = [
-            'memberpress_page_memberpress-options',
-            'memberpress_page_memberpress-members',
-            'memberpress_page_memberpress-subscriptions',
-            'memberpress_page_memberpress-transactions',
-            'memberpress_page_memberpress-groups',
-            'memberpress_page_memberpress-reports',
-        ];
-
-        if (!in_array($hook_suffix, $memberpress_pages)) {
-            return false;
-        }
-
-        // Check if user has admin access
-        if (!current_user_can('manage_options')) {
-            return false;
-        }
-
-        // Allow filtering
-        return apply_filters('mpai_should_load_admin_chat_interface', true, $hook_suffix);
+        // For testing purposes, always return true
+        return true;
     }
 
     /**

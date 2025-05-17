@@ -92,6 +92,9 @@ class MPAISettingsController {
         // Register consent preview page
         add_action('admin_menu', [$this, 'register_consent_preview_page'], 30);
         
+        // Enqueue scripts and styles
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
+        
         if ($this->logger) {
             $this->logger->info('Settings controller initialized');
         }
@@ -688,5 +691,41 @@ class MPAISettingsController {
         if ($this->logger) {
             $this->logger->error($message);
         }
+    }
+    
+    /**
+     * Enqueue scripts and styles for the settings page
+     *
+     * @param string $hook_suffix The current admin page
+     * @return void
+     */
+    public function enqueue_scripts($hook_suffix) {
+        // Only enqueue on the settings page
+        if ($hook_suffix !== 'memberpress_page_mpai-settings') {
+            return;
+        }
+        
+        // Enqueue settings CSS
+        wp_enqueue_style(
+            'mpai-settings',
+            MPAI_PLUGIN_URL . 'assets/css/settings.css',
+            [],
+            MPAI_VERSION
+        );
+        
+        // Enqueue settings JS
+        wp_enqueue_script(
+            'mpai-settings',
+            MPAI_PLUGIN_URL . 'assets/js/settings.js',
+            ['jquery'],
+            MPAI_VERSION,
+            true
+        );
+        
+        // Add settings data
+        wp_localize_script('mpai-settings', 'mpai_settings', [
+            'nonce' => wp_create_nonce('mpai_settings_nonce'),
+            'ajaxurl' => admin_url('admin-ajax.php')
+        ]);
     }
 }

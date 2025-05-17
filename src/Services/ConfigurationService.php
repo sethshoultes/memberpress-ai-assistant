@@ -90,7 +90,7 @@ class ConfigurationService extends AbstractService {
      */
     public function register($container): void {
         // Register this service with the container
-        $container->singleton('configuration', function() {
+        $container->register('configuration', function() {
             return $this;
         });
 

@@ -12,12 +12,12 @@ namespace MemberpressAiAssistant\Interfaces;
  */
 interface ServiceInterface {
     /**
-     * Register the service with the container
+     * Register the service with the service locator
      *
-     * @param \MemberpressAiAssistant\DI\Container $container The DI container
+     * @param \MemberpressAiAssistant\DI\ServiceLocator $serviceLocator The service locator
      * @return void
      */
-    public function register($container): void;
+    public function register($serviceLocator): void;
 
     /**
      * Boot the service

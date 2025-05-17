@@ -8,7 +8,7 @@
 namespace MemberpressAiAssistant\Services;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
-use MemberpressAiAssistant\DI\Container;
+use MemberpressAiAssistant\DI\ServiceLocator;
 use MemberpressAiAssistant\Orchestration\AgentOrchestrator;
 use MemberpressAiAssistant\Orchestration\ContextManager;
 use MemberpressAiAssistant\Factory\AgentFactory;
@@ -28,22 +28,25 @@ class OrchestratorService extends AbstractService {
     /**
      * {@inheritdoc}
      */
-    public function register($container): void {
-        // Register the AgentOrchestrator with the container
-        $container->singleton('agent_orchestrator', function() use ($container) {
+    public function register($serviceLocator): void {
+        // Store the service locator for use in closures
+        $self = $this;
+        
+        // Register the AgentOrchestrator with the service locator
+        $serviceLocator->register('agent_orchestrator', function() use ($serviceLocator, $self) {
             // Get required dependencies
-            $agentRegistry = AgentRegistry::getInstance($container->make('logger'));
-            $agentFactory = $container->make('agent_factory') ?? new AgentFactory($container, $agentRegistry);
-            $contextManager = $container->make('context_manager') ?? new ContextManager();
-            $logger = $container->make('logger');
+            $agentRegistry = AgentRegistry::getInstance($serviceLocator->get('logger'));
+            $agentFactory = $serviceLocator->has('agent_factory') ? $serviceLocator->get('agent_factory') : new AgentFactory($serviceLocator, $agentRegistry);
+            $contextManager = $serviceLocator->has('context_manager') ? $serviceLocator->get('context_manager') : new ContextManager();
+            $logger = $serviceLocator->get('logger');
             
             // Get the cache service if available
             $cacheService = null;
-            if ($container->bound('cache')) {
-                $cacheService = $container->make('cache');
-                $this->log('Cache service found and will be used for agent response caching');
+            if ($serviceLocator->has('cache')) {
+                $cacheService = $serviceLocator->get('cache');
+                $self->log('Cache service found and will be used for agent response caching');
             } else {
-                $this->log('Cache service not found, agent response caching will be disabled', ['level' => 'warning']);
+                $self->log('Cache service not found, agent response caching will be disabled', ['level' => 'warning']);
             }
             
             // Create the orchestrator with cache service
@@ -57,23 +60,23 @@ class OrchestratorService extends AbstractService {
             
             // Configure cache TTL if cache service is available
             if ($cacheService !== null) {
-                $orchestrator->setDefaultCacheTtl($this->default_cache_ttl);
+                $orchestrator->setDefaultCacheTtl($self->default_cache_ttl);
             }
             
             return $orchestrator;
         });
         
         // Register the agent factory if not already registered
-        if (!$container->bound('agent_factory')) {
-            $container->singleton('agent_factory', function() use ($container) {
-                $agentRegistry = AgentRegistry::getInstance($container->make('logger'));
-                return new AgentFactory($container, $agentRegistry);
+        if (!$serviceLocator->has('agent_factory')) {
+            $serviceLocator->register('agent_factory', function() use ($serviceLocator) {
+                $agentRegistry = AgentRegistry::getInstance($serviceLocator->get('logger'));
+                return new AgentFactory($serviceLocator, $agentRegistry);
             });
         }
         
         // Register the context manager if not already registered
-        if (!$container->bound('context_manager')) {
-            $container->singleton('context_manager', function() {
+        if (!$serviceLocator->has('context_manager')) {
+            $serviceLocator->register('context_manager', function() {
                 return new ContextManager();
             });
         }
@@ -119,9 +122,9 @@ class OrchestratorService extends AbstractService {
             isset($options['plugins']) && in_array('memberpress-ai-assistant/memberpress-ai-assistant.php', $options['plugins'])) {
             
             // Get the cache service
-            global $mpai_container;
-            if ($mpai_container && $mpai_container->bound('cache')) {
-                $cacheService = $mpai_container->make('cache');
+            global $mpai_service_locator;
+            if ($mpai_service_locator && $mpai_service_locator->has('cache')) {
+                $cacheService = $mpai_service_locator->get('cache');
                 
                 // Clear all agent response caches
                 $cacheService->deletePattern('agent_response_');
@@ -141,9 +144,9 @@ class OrchestratorService extends AbstractService {
         $this->default_cache_ttl = max(0, $ttl);
         
         // Update the orchestrator if already instantiated
-        global $mpai_container;
-        if ($mpai_container && $mpai_container->bound('agent_orchestrator')) {
-            $orchestrator = $mpai_container->make('agent_orchestrator');
+        global $mpai_service_locator;
+        if ($mpai_service_locator && $mpai_service_locator->has('agent_orchestrator')) {
+            $orchestrator = $mpai_service_locator->get('agent_orchestrator');
             if (method_exists($orchestrator, 'setDefaultCacheTtl')) {
                 $orchestrator->setDefaultCacheTtl($this->default_cache_ttl);
             }

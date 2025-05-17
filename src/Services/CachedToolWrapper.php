@@ -105,7 +105,7 @@ class CachedToolWrapper extends AbstractService {
      */
     public function register($container): void {
         // Register this service with the container
-        $container->singleton('cached_tool_wrapper', function() {
+        $container->register('cached_tool_wrapper', function() {
             return $this;
         });
 

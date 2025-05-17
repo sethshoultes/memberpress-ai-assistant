@@ -8,7 +8,7 @@
 namespace MemberpressAiAssistant\Services;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
-use MemberpressAiAssistant\DI\Container;
+use MemberpressAiAssistant\DI\ServiceLocator;
 
 /**
  * Service for interacting with MemberPress core functionality
@@ -69,21 +69,21 @@ class MemberPressService extends AbstractService {
     /**
      * {@inheritdoc}
      */
-    public function register($container): void {
-        // Register this service with the container
-        $container->singleton('memberpress', function() {
+    public function register($serviceLocator): void {
+        // Register this service with the service locator
+        $serviceLocator->register('memberpress', function() {
             return $this;
         });
 
         // Register adapters
-        $this->registerAdapters($container);
+        $this->registerAdapters($serviceLocator);
 
         // Register transformers
-        $this->registerTransformers($container);
+        $this->registerTransformers($serviceLocator);
         
         // Get cache service if available
-        if ($container->bound('cache')) {
-            $this->cacheService = $container->make('cache');
+        if ($serviceLocator->has('cache')) {
+            $this->cacheService = $serviceLocator->get('cache');
         }
 
         // Log registration
@@ -218,40 +218,40 @@ class MemberPressService extends AbstractService {
     /**
      * Register adapters with the container
      *
-     * @param Container $container The DI container
+     * @param ServiceLocator $serviceLocator The service locator
      * @return void
      */
-    protected function registerAdapters($container): void {
+    protected function registerAdapters($serviceLocator): void {
         // Register product adapter
-        $container->singleton('memberpress.adapters.product', function() {
+        $serviceLocator->register('memberpress.adapters.product', function() {
             $adapter = new Adapters\ProductAdapter($this->logger);
             $this->adapters['product'] = $adapter;
             return $adapter;
         });
 
         // Register user adapter
-        $container->singleton('memberpress.adapters.user', function() {
+        $serviceLocator->register('memberpress.adapters.user', function() {
             $adapter = new Adapters\UserAdapter($this->logger);
             $this->adapters['user'] = $adapter;
             return $adapter;
         });
 
         // Register subscription adapter
-        $container->singleton('memberpress.adapters.subscription', function() {
+        $serviceLocator->register('memberpress.adapters.subscription', function() {
             $adapter = new Adapters\SubscriptionAdapter($this->logger);
             $this->adapters['subscription'] = $adapter;
             return $adapter;
         });
 
         // Register transaction adapter
-        $container->singleton('memberpress.adapters.transaction', function() {
+        $serviceLocator->register('memberpress.adapters.transaction', function() {
             $adapter = new Adapters\TransactionAdapter($this->logger);
             $this->adapters['transaction'] = $adapter;
             return $adapter;
         });
 
         // Register rule adapter
-        $container->singleton('memberpress.adapters.rule', function() {
+        $serviceLocator->register('memberpress.adapters.rule', function() {
             $adapter = new Adapters\RuleAdapter($this->logger);
             $this->adapters['rule'] = $adapter;
             return $adapter;
@@ -261,40 +261,40 @@ class MemberPressService extends AbstractService {
     /**
      * Register transformers with the container
      *
-     * @param Container $container The DI container
+     * @param ServiceLocator $serviceLocator The service locator
      * @return void
      */
-    protected function registerTransformers($container): void {
+    protected function registerTransformers($serviceLocator): void {
         // Register product transformer
-        $container->singleton('memberpress.transformers.product', function() {
+        $serviceLocator->register('memberpress.transformers.product', function() {
             $transformer = new Transformers\ProductTransformer();
             $this->transformers['product'] = $transformer;
             return $transformer;
         });
 
         // Register user transformer
-        $container->singleton('memberpress.transformers.user', function() {
+        $serviceLocator->register('memberpress.transformers.user', function() {
             $transformer = new Transformers\UserTransformer();
             $this->transformers['user'] = $transformer;
             return $transformer;
         });
 
         // Register subscription transformer
-        $container->singleton('memberpress.transformers.subscription', function() {
+        $serviceLocator->register('memberpress.transformers.subscription', function() {
             $transformer = new Transformers\SubscriptionTransformer();
             $this->transformers['subscription'] = $transformer;
             return $transformer;
         });
 
         // Register transaction transformer
-        $container->singleton('memberpress.transformers.transaction', function() {
+        $serviceLocator->register('memberpress.transformers.transaction', function() {
             $transformer = new Transformers\TransactionTransformer();
             $this->transformers['transaction'] = $transformer;
             return $transformer;
         });
 
         // Register rule transformer
-        $container->singleton('memberpress.transformers.rule', function() {
+        $serviceLocator->register('memberpress.transformers.rule', function() {
             $transformer = new Transformers\RuleTransformer();
             $this->transformers['rule'] = $transformer;
             return $transformer;
