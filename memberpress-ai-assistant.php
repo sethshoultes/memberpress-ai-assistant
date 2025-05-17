@@ -286,6 +286,9 @@ class MemberpressAiAssistant {
             return $toolRegistry;
         });
         
+        // Register service providers
+        $this->register_service_providers();
+        
         // Register and initialize admin services
         $admin_services_registrar = new \MemberpressAiAssistant\Services\AdminServicesRegistrar('admin_services_registrar', $logger);
         $admin_services_registrar->register($this->serviceLocator);
@@ -342,9 +345,29 @@ class MemberpressAiAssistant {
         // Flush rewrite rules
         flush_rewrite_rules();
     }
+    
+    /**
+     * Register service providers
+     */
+    private function register_service_providers() {
+        // Get the logger
+        $logger = $this->serviceLocator->has('logger') ? $this->serviceLocator->get('logger') : null;
+        
+        // Register configuration service provider
+        $config_service = new \MemberpressAiAssistant\Services\ConfigurationService('configuration', $logger);
+        $config_service->register($this->serviceLocator);
+        $config_service->boot();
+        
+        // Register LLM service provider
+        $llm_provider = new \MemberpressAiAssistant\DI\Providers\LlmServiceProvider();
+        $llm_provider->register($this->serviceLocator);
+        $llm_provider->boot($this->serviceLocator);
+        
+        if (apply_filters('mpai_debug_mode', false)) {
+            error_log('MPAI: Service providers registered');
+        }
+    }
 }
-
-// Initialize the plugin
 
 // Initialize the plugin
 MemberpressAiAssistant::instance();
