@@ -50,7 +50,34 @@ class LlmServiceProvider extends ServiceProvider {
         // Register the chat adapter
         $locator->register('llm.chat_adapter', function($locator) {
             $orchestrator = $locator->get('llm.orchestrator');
-            return new LlmChatAdapter($orchestrator);
+            
+            // Get the tool registry if available
+            $toolRegistry = null;
+            if ($locator->has('tool_registry')) {
+                $toolRegistry = $locator->get('tool_registry');
+            }
+            
+            // Get the context manager if available
+            $contextManager = null;
+            if ($locator->has('context_manager')) {
+                $contextManager = $locator->get('context_manager');
+            } else if ($locator->has('agent_orchestrator')) {
+                // Try to get the context manager from the agent orchestrator
+                $agentOrchestrator = $locator->get('agent_orchestrator');
+                if (property_exists($agentOrchestrator, 'contextManager') &&
+                    method_exists($agentOrchestrator, 'getContextManager')) {
+                    $contextManager = $agentOrchestrator->getContextManager();
+                }
+            }
+            
+            // Log what we found
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - LlmChatAdapter dependencies: ' .
+                    'ToolRegistry: ' . ($toolRegistry ? 'Yes' : 'No') . ', ' .
+                    'ContextManager: ' . ($contextManager ? 'Yes' : 'No'));
+            }
+            
+            return new LlmChatAdapter($orchestrator, $toolRegistry, $contextManager);
         });
 
         // Register provider configurations

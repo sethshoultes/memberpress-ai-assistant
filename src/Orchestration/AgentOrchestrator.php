@@ -1178,6 +1178,15 @@ class AgentOrchestrator {
     public function getConversationId(): ?string {
         return $this->conversationId;
     }
+    
+    /**
+     * Get the context manager instance
+     *
+     * @return ContextManager The context manager
+     */
+    public function getContextManager(): ContextManager {
+        return $this->contextManager;
+    }
 
     /**
      * Set the current conversation ID

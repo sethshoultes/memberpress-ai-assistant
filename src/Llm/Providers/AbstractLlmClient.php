@@ -114,6 +114,15 @@ abstract class AbstractLlmClient implements LlmClientInterface {
      * @throws \Exception If the request fails
      */
     protected function makeHttpRequest(string $url, string $method = 'POST', array $headers = [], array $data = []): array {
+        // Log the request details
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - HTTP Request: ' . $method . ' ' . $url);
+            error_log('MPAI Debug - HTTP Headers: ' . json_encode($headers));
+            
+            // Don't log the full body as it might contain sensitive information
+            error_log('MPAI Debug - HTTP Body Size: ' . (empty($data) ? 0 : strlen(json_encode($data))) . ' bytes');
+        }
+        
         $args = [
             'method'  => $method,
             'headers' => $headers,
@@ -124,20 +133,61 @@ abstract class AbstractLlmClient implements LlmClientInterface {
             $args['body'] = json_encode($data);
         }
 
+        // Make the request
+        $start_time = microtime(true);
         $response = wp_remote_request($url, $args);
-
-        if (is_wp_error($response)) {
-            throw new \Exception($response->get_error_message(), $response->get_error_code());
+        $request_time = microtime(true) - $start_time;
+        
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - HTTP Request completed in ' . round($request_time, 2) . ' seconds');
         }
 
+        // Handle WP_Error
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            $error_code = $response->get_error_code();
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - HTTP Request WP_Error: ' . $error_message . ' (Code: ' . $error_code . ')');
+            }
+            
+            throw new \Exception('HTTP Request Error: ' . $error_message, $error_code);
+        }
+
+        // Get response details
         $response_code = wp_remote_retrieve_response_code($response);
         $response_body = wp_remote_retrieve_body($response);
+        
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - HTTP Response Code: ' . $response_code);
+            error_log('MPAI Debug - HTTP Response Size: ' . strlen($response_body) . ' bytes');
+        }
+        
+        // Parse JSON response
         $response_data = json_decode($response_body, true);
+        
+        // Check for JSON parsing errors
+        if ($response_data === null && json_last_error() !== JSON_ERROR_NONE) {
+            $json_error = json_last_error_msg();
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - JSON Parse Error: ' . $json_error);
+                error_log('MPAI Debug - Response Body: ' . substr($response_body, 0, 1000) . '...');
+            }
+            
+            throw new \Exception('Invalid JSON response: ' . $json_error);
+        }
 
+        // Handle error responses
         if ($response_code >= 400) {
-            $error_message = isset($response_data['error']['message']) 
-                ? $response_data['error']['message'] 
-                : (isset($response_data['error']) ? $response_data['error'] : 'Unknown error');
+            $error_message = isset($response_data['error']['message'])
+                ? $response_data['error']['message']
+                : (isset($response_data['error']) ? (is_string($response_data['error']) ? $response_data['error'] : json_encode($response_data['error'])) : 'Unknown error');
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - HTTP Error Response: ' . $error_message);
+                error_log('MPAI Debug - Full Error Response: ' . json_encode($response_data));
+            }
                 
             throw new \Exception($error_message, $response_code);
         }

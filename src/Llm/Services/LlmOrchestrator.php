@@ -64,34 +64,71 @@ class LlmOrchestrator {
      * @return LlmResponse The response
      */
     public function processRequest(LlmRequest $request): LlmResponse {
+        // Add detailed logging
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - LlmOrchestrator processing request: ' . json_encode([
+                'messages' => $request->getMessages(),
+                'tools' => $request->getTools(),
+                'options' => $request->getOptions()
+            ]));
+        }
+        
         // Get the provider to use
         $providerName = $request->getOption('provider', $this->primaryProvider);
+        
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Using provider: ' . $providerName);
+        }
         
         // Check if we have a cached response
         $cachedResponse = $this->cacheAdapter->getCachedResponse($request, $providerName);
         if ($cachedResponse !== null) {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Using cached response');
+            }
             return $cachedResponse;
         }
         
         try {
             // Execute the request
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Executing request with provider: ' . $providerName);
+            }
+            
             $response = $this->executeRequest($request, $providerName);
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Got response: ' . ($response->isError() ? 'ERROR' : 'SUCCESS'));
+                error_log('MPAI Debug - Response content: ' . $response->getContent());
+            }
             
             // Cache the response if it's not an error
             if (!$response->isError()) {
                 $this->cacheAdapter->cacheResponse($request, $providerName, $response);
             } else if ($this->fallbackProvider !== null && $this->fallbackProvider !== $providerName) {
                 // Try fallback provider if available
+                if (function_exists('error_log')) {
+                    error_log('MPAI Debug - Trying fallback provider: ' . $this->fallbackProvider);
+                }
                 return $this->handleFallback($request, $response);
             }
             
             return $response;
         } catch (\Exception $e) {
+            // Log the error
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - LlmOrchestrator error: ' . $e->getMessage());
+                error_log('MPAI Debug - Error trace: ' . $e->getTraceAsString());
+            }
+            
             // Handle error
             $errorResponse = LlmResponse::fromError($e, $providerName);
             
             // Try fallback provider if available
             if ($this->fallbackProvider !== null && $this->fallbackProvider !== $providerName) {
+                if (function_exists('error_log')) {
+                    error_log('MPAI Debug - Trying fallback provider after error: ' . $this->fallbackProvider);
+                }
                 return $this->handleFallback($request, $errorResponse);
             }
             

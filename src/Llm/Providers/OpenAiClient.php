@@ -55,9 +55,21 @@ class OpenAiClient extends AbstractLlmClient {
      */
     public function sendMessage(LlmRequest $request): LlmResponse {
         try {
+            // Log the request
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - OpenAI request: ' . json_encode([
+                    'messages' => $request->getMessages(),
+                    'options' => $request->getOptions()
+                ]));
+            }
+            
             $model = $this->getModelForRequest($request);
             $temperature = $this->getTemperatureForRequest($request);
             $maxTokens = $this->getMaxTokensForRequest($request);
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - OpenAI using model: ' . $model);
+            }
             
             $payload = [
                 'model' => $model,
@@ -78,21 +90,39 @@ class OpenAiClient extends AbstractLlmClient {
             
             // Add any additional options from the request
             foreach ($request->getOptions() as $key => $value) {
-                // Skip options we've already handled
-                if (in_array($key, ['model', 'temperature', 'max_tokens'])) {
+                // Skip options we've already handled and any internal options
+                if (in_array($key, ['model', 'temperature', 'max_tokens', 'conversation_id'])) {
                     continue;
                 }
                 
                 $payload[$key] = $value;
             }
             
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - OpenAI payload: ' . json_encode($payload));
+            }
+            
             $headers = $this->buildHeaders();
             $url = $this->apiBaseUrl . '/chat/completions';
             
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - OpenAI sending request to: ' . $url);
+            }
+            
             $responseData = $this->makeHttpRequest($url, 'POST', $headers, $payload);
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - OpenAI response received');
+            }
             
             return $this->parseResponse($responseData, $model);
         } catch (\Exception $e) {
+            // Log the error
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - OpenAI error: ' . $e->getMessage());
+                error_log('MPAI Debug - OpenAI error trace: ' . $e->getTraceAsString());
+            }
+            
             return LlmResponse::fromError($e, 'openai', $model ?? $this->config->getDefaultModel());
         }
     }
