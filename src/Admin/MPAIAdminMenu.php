@@ -8,7 +8,6 @@
 namespace MemberpressAiAssistant\Admin;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
-use MemberpressAiAssistant\Interfaces\SettingsCoordinatorInterface;
 
 /**
  * Class for handling MemberPress AI Assistant admin menu
@@ -32,13 +31,6 @@ class MPAIAdminMenu extends AbstractService {
     protected $parent_menu_slug = 'memberpress';
     
     /**
-     * Settings coordinator instance
-     *
-     * @var SettingsCoordinatorInterface
-     */
-    protected $settings_coordinator;
-    
-    /**
      * Settings controller instance (for new MVC architecture)
      *
      * @var \MemberpressAiAssistant\Admin\Settings\MPAISettingsController
@@ -53,16 +45,6 @@ class MPAIAdminMenu extends AbstractService {
      */
     public function __construct(string $name = 'admin_menu', $logger = null) {
         parent::__construct($name, $logger);
-    }
-    
-    /**
-     * Set the settings coordinator
-     *
-     * @param SettingsCoordinatorInterface $settings_coordinator Settings coordinator instance
-     * @return void
-     */
-    public function set_settings_coordinator(SettingsCoordinatorInterface $settings_coordinator): void {
-        $this->settings_coordinator = $settings_coordinator;
     }
     
     /**
@@ -87,8 +69,7 @@ class MPAIAdminMenu extends AbstractService {
         
         // Add dependencies to the dependencies array
         $this->dependencies = [
-            'settings_coordinator',
-            'settings_controller', // Add the new MVC controller as a dependency
+            'settings_controller', // Only need the new MVC controller as a dependency
         ];
 
         // Log registration
@@ -180,55 +161,17 @@ class MPAIAdminMenu extends AbstractService {
      * @return void
      */
     public function render_settings_page(): void {
-        // Emergency fallback to show basic settings
-        echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('MemberPress AI Assistant Settings', 'memberpress-ai-assistant') . '</h1>';
-        echo '<div class="notice notice-info">';
-        echo '<p><strong>' . esc_html__('Settings system is being upgraded', 'memberpress-ai-assistant') . '</strong></p>';
-        echo '<p>' . esc_html__('The settings system is currently under maintenance. Basic functionality is available.', 'memberpress-ai-assistant') . '</p>';
-        echo '</div>';
-        echo '<p>' . esc_html__('Please check back soon for full settings functionality.', 'memberpress-ai-assistant') . '</p>';
-        echo '</div>';
-        return;
-        
         try {
-            // First try to use the new MVC controller if available
+            // Use the MVC controller if available
             if ($this->settings_controller) {
-                $this->logWithLevel('Using new MVC settings controller for rendering', 'info');
+                $this->logWithLevel('Using MVC settings controller for rendering', 'info');
                 $this->settings_controller->render_page();
                 return;
             }
             
-            // Fall back to the old coordinator pattern if the new controller is not available
-            if (!$this->settings_coordinator) {
-                $this->logWithLevel('Neither settings controller nor coordinator available in admin menu', 'error');
-                $this->logWithLevel('This indicates a potential service container initialization issue', 'warning');
-                $this->render_fallback_settings_page();
-                return;
-            }
-            
-            $this->logWithLevel('Using settings coordinator for backward compatibility', 'info');
-            
-            // Get the controller from the coordinator with validation
-            try {
-                $controller = $this->settings_coordinator->getController();
-                
-                if (!$controller) {
-                    $this->logWithLevel('Controller retrieval failed - null controller returned from coordinator', 'error');
-                    $this->render_fallback_settings_page();
-                    return;
-                }
-                
-                $this->logWithLevel('Controller successfully retrieved, delegating rendering', 'info');
-                
-                // Delegate rendering to the controller
-                $controller->render_settings_page();
-                
-            } catch (\Exception $controller_exception) {
-                $this->logWithLevel('Exception while retrieving controller: ' . $controller_exception->getMessage(), 'error');
-                $this->logWithLevel('Exception trace: ' . $controller_exception->getTraceAsString(), 'debug');
-                $this->render_fallback_settings_page();
-            }
+            // If controller is not available, show fallback
+            $this->logWithLevel('Settings controller not available in admin menu', 'error');
+            $this->render_fallback_settings_page();
             
         } catch (\Exception $e) {
             $this->logWithLevel('Unhandled exception in render_settings_page: ' . $e->getMessage(), 'error');
@@ -240,7 +183,7 @@ class MPAIAdminMenu extends AbstractService {
             $this->logWithLevel('Error class: ' . get_class($error), 'error');
             $this->logWithLevel('Error trace: ' . $error->getTraceAsString(), 'debug');
             $this->render_fallback_settings_page();
-        } // No finally block needed
+        }
     }
     
     /**

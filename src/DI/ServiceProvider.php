@@ -9,13 +9,9 @@ namespace MemberpressAiAssistant\DI;
 
 use MemberpressAiAssistant\Interfaces\ServiceInterface;
 use MemberpressAiAssistant\Admin\MPAIAdminMenu;
-use MemberpressAiAssistant\Admin\MPAISettingsStorage;
-use MemberpressAiAssistant\Admin\MPAISettingsController;
-use MemberpressAiAssistant\Admin\MPAISettingsRenderer;
-use MemberpressAiAssistant\Admin\MPAISettingsCoordinator;
 use MemberpressAiAssistant\Admin\Settings\MPAISettingsModel;
 use MemberpressAiAssistant\Admin\Settings\MPAISettingsView;
-use MemberpressAiAssistant\Admin\Settings\MPAISettingsController as MVCSettingsController;
+use MemberpressAiAssistant\Admin\Settings\MPAISettingsController;
 use ReflectionClass;
 use ReflectionMethod;
 
@@ -315,34 +311,6 @@ class ServiceProvider {
         
         // We already found the admin menu instance, so we don't need to look for it again
         
-        // For backward compatibility, also handle the old settings components
-        $settingsStorage = null;
-        $settingsController = null;
-        $settingsRenderer = null;
-        $settingsCoordinator = null;
-        
-        // Find the instances of old components
-        foreach ($this->services as $serviceName => $service) {
-            if ($service instanceof MPAISettingsStorage) {
-                $settingsStorage = $service;
-            } elseif ($service instanceof MPAISettingsController) {
-                $settingsController = $service;
-            } elseif ($service instanceof MPAISettingsRenderer) {
-                $settingsRenderer = $service;
-            } elseif ($service instanceof MPAISettingsCoordinator) {
-                $settingsCoordinator = $service;
-            }
-        }
-        
-        // Log the component status
-        $logger->info('Settings components status', [
-            'new_mvc_components' => 'available',
-            'old_storage' => isset($settingsStorage) ? 'available' : 'missing',
-            'old_controller' => isset($settingsController) ? 'available' : 'missing',
-            'old_renderer' => isset($settingsRenderer) ? 'available' : 'missing',
-            'old_coordinator' => isset($settingsCoordinator) ? 'available' : 'missing'
-        ]);
-        
         // Update admin menu to use the new controller if available
         if ($adminMenu) {
             // Set the new MVC controller directly if the method exists
@@ -350,58 +318,14 @@ class ServiceProvider {
                 $adminMenu->set_settings_controller($settings_controller);
                 $logger->info('Set new MVC controller for MPAIAdminMenu');
             }
-            
-            // For backward compatibility, if the old coordinator exists, also set it in the admin menu
-            if ($adminMenu && method_exists($adminMenu, 'set_settings_coordinator') && $settingsCoordinator) {
-                $adminMenu->set_settings_coordinator($settingsCoordinator);
-                $logger->info('Set old coordinator for MPAIAdminMenu for backward compatibility');
-            }
         } else {
             $logger->warning('MPAIAdminMenu not found in services');
         }
         
-        // For backward compatibility, set up the old components if they exist
-        if ($settingsStorage && $settingsController && $settingsRenderer && $settingsCoordinator) {
-            try {
-                // First, set dependencies for the coordinator
-                if (method_exists($settingsCoordinator, 'set_dependencies')) {
-                    $settingsCoordinator->set_dependencies($settingsStorage, $settingsController, $settingsRenderer);
-                    $logger->info('Set dependencies for old MPAISettingsCoordinator');
-                }
-                
-                // Now set the coordinator in the controller
-                if (method_exists($settingsController, 'set_settings_coordinator')) {
-                    $settingsController->set_settings_coordinator($settingsCoordinator);
-                    $logger->info('Set coordinator for old MPAISettingsController');
-                }
-                
-                // Set the coordinator in the renderer
-                if (method_exists($settingsRenderer, 'set_dependencies')) {
-                    $settingsRenderer->set_dependencies($settingsCoordinator);
-                    $logger->info('Set coordinator for old MPAISettingsRenderer');
-                }
-                
-                // Initialize the coordinator
-                if (method_exists($settingsCoordinator, 'initialize')) {
-                    $settingsCoordinator->initialize();
-                    $logger->info('Initialized old MPAISettingsCoordinator');
-                }
-            } catch (\Exception $e) {
-                $logger->error('Error during old settings components initialization', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-            }
-        }
-        
         // Now handle all other services normally
         foreach ($this->services as $serviceName => $service) {
-            // Skip the settings components as we've already handled them
-            if ($service instanceof MPAISettingsController ||
-                $service instanceof MPAISettingsRenderer ||
-                $service instanceof MPAISettingsStorage ||
-                $service instanceof MPAISettingsCoordinator ||
-                $service instanceof MPAIAdminMenu) {
+            // Skip the admin menu as we've already handled it
+            if ($service instanceof MPAIAdminMenu) {
                 continue;
             }
             
