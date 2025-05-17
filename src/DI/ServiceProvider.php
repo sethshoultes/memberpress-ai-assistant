@@ -1,427 +1,98 @@
 <?php
 /**
- * Service Provider
+ * Service Provider Abstract Class
  *
  * @package MemberpressAiAssistant
  */
 
 namespace MemberpressAiAssistant\DI;
 
-use MemberpressAiAssistant\Interfaces\ServiceInterface;
-use MemberpressAiAssistant\Admin\MPAIAdminMenu;
-use MemberpressAiAssistant\Admin\Settings\MPAISettingsModel;
-use MemberpressAiAssistant\Admin\Settings\MPAISettingsView;
-use MemberpressAiAssistant\Admin\Settings\MPAISettingsController;
-use ReflectionClass;
-use ReflectionMethod;
-
 /**
- * Service provider for registering services with the container
+ * Abstract ServiceProvider class that defines a standard interface for service providers
+ * to register services with the ServiceLocator.
  */
-class ServiceProvider {
+abstract class ServiceProvider {
     /**
-     * The registered services
+     * Register services with the service locator
      *
-     * @var array
-     */
-    protected $services = [];
-
-    /**
-     * The booted services
+     * This method should be implemented by all service providers to register
+     * their services with the service locator.
      *
-     * @var array
-     */
-    protected $booted = [];
-
-    /**
-     * Register the service provider with the container
-     *
-     * @param Container $container The DI container
+     * @param ServiceLocator $locator The service locator
      * @return void
      */
-    public function register(Container $container): void {
-        // Register core services
-        $this->registerCoreServices($container);
-
-        // Register custom services
-        $this->registerCustomServices($container);
-
-        // Boot services
-        $this->bootServices($container);
-    }
+    abstract public function register(ServiceLocator $locator): void;
 
     /**
-     * Register core services with the container
+     * Get the services provided by the provider
      *
-     * @param Container $container The DI container
+     * This method should return an array of service names that the provider
+     * registers with the service locator. This helps with dependency management
+     * and avoiding circular dependencies.
+     *
+     * @return array Array of service names
+     */
+    abstract public function provides(): array;
+
+    /**
+     * Boot the service provider
+     *
+     * This method is called after all services have been registered.
+     * It can be used for any initialization that depends on other services.
+     *
+     * This method is optional and can be overridden by service providers
+     * that need to perform initialization after all services are registered.
+     *
+     * @param ServiceLocator $locator The service locator
      * @return void
      */
-    protected function registerCoreServices(Container $container): void {
-        // Register the container as a singleton
-        $container->singleton(Container::class, function() use ($container) {
-            return $container;
-        });
-
-        // Register the service provider as a singleton
-        $container->singleton(ServiceProvider::class, function() {
-            return $this;
-        });
-
-        // Register logger service
-        $container->singleton('logger', function() {
-            // Simple logger implementation
-            return new class {
-                public function info($message, array $context = []) {
-                    // Log to WordPress debug log if enabled
-                    if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log(sprintf('[INFO] %s: %s %s', 
-                            date('Y-m-d H:i:s'),
-                            $message,
-                            !empty($context) ? json_encode($context) : ''
-                        ));
-                    }
-                }
-
-                public function error($message, array $context = []) {
-                    // Log to WordPress debug log if enabled
-                    if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log(sprintf('[ERROR] %s: %s %s', 
-                            date('Y-m-d H:i:s'),
-                            $message,
-                            !empty($context) ? json_encode($context) : ''
-                        ));
-                    }
-                }
-                
-                public function warning($message, array $context = []) {
-                    // Log to WordPress debug log if enabled
-                    if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log(sprintf('[WARNING] %s: %s %s', 
-                            date('Y-m-d H:i:s'),
-                            $message,
-                            !empty($context) ? json_encode($context) : ''
-                        ));
-                    }
-                }
-                
-                public function debug($message, array $context = []) {
-                    // Log to WordPress debug log if enabled
-                    if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log(sprintf('[DEBUG] %s: %s %s', 
-                            date('Y-m-d H:i:s'),
-                            $message,
-                            !empty($context) ? json_encode($context) : ''
-                        ));
-                    }
-                }
-            };
-        });
+    public function boot(ServiceLocator $locator): void {
+        // Default implementation does nothing
     }
 
     /**
-     * Register custom services with the container
+     * Helper method to register a service as a singleton
      *
-     * @param Container $container The DI container
-     * @return void
-     */
-    protected function registerCustomServices(Container $container): void {
-        // Discover services (instantiates and sets dependencies)
-        $this->discoverServices($container);
-
-        // Register services (calls the register method on each service)
-        // This ensures services can perform container-specific registration
-        // after they have been fully instantiated and dependencies are set.
-        foreach ($this->services as $service) {
-            if ($service instanceof ServiceInterface) {
-                $service->register($container);
-            }
-        }
-    }
-
-    /**
-     * Boot the registered services
-     *
-     * @param Container $container The DI container
-     * @return void
-     */
-    protected function bootServices(Container $container): void {
-        foreach ($this->services as $service) {
-            if ($service instanceof ServiceInterface && !in_array($service->getServiceName(), $this->booted)) {
-                // Boot the service
-                $service->boot();
-                
-                // Mark as booted
-                $this->booted[] = $service->getServiceName();
-            }
-        }
-    }
-
-    /**
-     * Discover services, instantiate them, and set dependencies.
-     *
-     * @param Container $container The DI container
-     * @return void
-     */
-    protected function discoverServices(Container $container): void {
-        $logger = $container->make('logger');
-
-        // Phase 1: Instantiate all services first to ensure they exist in the container
-        // before attempting to resolve dependencies for set_dependencies
-        $this->instantiateServicesInDirectory($container, 'Services', $logger);
-        $this->instantiateServicesInDirectory($container, 'Admin', $logger);
-
-        // Phase 2: Set dependencies for services that require them via set_dependencies
-        $this->resolveAndSetDependencies($container, $logger);
-    }
-
-    /**
-     * Instantiate services in a specific directory.
-     *
-     * @param Container $container The DI container
-     * @param string $directory The directory name (relative to src/)
-     * @param object $logger The logger instance
-     * @return void
-     */
-    protected function instantiateServicesInDirectory(Container $container, string $directory, $logger): void {
-        $dir_path = MPAI_PLUGIN_DIR . 'src/' . $directory;
-        if (!is_dir($dir_path)) {
-            return;
-        }
-        $files = glob($dir_path . '/*.php');
-
-        foreach ($files as $file) {
-            $filename = basename($file, '.php');
-            // Skip abstract classes or interfaces if named like typical files
-            if (str_starts_with($filename, 'Abstract') || str_ends_with($filename, 'Interface')) {
-                 $logger->info('Skipping potential abstract/interface file: ' . $filename);
-                continue;
-            }
-            $class = 'MemberpressAiAssistant\\' . $directory . '\\' . $filename;
-
-            if (class_exists($class)) {
-                $reflection = new ReflectionClass($class);
-                // Ensure it's not an abstract class or interface before trying to instantiate
-                if (!$reflection->isAbstract() && !$reflection->isInterface() && $reflection->implementsInterface(ServiceInterface::class)) {
-                    try {
-                        // Use the container to resolve constructor dependencies
-                        $service = $container->make($class);
-
-                        // Store the service instance using a determined name
-                        $serviceName = $this->determineServiceName($service, $filename);
-                        $this->services[$serviceName] = $service;
-
-                        // Register the service instance with the container by class name and service name
-                        // This makes it available for dependency resolution later
-                        if (!$container->bound($class)) { // Use bound() instead of has()
-                            // Use singleton() to register the existing instance
-                            $container->singleton($class, function() use ($service) { return $service; });
-                        }
-                        if ($serviceName !== $class && !$container->bound($serviceName)) { // Use bound() instead of has()
-                             // Use singleton() to register the existing instance with its determined name
-                            $container->singleton($serviceName, function() use ($service) { return $service; });
-                        }
-                         $logger->info('Instantiated and registered service: ' . $class . ' as ' . $serviceName);
-
-                    } catch (\Exception $e) {
-                        $logger->error('Failed to instantiate service: ' . $class, [
-                            'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString(),
-                        ]);
-                    }
-                } elseif (!$reflection->implementsInterface(ServiceInterface::class)) {
-                     $logger->info('Skipping class (does not implement ServiceInterface): ' . $class);
-                }
-            }
-        }
-    }
-
-    /**
-     * Resolve and set dependencies for services using the set_dependencies method.
-     *
-     * @param Container $container The DI container
-     * @param object $logger The logger instance
-     * @return void
-     */
-    protected function resolveAndSetDependencies(Container $container, $logger): void {
-        // We don't need recursion detection anymore as we're going to properly handle the dependency graph
-        $logger->info('Starting dependency resolution in ServiceProvider');
-        
-        // Create and register new MVC settings components
-        // First, locate and register the admin menu instance before we create other services
-        // to avoid circular dependencies
-        $adminMenu = null;
-        foreach ($this->services as $serviceName => $service) {
-            if ($service instanceof \MemberpressAiAssistant\Admin\MPAIAdminMenu) {
-                $adminMenu = $service;
-                $logger->info('Found admin menu instance');
-                break;
-            }
-        }
-        
-        // Register Settings MVC components with proper dependency order
-        try {
-            // First create and register the model - it has no dependencies
-            $settings_model = new \MemberpressAiAssistant\Admin\Settings\MPAISettingsModel($logger);
-            $container->singleton('settings_model', function() use ($settings_model) {
-                return $settings_model;
-            });
-            $logger->info('Registered settings model');
-            
-            // Next create and register the view - it depends only on the model
-            $settings_view = new \MemberpressAiAssistant\Admin\Settings\MPAISettingsView($logger);
-            $container->singleton('settings_view', function() use ($settings_view) {
-                return $settings_view;
-            });
-            $logger->info('Registered settings view');
-            
-            // Finally create and register the controller - it depends on model and view
-            $settings_controller = new \MemberpressAiAssistant\Admin\Settings\MPAISettingsController(
-                $settings_model, 
-                $settings_view, 
-                $logger
-            );
-            $container->singleton('settings_controller', function() use ($settings_controller) {
-                return $settings_controller;
-            });
-            $logger->info('Registered settings controller');
-            
-            // Initialize the controller after all components are registered
-            $settings_controller->init();
-            $logger->info('Successfully initialized settings controller');
-        } catch (\Exception $e) {
-            $logger->error('Error creating MVC settings components: ' . $e->getMessage(), [
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            
-            // Do not attempt to use the settings components if there was an error
-            $settings_model = null;
-            $settings_view = null;
-            $settings_controller = null;
-        }
-        
-        // Now update the admin menu with the controller if it exists
-        if ($adminMenu && $settings_controller) {
-            // Only set the controller if the menu exists and we successfully created the controller
-            if (method_exists($adminMenu, 'set_settings_controller')) {
-                $adminMenu->set_settings_controller($settings_controller);
-                $logger->info('Updated admin menu with settings controller');
-            }
-        }
-        
-        // We already found the admin menu instance, so we don't need to look for it again
-        
-        // Update admin menu to use the new controller if available
-        if ($adminMenu) {
-            // Set the new MVC controller directly if the method exists
-            if (method_exists($adminMenu, 'set_settings_controller')) {
-                $adminMenu->set_settings_controller($settings_controller);
-                $logger->info('Set new MVC controller for MPAIAdminMenu');
-            }
-        } else {
-            $logger->warning('MPAIAdminMenu not found in services');
-        }
-        
-        // Now handle all other services normally
-        foreach ($this->services as $serviceName => $service) {
-            // Skip the admin menu as we've already handled it
-            if ($service instanceof MPAIAdminMenu) {
-                continue;
-            }
-            
-            if (method_exists($service, 'set_dependencies')) {
-                try {
-                    $method = new ReflectionMethod($service, 'set_dependencies');
-                    $params = $method->getParameters();
-                    $dependenciesToInject = [];
-
-                    foreach ($params as $param) {
-                        $type = $param->getType();
-                        // Ensure type is ReflectionNamedType and not built-in
-                        if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
-                            $dependencyClassOrName = $type->getName();
-                            // Resolve the dependency from the container
-                            // Use class name or registered service name
-                            $dependenciesToInject[] = $container->make($dependencyClassOrName);
-                            $logger->info('Resolving dependency ' . $dependencyClassOrName . ' for ' . get_class($service));
-                        } else {
-                            $paramName = $param->getName();
-                            $className = get_class($service);
-                            $logger->error("Cannot resolve dependency for parameter '{$paramName}' in {$className}::set_dependencies. Is it type-hinted correctly?");
-                            throw new \Exception("Cannot resolve dependency '{$paramName}' for {$className}::set_dependencies.");
-                        }
-                    }
-
-                    // Call set_dependencies with resolved dependencies
-                    $service->set_dependencies(...$dependenciesToInject);
-                    $logger->info('Successfully called set_dependencies for: ' . get_class($service));
-
-                } catch (\Exception $e) {
-                    $logger->error('Failed during set_dependencies for service: ' . get_class($service), [
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
-                    ]);
-                    // Re-throw or handle as appropriate for the application
-                    // throw $e;
-                }
-            }
-        }
-        
-        // No recursion flag to reset
-    }
-    
-    /**
-     * Determine the service name. Prefers getServiceName() method, falls back to filename.
-     *
-     * @param object $service The service instance.
-     * @param string $fallbackName The filename-based fallback name.
-     * @return string The determined service name.
-     */
-    protected function determineServiceName(object $service, string $fallbackName): string {
-        if (method_exists($service, 'getServiceName')) {
-            return $service->getServiceName();
-        }
-        // Convert filename (e.g., MyCoolService) to snake_case (e.g., my_cool_service) as a convention
-        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $fallbackName));
-    }
-
-    /**
-     * Get all registered services
-     *
-     * @return array
-     */
-    public function getServices(): array {
-        return $this->services;
-    }
-
-    /**
-     * Get a specific service by name
-     *
+     * @param ServiceLocator $locator The service locator
      * @param string $name The service name
-     * @return ServiceInterface|null
-     */
-    public function getService(string $name) {
-        return $this->services[$name] ?? null;
-    }
-
-    /**
-     * Check if a service is registered
-     *
-     * @param string $name The service name
-     * @return bool
-     */
-    public function hasService(string $name): bool {
-        return isset($this->services[$name]);
-    }
-
-    /**
-     * Add a service
-     *
-     * @param string $name The service name
-     * @param ServiceInterface $service The service instance
+     * @param mixed $definition The service definition
      * @return void
      */
-    public function addService(string $name, ServiceInterface $service): void {
-        $this->services[$name] = $service;
+    protected function registerSingleton(ServiceLocator $locator, string $name, $definition): void {
+        $locator->singleton($name, $definition);
+    }
+
+    /**
+     * Helper method to register a service as a transient (non-singleton)
+     *
+     * @param ServiceLocator $locator The service locator
+     * @param string $name The service name
+     * @param mixed $definition The service definition
+     * @return void
+     */
+    protected function registerTransient(ServiceLocator $locator, string $name, $definition): void {
+        $locator->transient($name, $definition);
+    }
+
+    /**
+     * Helper method to check if a service exists in the locator
+     *
+     * @param ServiceLocator $locator The service locator
+     * @param string $name The service name
+     * @return bool Whether the service exists
+     */
+    protected function hasService(ServiceLocator $locator, string $name): bool {
+        return $locator->has($name);
+    }
+
+    /**
+     * Helper method to get a service from the locator
+     *
+     * @param ServiceLocator $locator The service locator
+     * @param string $name The service name
+     * @return mixed The service instance
+     */
+    protected function getService(ServiceLocator $locator, string $name) {
+        return $locator->get($name);
     }
 }

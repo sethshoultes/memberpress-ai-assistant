@@ -1,24 +1,15 @@
 <?php
 /**
- * Service Locator
+ * Service Locator for Dependency Injection
  *
- * A simplified service locator implementation that replaces the more complex
- * dependency injection container. This implementation focuses on lazy loading
- * and explicit dependency management to avoid memory issues.
- *
- * @package MemberpressAiAssistant\DI
+ * @package MemberpressAiAssistant
  */
 
 namespace MemberpressAiAssistant\DI;
 
 /**
- * Service Locator class for managing service instances and definitions.
- *
- * This class implements a simplified service locator pattern that:
- * - Registers services by name
- * - Instantiates services only when requested (lazy loading)
- * - Supports singleton services to avoid duplicate instances
- * - Has clear dependency paths to avoid circular references
+ * Service Locator class that implements a simplified dependency injection system
+ * with lazy loading and singleton support to avoid memory issues.
  */
 class ServiceLocator {
     /**
@@ -38,9 +29,9 @@ class ServiceLocator {
     /**
      * Register a service with the service locator
      *
-     * @param string $name      The service identifier
-     * @param mixed  $definition The service definition (closure, class name string, or object instance)
-     * @param bool   $singleton Whether the service should be a singleton (default: true)
+     * @param string $name       The service identifier
+     * @param mixed  $definition The service definition (closure, class name, or object)
+     * @param bool   $singleton  Whether the service should be a singleton
      * @return void
      */
     public function register($name, $definition, $singleton = true): void {
@@ -54,12 +45,12 @@ class ServiceLocator {
             unset($this->instances[$name]);
         }
     }
-    
+
     /**
-     * Retrieve a service from the service locator
+     * Get a service from the service locator
      *
      * @param string $name The service identifier
-     * @return mixed The resolved service instance
+     * @return mixed The resolved service
      * @throws \Exception If the service is not registered
      */
     public function get($name) {
@@ -91,9 +82,9 @@ class ServiceLocator {
         
         return $instance;
     }
-    
+
     /**
-     * Check if a service is registered with the service locator
+     * Check if a service is registered
      *
      * @param string $name The service identifier
      * @return bool Whether the service is registered
@@ -104,13 +95,49 @@ class ServiceLocator {
 
     /**
      * Get all registered service definitions
+     * 
+     * This method is primarily for debugging purposes
      *
-     * This method is primarily for debugging purposes to inspect
-     * what services are registered and how they are configured.
-     *
-     * @return array All registered service definitions
+     * @return array The service definitions
      */
     public function getDefinitions(): array {
         return $this->definitions;
+    }
+
+    /**
+     * Get all resolved service instances
+     * 
+     * This method is primarily for debugging purposes
+     *
+     * @return array The service instances
+     */
+    public function getInstances(): array {
+        return $this->instances;
+    }
+
+    /**
+     * Register a service as a singleton
+     * 
+     * This is a convenience method that calls register() with singleton set to true
+     *
+     * @param string $name       The service identifier
+     * @param mixed  $definition The service definition (closure, class name, or object)
+     * @return void
+     */
+    public function singleton($name, $definition): void {
+        $this->register($name, $definition, true);
+    }
+
+    /**
+     * Register a service as a transient (non-singleton)
+     * 
+     * This is a convenience method that calls register() with singleton set to false
+     *
+     * @param string $name       The service identifier
+     * @param mixed  $definition The service definition (closure, class name, or object)
+     * @return void
+     */
+    public function transient($name, $definition): void {
+        $this->register($name, $definition, false);
     }
 }
