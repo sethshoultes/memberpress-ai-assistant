@@ -12,6 +12,7 @@ use MemberpressAiAssistant\DI\ServiceProvider;
 use MemberpressAiAssistant\Llm\Providers\AnthropicClient;
 use MemberpressAiAssistant\Llm\Providers\OpenAiClient;
 use MemberpressAiAssistant\Llm\Services\LlmCacheAdapter;
+use MemberpressAiAssistant\Llm\Services\LlmChatAdapter;
 use MemberpressAiAssistant\Llm\Services\LlmOrchestrator;
 use MemberpressAiAssistant\Llm\Services\LlmProviderFactory;
 use MemberpressAiAssistant\Llm\ValueObjects\LlmProviderConfig;
@@ -44,6 +45,12 @@ class LlmServiceProvider extends ServiceProvider {
             $providerFactory = $locator->get('llm.provider_factory');
             $cacheAdapter = $locator->get('llm.cache_adapter');
             return new LlmOrchestrator($providerFactory, $cacheAdapter);
+        });
+
+        // Register the chat adapter
+        $locator->register('llm.chat_adapter', function($locator) {
+            $orchestrator = $locator->get('llm.orchestrator');
+            return new LlmChatAdapter($orchestrator);
         });
 
         // Register provider configurations
@@ -98,6 +105,7 @@ class LlmServiceProvider extends ServiceProvider {
             'llm.provider_factory',
             'llm.cache_adapter',
             'llm.orchestrator',
+            'llm.chat_adapter',
         ];
     }
 

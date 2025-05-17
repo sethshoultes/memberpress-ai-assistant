@@ -265,7 +265,7 @@ class ChatInterface {
             // Log the request for debugging
             error_log('MPAI Debug - Chat request received: ' . $message);
             
-            // Get the agent orchestrator using the new ServiceLocator
+            // Get the service locator
             global $mpai_service_locator;
             
             // Log service locator status
@@ -275,12 +275,22 @@ class ChatInterface {
                 throw new \Exception('Service locator not available');
             }
             
-            // Check if agent_orchestrator service is registered (correct name)
-            error_log('MPAI Debug - Agent orchestrator service registered: ' .
-                ($mpai_service_locator->has('agent_orchestrator') ? 'Yes' : 'No'));
-            
-            if ($mpai_service_locator->has('agent_orchestrator')) {
-                // Get the orchestrator service using the correct name
+            // Try to use the LLM services first
+            if ($mpai_service_locator->has('llm.chat_adapter')) {
+                // Get the LLM chat adapter
+                $chatAdapter = $mpai_service_locator->get('llm.chat_adapter');
+                
+                // Process the request with the LLM chat adapter
+                error_log('MPAI Debug - Processing request with LLM chat adapter');
+                $response = $chatAdapter->processRequest($message, $conversation_id);
+                error_log('MPAI Debug - LLM chat adapter response: ' . json_encode($response));
+                
+                // Return the response
+                return rest_ensure_response($response);
+            }
+            // Fall back to the agent orchestrator if LLM services are not available
+            else if ($mpai_service_locator->has('agent_orchestrator')) {
+                // Get the orchestrator service
                 $orchestrator = $mpai_service_locator->get('agent_orchestrator');
                 
                 // Process the request
@@ -292,24 +302,26 @@ class ChatInterface {
                 error_log('MPAI Debug - Processing request with orchestrator');
                 $response = $orchestrator->processUserRequest($request_data, $conversation_id);
                 error_log('MPAI Debug - Orchestrator response: ' . json_encode($response));
+                
+                // Return the response
+                return rest_ensure_response([
+                    'status' => 'success',
+                    'message' => $response['message'] ?? $response['content'] ?? 'No response message',
+                    'conversation_id' => $response['conversation_id'] ?? $conversation_id,
+                    'timestamp' => time(),
+                ]);
             } else {
-                // Fallback to test response if orchestrator not available
-                error_log('MPAI Debug - Orchestrator not available, using fallback response');
+                // Fallback to test response if no services are available
+                error_log('MPAI Debug - No chat services available, using fallback response');
                 $response = [
+                    'status' => 'success',
                     'message' => 'This is a test response from the chat interface. Your message was: ' . $message,
-                    'conversation_id' => $conversation_id ?: 'new_conversation_' . time()
+                    'conversation_id' => $conversation_id ?: 'new_conversation_' . time(),
+                    'timestamp' => time(),
                 ];
+                
+                return rest_ensure_response($response);
             }
-            
-            error_log('MPAI Debug - Returning response: ' . json_encode($response));
-
-            // Return the response
-            return rest_ensure_response([
-                'status' => 'success',
-                'message' => $response['message'] ?? $response['content'] ?? 'No response message',
-                'conversation_id' => $response['conversation_id'] ?? $conversation_id,
-                'timestamp' => time(),
-            ]);
         } catch (\Exception $e) {
             // Log the error
             if (function_exists('error_log')) {
