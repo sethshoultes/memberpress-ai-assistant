@@ -256,17 +256,52 @@ class ChatInterface {
         $message = $request->get_param('message');
         $conversation_id = $request->get_param('conversation_id');
 
+        // Enable error reporting for debugging
+        ini_set('display_errors', 1);
+        ini_set('display_startup_errors', 1);
+        error_reporting(E_ALL);
+
         try {
-            // Get the agent orchestrator
-            global $mpai_container;
-            $orchestrator = $mpai_container->make('agent_orchestrator');
-
-            // Process the request
-            $request_data = [
-                'message' => $message,
-            ];
-
-            $response = $orchestrator->processUserRequest($request_data, $conversation_id);
+            // Log the request for debugging
+            error_log('MPAI Debug - Chat request received: ' . $message);
+            
+            // Get the agent orchestrator using the new ServiceLocator
+            global $mpai_service_locator;
+            
+            // Log service locator status
+            error_log('MPAI Debug - Service locator available: ' . (isset($mpai_service_locator) ? 'Yes' : 'No'));
+            
+            if (!isset($mpai_service_locator)) {
+                throw new \Exception('Service locator not available');
+            }
+            
+            // Check if agent_orchestrator service is registered (correct name)
+            error_log('MPAI Debug - Agent orchestrator service registered: ' .
+                ($mpai_service_locator->has('agent_orchestrator') ? 'Yes' : 'No'));
+            
+            if ($mpai_service_locator->has('agent_orchestrator')) {
+                // Get the orchestrator service using the correct name
+                $orchestrator = $mpai_service_locator->get('agent_orchestrator');
+                
+                // Process the request
+                $request_data = [
+                    'message' => $message,
+                ];
+                
+                // Use the orchestrator to process the request
+                error_log('MPAI Debug - Processing request with orchestrator');
+                $response = $orchestrator->processUserRequest($request_data, $conversation_id);
+                error_log('MPAI Debug - Orchestrator response: ' . json_encode($response));
+            } else {
+                // Fallback to test response if orchestrator not available
+                error_log('MPAI Debug - Orchestrator not available, using fallback response');
+                $response = [
+                    'message' => 'This is a test response from the chat interface. Your message was: ' . $message,
+                    'conversation_id' => $conversation_id ?: 'new_conversation_' . time()
+                ];
+            }
+            
+            error_log('MPAI Debug - Returning response: ' . json_encode($response));
 
             // Return the response
             return rest_ensure_response([

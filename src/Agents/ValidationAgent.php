@@ -149,6 +149,12 @@ EOT;
             
             case 'generate_secure_token':
                 return $this->generateSecureToken($request);
+                
+            case 'general':
+                return $this->handleGeneralIntent($request);
+                
+            case 'greeting':
+                return $this->handleGreeting($request);
             
             default:
                 return [
@@ -789,5 +795,37 @@ EOT;
         }
         
         return $score;
+    }
+    
+    /**
+     * Handle general intent
+     *
+     * @param array $request The request data
+     * @return array The response data
+     */
+    protected function handleGeneralIntent(array $request): array {
+        // For general intent, provide a helpful response
+        return [
+            'status' => 'success',
+            'message' => 'Hello! I\'m the Validation Agent. I can help you with input validation, permission verification, security policy enforcement, and vulnerability scanning. How can I assist you today?',
+            'agent' => $this->getAgentName(),
+            'timestamp' => time(),
+        ];
+    }
+    
+    /**
+     * Handle greeting intent
+     *
+     * @param array $request The request data
+     * @return array The response data
+     */
+    protected function handleGreeting(array $request): array {
+        // For greeting intent, provide a friendly response
+        return [
+            'status' => 'success',
+            'message' => 'Hello! I\'m the Validation Agent. I\'m here to help you with security and validation-related tasks. How can I assist you today?',
+            'agent' => $this->getAgentName(),
+            'timestamp' => time(),
+        ];
     }
 }

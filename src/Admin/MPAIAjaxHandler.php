@@ -104,13 +104,6 @@ class MPAIAjaxHandler extends AbstractService {
         // Log the result for debugging
         error_log("MPAI Debug - Test connection result: " . json_encode($result));
         
-        // Force success for testing since we know the connections are working
-        // based on the debug logs showing 200 responses
-        $result['success'] = true;
-        $result['message'] = $service_type === 'openai'
-            ? 'Successfully connected to OpenAI API'
-            : 'Successfully connected to Anthropic API';
-        
         if ($result['success']) {
             wp_send_json_success([
                 'message' => $result['message'],

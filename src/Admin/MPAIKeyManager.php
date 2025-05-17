@@ -99,16 +99,40 @@ class MPAIKeyManager extends AbstractService {
      * @return string|false The API key or false on failure
      */
     public function get_api_key($service_type) {
+        // Add detailed logging
+        error_log("MPAI Debug - Getting API key for service: {$service_type}");
+        
         // Verify security context first
         if (!$this->verify_security_context()) {
+            error_log("MPAI Debug - Security context verification failed");
             return false;
         }
         
         // Collect key components for the specified service
         $this->collect_key_components($service_type);
         
+        // Log component count
+        if (isset($this->service_key_components[$service_type])) {
+            error_log("MPAI Debug - Collected " . count($this->service_key_components[$service_type]) . " key components");
+        } else {
+            error_log("MPAI Debug - No key components collected");
+        }
+        
         // Assemble and return the key
-        return $this->assemble_key($service_type);
+        $key = $this->assemble_key($service_type);
+        
+        // Log key status
+        error_log("MPAI Debug - Assembled key is " . (empty($key) ? "empty" : "not empty"));
+        if (!empty($key)) {
+            error_log("MPAI Debug - Key format check: " .
+                ($service_type === self::SERVICE_OPENAI ?
+                    (strpos($key, 'sk-') === 0 ? 'valid' : 'invalid') :
+                    (strpos($key, 'sk-ant-') === 0 ? 'valid' : 'invalid')
+                ) . " format"
+            );
+        }
+        
+        return $key;
     }
     
     /**
@@ -210,20 +234,24 @@ class MPAIKeyManager extends AbstractService {
         }
         
         // Component 1: Service-specific obfuscated part
-        $this->service_key_components[$service_type][] = 
-            $this->get_obfuscated_component($service_type);
+        $component1 = $this->get_obfuscated_component($service_type);
+        error_log("MPAI Debug - Component 1 (obfuscated): " . (empty($component1) ? "empty" : "not empty"));
+        $this->service_key_components[$service_type][] = $component1;
         
         // Component 2: WordPress installation specific
-        $this->service_key_components[$service_type][] = 
-            $this->get_installation_component($service_type);
+        $component2 = $this->get_installation_component($service_type);
+        error_log("MPAI Debug - Component 2 (installation): " . (empty($component2) ? "empty" : "not empty"));
+        $this->service_key_components[$service_type][] = $component2;
         
         // Component 3: File-based component
-        $this->service_key_components[$service_type][] = 
-            $this->get_file_component($service_type);
+        $component3 = $this->get_file_component($service_type);
+        error_log("MPAI Debug - Component 3 (file): " . (empty($component3) ? "empty" : "not empty"));
+        $this->service_key_components[$service_type][] = $component3;
         
         // Component 4: Admin-specific component
-        $this->service_key_components[$service_type][] = 
-            $this->get_admin_component($service_type);
+        $component4 = $this->get_admin_component($service_type);
+        error_log("MPAI Debug - Component 4 (admin): " . (empty($component4) ? "empty" : "not empty"));
+        $this->service_key_components[$service_type][] = $component4;
     }
     
     /**
@@ -233,16 +261,28 @@ class MPAIKeyManager extends AbstractService {
      * @return string The obfuscated component
      */
     private function get_obfuscated_component($service_type) {
+        // These are just placeholders - in a real implementation, these would be actual API key fragments
         $obfuscated_components = [
-            self::SERVICE_OPENAI => 'T3BlbkFJX0NvbXBvbmVudF8x', // Base64 encoded
-            self::SERVICE_ANTHROPIC => 'QW50aHJvcGljX0NvbXBvbmVudF8x' // Base64 encoded
+            self::SERVICE_OPENAI => 'T3BlbkFJX0NvbXBvbmVudF8x', // Base64 encoded "OpenAI_Component_1"
+            self::SERVICE_ANTHROPIC => 'QW50aHJvcGljX0NvbXBvbmVudF8x' // Base64 encoded "Anthropic_Component_1"
         ];
         
         if (!isset($obfuscated_components[$service_type])) {
+            error_log("MPAI Debug - No obfuscated component found for service type: {$service_type}");
             return '';
         }
         
-        return $this->decode_obfuscated_string($obfuscated_components[$service_type]);
+        $decoded = $this->decode_obfuscated_string($obfuscated_components[$service_type]);
+        error_log("MPAI Debug - Decoded obfuscated component: {$decoded}");
+        
+        // For testing purposes, return actual key prefixes
+        if ($service_type === self::SERVICE_OPENAI) {
+            return 'sk-';
+        } elseif ($service_type === self::SERVICE_ANTHROPIC) {
+            return 'sk-ant-';
+        }
+        
+        return $decoded;
     }
     
     /**
@@ -326,24 +366,36 @@ class MPAIKeyManager extends AbstractService {
      * @return string|false The assembled API key or false on failure
      */
     private function assemble_key($service_type) {
-        if (!isset($this->service_key_components[$service_type]) || 
+        if (!isset($this->service_key_components[$service_type]) ||
             count($this->service_key_components[$service_type]) < 4) {
+            error_log("MPAI Debug - Not enough components to assemble key");
             return false;
         }
         
         $components = $this->service_key_components[$service_type];
         
+        // Log components for debugging
+        foreach ($components as $index => $component) {
+            error_log("MPAI Debug - Component " . ($index + 1) . " length: " . strlen($component));
+        }
+        
         // Service-specific assembly algorithm
         switch ($service_type) {
             case self::SERVICE_OPENAI:
-                return $this->assemble_openai_key($components);
+                $key = $this->assemble_openai_key($components);
+                error_log("MPAI Debug - Assembled OpenAI key length: " . strlen($key));
+                return $key;
             
             case self::SERVICE_ANTHROPIC:
-                return $this->assemble_anthropic_key($components);
+                $key = $this->assemble_anthropic_key($components);
+                error_log("MPAI Debug - Assembled Anthropic key length: " . strlen($key));
+                return $key;
             
             default:
                 // Default assembly algorithm
-                return $this->default_key_assembly($components);
+                $key = $this->default_key_assembly($components);
+                error_log("MPAI Debug - Assembled default key length: " . strlen($key));
+                return $key;
         }
     }
     
@@ -355,7 +407,17 @@ class MPAIKeyManager extends AbstractService {
      */
     private function assemble_openai_key($components) {
         // OpenAI keys typically start with "sk-" and are followed by a long string
-        return 'sk-' . implode('', $components) . $this->get_runtime_entropy();
+        // For testing, we'll use a simplified version that just includes the components
+        $key = implode('', $components) . $this->get_runtime_entropy();
+        
+        // Make sure the key starts with "sk-" (it should already from the first component)
+        if (strpos($key, 'sk-') !== 0) {
+            $key = 'sk-' . $key;
+        }
+        
+        error_log("MPAI Debug - OpenAI key prefix: " . substr($key, 0, 5) . "...");
+        
+        return $key;
     }
     
     /**
@@ -366,7 +428,17 @@ class MPAIKeyManager extends AbstractService {
      */
     private function assemble_anthropic_key($components) {
         // Anthropic keys have a different format
-        return 'sk-ant-' . implode('-', $components) . $this->get_runtime_entropy();
+        // For testing, we'll use a simplified version that just includes the components
+        $key = implode('-', $components) . $this->get_runtime_entropy();
+        
+        // Make sure the key starts with "sk-ant-" (it should already from the first component)
+        if (strpos($key, 'sk-ant-') !== 0) {
+            $key = 'sk-ant-' . $key;
+        }
+        
+        error_log("MPAI Debug - Anthropic key prefix: " . substr($key, 0, 8) . "...");
+        
+        return $key;
     }
     
     /**
@@ -397,27 +469,26 @@ class MPAIKeyManager extends AbstractService {
      * @return array The test result
      */
     public function test_api_connection($service_type) {
-        // Get the API key
-        $api_key = $this->get_api_key($service_type);
-        
-        // Get the raw API key from settings for comparison
+        // For now, always use the raw API key from settings
+        // In the future, this will be replaced with the obfuscated key system
         $settings_model = new \MemberpressAiAssistant\Admin\Settings\MPAISettingsModel();
-        $raw_api_key = ($service_type === self::SERVICE_OPENAI)
+        $api_key = ($service_type === self::SERVICE_OPENAI)
             ? $settings_model->get_openai_api_key()
             : $settings_model->get_anthropic_api_key();
         
-        // Log the keys for debugging (redacted for security)
-        error_log("MPAI Debug - Service: {$service_type}");
-        error_log("MPAI Debug - Using obfuscated key: " . (empty($api_key) ? 'empty' : 'not empty'));
-        error_log("MPAI Debug - Raw settings key: " . (empty($raw_api_key) ? 'empty' : 'not empty'));
+        // Log the key info for debugging (redacted for security)
+        error_log("MPAI Debug - Testing {$service_type} API connection");
+        error_log("MPAI Debug - Raw settings key available: " . (empty($api_key) ? 'No' : 'Yes'));
         
-        // For testing, use the raw API key from settings instead of the obfuscated one
-        $api_key = $raw_api_key;
+        // For development purposes, also log the obfuscated key generation
+        // This doesn't affect the actual API call but helps us debug the obfuscation system
+        $obfuscated_key = $this->get_api_key($service_type);
+        error_log("MPAI Debug - Obfuscated key generated (not used): " . (empty($obfuscated_key) ? 'No' : 'Yes'));
         
         if (!$api_key) {
             return [
                 'success' => false,
-                'message' => 'Failed to retrieve API key'
+                'message' => 'API key is not configured. Please enter a valid API key in the settings.'
             ];
         }
         

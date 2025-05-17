@@ -165,6 +165,12 @@ EOT;
             
             case 'clear_cache':
                 return $this->clearCache($request);
+                
+            case 'general':
+                return $this->handleGeneralIntent($request);
+                
+            case 'greeting':
+                return $this->handleGreeting($request);
             
             default:
                 return [
@@ -500,6 +506,38 @@ EOT;
                 'space_freed' => '24MB', // Example value
                 'cleared_at' => date('Y-m-d H:i:s'),
             ],
+        ];
+    }
+    
+    /**
+     * Handle general intent
+     *
+     * @param array $request The request data
+     * @return array The response data
+     */
+    protected function handleGeneralIntent(array $request): array {
+        // For general intent, provide a helpful response
+        return [
+            'status' => 'success',
+            'message' => 'Hello! I\'m the System Agent. I can help you with system configuration, diagnostics, plugin management, and performance monitoring. How can I assist you today?',
+            'agent' => $this->getAgentName(),
+            'timestamp' => time(),
+        ];
+    }
+    
+    /**
+     * Handle greeting intent
+     *
+     * @param array $request The request data
+     * @return array The response data
+     */
+    protected function handleGreeting(array $request): array {
+        // For greeting intent, provide a friendly response
+        return [
+            'status' => 'success',
+            'message' => 'Hello! I\'m the System Agent. I\'m here to help you with system-related tasks. How can I assist you today?',
+            'agent' => $this->getAgentName(),
+            'timestamp' => time(),
         ];
     }
 

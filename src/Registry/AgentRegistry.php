@@ -213,9 +213,21 @@ class AgentRegistry {
      * @return array List of core agent class names
      */
     private function getCoreAgentClasses(): array {
-        // This would be populated with the core agent classes
-        // For example: MemberpressAiAssistant\Agents\GeneralAgent, etc.
-        return apply_filters('mpai_core_agent_classes', []);
+        // Register the core agent classes that we found in the src/Agents directory
+        $coreAgents = [
+            'MemberpressAiAssistant\\Agents\\ContentAgent',
+            'MemberpressAiAssistant\\Agents\\MemberPressAgent',
+            'MemberpressAiAssistant\\Agents\\SystemAgent',
+            'MemberpressAiAssistant\\Agents\\ValidationAgent'
+        ];
+        
+        // Log the core agents being registered
+        if ($this->logger) {
+            $this->logger->info("Registering core agents: " . implode(', ', $coreAgents));
+        }
+        
+        // Allow plugins to add or remove core agents
+        return apply_filters('mpai_core_agent_classes', $coreAgents);
     }
 
     /**

@@ -35,10 +35,19 @@ class OrchestratorService extends AbstractService {
         // Register the AgentOrchestrator with the service locator
         $serviceLocator->register('agent_orchestrator', function() use ($serviceLocator, $self) {
             // Get required dependencies
-            $agentRegistry = AgentRegistry::getInstance($serviceLocator->get('logger'));
+            $logger = $serviceLocator->get('logger');
+            
+            // Get the agent registry and discover agents
+            $agentRegistry = AgentRegistry::getInstance($logger);
+            
+            // Discover and register available agents
+            $agentCount = $agentRegistry->discoverAgents();
+            if ($logger) {
+                $logger->info("Discovered {$agentCount} agents for the orchestrator");
+            }
+            
             $agentFactory = $serviceLocator->has('agent_factory') ? $serviceLocator->get('agent_factory') : new AgentFactory($serviceLocator, $agentRegistry);
             $contextManager = $serviceLocator->has('context_manager') ? $serviceLocator->get('context_manager') : new ContextManager();
-            $logger = $serviceLocator->get('logger');
             
             // Get the cache service if available
             $cacheService = null;
