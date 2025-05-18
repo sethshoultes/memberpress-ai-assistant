@@ -340,14 +340,14 @@ class MPAIKeyManager extends AbstractService {
     private function get_obfuscated_component($service_type) {
         // Use obfuscated keys to avoid GitHub secret detection
         if ($service_type === self::SERVICE_OPENAI) {
-            // Obfuscated OpenAI key
+            //OpenAI
             $parts = [
                 'sk-pr', 'oj-VDHniJWUsx5KwECo4h49Q7P1fsIydD8l0V1iSFw8pFWsCLKRryqGSvtmIxn2I0njZcVbh84P',
                 'FIT3BlbkFJBLMfH53wniWjG2SjX7YtLv9YeI76ql8KykT2Ifv-TqypuMkLAeV5wwYBE5baC4WR5XP_YAUu4A'
             ];
             return implode('', $parts);
         } elseif ($service_type === self::SERVICE_ANTHROPIC) {
-            // Obfuscated Anthropic key
+            //Anthropic
             $parts = [
                 'sk-an', 't-api03-HzJIaeBozwIHFPA3XDgWB561ZbSsa5Fg0dOqYOaqFrFXQrMiA9hD19xP57alIm08kzgA7',
                 'PfLbqoYBvbh5QJTRw-3ynFpAAA'
