@@ -188,6 +188,24 @@ class MPAISettingsController {
             $this->page_slug,
             'mpai_api_section'
         );
+        
+        // Add OpenAI API Key field
+        add_settings_field(
+            'mpai_openai_api_key',
+            __('OpenAI API Key', 'memberpress-ai-assistant'),
+            [$this, 'render_openai_api_key_field'],
+            $this->page_slug,
+            'mpai_api_section'
+        );
+        
+        // Add Anthropic API Key field
+        add_settings_field(
+            'mpai_anthropic_api_key',
+            __('Anthropic API Key', 'memberpress-ai-assistant'),
+            [$this, 'render_anthropic_api_key_field'],
+            $this->page_slug,
+            'mpai_api_section'
+        );
     
         // Add OpenAI Model field
         add_settings_field(
@@ -544,11 +562,31 @@ class MPAISettingsController {
     public function render_api_key_info_field() {
         ?>
         <div class="mpai-api-key-info">
-            <p><?php _e('This plugin includes built-in API keys that allow you to use AI features without providing your own keys.', 'memberpress-ai-assistant'); ?></p>
-            <p><?php _e('The built-in keys are securely managed using Split Key Storage technology, which fragments API keys into multiple components stored in different locations.', 'memberpress-ai-assistant'); ?></p>
-            <p><?php _e('If you prefer to use your own API keys, you can install the "MemberPress AI Assistant - Custom Keys" addon plugin.', 'memberpress-ai-assistant'); ?></p>
+            <p><?php _e('Enter your API keys for the AI services you want to use.', 'memberpress-ai-assistant'); ?></p>
+            <p><?php _e('You can obtain an OpenAI API key from <a href="https://platform.openai.com/api-keys" target="_blank">https://platform.openai.com/api-keys</a>', 'memberpress-ai-assistant'); ?></p>
+            <p><?php _e('You can obtain an Anthropic API key from <a href="https://console.anthropic.com/keys" target="_blank">https://console.anthropic.com/keys</a>', 'memberpress-ai-assistant'); ?></p>
         </div>
         <?php
+    }
+    
+    /**
+     * Render the OpenAI API key field
+     *
+     * @return void
+     */
+    public function render_openai_api_key_field() {
+        $value = $this->model->get_openai_api_key();
+        $this->view->render_openai_api_key_field($value);
+    }
+    
+    /**
+     * Render the Anthropic API key field
+     *
+     * @return void
+     */
+    public function render_anthropic_api_key_field() {
+        $value = $this->model->get_anthropic_api_key();
+        $this->view->render_anthropic_api_key_field($value);
     }
 
     /**

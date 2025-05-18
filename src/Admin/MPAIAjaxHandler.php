@@ -56,6 +56,54 @@ class MPAIAjaxHandler extends AbstractService {
      */
     protected function addHooks(): void {
         // Add AJAX handlers
-        // No AJAX handlers currently
+        add_action('wp_ajax_mpai_test_api_connection', [$this, 'handle_test_api_connection']);
+    }
+    
+    /**
+     * Handle AJAX request to test API connection
+     *
+     * @return void
+     */
+    public function handle_test_api_connection(): void {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_settings_nonce')) {
+            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-ai-assistant')]);
+        }
+        
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('You do not have permission to perform this action.', 'memberpress-ai-assistant')]);
+        }
+        
+        // Get provider and API key
+        $provider = isset($_POST['provider']) ? sanitize_text_field($_POST['provider']) : '';
+        $api_key = isset($_POST['api_key']) ? sanitize_text_field($_POST['api_key']) : '';
+        
+        if (empty($provider) || empty($api_key)) {
+            wp_send_json_error(['message' => __('Provider or API key is missing.', 'memberpress-ai-assistant')]);
+        }
+        
+        // Get key manager from service locator
+        global $mpai_service_locator;
+        if (!isset($mpai_service_locator) || !$mpai_service_locator->has('key_manager')) {
+            wp_send_json_error(['message' => __('Key manager not available.', 'memberpress-ai-assistant')]);
+        }
+        
+        $key_manager = $mpai_service_locator->get('key_manager');
+        
+        // Temporarily set the API key for testing
+        add_filter('mpai_override_api_key_' . $provider, function() use ($api_key) {
+            return $api_key;
+        });
+        
+        // Test the connection
+        $result = $key_manager->test_api_connection($provider);
+        
+        // Send the result
+        if ($result['success']) {
+            wp_send_json_success(['message' => $result['message']]);
+        } else {
+            wp_send_json_error(['message' => $result['message']]);
+        }
     }
 }

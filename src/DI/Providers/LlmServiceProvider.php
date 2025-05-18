@@ -159,8 +159,8 @@ class LlmServiceProvider extends ServiceProvider {
      * @return void
      */
     public function registerSettings(): void {
-        // API key settings are now handled by the obfuscated key system
-        // These settings are kept for backward compatibility but are deprecated
+        // API key settings are now handled by the settings model
+        // These settings are for LLM configuration
 
         register_setting('mpai_settings', 'mpai_primary_provider', [
             'type' => 'string',

@@ -53,8 +53,20 @@ class LlmOrchestrator {
         $this->providerFactory = $providerFactory;
         $this->cacheAdapter = $cacheAdapter;
         
-        // Load primary provider from options
-        $this->primaryProvider = get_option('mpai_primary_provider', 'openai');
+        // Load primary provider from settings
+        $settings = get_option('mpai_settings', []);
+        if (!empty($settings) && isset($settings['primary_api'])) {
+            $this->primaryProvider = $settings['primary_api'];
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Loaded primary provider from settings: ' . $this->primaryProvider);
+            }
+        } else {
+            // Fallback to old option name for backward compatibility
+            $this->primaryProvider = get_option('mpai_primary_provider', 'openai');
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Loaded primary provider from old option: ' . $this->primaryProvider);
+            }
+        }
     }
 
     /**

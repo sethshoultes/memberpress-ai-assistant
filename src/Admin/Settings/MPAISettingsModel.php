@@ -39,9 +39,11 @@ class MPAISettingsModel {
         'user_roles' => ['administrator'],
         
         // API settings
+        'openai_api_key' => '',
         'openai_model' => 'gpt-4o',
         'openai_temperature' => 0.7,
         'openai_max_tokens' => 1000,
+        'anthropic_api_key' => '',
         'anthropic_model' => 'claude-3-opus-20240229',
         'anthropic_temperature' => 0.7,
         'anthropic_max_tokens' => 1000,
@@ -521,12 +523,9 @@ class MPAISettingsModel {
     /**
      * Get the OpenAI API key
      *
-     * @deprecated 2.0.0 API keys are now managed by the obfuscated key system
      * @return string OpenAI API key
      */
     public function get_openai_api_key() {
-        // For backward compatibility, still allow getting the key
-        // but it will be removed in a future version
         return $this->get('openai_api_key', '');
     }
 
@@ -560,12 +559,9 @@ class MPAISettingsModel {
     /**
      * Get the Anthropic API key
      *
-     * @deprecated 2.0.0 API keys are now managed by the obfuscated key system
      * @return string Anthropic API key
      */
     public function get_anthropic_api_key() {
-        // For backward compatibility, still allow getting the key
-        // but it will be removed in a future version
         return $this->get('anthropic_api_key', '');
     }
 

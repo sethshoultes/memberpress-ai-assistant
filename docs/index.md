@@ -26,7 +26,7 @@ Welcome to the MemberPress AI Assistant documentation. This index provides an ov
 
 ## Developer Resources
 
-- [API Key System](_EXCLUDE/api-key-system.md) - Documentation of the API key obfuscation system (for developers only)
+- [API Key Management](api-key-management.md) - Documentation of the API key management system
 - [Contributing Guidelines](../CONTRIBUTING.md) - Guidelines for contributing to the project
 - [Coding Standards](../CODING_STANDARDS.md) - Coding standards for the project
 

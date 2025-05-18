@@ -57,9 +57,39 @@
     margin-right: 10px;
 }
 
+/* API Key Field */
+.mpai-api-key-field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.mpai-api-key-field input[type="password"] {
+    flex: 1;
+    min-width: 300px;
+}
+
 .mpai-test-result {
     margin-top: 10px;
     width: 100%;
+    display: block;
+}
+
+.mpai-success {
+    color: #46b450;
+    font-weight: 500;
+}
+
+.mpai-error {
+    color: #dc3232;
+    font-weight: 500;
+}
+
+.mpai-loading {
+    color: #666;
+    font-style: italic;
 }
 
 /* Provider Selection */

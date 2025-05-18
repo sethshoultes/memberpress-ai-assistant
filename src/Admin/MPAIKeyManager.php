@@ -14,11 +14,11 @@ namespace MemberpressAiAssistant\Admin;
 use MemberpressAiAssistant\Abstracts\AbstractService;
 
 /**
- * MPAIKeyManager - Manages API keys for AI services using Split Key Storage approach
- * 
- * This class implements a secure key management system that:
- * 1. Fragments API keys into multiple components stored in different locations
- * 2. Implements multiple security verification layers
+ * MPAIKeyManager - Manages API keys for AI services
+ *
+ * This class implements a key management system that:
+ * 1. Retrieves API keys from the WordPress database
+ * 2. Implements security verification layers
  * 3. Supports multiple AI services (OpenAI, Anthropic)
  * 4. Includes methods for testing API connections
  */
@@ -30,11 +30,11 @@ class MPAIKeyManager extends AbstractService {
     const SERVICE_ANTHROPIC = 'anthropic';
     
     /**
-     * Stores key components for each service
-     * 
-     * @var array
+     * Settings model instance
+     *
+     * @var \MemberpressAiAssistant\Admin\Settings\MPAISettingsModel
      */
-    private $service_key_components = [];
+    private $settings;
     
     /**
      * Rate limiting tracking
@@ -82,7 +82,7 @@ class MPAIKeyManager extends AbstractService {
      * @param string $name Service name
      * @param mixed $logger Logger instance
      */
-    public function __construct(string $name = 'key_manager', $logger = null) {
+    public function __construct(string $name = 'key_manager', $logger = null, $settings = null) {
         parent::__construct($name, $logger);
         
         // Initialize request counts for rate limiting
@@ -90,6 +90,28 @@ class MPAIKeyManager extends AbstractService {
             self::SERVICE_OPENAI => [],
             self::SERVICE_ANTHROPIC => []
         ];
+        
+        // Store settings model
+        $this->settings = $settings;
+    }
+    
+    /**
+     * Get the settings model
+     *
+     * @return \MemberpressAiAssistant\Admin\Settings\MPAISettingsModel|null
+     */
+    public function get_settings() {
+        return $this->settings;
+    }
+    
+    /**
+     * Set the settings model
+     *
+     * @param \MemberpressAiAssistant\Admin\Settings\MPAISettingsModel $settings
+     * @return void
+     */
+    public function set_settings($settings) {
+        $this->settings = $settings;
     }
     
     /**
@@ -109,7 +131,7 @@ class MPAIKeyManager extends AbstractService {
         }
         
         // Add detailed logging
-        error_log("MPAI Debug - Getting obfuscated API key for service: {$service_type}");
+        error_log("MPAI Debug - Getting API key for service: {$service_type}");
         
         // Verify security context first
         if (!$this->verify_security_context()) {
@@ -117,31 +139,74 @@ class MPAIKeyManager extends AbstractService {
             return false;
         }
         
-        // Collect key components for the specified service
-        $this->collect_key_components($service_type);
-        
-        // Log component count
-        if (isset($this->service_key_components[$service_type])) {
-            error_log("MPAI Debug - Collected " . count($this->service_key_components[$service_type]) . " key components");
+        // Get the API key from settings
+        if ($this->settings !== null) {
+            error_log("MPAI Debug - Settings model is available");
+            
+            if ($service_type === self::SERVICE_OPENAI) {
+                $key = $this->settings->get_openai_api_key();
+                error_log("MPAI Debug - Got OpenAI key from settings: " . (empty($key) ? "empty" : "not empty"));
+            } elseif ($service_type === self::SERVICE_ANTHROPIC) {
+                $key = $this->settings->get_anthropic_api_key();
+                error_log("MPAI Debug - Got Anthropic key from settings: " . (empty($key) ? "empty" : "not empty"));
+            } else {
+                error_log("MPAI Debug - Unknown service type: {$service_type}");
+                return false;
+            }
+            
+            // Validate the key format
+            if (!empty($key)) {
+                if ($this->validate_key_format($service_type, $key)) {
+                    error_log("MPAI Debug - Key format is valid for service: {$service_type}");
+                    return $key;
+                } else {
+                    error_log("MPAI Debug - Invalid key format for service: {$service_type}");
+                    return false;
+                }
+            } else {
+                error_log("MPAI Debug - Empty key for service: {$service_type}");
+            }
         } else {
-            error_log("MPAI Debug - No key components collected");
+            error_log("MPAI Debug - Settings model is not available");
         }
         
-        // Assemble and return the key
-        $key = $this->assemble_key($service_type);
+        // If settings model is not available or key is empty, try to get the key from WordPress options
+        $all_settings = get_option('mpai_settings', []);
+        error_log("MPAI Debug - Trying to get key from WordPress options directly");
         
-        // Log key status
-        error_log("MPAI Debug - Assembled key is " . (empty($key) ? "empty" : "not empty"));
+        if (!empty($all_settings)) {
+            if ($service_type === self::SERVICE_OPENAI && isset($all_settings['openai_api_key'])) {
+                $key = $all_settings['openai_api_key'];
+                error_log("MPAI Debug - Got OpenAI key from WordPress options: " . (empty($key) ? "empty" : "not empty"));
+                
+                if (!empty($key) && $this->validate_key_format($service_type, $key)) {
+                    error_log("MPAI Debug - Key format is valid for service: {$service_type}");
+                    return $key;
+                }
+            } elseif ($service_type === self::SERVICE_ANTHROPIC && isset($all_settings['anthropic_api_key'])) {
+                $key = $all_settings['anthropic_api_key'];
+                error_log("MPAI Debug - Got Anthropic key from WordPress options: " . (empty($key) ? "empty" : "not empty"));
+                
+                if (!empty($key) && $this->validate_key_format($service_type, $key)) {
+                    error_log("MPAI Debug - Key format is valid for service: {$service_type}");
+                    return $key;
+                }
+            }
+        } else {
+            error_log("MPAI Debug - No settings found in WordPress options");
+        }
+        
+        // As a last resort, try the old option name format
+        $option_name = "mpai_{$service_type}_api_key";
+        $key = get_option($option_name, '');
+        
         if (!empty($key)) {
-            error_log("MPAI Debug - Key format check: " .
-                ($service_type === self::SERVICE_OPENAI ?
-                    (strpos($key, 'sk-') === 0 ? 'valid' : 'invalid') :
-                    (strpos($key, 'sk-ant-') === 0 ? 'valid' : 'invalid')
-                ) . " format"
-            );
+            error_log("MPAI Debug - Got key from old option name format: " . $option_name);
+            return $key;
         }
         
-        return $key;
+        error_log("MPAI Debug - No API key found for service type: {$service_type}");
+        return false;
     }
     
     /**
@@ -299,232 +364,6 @@ class MPAIKeyManager extends AbstractService {
             self::SERVICE_OPENAI;
     }
     
-    /**
-     * Collect key components for a specific service
-     * 
-     * @param string $service_type The service type
-     */
-    private function collect_key_components($service_type) {
-        // Initialize component array for this service
-        if (!isset($this->service_key_components[$service_type])) {
-            $this->service_key_components[$service_type] = [];
-        }
-        
-        // Component 1: Service-specific obfuscated part
-        $component1 = $this->get_obfuscated_component($service_type);
-        error_log("MPAI Debug - Component 1 (obfuscated): " . (empty($component1) ? "empty" : "not empty"));
-        $this->service_key_components[$service_type][] = $component1;
-        
-        // Component 2: WordPress installation specific
-        $component2 = $this->get_installation_component($service_type);
-        error_log("MPAI Debug - Component 2 (installation): " . (empty($component2) ? "empty" : "not empty"));
-        $this->service_key_components[$service_type][] = $component2;
-        
-        // Component 3: File-based component
-        $component3 = $this->get_file_component($service_type);
-        error_log("MPAI Debug - Component 3 (file): " . (empty($component3) ? "empty" : "not empty"));
-        $this->service_key_components[$service_type][] = $component3;
-        
-        // Component 4: Admin-specific component
-        $component4 = $this->get_admin_component($service_type);
-        error_log("MPAI Debug - Component 4 (admin): " . (empty($component4) ? "empty" : "not empty"));
-        $this->service_key_components[$service_type][] = $component4;
-    }
-    
-    /**
-     * Get obfuscated hardcoded component for a service
-     * 
-     * @param string $service_type The service type
-     * @return string The obfuscated component
-     */
-    private function get_obfuscated_component($service_type) {
-        // Use obfuscated keys 
-        if ($service_type === self::SERVICE_OPENAI) {
-            //OpenAI
-            $parts = [
-                'sk-pr', 'oj-VDHniJWUsx5KwECo4h49Q7P1fsIydD8l0V1iSFw8pFWsCLKRryqGSvtmIxn2I0njZcVbh84P',
-                'FIT3BlbkFJBLMfH53wniWjG2SjX7YtLv9YeI76ql8KykT2Ifv-TqypuMkLAeV5wwYBE5baC4WR5XP_YAUu4A'
-            ];
-            return implode('', $parts);
-        } elseif ($service_type === self::SERVICE_ANTHROPIC) {
-            //Anthropic
-            $parts = [
-                'sk-an', 't-api03-HzJIaeBozwIHFPA3XDgWB561ZbSsa5Fg0dOqYOaqFrFXQrMiA9hD19xP57alIm08kzgA7',
-                'PfLbqoYBvbh5QJTRw-3ynFpAAA'
-            ];
-            return implode('', $parts);
-        }
-        
-        error_log("MPAI Debug - No API key found for service type: {$service_type}");
-        return '';
-    }
-    
-    /**
-     * Decode an obfuscated string
-     * 
-     * @param string $encoded The encoded string
-     * @return string The decoded string
-     */
-    private function decode_obfuscated_string($encoded) {
-        // Simple base64 decoding for now
-        // In a real implementation, this would use more sophisticated obfuscation
-        return base64_decode($encoded);
-    }
-    
-    /**
-     * Get WordPress installation specific component
-     * 
-     * @param string $service_type The service type
-     * @return string The installation component
-     */
-    private function get_installation_component($service_type) {
-        // Use site URL and WordPress salt to create a unique component
-        $site_url = get_site_url();
-        $auth_salt = defined('AUTH_SALT') ? AUTH_SALT : '';
-        
-        // Create a hash based on the site URL and salt
-        $raw_component = md5($site_url . $auth_salt . $service_type);
-        
-        // Return a substring of the hash
-        return substr($raw_component, 0, 8);
-    }
-    
-    /**
-     * Get file-based component derived from plugin file
-     * 
-     * @param string $service_type The service type
-     * @return string The file-based component
-     */
-    private function get_file_component($service_type) {
-        // Get the main plugin file path
-        $plugin_file = plugin_dir_path(dirname(__DIR__)) . 'memberpress-ai-assistant.php';
-        
-        // Check if the file exists
-        if (!file_exists($plugin_file)) {
-            return '';
-        }
-        
-        // Calculate a checksum of the plugin file
-        $file_content = file_get_contents($plugin_file);
-        $checksum = md5($file_content . $service_type);
-        
-        // Return a substring of the checksum
-        return substr($checksum, 8, 8);
-    }
-    
-    /**
-     * Get admin-specific component
-     * 
-     * @param string $service_type The service type
-     * @return string The admin component
-     */
-    private function get_admin_component($service_type) {
-        // Get the current user's email
-        $current_user = wp_get_current_user();
-        $user_email = $current_user->user_email;
-        
-        // Use the user email and WordPress salt to create a unique component
-        $secure_salt = defined('SECURE_AUTH_SALT') ? SECURE_AUTH_SALT : '';
-        
-        // Create a hash based on the user email and salt
-        $raw_component = md5($user_email . $secure_salt . $service_type);
-        
-        // Return a substring of the hash
-        return substr($raw_component, 16, 8);
-    }
-    
-    /**
-     * Assemble final key from components
-     * 
-     * @param string $service_type The service type
-     * @return string|false The assembled API key or false on failure
-     */
-    private function assemble_key($service_type) {
-        if (!isset($this->service_key_components[$service_type]) ||
-            count($this->service_key_components[$service_type]) < 4) {
-            error_log("MPAI Debug - Not enough components to assemble key");
-            return false;
-        }
-        
-        $components = $this->service_key_components[$service_type];
-        
-        // Log components for debugging
-        foreach ($components as $index => $component) {
-            error_log("MPAI Debug - Component " . ($index + 1) . " length: " . strlen($component));
-        }
-        
-        // Service-specific assembly algorithm
-        switch ($service_type) {
-            case self::SERVICE_OPENAI:
-                $key = $this->assemble_openai_key($components);
-                error_log("MPAI Debug - Assembled OpenAI key length: " . strlen($key));
-                return $key;
-            
-            case self::SERVICE_ANTHROPIC:
-                $key = $this->assemble_anthropic_key($components);
-                error_log("MPAI Debug - Assembled Anthropic key length: " . strlen($key));
-                return $key;
-            
-            default:
-                // Default assembly algorithm
-                $key = $this->default_key_assembly($components);
-                error_log("MPAI Debug - Assembled default key length: " . strlen($key));
-                return $key;
-        }
-    }
-    
-    /**
-     * Assemble OpenAI API key
-     * 
-     * @param array $components The key components
-     * @return string The assembled API key
-     */
-    private function assemble_openai_key($components) {
-        // Since we're now returning the full API key from get_obfuscated_component,
-        // we just need to return the first component
-        $key = $components[0];
-        
-        error_log("MPAI Debug - OpenAI key prefix: " . substr($key, 0, 10) . "...");
-        
-        return $key;
-    }
-    
-    /**
-     * Assemble Anthropic API key
-     * 
-     * @param array $components The key components
-     * @return string The assembled API key
-     */
-    private function assemble_anthropic_key($components) {
-        // Since we're now returning the full API key from get_obfuscated_component,
-        // we just need to return the first component
-        $key = $components[0];
-        
-        error_log("MPAI Debug - Anthropic key prefix: " . substr($key, 0, 12) . "...");
-        
-        return $key;
-    }
-    
-    /**
-     * Default key assembly algorithm
-     * 
-     * @param array $components The key components
-     * @return string The assembled API key
-     */
-    private function default_key_assembly($components) {
-        // Generic assembly
-        return implode('', $components) . $this->get_runtime_entropy();
-    }
-    
-    /**
-     * Get runtime entropy to add to the key
-     * 
-     * @return string Additional entropy
-     */
-    private function get_runtime_entropy() {
-        // Generate some runtime entropy based on the current time
-        return substr(md5(microtime()), 0, 8);
-    }
     
     /**
      * Test API connection for a specific service
@@ -533,7 +372,7 @@ class MPAIKeyManager extends AbstractService {
      * @return array The test result
      */
     public function test_api_connection($service_type) {
-        // Get the API key using the obfuscated system or addon override
+        // Get the API key from settings or addon override
         $api_key = $this->get_api_key($service_type);
         
         // Log the key info for debugging (redacted for security)

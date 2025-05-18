@@ -259,7 +259,49 @@ class MPAISettingsView {
      * @return void
      */
     public function render_api_section() {
-        echo '<p>' . esc_html__('Configure API settings for AI providers. Built-in API keys are managed securely using Split Key Storage.', 'memberpress-ai-assistant') . '</p>';
+        echo '<p>' . esc_html__('Configure API settings for AI providers. Enter your API keys and select the models to use.', 'memberpress-ai-assistant') . '</p>';
+    }
+    
+    /**
+     * Render the OpenAI API key field
+     *
+     * @param string $value Field value
+     * @return void
+     */
+    public function render_openai_api_key_field($value) {
+        ?>
+        <div class="mpai-api-key-field">
+            <input type="password" id="mpai_openai_api_key" name="mpai_settings[openai_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text">
+            <button type="button" class="button button-secondary mpai-test-connection" data-provider="openai">
+                <?php esc_html_e('Test Connection', 'memberpress-ai-assistant'); ?>
+            </button>
+            <span class="mpai-test-result" id="mpai-openai-test-result"></span>
+        </div>
+        <p class="description">
+            <?php esc_html_e('Enter your OpenAI API key. This will be stored securely in your WordPress database.', 'memberpress-ai-assistant'); ?>
+        </p>
+        <?php
+    }
+    
+    /**
+     * Render the Anthropic API key field
+     *
+     * @param string $value Field value
+     * @return void
+     */
+    public function render_anthropic_api_key_field($value) {
+        ?>
+        <div class="mpai-api-key-field">
+            <input type="password" id="mpai_anthropic_api_key" name="mpai_settings[anthropic_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text">
+            <button type="button" class="button button-secondary mpai-test-connection" data-provider="anthropic">
+                <?php esc_html_e('Test Connection', 'memberpress-ai-assistant'); ?>
+            </button>
+            <span class="mpai-test-result" id="mpai-anthropic-test-result"></span>
+        </div>
+        <p class="description">
+            <?php esc_html_e('Enter your Anthropic API key. This will be stored securely in your WordPress database.', 'memberpress-ai-assistant'); ?>
+        </p>
+        <?php
     }
     
     /**

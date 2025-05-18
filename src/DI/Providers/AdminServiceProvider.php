@@ -79,7 +79,8 @@ class AdminServiceProvider extends ServiceProvider {
         // Register key manager
         $this->registerSingleton($locator, 'key_manager', function() use ($locator) {
             $logger = $locator->has('logger') ? $locator->get('logger') : null;
-            return new MPAIKeyManager('key_manager', $logger);
+            $settings = $locator->get('settings_model');
+            return new MPAIKeyManager('key_manager', $logger, $settings);
         });
     }
 

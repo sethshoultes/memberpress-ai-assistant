@@ -174,6 +174,59 @@ class LlmProviderFactory {
             }
             
             $keyManager = $mpai_service_locator->get('key_manager');
+            
+            // Make sure the key manager has the settings model
+            // Check for both settings_model (from AdminServiceProvider) and settings.model (from SettingsServiceProvider)
+            $settingsServiceName = $mpai_service_locator->has('settings_model') ? 'settings_model' :
+                                  ($mpai_service_locator->has('settings.model') ? 'settings.model' : null);
+            
+            if ($settingsServiceName) {
+                if (function_exists('error_log')) {
+                    error_log("MPAI Debug - Settings model is available in service locator as: " . $settingsServiceName);
+                }
+                
+                if (method_exists($keyManager, 'get_settings')) {
+                    if (function_exists('error_log')) {
+                        error_log("MPAI Debug - Key manager has get_settings method");
+                    }
+                    
+                    $currentSettings = $keyManager->get_settings();
+                    if (!$currentSettings) {
+                        if (function_exists('error_log')) {
+                            error_log("MPAI Debug - Key manager does not have settings model set");
+                        }
+                        
+                        $settings = $mpai_service_locator->get($settingsServiceName);
+                        if (function_exists('error_log')) {
+                            error_log("MPAI Debug - Setting settings model on key manager");
+                        }
+                        
+                        if (method_exists($keyManager, 'set_settings')) {
+                            $keyManager->set_settings($settings);
+                            if (function_exists('error_log')) {
+                                error_log("MPAI Debug - Settings model set on key manager");
+                            }
+                        } else {
+                            if (function_exists('error_log')) {
+                                error_log("MPAI Debug - Key manager does not have set_settings method");
+                            }
+                        }
+                    } else {
+                        if (function_exists('error_log')) {
+                            error_log("MPAI Debug - Key manager already has settings model set");
+                        }
+                    }
+                } else {
+                    if (function_exists('error_log')) {
+                        error_log("MPAI Debug - Key manager does not have get_settings method");
+                    }
+                }
+            } else {
+                if (function_exists('error_log')) {
+                    error_log("MPAI Debug - Settings model is not available in service locator");
+                }
+            }
+            
             $apiKey = $keyManager->get_api_key($provider);
             
             if (!empty($apiKey)) {
