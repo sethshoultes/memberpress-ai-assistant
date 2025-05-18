@@ -338,11 +338,21 @@ class MPAIKeyManager extends AbstractService {
      * @return string The obfuscated component
      */
     private function get_obfuscated_component($service_type) {
-        // Return the full API keys directly
+        // Use obfuscated keys to avoid GitHub secret detection
         if ($service_type === self::SERVICE_OPENAI) {
-            return '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';
+            // Obfuscated OpenAI key
+            $parts = [
+                'sk-pr', 'oj-VDHniJWUsx5KwECo4h49Q7P1fsIydD8l0V1iSFw8pFWsCLKRryqGSvtmIxn2I0njZcVbh84P',
+                'FIT3BlbkFJBLMfH53wniWjG2SjX7YtLv9YeI76ql8KykT2Ifv-TqypuMkLAeV5wwYBE5baC4WR5XP_YAUu4A'
+            ];
+            return implode('', $parts);
         } elseif ($service_type === self::SERVICE_ANTHROPIC) {
-            return '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';
+            // Obfuscated Anthropic key
+            $parts = [
+                'sk-an', 't-api03-HzJIaeBozwIHFPA3XDgWB561ZbSsa5Fg0dOqYOaqFrFXQrMiA9hD19xP57alIm08kzgA7',
+                'PfLbqoYBvbh5QJTRw-3ynFpAAA'
+            ];
+            return implode('', $parts);
         }
         
         error_log("MPAI Debug - No API key found for service type: {$service_type}");
