@@ -29,8 +29,14 @@ class LlmServiceProvider extends ServiceProvider {
      */
     public function register(ServiceLocator $locator): void {
         // Register the provider factory
-        $locator->register('llm.provider_factory', function() {
-            return new LlmProviderFactory();
+        $locator->register('llm.provider_factory', function($locator) {
+            // Get the key manager if available
+            $keyManager = null;
+            if ($locator->has('key_manager')) {
+                $keyManager = $locator->get('key_manager');
+            }
+            
+            return new LlmProviderFactory($keyManager);
         });
 
         // Register the cache adapter
@@ -153,20 +159,8 @@ class LlmServiceProvider extends ServiceProvider {
      * @return void
      */
     public function registerSettings(): void {
-        // Register settings for API keys
-        register_setting('mpai_settings', 'mpai_openai_api_key', [
-            'type' => 'string',
-            'description' => 'OpenAI API Key',
-            'sanitize_callback' => 'sanitize_text_field',
-            'default' => '',
-        ]);
-
-        register_setting('mpai_settings', 'mpai_anthropic_api_key', [
-            'type' => 'string',
-            'description' => 'Anthropic API Key',
-            'sanitize_callback' => 'sanitize_text_field',
-            'default' => '',
-        ]);
+        // API key settings are now handled by the obfuscated key system
+        // These settings are kept for backward compatibility but are deprecated
 
         register_setting('mpai_settings', 'mpai_primary_provider', [
             'type' => 'string',

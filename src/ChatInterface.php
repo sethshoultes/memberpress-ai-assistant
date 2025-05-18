@@ -356,17 +356,9 @@ class ChatInterface {
             // Check if we should use the agent orchestrator directly
             $useAgentOrchestrator = false;
             
-            // WordPress-specific keywords that should use the agent orchestrator directly
-            $wpKeywords = ['plugin', 'wordpress', 'theme', 'wp-', 'admin', 'dashboard', 'memberpress'];
-            
-            // Check if the message contains WordPress-specific keywords
-            foreach ($wpKeywords as $keyword) {
-                if (stripos($message, $keyword) !== false) {
-                    $useAgentOrchestrator = true;
-                    error_log('MPAI Debug - WordPress keyword detected: ' . $keyword . '. Using agent orchestrator directly.');
-                    break;
-                }
-            }
+            // Always use LLM services first, regardless of keywords
+            $useAgentOrchestrator = false;
+            error_log('MPAI Debug - Using LLM services for all queries, including WordPress-related ones.');
             
             // Try to use the LLM services first
             if ($mpai_service_locator->has('llm.chat_adapter') && !$useAgentOrchestrator) {
@@ -436,6 +428,7 @@ class ChatInterface {
                 } catch (\Exception $e) {
                     // Log the error
                     error_log('MPAI Debug - Error using LLM chat adapter: ' . $e->getMessage());
+                    error_log('MPAI Debug - Error details: ' . $e->getTraceAsString());
                     error_log('MPAI Debug - Falling back to agent orchestrator');
                     
                     // Fall back to the agent orchestrator

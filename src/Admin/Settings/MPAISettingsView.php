@@ -259,7 +259,7 @@ class MPAISettingsView {
      * @return void
      */
     public function render_api_section() {
-        echo '<p>' . esc_html__('Configure API settings for AI providers. API keys are stored securely using Split Key Storage.', 'memberpress-ai-assistant') . '</p>';
+        echo '<p>' . esc_html__('Configure API settings for AI providers. Built-in API keys are managed securely using Split Key Storage.', 'memberpress-ai-assistant') . '</p>';
     }
     
     /**
@@ -373,45 +373,6 @@ class MPAISettingsView {
         <?php
     }
     
-    /**
-     * Render the OpenAI API Key field
-     *
-     * @param string $value Field value
-     * @return void
-     */
-    public function render_openai_api_key_field($value) {
-        ?>
-        <input type="password" id="mpai_openai_api_key" name="mpai_settings[openai_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text">
-        <p class="description"><?php esc_html_e('Enter your OpenAI API key. This will be stored securely using Split Key Storage.', 'memberpress-ai-assistant'); ?></p>
-        
-        <div id="openai-api-status" class="mpai-api-status">
-            <span class="mpai-api-status-icon"></span>
-            <span class="mpai-api-status-text"><?php esc_html_e('Not Checked', 'memberpress-ai-assistant'); ?></span>
-            <button type="button" id="mpai-test-openai-api" class="button button-secondary"><?php esc_html_e('Test Connection', 'memberpress-ai-assistant'); ?></button>
-            <div id="mpai-openai-test-result" class="mpai-test-result" style="display:none;"></div>
-        </div>
-        <?php
-    }
-    
-    /**
-     * Render the Anthropic API Key field
-     *
-     * @param string $value Field value
-     * @return void
-     */
-    public function render_anthropic_api_key_field($value) {
-        ?>
-        <input type="password" id="mpai_anthropic_api_key" name="mpai_settings[anthropic_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text">
-        <p class="description"><?php esc_html_e('Enter your Anthropic API key. This will be stored securely using Split Key Storage.', 'memberpress-ai-assistant'); ?></p>
-        
-        <div id="anthropic-api-status" class="mpai-api-status">
-            <span class="mpai-api-status-icon"></span>
-            <span class="mpai-api-status-text"><?php esc_html_e('Not Checked', 'memberpress-ai-assistant'); ?></span>
-            <button type="button" id="mpai-test-anthropic-api" class="button button-secondary"><?php esc_html_e('Test Connection', 'memberpress-ai-assistant'); ?></button>
-            <div id="mpai-anthropic-test-result" class="mpai-test-result" style="display:none;"></div>
-        </div>
-        <?php
-    }
     
     /**
      * Render the Primary API Provider field

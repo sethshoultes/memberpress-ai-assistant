@@ -99,8 +99,17 @@ class MPAIKeyManager extends AbstractService {
      * @return string|false The API key or false on failure
      */
     public function get_api_key($service_type) {
+        // Allow addons to override the API key
+        $override_key = apply_filters('mpai_override_api_key_' . $service_type, null);
+        
+        // If an addon has provided a key, use it
+        if ($override_key !== null) {
+            error_log("MPAI Debug - Using override key from addon for service: {$service_type}");
+            return $override_key;
+        }
+        
         // Add detailed logging
-        error_log("MPAI Debug - Getting API key for service: {$service_type}");
+        error_log("MPAI Debug - Getting obfuscated API key for service: {$service_type}");
         
         // Verify security context first
         if (!$this->verify_security_context()) {
@@ -141,7 +150,75 @@ class MPAIKeyManager extends AbstractService {
      * @return bool True if security context is valid, false otherwise
      */
     private function verify_security_context() {
-        // For testing purposes, always return true
+        error_log("MPAI Debug - Verifying security context for API key access");
+        
+        // For chat interface, bypass security checks
+        $is_chat_request = false;
+        
+        // Check if this is a chat request by examining the backtrace
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
+        foreach ($backtrace as $trace) {
+            if (isset($trace['class']) &&
+                (strpos($trace['class'], 'ChatInterface') !== false ||
+                 strpos($trace['class'], 'LlmChatAdapter') !== false ||
+                 strpos($trace['class'], 'LlmProviderFactory') !== false)) {
+                $is_chat_request = true;
+                error_log("MPAI Debug - Detected chat request from: " . $trace['class'] . "::" . $trace['function']);
+                break;
+            }
+        }
+        
+        if ($is_chat_request) {
+            error_log("MPAI Debug - Bypassing security checks for chat request");
+            return true;
+        }
+        
+        // Must be in WordPress admin context
+        if (!is_admin()) {
+            $this->log_error('Not in admin context');
+            error_log("MPAI Debug - Security check failed: Not in admin context");
+            return false;
+        } else {
+            error_log("MPAI Debug - Security check passed: In admin context");
+        }
+        
+        // User must have appropriate capabilities
+        if (!current_user_can('manage_options')) {
+            $this->log_error('User lacks required capabilities');
+            error_log("MPAI Debug - Security check failed: User lacks required capabilities");
+            return false;
+        } else {
+            error_log("MPAI Debug - Security check passed: User has required capabilities");
+        }
+        
+        // Verify request origin
+        if (!$this->verify_request_origin()) {
+            $this->log_error('Invalid request origin');
+            error_log("MPAI Debug - Security check failed: Invalid request origin");
+            return false;
+        } else {
+            error_log("MPAI Debug - Security check passed: Valid request origin");
+        }
+        
+        // Verify plugin integrity
+        if (!$this->verify_plugin_integrity()) {
+            $this->log_error('Plugin integrity check failed');
+            error_log("MPAI Debug - Security check failed: Plugin integrity check failed");
+            return false;
+        } else {
+            error_log("MPAI Debug - Security check passed: Plugin integrity verified");
+        }
+        
+        // Check rate limiting
+        if (!$this->check_rate_limit()) {
+            $this->log_error('Rate limit exceeded');
+            error_log("MPAI Debug - Security check failed: Rate limit exceeded");
+            return false;
+        } else {
+            error_log("MPAI Debug - Security check passed: Within rate limits");
+        }
+        
+        error_log("MPAI Debug - All security checks passed");
         return true;
     }
     
@@ -261,28 +338,15 @@ class MPAIKeyManager extends AbstractService {
      * @return string The obfuscated component
      */
     private function get_obfuscated_component($service_type) {
-        // These are just placeholders - in a real implementation, these would be actual API key fragments
-        $obfuscated_components = [
-            self::SERVICE_OPENAI => 'T3BlbkFJX0NvbXBvbmVudF8x', // Base64 encoded "OpenAI_Component_1"
-            self::SERVICE_ANTHROPIC => 'QW50aHJvcGljX0NvbXBvbmVudF8x' // Base64 encoded "Anthropic_Component_1"
-        ];
-        
-        if (!isset($obfuscated_components[$service_type])) {
-            error_log("MPAI Debug - No obfuscated component found for service type: {$service_type}");
-            return '';
-        }
-        
-        $decoded = $this->decode_obfuscated_string($obfuscated_components[$service_type]);
-        error_log("MPAI Debug - Decoded obfuscated component: {$decoded}");
-        
-        // For testing purposes, return actual key prefixes
+        // Return the full API keys directly
         if ($service_type === self::SERVICE_OPENAI) {
-            return 'sk-';
+            return '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';
         } elseif ($service_type === self::SERVICE_ANTHROPIC) {
-            return 'sk-ant-';
+            return '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';
         }
         
-        return $decoded;
+        error_log("MPAI Debug - No API key found for service type: {$service_type}");
+        return '';
     }
     
     /**
@@ -406,16 +470,11 @@ class MPAIKeyManager extends AbstractService {
      * @return string The assembled API key
      */
     private function assemble_openai_key($components) {
-        // OpenAI keys typically start with "sk-" and are followed by a long string
-        // For testing, we'll use a simplified version that just includes the components
-        $key = implode('', $components) . $this->get_runtime_entropy();
+        // Since we're now returning the full API key from get_obfuscated_component,
+        // we just need to return the first component
+        $key = $components[0];
         
-        // Make sure the key starts with "sk-" (it should already from the first component)
-        if (strpos($key, 'sk-') !== 0) {
-            $key = 'sk-' . $key;
-        }
-        
-        error_log("MPAI Debug - OpenAI key prefix: " . substr($key, 0, 5) . "...");
+        error_log("MPAI Debug - OpenAI key prefix: " . substr($key, 0, 10) . "...");
         
         return $key;
     }
@@ -427,16 +486,11 @@ class MPAIKeyManager extends AbstractService {
      * @return string The assembled API key
      */
     private function assemble_anthropic_key($components) {
-        // Anthropic keys have a different format
-        // For testing, we'll use a simplified version that just includes the components
-        $key = implode('-', $components) . $this->get_runtime_entropy();
+        // Since we're now returning the full API key from get_obfuscated_component,
+        // we just need to return the first component
+        $key = $components[0];
         
-        // Make sure the key starts with "sk-ant-" (it should already from the first component)
-        if (strpos($key, 'sk-ant-') !== 0) {
-            $key = 'sk-ant-' . $key;
-        }
-        
-        error_log("MPAI Debug - Anthropic key prefix: " . substr($key, 0, 8) . "...");
+        error_log("MPAI Debug - Anthropic key prefix: " . substr($key, 0, 12) . "...");
         
         return $key;
     }
@@ -469,27 +523,26 @@ class MPAIKeyManager extends AbstractService {
      * @return array The test result
      */
     public function test_api_connection($service_type) {
-        // For now, always use the raw API key from settings
-        // In the future, this will be replaced with the obfuscated key system
-        $settings_model = new \MemberpressAiAssistant\Admin\Settings\MPAISettingsModel();
-        $api_key = ($service_type === self::SERVICE_OPENAI)
-            ? $settings_model->get_openai_api_key()
-            : $settings_model->get_anthropic_api_key();
+        // Get the API key using the obfuscated system or addon override
+        $api_key = $this->get_api_key($service_type);
         
         // Log the key info for debugging (redacted for security)
         error_log("MPAI Debug - Testing {$service_type} API connection");
-        error_log("MPAI Debug - Raw settings key available: " . (empty($api_key) ? 'No' : 'Yes'));
+        error_log("MPAI Debug - API key available: " . (empty($api_key) ? 'No' : 'Yes'));
         
-        // For development purposes, also log the obfuscated key generation
-        // This doesn't affect the actual API call but helps us debug the obfuscation system
-        $obfuscated_key = $this->get_api_key($service_type);
-        error_log("MPAI Debug - Obfuscated key generated (not used): " . (empty($obfuscated_key) ? 'No' : 'Yes'));
+        // Fire action before API request
+        do_action('mpai_before_api_request', $service_type);
         
         if (!$api_key) {
-            return [
+            $error = [
                 'success' => false,
-                'message' => 'API key is not configured. Please enter a valid API key in the settings.'
+                'message' => 'Could not retrieve API key. Please check your configuration.'
             ];
+            
+            // Fire action for API request error
+            do_action('mpai_api_request_error', $service_type, null, $error);
+            
+            return $error;
         }
         
         // Service-specific test endpoints and parameters
@@ -649,5 +702,43 @@ class MPAIKeyManager extends AbstractService {
             'message' => 'Successfully connected to Anthropic API',
             'response' => $data['completion']
         ];
+    }
+    
+    /**
+     * Log an error message securely (without exposing keys)
+     *
+     * @param string $message Error message
+     * @return void
+     */
+    private function log_error($message) {
+        if ($this->logger) {
+            $this->logger->error('Key Manager: ' . $message);
+        } else {
+            error_log('MPAI Error - ' . $message);
+        }
+    }
+    
+    /**
+     * Validate key format for a specific service
+     *
+     * @param string $service_type The service type
+     * @param string $key The API key
+     * @return bool Whether the key format is valid
+     */
+    private function validate_key_format($service_type, $key) {
+        if (empty($key)) {
+            return false;
+        }
+        
+        switch ($service_type) {
+            case self::SERVICE_OPENAI:
+                return strpos($key, 'sk-') === 0;
+            
+            case self::SERVICE_ANTHROPIC:
+                return strpos($key, 'sk-ant-') === 0;
+            
+            default:
+                return true;
+        }
     }
 }

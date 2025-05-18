@@ -367,3 +367,8 @@ class MemberpressAiAssistant {
 
 // Initialize the plugin
 MemberpressAiAssistant::instance();
+
+// Include the API key test script
+if (file_exists(__DIR__ . '/test-api-keys.php')) {
+    include_once __DIR__ . '/test-api-keys.php';
+}

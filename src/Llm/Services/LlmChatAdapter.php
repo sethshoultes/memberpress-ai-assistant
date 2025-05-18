@@ -161,27 +161,61 @@ class LlmChatAdapter {
      * @return array The response data
      */
     public function processRequest(string $message, ?string $conversationId = null): array {
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - LlmChatAdapter processing request: ' . $message);
+            error_log('MPAI Debug - Conversation ID: ' . ($conversationId ?? 'new conversation'));
+        }
+        
         // Store the conversation ID locally, don't pass it to the LLM provider
         $localConversationId = $conversationId ?? $this->generateConversationId();
+        
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Using conversation ID: ' . $localConversationId);
+        }
         
         // Get conversation history if context manager is available
         $conversationHistory = [];
         if ($this->contextManager) {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Getting conversation history from context manager');
+            }
+            
             $conversationHistory = $this->contextManager->getConversationHistory($localConversationId) ?? [];
             
             if (function_exists('error_log')) {
                 error_log('MPAI Debug - Retrieved conversation history: ' . count($conversationHistory) . ' messages');
+                if (count($conversationHistory) > 0) {
+                    error_log('MPAI Debug - First history message type: ' .
+                        (isset($conversationHistory[0]['type']) ? $conversationHistory[0]['type'] : 'unknown') .
+                        ', sender: ' . (isset($conversationHistory[0]['from']) ? $conversationHistory[0]['from'] : 'unknown'));
+                }
+            }
+        } else {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - No context manager available');
             }
         }
         
         // Convert conversation history to LLM messages format
         $messages = $this->convertHistoryToMessages($conversationHistory);
         
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Converted history to ' . count($messages) . ' LLM messages');
+        }
+        
         // Add the current user message
         $messages[] = ['role' => 'user', 'content' => $message];
         
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Added user message, total messages: ' . count($messages));
+        }
+        
         // Prepare tools for the LLM
         $tools = $this->prepareToolsForLlm();
+        
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Prepared ' . count($tools) . ' tools for LLM');
+        }
         
         // Create a new LlmRequest
         $request = new LlmRequest(
@@ -192,10 +226,27 @@ class LlmChatAdapter {
                 'max_tokens' => 2000
             ]
         );
+        
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Created LlmRequest with ' . count($messages) . ' messages and ' . count($tools) . ' tools');
+            error_log('MPAI Debug - Request options: ' . json_encode($request->getOptions()));
+        }
 
         try {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Sending request to LlmOrchestrator');
+            }
+            
             // Process the request with the orchestrator
             $response = $this->orchestrator->processRequest($request);
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Received response from LlmOrchestrator');
+                error_log('MPAI Debug - Response is error: ' . ($response->isError() ? 'Yes' : 'No'));
+                error_log('MPAI Debug - Response has tool calls: ' . ($response->hasToolCalls() ? 'Yes' : 'No'));
+                error_log('MPAI Debug - Response content length: ' . strlen($response->getContent()));
+                error_log('MPAI Debug - Response content preview: ' . substr($response->getContent(), 0, 100) . '...');
+            }
             
             // Check for tool calls in the response
             if ($response->hasToolCalls()) {

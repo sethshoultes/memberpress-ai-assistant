@@ -180,11 +180,11 @@ class MPAISettingsController {
             $this->page_slug
         );
         
-        // Add OpenAI API Key field
+        // Add API Key Information field
         add_settings_field(
-            'mpai_openai_api_key',
-            __('OpenAI API Key', 'memberpress-ai-assistant'),
-            [$this, 'render_openai_api_key_field'],
+            'mpai_api_key_info',
+            __('API Keys', 'memberpress-ai-assistant'),
+            [$this, 'render_api_key_info_field'],
             $this->page_slug,
             'mpai_api_section'
         );
@@ -212,15 +212,6 @@ class MPAISettingsController {
             'mpai_openai_max_tokens',
             __('OpenAI Max Tokens', 'memberpress-ai-assistant'),
             [$this, 'render_openai_max_tokens_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Anthropic API Key field
-        add_settings_field(
-            'mpai_anthropic_api_key',
-            __('Anthropic API Key', 'memberpress-ai-assistant'),
-            [$this, 'render_anthropic_api_key_field'],
             $this->page_slug,
             'mpai_api_section'
         );
@@ -546,13 +537,18 @@ class MPAISettingsController {
     }
 
     /**
-     * Render the OpenAI API Key field
+     * Render the API key information field
      *
      * @return void
      */
-    public function render_openai_api_key_field() {
-        $value = $this->model->get_openai_api_key();
-        $this->view->render_openai_api_key_field($value);
+    public function render_api_key_info_field() {
+        ?>
+        <div class="mpai-api-key-info">
+            <p><?php _e('This plugin includes built-in API keys that allow you to use AI features without providing your own keys.', 'memberpress-ai-assistant'); ?></p>
+            <p><?php _e('The built-in keys are securely managed using Split Key Storage technology, which fragments API keys into multiple components stored in different locations.', 'memberpress-ai-assistant'); ?></p>
+            <p><?php _e('If you prefer to use your own API keys, you can install the "MemberPress AI Assistant - Custom Keys" addon plugin.', 'memberpress-ai-assistant'); ?></p>
+        </div>
+        <?php
     }
 
     /**
@@ -585,15 +581,6 @@ class MPAISettingsController {
         $this->view->render_openai_max_tokens_field($value);
     }
 
-    /**
-     * Render the Anthropic API Key field
-     *
-     * @return void
-     */
-    public function render_anthropic_api_key_field() {
-        $value = $this->model->get_anthropic_api_key();
-        $this->view->render_anthropic_api_key_field($value);
-    }
 
     /**
      * Render the Anthropic model field
