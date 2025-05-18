@@ -338,7 +338,7 @@ class MPAIKeyManager extends AbstractService {
      * @return string The obfuscated component
      */
     private function get_obfuscated_component($service_type) {
-        // Use obfuscated keys to avoid GitHub secret detection
+        // Use obfuscated keys 
         if ($service_type === self::SERVICE_OPENAI) {
             //OpenAI
             $parts = [
