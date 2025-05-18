@@ -271,7 +271,7 @@ class MPAISettingsView {
     public function render_openai_api_key_field($value) {
         ?>
         <div class="mpai-api-key-field">
-            <input type="password" id="mpai_openai_api_key" name="mpai_settings[openai_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text">
+            <input type="password" id="mpai_openai_api_key" name="mpai_settings[openai_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text code">
             <button type="button" class="button button-secondary mpai-test-connection" data-provider="openai">
                 <?php esc_html_e('Test Connection', 'memberpress-ai-assistant'); ?>
             </button>
@@ -292,7 +292,7 @@ class MPAISettingsView {
     public function render_anthropic_api_key_field($value) {
         ?>
         <div class="mpai-api-key-field">
-            <input type="password" id="mpai_anthropic_api_key" name="mpai_settings[anthropic_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text">
+            <input type="password" id="mpai_anthropic_api_key" name="mpai_settings[anthropic_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text code">
             <button type="button" class="button button-secondary mpai-test-connection" data-provider="anthropic">
                 <?php esc_html_e('Test Connection', 'memberpress-ai-assistant'); ?>
             </button>

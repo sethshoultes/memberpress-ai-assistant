@@ -67,8 +67,8 @@
 }
 
 .mpai-api-key-field input[type="password"] {
-    flex: 1;
-    min-width: 300px;
+    width: 350px;
+    max-width: 100%;
 }
 
 .mpai-test-result {
