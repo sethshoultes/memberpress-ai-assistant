@@ -80,20 +80,76 @@ class LlmChatAdapter {
      * @return void
      */
     private function initializeWpTools(): void {
-        // Get all available tools from the registry
-        $allTools = $this->toolRegistry->getAllTools();
-        
-        // Filter for WordPress-related tools
-        foreach ($allTools as $toolId => $tool) {
-            if (strpos($toolId, 'WordPress') !== false ||
-                strpos($toolId, 'MemberPress') !== false ||
-                strpos($toolId, 'Content') !== false) {
-                $this->wpTools[$toolId] = $tool;
+        if (!$this->toolRegistry) {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Tool registry not available, cannot initialize WordPress tools');
             }
+            return;
         }
         
-        if (function_exists('error_log')) {
-            error_log('MPAI Debug - Initialized WordPress tools: ' . implode(', ', array_keys($this->wpTools)));
+        try {
+            // Get all available tools from the registry
+            $allTools = $this->toolRegistry->getAllTools();
+            
+            if (empty($allTools)) {
+                if (function_exists('error_log')) {
+                    error_log('MPAI Debug - No tools found in registry');
+                }
+                
+                // Try to get tools from the registry using reflection
+                $reflection = new \ReflectionClass($this->toolRegistry);
+                $toolsProperty = $reflection->getProperty('tools');
+                $toolsProperty->setAccessible(true);
+                $allTools = $toolsProperty->getValue($this->toolRegistry);
+                
+                if (function_exists('error_log')) {
+                    error_log('MPAI Debug - Tools found using reflection: ' . count($allTools));
+                }
+            }
+            
+            // Filter for WordPress-related tools
+            foreach ($allTools as $toolId => $tool) {
+                // Check if the tool is related to WordPress
+                $isWpTool = false;
+                
+                // Check by ID
+                if (stripos($toolId, 'WordPress') !== false ||
+                    stripos($toolId, 'MemberPress') !== false ||
+                    stripos($toolId, 'Content') !== false ||
+                    stripos($toolId, 'WP') !== false) {
+                    $isWpTool = true;
+                }
+                
+                // Check by class name
+                $className = get_class($tool);
+                if (stripos($className, 'WordPress') !== false ||
+                    stripos($className, 'MemberPress') !== false ||
+                    stripos($className, 'Content') !== false ||
+                    stripos($className, 'WP') !== false) {
+                    $isWpTool = true;
+                }
+                
+                if ($isWpTool) {
+                    $this->wpTools[$toolId] = $tool;
+                }
+            }
+            
+            // If no WordPress tools found, add all tools as a fallback
+            if (empty($this->wpTools) && !empty($allTools)) {
+                $this->wpTools = $allTools;
+                if (function_exists('error_log')) {
+                    error_log('MPAI Debug - No WordPress-specific tools found, using all available tools');
+                }
+            }
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Initialized WordPress tools: ' . implode(', ', array_keys($this->wpTools)));
+            }
+        } catch (\Exception $e) {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Error initializing WordPress tools: ' . $e->getMessage());
+                error_log('MPAI Debug - Error trace: ' . $e->getTraceAsString());
+            }
         }
     }
 

@@ -1022,7 +1022,17 @@ class AgentOrchestrator {
             $response['request_id'] ?? 'unknown'
         );
         
-        $this->contextManager->addMessageToHistory($message, $this->conversationId);
+        $result = $this->contextManager->addMessageToHistory($message, $this->conversationId);
+        
+        // Add logging for message history
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Added message to history: ' . ($result ? 'SUCCESS' : 'FAILED'));
+            error_log('MPAI Debug - Message content: ' . substr($message->getContent(), 0, 100) . '...');
+            
+            // Get the updated history to verify
+            $history = $this->contextManager->getConversationHistory($this->conversationId);
+            error_log('MPAI Debug - Updated history count: ' . ($history ? count($history) : 'NULL'));
+        }
         
         // Invalidate cache for this conversation when new messages are added
         $this->invalidateConversationCache();
@@ -1068,7 +1078,13 @@ class AgentOrchestrator {
         
         // Simple intent detection based on keywords
         // Check for specific intents first
-        if (stripos($message, 'create membership') !== false ||
+        if (stripos($message, 'what plugins') !== false ||
+            stripos($message, 'list plugins') !== false ||
+            stripos($message, 'show plugins') !== false ||
+            stripos($message, 'installed plugins') !== false) {
+            $intent = 'list_plugins';
+            error_log("MPAI Debug - Intent detected (specific pattern 0): list_plugins");
+        } elseif (stripos($message, 'create membership') !== false ||
             stripos($message, 'add membership') !== false ||
             stripos($message, 'new membership') !== false) {
             $intent = 'create_membership';
@@ -1429,8 +1445,16 @@ class AgentOrchestrator {
         
         error_log("MPAI Debug - V2 Intent detection for message: " . $message);
         
-        // Check for membership-related intents first
-        if (stripos($message, 'membership') !== false) {
+        // Check for plugin-related intents first
+        if (stripos($message, 'what plugins') !== false ||
+            stripos($message, 'list plugins') !== false ||
+            stripos($message, 'show plugins') !== false ||
+            stripos($message, 'installed plugins') !== false) {
+            $intent = 'list_plugins';
+            error_log("MPAI Debug - V2 Intent detected: list_plugins");
+        }
+        // Check for membership-related intents
+        elseif (stripos($message, 'membership') !== false) {
             if (stripos($message, 'create') !== false || stripos($message, 'add') !== false || stripos($message, 'new') !== false) {
                 $intent = 'create_membership';
                 error_log("MPAI Debug - V2 Intent detected: create_membership");

@@ -36,8 +36,20 @@
                 input: document.getElementById('mpai-chat-input'),
                 submitButton: document.getElementById('mpai-chat-submit'),
                 toggleButton: document.getElementById('mpai-chat-toggle'),
-                closeButton: document.getElementById('mpai-chat-close')
+                closeButton: document.getElementById('mpai-chat-close'),
+                headerContainer: document.getElementById('mpai-chat-header')
             };
+            
+            // Add clear history button to header
+            if (this.elements.headerContainer) {
+                const clearButton = document.createElement('button');
+                clearButton.id = 'mpai-clear-history';
+                clearButton.className = 'mpai-clear-history-button';
+                clearButton.innerHTML = '<span class="dashicons dashicons-trash"></span>';
+                clearButton.title = 'Clear chat history';
+                this.elements.headerContainer.appendChild(clearButton);
+                this.elements.clearButton = clearButton;
+            }
 
             // State
             this.state = {
@@ -61,13 +73,36 @@
             // Bind event listeners
             this.bindEvents();
             
-            // Generate a conversation ID if not provided
-            if (!this.state.conversationId) {
-                this.state.conversationId = this.generateConversationId();
+            // Check if user is logged in (WordPress sets this global variable)
+            this.isLoggedIn = typeof window.mpai_user_logged_in !== 'undefined' && window.mpai_user_logged_in === true;
+            this.log('User logged in status:', this.isLoggedIn);
+            
+            // For logged-in users, we'll get the conversation ID from the server
+            // For guests, we'll use localStorage
+            if (this.isLoggedIn) {
+                // We'll set the conversation ID when we load the history
+                this.loadConversationHistory();
+            } else {
+                // Try to load conversation ID from localStorage for guests
+                const savedConversationId = localStorage.getItem('mpai_conversation_id');
+                if (savedConversationId) {
+                    this.log('Loaded conversation ID from localStorage:', savedConversationId);
+                    this.state.conversationId = savedConversationId;
+                    // Load conversation history with this ID
+                    this.loadConversationHistory();
+                } else {
+                    // Generate a new conversation ID if not found in localStorage
+                    this.state.conversationId = this.generateConversationId();
+                    // Save the new conversation ID to localStorage
+                    localStorage.setItem('mpai_conversation_id', this.state.conversationId);
+                    this.log('Generated and saved new conversation ID:', this.state.conversationId);
+                    // No need to load history for a new conversation
+                }
             }
             
-            // Auto-open chat if configured
-            if (this.config.autoOpen) {
+            // Try to load chat state from localStorage
+            const chatWasOpen = localStorage.getItem('mpai_chat_open') === 'true';
+            if (chatWasOpen || this.config.autoOpen) {
                 this.openChat();
             }
             
@@ -75,6 +110,74 @@
             this.setupInputAutoResize();
             
             this.log('Chat interface initialized');
+        }
+        
+        /**
+         * Load conversation history from the server
+         */
+        loadConversationHistory() {
+            this.log('Loading conversation history');
+            
+            // Prepare request data
+            const requestData = {
+                message: '',
+                load_history: true,
+                user_logged_in: this.isLoggedIn
+            };
+            
+            // Add conversation ID if we have one
+            if (this.state.conversationId) {
+                requestData.conversation_id = this.state.conversationId;
+                this.log('Including conversation ID in history request:', this.state.conversationId);
+            }
+            
+            // Send an empty message to get the conversation history
+            fetch(this.config.apiEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': window.mpai_nonce || '' // WP REST API nonce
+                },
+                body: JSON.stringify(requestData),
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Add debug logging for history loading
+                if (this.config.debug) {
+                    console.log('[MPAI Chat] History load response:', data);
+                    console.log('[MPAI Chat] History available in load response:',
+                        data && data.history ? 'YES' : 'NO',
+                        data && data.history ? `(${data.history.length} items)` : '');
+                }
+                
+                // Update conversation ID if provided by the server
+                if (data && data.conversation_id) {
+                    this.log('Server provided conversation ID:', data.conversation_id);
+                    this.state.conversationId = data.conversation_id;
+                    
+                    // Save to localStorage for guests
+                    if (!this.isLoggedIn) {
+                        localStorage.setItem('mpai_conversation_id', this.state.conversationId);
+                        this.log('Saved conversation ID to localStorage');
+                    }
+                }
+                
+                // Process history if available
+                if (data && data.history && Array.isArray(data.history) && data.history.length > 0) {
+                    this.processConversationHistory(data.history);
+                } else {
+                    this.log('No history available or history is empty');
+                }
+            })
+            .catch(error => {
+                this.log('Error loading conversation history:', error);
+            });
         }
 
         /**
@@ -106,6 +209,11 @@
                 });
             }
             
+            // Clear history button
+            if (this.elements.clearButton) {
+                this.elements.clearButton.addEventListener('click', () => this.clearHistory());
+            }
+            
             // Scroll to bottom when messages container changes
             if (this.elements.messagesContainer) {
                 const observer = new MutationObserver(() => this.scrollToBottom());
@@ -134,6 +242,9 @@
             this.elements.toggleButton.classList.add('active');
             this.state.isOpen = true;
             
+            // Save chat state to localStorage
+            localStorage.setItem('mpai_chat_open', 'true');
+            
             // Focus the input field
             setTimeout(() => {
                 this.elements.input.focus();
@@ -154,6 +265,9 @@
             this.elements.container.classList.remove('active');
             this.elements.toggleButton.classList.remove('active');
             this.state.isOpen = false;
+            
+            // Save chat state to localStorage
+            localStorage.setItem('mpai_chat_open', 'false');
             
             // Trigger custom event
             this.triggerEvent('mpai:chat:closed');
@@ -240,7 +354,8 @@
                 // Prepare request data
                 const requestData = {
                     message: message,
-                    conversation_id: this.state.conversationId
+                    conversation_id: this.state.conversationId,
+                    user_logged_in: this.isLoggedIn
                 };
                 
                 // Send request to the backend
@@ -260,6 +375,23 @@
                     return response.json();
                 })
                 .then(data => {
+                    // Add debug logging for history data
+                    if (this.config.debug) {
+                        console.log('[MPAI Chat] Response data:', data);
+                        console.log('[MPAI Chat] History available:',
+                            data && data.history ? 'YES' : 'NO',
+                            data && data.history ? `(${data.history.length} items)` : '');
+                    }
+                    
+                    // Only process history when explicitly loading history, not after sending a message
+                    // This prevents duplicate messages in the UI
+                    if (data && data.history && Array.isArray(data.history) && data.history.length > 0 && message === '') {
+                        this.log('Processing history from response (history load request)');
+                        this.processConversationHistory(data.history);
+                    } else if (data && data.history) {
+                        this.log('Skipping history processing after sending message to avoid duplicates');
+                    }
+                    
                     resolve(data);
                 })
                 .catch(error => {
@@ -271,22 +403,25 @@
 
         /**
          * Add a user message to the chat
-         * 
+         *
          * @param {string} message The message text
+         * @param {boolean} addToState Whether to add the message to the state (default: true)
          */
-        addUserMessage(message) {
+        addUserMessage(message, addToState = true) {
             const messageElement = this.createMessageElement('user', message);
             this.elements.messagesContainer.appendChild(messageElement);
             
-            // Add to messages array
-            this.state.messages.push({
-                role: 'user',
-                content: message,
-                timestamp: new Date().toISOString()
-            });
-            
-            // Prune messages if exceeding max
-            this.pruneMessages();
+            // Add to messages array if requested
+            if (addToState) {
+                this.state.messages.push({
+                    role: 'user',
+                    content: message,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Prune messages if exceeding max
+                this.pruneMessages();
+            }
             
             // Scroll to bottom
             this.scrollToBottom();
@@ -294,22 +429,25 @@
 
         /**
          * Add an assistant message to the chat
-         * 
+         *
          * @param {string} message The message text
+         * @param {boolean} addToState Whether to add the message to the state (default: true)
          */
-        addAssistantMessage(message) {
+        addAssistantMessage(message, addToState = true) {
             const messageElement = this.createMessageElement('assistant', message);
             this.elements.messagesContainer.appendChild(messageElement);
             
-            // Add to messages array
-            this.state.messages.push({
-                role: 'assistant',
-                content: message,
-                timestamp: new Date().toISOString()
-            });
-            
-            // Prune messages if exceeding max
-            this.pruneMessages();
+            // Add to messages array if requested
+            if (addToState) {
+                this.state.messages.push({
+                    role: 'assistant',
+                    content: message,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Prune messages if exceeding max
+                this.pruneMessages();
+            }
             
             // Scroll to bottom
             this.scrollToBottom();
@@ -471,6 +609,97 @@
         log(...args) {
             if (this.config.debug) {
                 console.log('[MPAI Chat]', ...args);
+            }
+        }
+        
+        /**
+         * Process conversation history from the server
+         *
+         * @param {Array} history Array of message objects
+         */
+        processConversationHistory(history) {
+            // Skip if no history or empty history
+            if (!history || !Array.isArray(history) || history.length === 0) {
+                return;
+            }
+            
+            this.log('Processing conversation history', history);
+            
+            // Clear existing messages in the UI
+            this.elements.messagesContainer.innerHTML = '';
+            
+            // Clear existing messages in state
+            this.state.messages = [];
+            
+            // Add each message to the chat
+            history.forEach(message => {
+                if (message.role === 'user') {
+                    // Add user message
+                    this.addUserMessage(message.content, false);
+                } else if (message.role === 'assistant') {
+                    // Add assistant message
+                    this.addAssistantMessage(message.content, false);
+                }
+            });
+            
+            // Scroll to bottom
+            this.scrollToBottom();
+        }
+        
+        /**
+         * Clear the chat history
+         */
+        clearHistory() {
+            // Confirm with the user
+            if (!confirm('Are you sure you want to clear your chat history?')) {
+                return;
+            }
+            
+            this.log('Clearing chat history');
+            
+            // Clear UI
+            this.elements.messagesContainer.innerHTML = '';
+            
+            // Clear state
+            this.state.messages = [];
+            
+            // For logged-in users, send a request to clear history on the server
+            if (this.isLoggedIn) {
+                fetch(this.config.apiEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': window.mpai_nonce || ''
+                    },
+                    body: JSON.stringify({
+                        clear_history: true,
+                        conversation_id: this.state.conversationId,
+                        user_logged_in: true
+                    }),
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    this.log('History cleared on server:', data);
+                    
+                    // Generate a new conversation ID
+                    this.state.conversationId = this.generateConversationId();
+                    this.log('Generated new conversation ID:', this.state.conversationId);
+                })
+                .catch(error => {
+                    this.log('Error clearing history:', error);
+                });
+            } else {
+                // For guests, just clear localStorage and generate a new conversation ID
+                localStorage.removeItem('mpai_conversation_id');
+                this.state.conversationId = this.generateConversationId();
+                localStorage.setItem('mpai_conversation_id', this.state.conversationId);
+                this.log('Generated new conversation ID for guest:', this.state.conversationId);
             }
         }
     }

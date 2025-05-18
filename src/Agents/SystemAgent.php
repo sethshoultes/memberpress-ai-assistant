@@ -288,39 +288,83 @@ EOT;
     protected function listPlugins(array $request): array {
         $status = $request['status'] ?? 'all';
         
-        // Implementation would list plugins based on status
+        // Ensure plugin functions are available
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        
+        // Get plugins
+        $all_plugins = get_plugins();
+        $active_plugins = get_option('active_plugins');
+        
+        $plugins = [];
+        $active_count = 0;
+        $inactive_count = 0;
+        $update_available_count = 0;
+        
+        // Get update information
+        $update_data = [];
+        if (function_exists('wp_get_update_data')) {
+            $update_data = wp_get_update_data();
+        }
+        
+        // Process each plugin
+        foreach ($all_plugins as $plugin_path => $plugin_data) {
+            $is_active = in_array($plugin_path, $active_plugins);
+            $plugin_status = $is_active ? 'active' : 'inactive';
+            
+            // Skip if filtering by status
+            if ($status !== 'all' && $plugin_status !== $status) {
+                continue;
+            }
+            
+            // Count active/inactive plugins
+            if ($is_active) {
+                $active_count++;
+            } else {
+                $inactive_count++;
+            }
+            
+            // Check for updates
+            $update_available = false;
+            $new_version = '';
+            
+            if (function_exists('get_site_transient')) {
+                $update_plugins = get_site_transient('update_plugins');
+                if (isset($update_plugins->response[$plugin_path])) {
+                    $update_available = true;
+                    $update_available_count++;
+                    $new_version = $update_plugins->response[$plugin_path]->new_version ?? '';
+                }
+            }
+            
+            // Build plugin data
+            $plugin_info = [
+                'name' => $plugin_data['Name'] ?? 'Unknown',
+                'slug' => dirname(plugin_basename($plugin_path)),
+                'version' => $plugin_data['Version'] ?? '',
+                'status' => $plugin_status,
+                'update_available' => $update_available,
+            ];
+            
+            // Add new version if available
+            if ($update_available && !empty($new_version)) {
+                $plugin_info['new_version'] = $new_version;
+            }
+            
+            $plugins[] = $plugin_info;
+        }
+        
+        // Build response
         return [
             'status' => 'success',
             'message' => 'Plugins retrieved successfully',
             'data' => [
-                'plugins' => [
-                    [
-                        'name' => 'MemberPress',
-                        'slug' => 'memberpress',
-                        'version' => '1.9.42',
-                        'status' => 'active',
-                        'update_available' => false,
-                    ],
-                    [
-                        'name' => 'Akismet Anti-Spam',
-                        'slug' => 'akismet',
-                        'version' => '5.0.2',
-                        'status' => 'active',
-                        'update_available' => true,
-                        'new_version' => '5.1.0',
-                    ],
-                    [
-                        'name' => 'Hello Dolly',
-                        'slug' => 'hello-dolly',
-                        'version' => '1.7.2',
-                        'status' => 'inactive',
-                        'update_available' => false,
-                    ],
-                ],
-                'total' => 3,
-                'active' => 2,
-                'inactive' => 1,
-                'update_available' => 1,
+                'plugins' => $plugins,
+                'total' => count($plugins),
+                'active' => $active_count,
+                'inactive' => $inactive_count,
+                'update_available' => $update_available_count,
             ],
         ];
     }

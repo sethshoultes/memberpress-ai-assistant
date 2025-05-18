@@ -194,32 +194,70 @@ class ContextManager {
      * @return bool Success status
      */
     public function addMessageToHistory(MessageProtocol $message, string $conversationId): bool {
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Adding message to history for conversation: ' . $conversationId);
+        }
+        
         if (empty($conversationId)) {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Cannot add message to history: Empty conversation ID');
+            }
             return false;
         }
 
         // Initialize conversation history if it doesn't exist
         if (!isset($this->conversationContext[$conversationId]['history'])) {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Initializing new history for conversation: ' . $conversationId);
+            }
+            
             $this->conversationContext[$conversationId]['history'] = [
                 'value' => [],
                 'timestamp' => time(),
                 'priority' => self::PRIORITY_HIGH,
                 'expiration' => time() + $this->contextExpirationTime
             ];
+        } else {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - History already exists for conversation: ' . $conversationId .
+                          ' with ' . count($this->conversationContext[$conversationId]['history']['value']) . ' items');
+            }
         }
 
         // Add message to history
         $history = &$this->conversationContext[$conversationId]['history']['value'];
-        $history[] = $message->toArray();
+        $messageArray = $message->toArray();
+        $history[] = $messageArray;
+        
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Added message to history: ' . substr(json_encode($messageArray), 0, 100) . '...');
+            error_log('MPAI Debug - History now has ' . count($history) . ' items');
+        }
 
         // Prune history if it exceeds the maximum size
         if (count($history) > $this->maxConversationHistory) {
             array_shift($history);
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Pruned history to ' . count($history) . ' items');
+            }
         }
 
         // Update timestamp
         $this->conversationContext[$conversationId]['history']['timestamp'] = time();
         $this->conversationContext[$conversationId]['history']['expiration'] = time() + $this->contextExpirationTime;
+        
+        // Immediately persist the context after adding a message
+        // Use just 'conversation_' as the prefix, since the conversationId already has 'conv_' prefix
+        $this->persistContext('conversation_' . $conversationId);
+        
+        // Log the actual transient key that will be used
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Transient key that will be used: mpai_' . $conversationId);
+        }
+        
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Message added to history successfully and context persisted');
+        }
 
         return true;
     }
@@ -231,7 +269,28 @@ class ContextManager {
      * @return array|null Conversation history or null if not found
      */
     public function getConversationHistory(string $conversationId): ?array {
-        if (empty($conversationId) || 
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Getting conversation history for ID: ' . $conversationId);
+            error_log('MPAI Debug - Conversation context keys: ' . implode(', ', array_keys($this->conversationContext)));
+            
+            if (isset($this->conversationContext[$conversationId])) {
+                error_log('MPAI Debug - Conversation context exists for ID: ' . $conversationId);
+                error_log('MPAI Debug - Conversation context keys for this ID: ' .
+                          implode(', ', array_keys($this->conversationContext[$conversationId])));
+                
+                if (isset($this->conversationContext[$conversationId]['history'])) {
+                    error_log('MPAI Debug - History exists for this conversation');
+                    error_log('MPAI Debug - History item count: ' .
+                              count($this->conversationContext[$conversationId]['history']['value']));
+                } else {
+                    error_log('MPAI Debug - No history found for this conversation');
+                }
+            } else {
+                error_log('MPAI Debug - No conversation context found for ID: ' . $conversationId);
+            }
+        }
+        
+        if (empty($conversationId) ||
             !isset($this->conversationContext[$conversationId]['history']) ||
             time() > $this->conversationContext[$conversationId]['history']['expiration']) {
             return null;
@@ -574,33 +633,150 @@ class ContextManager {
     }
 
     /**
-     * Persist context to storage (can be implemented with various storage backends)
+     * Persist context to storage
      *
      * @param string $storageKey Key to identify the stored context
      * @return bool Success status
      */
     public function persistContext(string $storageKey): bool {
-        // This is a placeholder implementation
-        // In a real implementation, this would save to a database, file, or cache
-        
-        $contextData = [
-            'global' => $this->globalContext,
-            'conversation' => $this->conversationContext,
-            'request' => $this->requestContext,
-            'entities' => $this->entityReferences,
-            'timestamp' => time()
-        ];
-        
-        // Example persistence using WordPress transients
-        if (function_exists('set_transient')) {
-            return set_transient('mpai_context_' . $storageKey, $contextData, $this->contextExpirationTime);
+        // Extract conversation ID from storage key
+        $conversationId = null;
+        if (strpos($storageKey, 'conversation_') === 0) {
+            $conversationId = substr($storageKey, strlen('conversation_'));
         }
         
-        // Example persistence using file storage
-        $contextJson = json_encode($contextData);
-        $filePath = sys_get_temp_dir() . '/mpai_context_' . $storageKey . '.json';
+        // Log persistence attempt
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Persisting context with key: ' . $storageKey);
+        }
         
-        return file_put_contents($filePath, $contextJson) !== false;
+        // If we have a conversation ID, store just that conversation's data
+        if ($conversationId && isset($this->conversationContext[$conversationId])) {
+            // Store only the conversation data for this specific conversation ID
+            $conversationData = $this->conversationContext[$conversationId];
+            
+            // Log what we're storing
+            if (function_exists('error_log')) {
+                $historyCount = 0;
+                if (isset($conversationData['history']['value'])) {
+                    $historyCount = count($conversationData['history']['value']);
+                    error_log('MPAI Debug - History items for conversation ' . $conversationId . ': ' . $historyCount);
+                }
+                
+                error_log('MPAI Debug - Storing conversation data with ' . count($conversationData) . ' items and ' .
+                          $historyCount . ' history items');
+                
+                // Log the size of the data being stored
+                $serializedSize = strlen(serialize($conversationData));
+                error_log('MPAI Debug - Serialized conversation data size: ' . $serializedSize . ' bytes');
+            }
+            
+            // Try WordPress transients first (preferred method in WordPress environment)
+            if (function_exists('set_transient')) {
+                // Avoid duplicate 'conv_' prefix in the transient key
+                $transientKey = 'mpai_' . $conversationId;
+                $result = set_transient($transientKey, $conversationData, $this->contextExpirationTime);
+                
+                if (function_exists('error_log')) {
+                    error_log('MPAI Debug - Transient set result: ' . ($result ? 'SUCCESS' : 'FAILURE'));
+                    error_log('MPAI Debug - Transient key used: ' . $transientKey);
+                    
+                    // Verify the transient was actually set
+                    $verifyData = get_transient($transientKey);
+                    error_log('MPAI Debug - Transient verification: ' . ($verifyData !== false ? 'EXISTS' : 'MISSING'));
+                }
+                
+                if ($result && function_exists('error_log')) {
+                    error_log('MPAI Debug - Conversation data persisted using WordPress transients');
+                }
+                
+                return $result;
+            }
+        } else {
+            // Store the full context data (legacy method)
+            $contextData = [
+                'global' => $this->globalContext,
+                'conversation' => $this->conversationContext,
+                'request' => $this->requestContext,
+                'entities' => $this->entityReferences,
+                'timestamp' => time()
+            ];
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Storing full context data (legacy method)');
+            }
+            
+            // Try WordPress transients first (preferred method in WordPress environment)
+            if (function_exists('set_transient')) {
+                $result = set_transient('mpai_context_' . $storageKey, $contextData, $this->contextExpirationTime);
+                
+                if ($result && function_exists('error_log')) {
+                    error_log('MPAI Debug - Full context persisted using WordPress transients');
+                }
+                
+                return $result;
+            }
+        }
+        
+        // Fall back to file storage if transients not available
+        try {
+            // Create a storage directory if it doesn't exist
+            $storageDir = WP_CONTENT_DIR . '/mpai-context';
+            if (!file_exists($storageDir) && !mkdir($storageDir, 0755, true)) {
+                if (function_exists('error_log')) {
+                    error_log('MPAI Debug - Failed to create context storage directory');
+                }
+                return false;
+            }
+            
+            // If we have conversation-specific data, store it in a separate file
+            if ($conversationId && isset($this->conversationContext[$conversationId])) {
+                $conversationData = $this->conversationContext[$conversationId];
+                $convJson = json_encode($conversationData);
+                
+                if ($convJson === false) {
+                    if (function_exists('error_log')) {
+                        error_log('MPAI Debug - Failed to encode conversation data to JSON');
+                    }
+                    return false;
+                }
+                
+                // Avoid duplicate 'conv_' prefix in the file path
+                $convFilePath = $storageDir . '/mpai_' . $conversationId . '.json';
+                $result = file_put_contents($convFilePath, $convJson);
+                
+                if ($result !== false && function_exists('error_log')) {
+                    error_log('MPAI Debug - Conversation data persisted to file: ' . $convFilePath);
+                    error_log('MPAI Debug - File size: ' . filesize($convFilePath) . ' bytes');
+                }
+                
+                return $result !== false;
+            } else {
+                // Legacy method - store full context
+                $contextJson = json_encode($contextData);
+                if ($contextJson === false) {
+                    if (function_exists('error_log')) {
+                        error_log('MPAI Debug - Failed to encode context data to JSON');
+                    }
+                    return false;
+                }
+                
+                $filePath = $storageDir . '/mpai_context_' . $storageKey . '.json';
+                $result = file_put_contents($filePath, $contextJson);
+                
+                if ($result !== false && function_exists('error_log')) {
+                    error_log('MPAI Debug - Context persisted to file: ' . $filePath);
+                    error_log('MPAI Debug - File size: ' . filesize($filePath) . ' bytes');
+                }
+                
+                return $result !== false;
+            }
+        } catch (\Exception $e) {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Error persisting context: ' . $e->getMessage());
+            }
+            return false;
+        }
     }
 
     /**
@@ -610,12 +786,90 @@ class ContextManager {
      * @return bool Success status
      */
     public function loadContext(string $storageKey): bool {
-        // This is a placeholder implementation
-        // In a real implementation, this would load from a database, file, or cache
+        // Extract conversation ID from storage key
+        $conversationId = null;
+        if (strpos($storageKey, 'conversation_') === 0) {
+            $conversationId = substr($storageKey, strlen('conversation_'));
+        }
+        
+        // Log loading attempt
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Loading context with key: ' . $storageKey);
+            if ($conversationId) {
+                error_log('MPAI Debug - Extracted conversation ID: ' . $conversationId);
+            }
+        }
+        
+        // If we have a conversation ID, try to load just that conversation's data first
+        if ($conversationId && function_exists('get_transient')) {
+            // Avoid duplicate 'conv_' prefix in the transient key
+            $transientKey = 'mpai_' . $conversationId;
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Trying to load conversation data with transient key: ' . $transientKey);
+            }
+            
+            $conversationData = get_transient($transientKey);
+            
+            if ($conversationData !== false) {
+                // We found the conversation data, set it in the context
+                $this->conversationContext[$conversationId] = $conversationData;
+                
+                if (function_exists('error_log')) {
+                    error_log('MPAI Debug - Conversation data loaded from WordPress transients');
+                    
+                    // Log conversation context details
+                    error_log('MPAI Debug - Loaded conversation context for ID: ' . $conversationId);
+                    error_log('MPAI Debug - Conversation context keys: ' .
+                              implode(', ', array_keys($this->conversationContext[$conversationId])));
+                    
+                    if (isset($this->conversationContext[$conversationId]['history'])) {
+                        error_log('MPAI Debug - History found in loaded context');
+                        error_log('MPAI Debug - History item count: ' .
+                                  count($this->conversationContext[$conversationId]['history']['value']));
+                        
+                        // Log the first message to verify content
+                        if (!empty($this->conversationContext[$conversationId]['history']['value'])) {
+                            $firstMsg = $this->conversationContext[$conversationId]['history']['value'][0];
+                            error_log('MPAI Debug - First history message type: ' .
+                                     ($firstMsg['type'] ?? 'unknown') . ', sender: ' .
+                                     ($firstMsg['sender'] ?? 'unknown'));
+                        }
+                    } else {
+                        error_log('MPAI Debug - No history found in loaded context');
+                    }
+                }
+                
+                return true;
+            } else if (function_exists('error_log')) {
+                error_log('MPAI Debug - No conversation data found with transient key: ' . $transientKey);
+            }
+        }
+        
+        // Fall back to the legacy method if conversation-specific loading failed
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Falling back to legacy context loading method');
+            
+            // Check if transient exists before trying to get it
+            if (function_exists('get_option') && $conversationId) {
+                $legacyTransientKey = 'mpai_context_' . $storageKey;
+                $transientExists = get_transient($legacyTransientKey) !== false;
+                error_log('MPAI Debug - Legacy transient exists check: ' . ($transientExists ? 'YES' : 'NO'));
+                error_log('MPAI Debug - Legacy transient key: ' . $legacyTransientKey);
+            }
+            
+            // Check if file exists
+            $storageDir = WP_CONTENT_DIR . '/mpai-context';
+            $filePath = $storageDir . '/mpai_context_' . $storageKey . '.json';
+            error_log('MPAI Debug - Context file exists check: ' . (file_exists($filePath) ? 'YES' : 'NO'));
+            if (file_exists($filePath)) {
+                error_log('MPAI Debug - Context file path: ' . $filePath);
+            }
+        }
         
         $contextData = null;
         
-        // Example loading using WordPress transients
+        // Try WordPress transients with legacy key format
         if (function_exists('get_transient')) {
             $contextData = get_transient('mpai_context_' . $storageKey);
             if ($contextData !== false) {
@@ -623,24 +877,135 @@ class ContextManager {
                 $this->conversationContext = $contextData['conversation'] ?? [];
                 $this->requestContext = $contextData['request'] ?? [];
                 $this->entityReferences = $contextData['entities'] ?? [];
+                
+                if (function_exists('error_log')) {
+                    error_log('MPAI Debug - Context loaded from WordPress transients (legacy format)');
+                    
+                    // Log conversation context details
+                    if ($conversationId && isset($this->conversationContext[$conversationId])) {
+                        error_log('MPAI Debug - Loaded conversation context for ID: ' . $conversationId);
+                        error_log('MPAI Debug - Conversation context keys: ' .
+                                  implode(', ', array_keys($this->conversationContext[$conversationId])));
+                        
+                        if (isset($this->conversationContext[$conversationId]['history'])) {
+                            error_log('MPAI Debug - History found in loaded context');
+                            error_log('MPAI Debug - History item count: ' .
+                                      count($this->conversationContext[$conversationId]['history']['value']));
+                        } else {
+                            error_log('MPAI Debug - No history found in loaded context');
+                        }
+                    } else if ($conversationId) {
+                        error_log('MPAI Debug - No conversation context found for ID: ' . $conversationId . ' after loading');
+                    }
+                }
+                
                 return true;
             }
         }
         
-        // Example loading using file storage
-        $filePath = sys_get_temp_dir() . '/mpai_context_' . $storageKey . '.json';
-        if (file_exists($filePath)) {
-            $contextJson = file_get_contents($filePath);
-            if ($contextJson !== false) {
-                $contextData = json_decode($contextJson, true);
-                if (is_array($contextData)) {
-                    $this->globalContext = $contextData['global'] ?? [];
-                    $this->conversationContext = $contextData['conversation'] ?? [];
-                    $this->requestContext = $contextData['request'] ?? [];
-                    $this->entityReferences = $contextData['entities'] ?? [];
-                    return true;
+        // Fall back to file storage if transients not available or empty
+        try {
+            // First try conversation-specific file if we have a conversation ID
+            if ($conversationId) {
+                $storageDir = WP_CONTENT_DIR . '/mpai-context';
+                // Avoid duplicate 'conv_' prefix in the file path
+                $convFilePath = $storageDir . '/mpai_' . $conversationId . '.json';
+                
+                if (function_exists('error_log')) {
+                    error_log('MPAI Debug - Checking for conversation-specific file: ' . $convFilePath);
+                    error_log('MPAI Debug - File exists: ' . (file_exists($convFilePath) ? 'YES' : 'NO'));
+                }
+                
+                if (file_exists($convFilePath)) {
+                    $convJson = file_get_contents($convFilePath);
+                    if ($convJson !== false) {
+                        $convData = json_decode($convJson, true);
+                        if (is_array($convData)) {
+                            // Store just this conversation's data
+                            $this->conversationContext[$conversationId] = $convData;
+                            
+                            if (function_exists('error_log')) {
+                                error_log('MPAI Debug - Conversation data loaded from file: ' . $convFilePath);
+                                
+                                // Log conversation context details
+                                error_log('MPAI Debug - Loaded conversation context for ID: ' . $conversationId . ' from file');
+                                error_log('MPAI Debug - Conversation context keys: ' .
+                                          implode(', ', array_keys($this->conversationContext[$conversationId])));
+                                
+                                if (isset($this->conversationContext[$conversationId]['history'])) {
+                                    error_log('MPAI Debug - History found in loaded context from file');
+                                    error_log('MPAI Debug - History item count: ' .
+                                              count($this->conversationContext[$conversationId]['history']['value']));
+                                    
+                                    // Log the first message to verify content
+                                    if (!empty($this->conversationContext[$conversationId]['history']['value'])) {
+                                        $firstMsg = $this->conversationContext[$conversationId]['history']['value'][0];
+                                        error_log('MPAI Debug - First history message type: ' .
+                                                 ($firstMsg['type'] ?? 'unknown') . ', sender: ' .
+                                                 ($firstMsg['sender'] ?? 'unknown'));
+                                    }
+                                } else {
+                                    error_log('MPAI Debug - No history found in loaded context from file');
+                                }
+                            }
+                            
+                            return true;
+                        }
+                    }
                 }
             }
+            
+            // Fall back to legacy file format
+            $storageDir = WP_CONTENT_DIR . '/mpai-context';
+            $filePath = $storageDir . '/mpai_context_' . $storageKey . '.json';
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Falling back to legacy file format: ' . $filePath);
+            }
+            
+            if (file_exists($filePath)) {
+                $contextJson = file_get_contents($filePath);
+                if ($contextJson !== false) {
+                    $contextData = json_decode($contextJson, true);
+                    if (is_array($contextData)) {
+                        $this->globalContext = $contextData['global'] ?? [];
+                        $this->conversationContext = $contextData['conversation'] ?? [];
+                        $this->requestContext = $contextData['request'] ?? [];
+                        $this->entityReferences = $contextData['entities'] ?? [];
+                        
+                        if (function_exists('error_log')) {
+                            error_log('MPAI Debug - Context loaded from legacy file: ' . $filePath);
+                            
+                            // Log conversation context details
+                            if ($conversationId && isset($this->conversationContext[$conversationId])) {
+                                error_log('MPAI Debug - Loaded conversation context for ID: ' . $conversationId . ' from legacy file');
+                                error_log('MPAI Debug - Conversation context keys: ' .
+                                          implode(', ', array_keys($this->conversationContext[$conversationId])));
+                                
+                                if (isset($this->conversationContext[$conversationId]['history'])) {
+                                    error_log('MPAI Debug - History found in loaded context from legacy file');
+                                    error_log('MPAI Debug - History item count: ' .
+                                              count($this->conversationContext[$conversationId]['history']['value']));
+                                } else {
+                                    error_log('MPAI Debug - No history found in loaded context from legacy file');
+                                }
+                            } else if ($conversationId) {
+                                error_log('MPAI Debug - No conversation context found for ID: ' . $conversationId . ' after loading from legacy file');
+                            }
+                        }
+                        
+                        return true;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Error loading context: ' . $e->getMessage());
+            }
+        }
+        
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - No context found for key: ' . $storageKey);
         }
         
         return false;
@@ -665,6 +1030,32 @@ class ContextManager {
      * @return bool Success status
      */
     public function clearConversationContext(string $conversationId): bool {
+        if (function_exists('error_log')) {
+            error_log('MPAI Debug - Clearing conversation context for ID: ' . $conversationId);
+        }
+        
+        // Delete the transient if it exists
+        if (function_exists('delete_transient')) {
+            $transientKey = 'mpai_' . $conversationId;
+            delete_transient($transientKey);
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Deleted transient with key: ' . $transientKey);
+            }
+        }
+        
+        // Delete the file if it exists
+        $storageDir = WP_CONTENT_DIR . '/mpai-context';
+        $convFilePath = $storageDir . '/mpai_' . $conversationId . '.json';
+        if (file_exists($convFilePath)) {
+            unlink($convFilePath);
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Deleted conversation file: ' . $convFilePath);
+            }
+        }
+        
+        // Remove from memory
         if (isset($this->conversationContext[$conversationId])) {
             unset($this->conversationContext[$conversationId]);
             
@@ -675,6 +1066,10 @@ class ContextManager {
                     unset($entity['conversations'][$key]);
                     $entity['conversations'] = array_values($entity['conversations']); // Reindex array
                 }
+            }
+            
+            if (function_exists('error_log')) {
+                error_log('MPAI Debug - Removed conversation from memory');
             }
             
             return true;

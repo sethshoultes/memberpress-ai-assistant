@@ -274,17 +274,8 @@ class MemberpressAiAssistant {
     private function init_services() {
         // Initialize services from the service locator
         
-        // Initialize the ToolRegistry
+        // Get the logger
         $logger = $this->serviceLocator->has('logger') ? $this->serviceLocator->get('logger') : null;
-        $toolRegistry = \MemberpressAiAssistant\Registry\ToolRegistry::getInstance($logger);
-        
-        // Discover and register tools
-        $toolRegistry->discoverTools();
-        
-        // Register the ToolRegistry with the service locator
-        $this->serviceLocator->register('tool_registry', function() use ($toolRegistry) {
-            return $toolRegistry;
-        });
         
         // Register service providers
         $this->register_service_providers();
@@ -362,6 +353,11 @@ class MemberpressAiAssistant {
         $llm_provider = new \MemberpressAiAssistant\DI\Providers\LlmServiceProvider();
         $llm_provider->register($this->serviceLocator);
         $llm_provider->boot($this->serviceLocator);
+        
+        // Register Tool Registry provider
+        $tool_registry_provider = new \MemberpressAiAssistant\DI\Providers\ToolRegistryProvider();
+        $tool_registry_provider->register($this->serviceLocator);
+        $tool_registry_provider->boot($this->serviceLocator);
         
         if (apply_filters('mpai_debug_mode', false)) {
             error_log('MPAI: Service providers registered');

@@ -255,6 +255,12 @@ class ChatInterface {
         // Get request parameters
         $message = $request->get_param('message');
         $conversation_id = $request->get_param('conversation_id');
+        $load_history = (bool)$request->get_param('load_history');
+        $clear_history = (bool)$request->get_param('clear_history');
+        $user_logged_in = (bool)$request->get_param('user_logged_in');
+        
+        // Get the current user ID if logged in
+        $user_id = is_user_logged_in() ? get_current_user_id() : 0;
 
         // Enable error reporting for debugging
         ini_set('display_errors', 1);
@@ -264,6 +270,29 @@ class ChatInterface {
         try {
             // Log the request for debugging
             error_log('MPAI Debug - Chat request received: ' . $message);
+            
+            // Handle clear history request
+            if ($clear_history && !empty($conversation_id) && $user_id > 0) {
+                error_log('MPAI Debug - Clearing history for conversation: ' . $conversation_id);
+                $this->clearUserConversationHistory($user_id, $conversation_id);
+                
+                // Return success response
+                return rest_ensure_response([
+                    'status' => 'success',
+                    'message' => 'History cleared successfully',
+                    'conversation_id' => null,
+                    'timestamp' => time()
+                ]);
+            }
+            
+            // For logged-in users, try to get their conversation ID from user metadata
+            if ($user_id > 0 && empty($conversation_id)) {
+                $saved_conversation_id = $this->getUserConversationId($user_id);
+                if ($saved_conversation_id) {
+                    $conversation_id = $saved_conversation_id;
+                    error_log('MPAI Debug - Using saved conversation ID for user: ' . $conversation_id);
+                }
+            }
             
             // Get the service locator
             global $mpai_service_locator;
@@ -275,21 +304,147 @@ class ChatInterface {
                 throw new \Exception('Service locator not available');
             }
             
-            // Try to use the LLM services first
-            if ($mpai_service_locator->has('llm.chat_adapter')) {
-                // Get the LLM chat adapter
-                $chatAdapter = $mpai_service_locator->get('llm.chat_adapter');
+            // Load context if conversation_id is provided
+            if (!empty($conversation_id) && $mpai_service_locator->has('agent_orchestrator')) {
+                $orchestrator = $mpai_service_locator->get('agent_orchestrator');
+                $contextManager = $orchestrator->getContextManager();
                 
-                // Process the request with the LLM chat adapter
-                error_log('MPAI Debug - Processing request with LLM chat adapter');
-                $response = $chatAdapter->processRequest($message, $conversation_id);
-                error_log('MPAI Debug - LLM chat adapter response: ' . json_encode($response));
+                // Try to load context for this conversation
+                $contextManager->loadContext('conversation_' . $conversation_id);
+                error_log('MPAI Debug - Loaded context for conversation: ' . $conversation_id);
                 
-                // Return the response
-                return rest_ensure_response($response);
+                // If this is just a history load request, return the history without processing a message
+                if ($load_history) {
+                    error_log('MPAI Debug - Processing history load request for conversation: ' . $conversation_id);
+                    
+                    $history = [];
+                    $rawHistory = $contextManager->getConversationHistory($conversation_id);
+                    
+                    error_log('MPAI Debug - Raw history: ' . ($rawHistory ? 'Available' : 'Not available') .
+                              ($rawHistory ? ' (' . count($rawHistory) . ' items)' : ''));
+                    
+                    if (is_array($rawHistory)) {
+                        foreach ($rawHistory as $historyItem) {
+                            if (isset($historyItem['sender'], $historyItem['content'])) {
+                                $history[] = [
+                                    'role' => $historyItem['sender'] === 'user' ? 'user' : 'assistant',
+                                    'content' => $historyItem['content'],
+                                    'timestamp' => $historyItem['timestamp'] ?? time()
+                                ];
+                            }
+                        }
+                        
+                        error_log('MPAI Debug - Processed history: ' . count($history) . ' items');
+                        error_log('MPAI Debug - First history item structure: ' . json_encode(array_keys(reset($rawHistory) ?: [])));
+                    } else {
+                        error_log('MPAI Debug - No raw history available to process');
+                    }
+                    
+                    $response = [
+                        'status' => 'success',
+                        'message' => '',
+                        'conversation_id' => $conversation_id,
+                        'timestamp' => time(),
+                        'history' => $history
+                    ];
+                    
+                    error_log('MPAI Debug - Returning history response with ' . count($history) . ' items');
+                    return rest_ensure_response($response);
+                }
             }
-            // Fall back to the agent orchestrator if LLM services are not available
-            else if ($mpai_service_locator->has('agent_orchestrator')) {
+            
+            // Check if we should use the agent orchestrator directly
+            $useAgentOrchestrator = false;
+            
+            // WordPress-specific keywords that should use the agent orchestrator directly
+            $wpKeywords = ['plugin', 'wordpress', 'theme', 'wp-', 'admin', 'dashboard', 'memberpress'];
+            
+            // Check if the message contains WordPress-specific keywords
+            foreach ($wpKeywords as $keyword) {
+                if (stripos($message, $keyword) !== false) {
+                    $useAgentOrchestrator = true;
+                    error_log('MPAI Debug - WordPress keyword detected: ' . $keyword . '. Using agent orchestrator directly.');
+                    break;
+                }
+            }
+            
+            // Try to use the LLM services first
+            if ($mpai_service_locator->has('llm.chat_adapter') && !$useAgentOrchestrator) {
+                try {
+                    // Get the LLM chat adapter
+                    $chatAdapter = $mpai_service_locator->get('llm.chat_adapter');
+                    
+                    // Process the request with the LLM chat adapter
+                    error_log('MPAI Debug - Processing request with LLM chat adapter');
+                    $response = $chatAdapter->processRequest($message, $conversation_id);
+                    
+                    // Check if the response contains an error message
+                    if (isset($response['status']) && $response['status'] === 'error') {
+                        error_log('MPAI Debug - LLM chat adapter returned error: ' . ($response['debug_message'] ?? 'Unknown error'));
+                        throw new \Exception('LLM chat adapter error: ' . ($response['debug_message'] ?? 'Unknown error'));
+                    }
+                    
+                    error_log('MPAI Debug - LLM chat adapter response: ' . json_encode($response));
+                    
+                    // Get the conversation ID from the response or use the existing one
+                    $conversation_id = $response['conversation_id'] ?? $conversation_id;
+                    
+                    // Save conversation ID for logged-in users
+                    if ($user_id > 0 && !empty($conversation_id)) {
+                        $this->saveUserConversationId($user_id, $conversation_id);
+                        error_log('MPAI Debug - Saved conversation ID for user: ' . $conversation_id);
+                    }
+                    
+                    // Get conversation history
+                    $history = [];
+                    if (!empty($conversation_id) && $mpai_service_locator->has('agent_orchestrator')) {
+                        $orchestrator = $mpai_service_locator->get('agent_orchestrator');
+                        $contextManager = $orchestrator->getContextManager();
+                        
+                        // Get conversation history
+                        $rawHistory = $contextManager->getConversationHistory($conversation_id);
+                        if (is_array($rawHistory)) {
+                            foreach ($rawHistory as $historyItem) {
+                                if (isset($historyItem['sender'], $historyItem['content'])) {
+                                    $history[] = [
+                                        'role' => $historyItem['sender'] === 'user' ? 'user' : 'assistant',
+                                        'content' => $historyItem['content'],
+                                        'timestamp' => $historyItem['timestamp'] ?? time()
+                                    ];
+                                }
+                            }
+                            
+                            error_log('MPAI Debug - Processed history items: ' . count($history));
+                        }
+                        
+                        // Persist context after processing
+                        $contextManager->persistContext('conversation_' . $conversation_id);
+                        error_log('MPAI Debug - Persisted context for conversation: ' . $conversation_id);
+                        error_log('MPAI Debug - Transient key that will be used: mpai_' . $conversation_id);
+                    }
+                    
+                    // Format plugin list as a table if this is a plugin list response
+                    if (isset($response['data']) && isset($response['data']['plugins']) && is_array($response['data']['plugins'])) {
+                        $response['message'] = $this->formatPluginListAsTable($response['data']['plugins'], $response['data']);
+                    }
+                    
+                    // Add history to the response
+                    $response['history'] = $history;
+                    
+                    // Return the response
+                    return rest_ensure_response($response);
+                } catch (\Exception $e) {
+                    // Log the error
+                    error_log('MPAI Debug - Error using LLM chat adapter: ' . $e->getMessage());
+                    error_log('MPAI Debug - Falling back to agent orchestrator');
+                    
+                    // Fall back to the agent orchestrator
+                    $useAgentOrchestrator = true;
+                }
+            }
+            
+            // Fall back to the agent orchestrator
+            if ($useAgentOrchestrator || $mpai_service_locator->has('agent_orchestrator')) {
                 // Get the orchestrator service
                 $orchestrator = $mpai_service_locator->get('agent_orchestrator');
                 
@@ -303,12 +458,57 @@ class ChatInterface {
                 $response = $orchestrator->processUserRequest($request_data, $conversation_id);
                 error_log('MPAI Debug - Orchestrator response: ' . json_encode($response));
                 
-                // Return the response
+                // Get the conversation ID from the response or use the existing one
+                $conversation_id = $response['conversation_id'] ?? $conversation_id;
+                
+                // Save conversation ID for logged-in users
+                if ($user_id > 0 && !empty($conversation_id)) {
+                    $this->saveUserConversationId($user_id, $conversation_id);
+                    error_log('MPAI Debug - Saved conversation ID for user: ' . $conversation_id);
+                }
+                
+                // Get conversation history
+                $history = [];
+                if (!empty($conversation_id)) {
+                    $contextManager = $orchestrator->getContextManager();
+                    
+                    // Get conversation history
+                    $rawHistory = $contextManager->getConversationHistory($conversation_id);
+                    if (is_array($rawHistory)) {
+                        foreach ($rawHistory as $historyItem) {
+                            if (isset($historyItem['sender'], $historyItem['content'])) {
+                                $history[] = [
+                                    'role' => $historyItem['sender'] === 'user' ? 'user' : 'assistant',
+                                    'content' => $historyItem['content'],
+                                    'timestamp' => $historyItem['timestamp'] ?? time()
+                                ];
+                            }
+                        }
+                        
+                        error_log('MPAI Debug - Processed history items: ' . count($history));
+                    }
+                    
+                    // Persist context after processing
+                    $contextManager->persistContext('conversation_' . $conversation_id);
+                    error_log('MPAI Debug - Persisted context for conversation: ' . $conversation_id);
+                    error_log('MPAI Debug - Transient key that will be used: mpai_' . $conversation_id);
+                }
+                
+                // Format plugin list as a table if this is a plugin list response
+                $message = $response['message'] ?? $response['content'] ?? 'No response message';
+                
+                // Check if this is a plugin list response
+                if (isset($response['data']) && isset($response['data']['plugins']) && is_array($response['data']['plugins'])) {
+                    $message = $this->formatPluginListAsTable($response['data']['plugins'], $response['data']);
+                }
+                
+                // Return the response with history
                 return rest_ensure_response([
                     'status' => 'success',
-                    'message' => $response['message'] ?? $response['content'] ?? 'No response message',
-                    'conversation_id' => $response['conversation_id'] ?? $conversation_id,
+                    'message' => $message,
+                    'conversation_id' => $conversation_id,
                     'timestamp' => time(),
+                    'history' => $history
                 ]);
             } else {
                 // Fallback to test response if no services are available
@@ -415,8 +615,104 @@ class ChatInterface {
             'maxMessages' => 50,
             'autoOpen' => false,
         ];
+        
+        // Add user login status to the config
+        wp_localize_script('mpai-chat', 'mpai_user_logged_in', is_user_logged_in());
+        
+        // If user is logged in, get their conversation ID
+        if (is_user_logged_in()) {
+            $user_id = get_current_user_id();
+            $conversation_id = $this->getUserConversationId($user_id);
+            if ($conversation_id) {
+                $config['conversationId'] = $conversation_id;
+            }
+        }
 
         // Allow filtering
         return apply_filters('mpai_chat_config', $config, $is_admin);
+    }
+    
+    /**
+     * Get the user's conversation ID from user metadata
+     *
+     * @param int $user_id The user ID
+     * @return string|null The conversation ID or null if not found
+     */
+    private function getUserConversationId($user_id) {
+        return get_user_meta($user_id, 'mpai_conversation_id', true);
+    }
+    
+    /**
+     * Save the user's conversation ID to user metadata
+     *
+     * @param int $user_id The user ID
+     * @param string $conversation_id The conversation ID
+     * @return bool True if successful, false otherwise
+     */
+    private function saveUserConversationId($user_id, $conversation_id) {
+        return update_user_meta($user_id, 'mpai_conversation_id', $conversation_id);
+    }
+    
+    /**
+     * Clear the user's conversation history
+     *
+     * @param int $user_id The user ID
+     * @param string $conversation_id The conversation ID to clear
+     * @return bool True if successful, false otherwise
+     */
+    private function clearUserConversationHistory($user_id, $conversation_id) {
+        // Delete the user's conversation ID from metadata
+        delete_user_meta($user_id, 'mpai_conversation_id');
+        
+        // If we have a context manager, clear the conversation context
+        global $mpai_service_locator;
+        if (isset($mpai_service_locator) && $mpai_service_locator->has('agent_orchestrator')) {
+            $orchestrator = $mpai_service_locator->get('agent_orchestrator');
+            $contextManager = $orchestrator->getContextManager();
+            
+            // Clear the conversation context
+            return $contextManager->clearConversationContext($conversation_id);
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Format plugin list as a nice-looking table
+     *
+     * @param array $plugins List of plugins
+     * @param array $summary Summary data (total, active, inactive, update_available)
+     * @return string Formatted table
+     */
+    private function formatPluginListAsTable(array $plugins, array $summary): string {
+        // Start with a header
+        $output = "# Installed WordPress Plugins\n\n";
+        
+        // Add summary information
+        $output .= "**Total Plugins:** {$summary['total']}  \n";
+        $output .= "**Active:** {$summary['active']}  \n";
+        $output .= "**Inactive:** {$summary['inactive']}  \n";
+        $output .= "**Updates Available:** {$summary['update_available']}  \n\n";
+        
+        // Create table header
+        $output .= "| Name | Status | Version | Update Available |\n";
+        $output .= "|------|--------|---------|------------------|\n";
+        
+        // Add each plugin to the table
+        foreach ($plugins as $plugin) {
+            $name = $plugin['name'];
+            $status = ucfirst($plugin['status']);
+            $version = $plugin['version'];
+            
+            // Format update information
+            $update = $plugin['update_available']
+                ? "Yes (v{$plugin['new_version']})"
+                : "No";
+            
+            // Add row to table
+            $output .= "| $name | $status | $version | $update |\n";
+        }
+        
+        return $output;
     }
 }
