@@ -75,6 +75,32 @@
     outline-offset: 2px;
 }
 
+/* Expand Button */
+.mpai-chat-expand {
+    background: transparent;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+    margin-right: 8px; /* Space between expand and close buttons */
+}
+
+.mpai-chat-expand:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.mpai-chat-expand:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
 /* Chat Messages Area */
 .mpai-chat-messages {
     flex: 1;
@@ -294,6 +320,31 @@
     
     .mpai-chat-toggle.active {
         display: none;
+    }
+}
+
+/* Expanded Chat Container */
+.mpai-chat-container.mpai-chat-expanded {
+    width: 600px;
+    height: 650px;
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+/* Responsive Adjustments for Expanded State */
+@media (max-width: 768px) {
+    .mpai-chat-container.mpai-chat-expanded {
+        width: 90vw;
+        height: 80vh;
+    }
+}
+
+@media (max-width: 480px) {
+    .mpai-chat-container.mpai-chat-expanded {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        bottom: 0;
+        right: 0;
     }
 }
 

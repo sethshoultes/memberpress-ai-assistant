@@ -15,8 +15,11 @@ if (!defined('ABSPATH')) {
 
 <div class="mpai-chat-container" id="mpai-chat-container">
     <div class="mpai-chat-header">
-        <h3><?php esc_html_e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h3>
-        <button class="mpai-chat-close" id="mpai-chat-close" aria-label="<?php esc_attr_e('Close chat', 'memberpress-ai-assistant'); ?>">
+            <h3><?php esc_html_e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h3>
+            <button class="mpai-chat-expand" id="mpai-chat-expand" aria-label="<?php esc_attr_e('Expand chat', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Expand chat', 'memberpress-ai-assistant'); ?>">
+                <span class="dashicons dashicons-editor-expand"></span>
+            </button>
+            <button class="mpai-chat-close" id="mpai-chat-close" aria-label="<?php esc_attr_e('Close chat', 'memberpress-ai-assistant'); ?>">
             <span class="dashicons dashicons-no-alt"></span>
         </button>
     </div>

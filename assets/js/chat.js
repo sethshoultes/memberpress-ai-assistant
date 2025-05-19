@@ -37,7 +37,8 @@
                 submitButton: document.getElementById('mpai-chat-submit'),
                 toggleButton: document.getElementById('mpai-chat-toggle'),
                 closeButton: document.getElementById('mpai-chat-close'),
-                headerContainer: document.getElementById('mpai-chat-header')
+                headerContainer: document.getElementById('mpai-chat-header'),
+                expandButton: document.getElementById('mpai-chat-expand')
             };
             
             // Add clear history button to header
@@ -57,7 +58,8 @@
                 isProcessing: false,
                 conversationId: null,
                 messages: [],
-                lastUserMessage: null
+                lastUserMessage: null,
+                isExpanded: false
             };
 
             // Initialize
@@ -104,6 +106,18 @@
             const chatWasOpen = localStorage.getItem('mpai_chat_open') === 'true';
             if (chatWasOpen || this.config.autoOpen) {
                 this.openChat();
+            }
+            
+            // Check if chat was expanded in previous session
+            const chatWasExpanded = localStorage.getItem('mpai_chat_expanded') === 'true';
+            if (chatWasExpanded) {
+                this.state.isExpanded = true;
+                this.elements.container.classList.add('mpai-chat-expanded');
+                if (this.elements.expandButton) {
+                    this.elements.expandButton.innerHTML = '<span class="dashicons dashicons-editor-contract"></span>';
+                    this.elements.expandButton.setAttribute('aria-label', 'Collapse chat');
+                    this.elements.expandButton.setAttribute('title', 'Collapse chat');
+                }
             }
             
             // Enable auto-resize for the input field
@@ -192,6 +206,11 @@
             // Close chat
             if (this.elements.closeButton) {
                 this.elements.closeButton.addEventListener('click', () => this.closeChat());
+            }
+            
+            // Toggle expand state
+            if (this.elements.expandButton) {
+                this.elements.expandButton.addEventListener('click', () => this.toggleExpand());
             }
             
             // Submit message on button click
@@ -719,6 +738,37 @@
                 localStorage.setItem('mpai_conversation_id', this.state.conversationId);
                 this.log('Generated new conversation ID for guest:', this.state.conversationId);
             }
+        }
+        
+        /**
+         * Toggle the expanded state of the chat interface
+         */
+        toggleExpand() {
+            this.state.isExpanded = !this.state.isExpanded;
+            
+            if (this.state.isExpanded) {
+                this.elements.container.classList.add('mpai-chat-expanded');
+                this.elements.expandButton.innerHTML = '<span class="dashicons dashicons-editor-contract"></span>';
+                this.elements.expandButton.setAttribute('aria-label', 'Collapse chat');
+                this.elements.expandButton.setAttribute('title', 'Collapse chat');
+                
+                // Save state to localStorage
+                localStorage.setItem('mpai_chat_expanded', 'true');
+            } else {
+                this.elements.container.classList.remove('mpai-chat-expanded');
+                this.elements.expandButton.innerHTML = '<span class="dashicons dashicons-editor-expand"></span>';
+                this.elements.expandButton.setAttribute('aria-label', 'Expand chat');
+                this.elements.expandButton.setAttribute('title', 'Expand chat');
+                
+                // Save state to localStorage
+                localStorage.setItem('mpai_chat_expanded', 'false');
+            }
+            
+            // Scroll to bottom after expansion change
+            this.scrollToBottom();
+            
+            // Log the action if debug is enabled
+            this.log('Chat expansion toggled:', this.state.isExpanded ? 'expanded' : 'collapsed');
         }
     }
 
