@@ -12,6 +12,7 @@ use MemberpressAiAssistant\Llm\ValueObjects\LlmResponse;
 use MemberpressAiAssistant\Registry\ToolRegistry;
 use MemberpressAiAssistant\Orchestration\ContextManager;
 use MemberpressAiAssistant\Orchestration\MessageProtocol;
+use MemberpressAiAssistant\Utilities\TableFormatter;
 
 /**
  * Adapter for integrating LLM services with the chat interface
@@ -296,7 +297,129 @@ class LlmChatAdapter {
             if (isset($result['error'])) {
                 $resultMessage .= "Error: " . $result['error'] . "\n\n";
             } else {
-                $resultMessage .= json_encode($result['result'], JSON_PRETTY_PRINT) . "\n\n";
+                // Check if this is a list_plugins result
+                if ($result['tool'] === 'wordpress_list_plugins' && isset($result['result']['data']['plugins'])) {
+                    $plugins = $result['result']['data']['plugins'];
+                    $summary = [
+                        'total' => $result['result']['data']['total'] ?? count($plugins),
+                        'active' => array_sum(array_column($plugins, 'active')),
+                        'inactive' => count($plugins) - array_sum(array_column($plugins, 'active')),
+                        'update_available' => isset($result['result']['data']['update_available']) ? $result['result']['data']['update_available'] : 0
+                    ];
+                    
+                    $resultMessage .= "\n" . TableFormatter::formatPluginList($plugins, [
+                        'format' => TableFormatter::FORMAT_HTML,
+                        'summary' => $summary
+                    ]);
+                }
+                // Check if this is a list_posts result
+                else if ($result['tool'] === 'wordpress_list_posts' && isset($result['result']['data']['posts'])) {
+                    $posts = $result['result']['data']['posts'];
+                    $summary = [
+                        'total' => $result['result']['data']['total'] ?? count($posts),
+                        'limit' => $result['result']['data']['limit'] ?? 10,
+                        'offset' => $result['result']['data']['offset'] ?? 0,
+                        'max_pages' => $result['result']['data']['max_pages'] ?? 1
+                    ];
+                    
+                    $resultMessage .= "\n" . TableFormatter::formatPostList($posts, [
+                        'format' => TableFormatter::FORMAT_HTML,
+                        'summary' => $summary
+                    ]);
+                }
+                // Check if this is a list_pages result
+                else if ($result['tool'] === 'wordpress_list_pages' && isset($result['result']['data']['pages'])) {
+                    $pages = $result['result']['data']['pages'];
+                    $summary = [
+                        'total' => $result['result']['data']['total'] ?? count($pages),
+                        'limit' => $result['result']['data']['limit'] ?? 10,
+                        'offset' => $result['result']['data']['offset'] ?? 0,
+                        'max_pages' => $result['result']['data']['max_pages'] ?? 1
+                    ];
+                    
+                    $resultMessage .= "\n" . TableFormatter::formatPageList($pages, [
+                        'format' => TableFormatter::FORMAT_HTML,
+                        'summary' => $summary
+                    ]);
+                }
+                // Check if this is a list_comments result
+                else if ($result['tool'] === 'wordpress_list_comments' && isset($result['result']['data']['comments'])) {
+                    $comments = $result['result']['data']['comments'];
+                    $summary = [
+                        'total' => $result['result']['data']['total'] ?? count($comments),
+                        'limit' => $result['result']['data']['limit'] ?? 10,
+                        'offset' => $result['result']['data']['offset'] ?? 0,
+                        'max_pages' => $result['result']['data']['max_pages'] ?? 1
+                    ];
+                    
+                    $resultMessage .= "\n" . TableFormatter::formatCommentList($comments, [
+                        'format' => TableFormatter::FORMAT_HTML,
+                        'summary' => $summary
+                    ]);
+                }
+                // Check if this is a list_users result
+                else if ($result['tool'] === 'wordpress_list_users' && isset($result['result']['data']['users'])) {
+                    $users = $result['result']['data']['users'];
+                    $summary = [
+                        'total' => $result['result']['data']['total'] ?? count($users),
+                        'limit' => $result['result']['data']['limit'] ?? 10,
+                        'offset' => $result['result']['data']['offset'] ?? 0
+                    ];
+                    
+                    $resultMessage .= "\n" . TableFormatter::formatUserList($users, [
+                        'format' => TableFormatter::FORMAT_HTML,
+                        'summary' => $summary
+                    ]);
+                }
+                // Check if this is a list_memberships result
+                else if ($result['tool'] === 'wordpress_memberpress_list_memberships' && isset($result['result']['data']['memberships'])) {
+                    $memberships = $result['result']['data']['memberships'];
+                    $summary = [
+                        'total' => $result['result']['data']['total'] ?? count($memberships),
+                        'limit' => $result['result']['data']['limit'] ?? 10,
+                        'offset' => $result['result']['data']['offset'] ?? 0,
+                        'message' => $result['result']['message'] ?? 'MemberPress memberships'
+                    ];
+                    
+                    $resultMessage .= "\n" . TableFormatter::formatMembershipList($memberships, [
+                        'format' => TableFormatter::FORMAT_HTML,
+                        'summary' => $summary,
+                        'title' => 'MemberPress Memberships'
+                    ]);
+                }
+                // Check if this is a list_membership_levels result
+                else if ($result['tool'] === 'wordpress_memberpress_list_membership_levels' && isset($result['result']['data']['levels'])) {
+                    $levels = $result['result']['data']['levels'];
+                    $summary = [
+                        'total' => $result['result']['data']['total'] ?? count($levels),
+                        'limit' => $result['result']['data']['limit'] ?? 10,
+                        'offset' => $result['result']['data']['offset'] ?? 0
+                    ];
+                    
+                    $resultMessage .= "\n" . TableFormatter::formatMembershipLevelList($levels, [
+                        'format' => TableFormatter::FORMAT_HTML,
+                        'summary' => $summary,
+                        'title' => 'MemberPress Membership Levels'
+                    ]);
+                }
+                // Check if this is a list_memberships result
+                else if ($result['tool'] === 'wordpress_list_memberships' && isset($result['result']['data']['memberships'])) {
+                    $memberships = $result['result']['data']['memberships'];
+                    $summary = [
+                        'total' => $result['result']['data']['total'] ?? count($memberships),
+                        'limit' => $result['result']['data']['limit'] ?? 10,
+                        'offset' => $result['result']['data']['offset'] ?? 0,
+                        'max_pages' => $result['result']['data']['max_pages'] ?? 1
+                    ];
+                    
+                    $resultMessage .= "\n" . TableFormatter::formatMembershipList($memberships, [
+                        'format' => TableFormatter::FORMAT_HTML,
+                        'summary' => $summary
+                    ]);
+                }
+                else {
+                    $resultMessage .= json_encode($result['result'], JSON_PRETTY_PRINT) . "\n\n";
+                }
             }
         }
         

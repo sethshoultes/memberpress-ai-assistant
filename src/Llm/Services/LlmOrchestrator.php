@@ -44,6 +44,19 @@ class LlmOrchestrator {
     private $fallbackProvider = 'anthropic';
 
     /**
+     * Tool operations that should always use OpenAI
+     *
+     * @var array
+     */
+    private $openaiToolOperations = [
+        'list_plugins',
+        'list_posts',
+        'list_users',
+        'list_terms',
+        // Add other structured data operations here
+    ];
+
+    /**
      * Constructor
      *
      * @param LlmProviderFactory $providerFactory The provider factory
@@ -85,8 +98,18 @@ class LlmOrchestrator {
             ]));
         }
         
-        // Get the provider to use
+        // Check if this is a tool call that should use OpenAI
         $providerName = $request->getOption('provider', $this->primaryProvider);
+        
+        // If request contains tools, check if any are in the OpenAI-only list
+        if ($request->getTools() && $this->shouldUseOpenAiForTools($request->getTools())) {
+            $providerName = 'openai';
+            
+            // Log that we're overriding the provider
+            if (function_exists('error_log')) {
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Overriding provider to OpenAI for tool operations');
+            }
+        }
         
         if (function_exists('error_log')) {
             \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Using provider: ' . $providerName);
@@ -262,5 +285,24 @@ class LlmOrchestrator {
      */
     public function getFallbackProvider(): ?string {
         return $this->fallbackProvider;
+    }
+
+    /**
+     * Check if the request should use OpenAI for tools
+     *
+     * @param array $tools The tools in the request
+     * @return bool Whether to use OpenAI
+     */
+    private function shouldUseOpenAiForTools(array $tools): bool {
+        foreach ($tools as $tool) {
+            $toolName = $tool['name'] ?? '';
+            // Check if the tool name contains any of the OpenAI-only operations
+            foreach ($this->openaiToolOperations as $operation) {
+                if (strpos($toolName, $operation) !== false) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

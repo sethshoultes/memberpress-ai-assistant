@@ -419,6 +419,30 @@ class ChatInterface {
                     if (isset($response['data']) && isset($response['data']['plugins']) && is_array($response['data']['plugins'])) {
                         $response['message'] = $this->formatPluginListAsTable($response['data']['plugins'], $response['data']);
                     }
+                    // Format post list as a table if this is a post list response
+                    else if (isset($response['data']) && isset($response['data']['posts']) && is_array($response['data']['posts'])) {
+                        $response['message'] = $this->formatPostListAsTable($response['data']['posts'], $response['data']);
+                    }
+                    // Format page list as a table if this is a page list response
+                    else if (isset($response['data']) && isset($response['data']['pages']) && is_array($response['data']['pages'])) {
+                        $response['message'] = $this->formatPageListAsTable($response['data']['pages'], $response['data']);
+                    }
+                    // Format comment list as a table if this is a comment list response
+                    else if (isset($response['data']) && isset($response['data']['comments']) && is_array($response['data']['comments'])) {
+                        $response['message'] = $this->formatCommentListAsTable($response['data']['comments'], $response['data']);
+                    }
+                    // Format membership list as a table if this is a membership list response
+                    else if (isset($response['data']) && isset($response['data']['memberships']) && is_array($response['data']['memberships'])) {
+                        $response['message'] = $this->formatMembershipListAsTable($response['data']['memberships'], $response['data']);
+                    }
+                    // Format membership level list as a table if this is a membership level list response
+                    else if (isset($response['data']) && isset($response['data']['levels']) && is_array($response['data']['levels'])) {
+                        $response['message'] = $this->formatMembershipLevelListAsTable($response['data']['levels'], $response['data']);
+                    }
+                    // Format user list as a table if this is a user list response
+                    else if (isset($response['data']) && isset($response['data']['users']) && is_array($response['data']['users'])) {
+                        $response['message'] = $this->formatUserListAsTable($response['data']['users'], $response['data']);
+                    }
                     
                     // Add history to the response
                     $response['history'] = $history;
@@ -492,6 +516,30 @@ class ChatInterface {
                 // Check if this is a plugin list response
                 if (isset($response['data']) && isset($response['data']['plugins']) && is_array($response['data']['plugins'])) {
                     $message = $this->formatPluginListAsTable($response['data']['plugins'], $response['data']);
+                }
+                // Format post list as a table if this is a post list response
+                else if (isset($response['data']) && isset($response['data']['posts']) && is_array($response['data']['posts'])) {
+                    $message = $this->formatPostListAsTable($response['data']['posts'], $response['data']);
+                }
+                // Format page list as a table if this is a page list response
+                else if (isset($response['data']) && isset($response['data']['pages']) && is_array($response['data']['pages'])) {
+                    $message = $this->formatPageListAsTable($response['data']['pages'], $response['data']);
+                }
+                // Format comment list as a table if this is a comment list response
+                else if (isset($response['data']) && isset($response['data']['comments']) && is_array($response['data']['comments'])) {
+                    $message = $this->formatCommentListAsTable($response['data']['comments'], $response['data']);
+                }
+                // Format membership list as a table if this is a membership list response
+                else if (isset($response['data']) && isset($response['data']['memberships']) && is_array($response['data']['memberships'])) {
+                    $message = $this->formatMembershipListAsTable($response['data']['memberships'], $response['data']);
+                }
+                // Format membership level list as a table if this is a membership level list response
+                else if (isset($response['data']) && isset($response['data']['levels']) && is_array($response['data']['levels'])) {
+                    $message = $this->formatMembershipLevelListAsTable($response['data']['levels'], $response['data']);
+                }
+                // Format user list as a table if this is a user list response
+                else if (isset($response['data']) && isset($response['data']['users']) && is_array($response['data']['users'])) {
+                    $message = $this->formatUserListAsTable($response['data']['users'], $response['data']);
                 }
                 
                 // Return the response with history
@@ -672,38 +720,104 @@ class ChatInterface {
      * Format plugin list as a nice-looking table
      *
      * @param array $plugins List of plugins
-     * @param array $summary Summary data (total, active, inactive, update_available)
+     * @param array $summary Summary data
+     * @return string Formatted table
+     */
+    /**
+     * Format plugin list as a nice-looking table
+     *
+     * @param array $plugins List of plugins
+     * @param array $summary Summary data
      * @return string Formatted table
      */
     private function formatPluginListAsTable(array $plugins, array $summary): string {
-        // Start with a header
-        $output = "# Installed WordPress Plugins\n\n";
-        
-        // Add summary information
-        $output .= "**Total Plugins:** {$summary['total']}  \n";
-        $output .= "**Active:** {$summary['active']}  \n";
-        $output .= "**Inactive:** {$summary['inactive']}  \n";
-        $output .= "**Updates Available:** {$summary['update_available']}  \n\n";
-        
-        // Create table header
-        $output .= "| Name | Status | Version | Update Available |\n";
-        $output .= "|------|--------|---------|------------------|\n";
-        
-        // Add each plugin to the table
-        foreach ($plugins as $plugin) {
-            $name = $plugin['name'];
-            $status = ucfirst($plugin['status']);
-            $version = $plugin['version'];
-            
-            // Format update information
-            $update = $plugin['update_available']
-                ? "Yes (v{$plugin['new_version']})"
-                : "No";
-            
-            // Add row to table
-            $output .= "| $name | $status | $version | $update |\n";
-        }
-        
-        return $output;
+        return \MemberpressAiAssistant\Utilities\TableFormatter::formatPluginList($plugins, [
+            'format' => \MemberpressAiAssistant\Utilities\TableFormatter::FORMAT_HTML,
+            'summary' => $summary
+        ]);
+    }
+    
+    /**
+     * Format post list as a nice-looking table
+     *
+     * @param array $posts List of posts
+     * @param array $summary Summary data
+     * @return string Formatted table
+     */
+    private function formatPostListAsTable(array $posts, array $summary): string {
+        return \MemberpressAiAssistant\Utilities\TableFormatter::formatPostList($posts, [
+            'format' => \MemberpressAiAssistant\Utilities\TableFormatter::FORMAT_HTML,
+            'summary' => $summary
+        ]);
+    }
+    
+    /**
+     * Format page list as a nice-looking table
+     *
+     * @param array $pages List of pages
+     * @param array $summary Summary data
+     * @return string Formatted table
+     */
+    private function formatPageListAsTable(array $pages, array $summary): string {
+        return \MemberpressAiAssistant\Utilities\TableFormatter::formatPageList($pages, [
+            'format' => \MemberpressAiAssistant\Utilities\TableFormatter::FORMAT_HTML,
+            'summary' => $summary
+        ]);
+    }
+    
+    /**
+     * Format comment list as a nice-looking table
+     *
+     * @param array $comments List of comments
+     * @param array $summary Summary data
+     * @return string Formatted table
+     */
+    private function formatCommentListAsTable(array $comments, array $summary): string {
+        return \MemberpressAiAssistant\Utilities\TableFormatter::formatCommentList($comments, [
+            'format' => \MemberpressAiAssistant\Utilities\TableFormatter::FORMAT_HTML,
+            'summary' => $summary
+        ]);
+    }
+    
+    /**
+     * Format membership list as a nice-looking table
+     *
+     * @param array $memberships List of memberships
+     * @param array $summary Summary data
+     * @return string Formatted table
+     */
+    private function formatMembershipListAsTable(array $memberships, array $summary): string {
+        return \MemberpressAiAssistant\Utilities\TableFormatter::formatMembershipList($memberships, [
+            'format' => \MemberpressAiAssistant\Utilities\TableFormatter::FORMAT_HTML,
+            'summary' => $summary
+        ]);
+    }
+    
+    /**
+     * Format user list as a nice-looking table
+     *
+     * @param array $users List of users
+     * @param array $summary Summary data
+     * @return string Formatted table
+     */
+    private function formatUserListAsTable(array $users, array $summary): string {
+        return \MemberpressAiAssistant\Utilities\TableFormatter::formatUserList($users, [
+            'format' => \MemberpressAiAssistant\Utilities\TableFormatter::FORMAT_HTML,
+            'summary' => $summary
+        ]);
+    }
+    
+    /**
+     * Format membership level list as a nice-looking table
+     *
+     * @param array $levels List of membership levels
+     * @param array $summary Summary data
+     * @return string Formatted table
+     */
+    private function formatMembershipLevelListAsTable(array $levels, array $summary): string {
+        return \MemberpressAiAssistant\Utilities\TableFormatter::formatMembershipLevelList($levels, [
+            'format' => \MemberpressAiAssistant\Utilities\TableFormatter::FORMAT_HTML,
+            'summary' => $summary
+        ]);
     }
 }

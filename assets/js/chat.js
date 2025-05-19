@@ -478,14 +478,32 @@
             } else {
                 // For assistant messages, apply full formatting
                 
-                // First check for XML content
-                if (window.MPAIXMLProcessor && window.MPAIXMLProcessor.containsXML(content)) {
+                // Check if content contains an HTML table or div (from TableFormatter)
+                if ((content.includes('<table') && content.includes('</table>')) ||
+                    (content.includes('<div class="mpai-table-container"') && content.includes('</div>'))) {
+                    // For HTML tables, add a small delay to ensure proper rendering
+                    setTimeout(() => {
+                        // Direct HTML content - use as is without processing
+                        contentDiv.innerHTML = content;
+                        
+                        // Initialize any scripts that might be in the HTML content
+                        const scripts = contentDiv.getElementsByTagName('script');
+                        for (let i = 0; i < scripts.length; i++) {
+                            const script = scripts[i];
+                            const newScript = document.createElement('script');
+                            newScript.textContent = script.textContent;
+                            script.parentNode.replaceChild(newScript, script);
+                        }
+                    }, 100); // 100ms delay
+                }
+                // Check for XML content
+                else if (window.MPAIXMLProcessor && window.MPAIXMLProcessor.containsXML(content)) {
                     // Process XML content
                     contentDiv.innerHTML = window.MPAIXMLProcessor.processMessage(content);
                 } else if (window.MPAITextFormatter) {
                     // Process markdown formatting
                     contentDiv.innerHTML = window.MPAITextFormatter.formatText(content, {
-                        allowHtml: false,
+                        allowHtml: true,
                         syntaxHighlighting: true
                     });
                 } else {
