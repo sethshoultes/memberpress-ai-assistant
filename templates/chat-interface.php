@@ -56,6 +56,45 @@ if (!defined('ABSPATH')) {
             <span class="mpai-chat-powered-by">
                 <?php esc_html_e('Powered by MemberPress AI', 'memberpress-ai-assistant'); ?>
             </span>
+            <div class="mpai-chat-footer-actions">
+                <a href="#" id="mpai-clear-conversation" class="mpai-clear-conversation">
+                    <?php esc_html_e('Clear Conversation', 'memberpress-ai-assistant'); ?>
+                </a>
+                <button id="mpai-download-conversation" class="mpai-download-conversation" aria-label="<?php esc_attr_e('Download conversation', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Download conversation', 'memberpress-ai-assistant'); ?>">
+                    <span class="dashicons dashicons-download"></span>
+                </button>
+                <button id="mpai-run-command" class="mpai-run-command" aria-label="<?php esc_attr_e('Show common commands', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Show common commands', 'memberpress-ai-assistant'); ?>">
+                    <span class="dashicons dashicons-admin-tools"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Command runner panel (initially hidden) -->
+    <div id="mpai-command-runner" class="mpai-command-runner" style="display: none;">
+        <div class="mpai-command-header">
+            <h4><?php esc_html_e('Common Commands', 'memberpress-ai-assistant'); ?></h4>
+            <button id="mpai-command-close" class="mpai-command-close" aria-label="<?php esc_attr_e('Close command panel', 'memberpress-ai-assistant'); ?>">
+                <span class="dashicons dashicons-no-alt"></span>
+            </button>
+        </div>
+        <div class="mpai-command-body">
+            <div class="mpai-command-list">
+                <h5><?php esc_html_e('MemberPress', 'memberpress-ai-assistant'); ?></h5>
+                <ul>
+                    <li><a href="#" class="mpai-command-item" data-command="List all active memberships">List all active memberships</a></li>
+                    <li><a href="#" class="mpai-command-item" data-command="Show recent transactions">Show recent transactions</a></li>
+                    <li><a href="#" class="mpai-command-item" data-command="Summarize membership data">Summarize membership data</a></li>
+                </ul>
+            </div>
+            <div class="mpai-command-list">
+                <h5><?php esc_html_e('WordPress', 'memberpress-ai-assistant'); ?></h5>
+                <ul>
+                    <li><a href="#" class="mpai-command-item" data-command="wp plugin list">wp plugin list</a></li>
+                    <li><a href="#" class="mpai-command-item" data-command="wp user list">wp user list</a></li>
+                    <li><a href="#" class="mpai-command-item" data-command="wp post list">wp post list</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>

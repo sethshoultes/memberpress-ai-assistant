@@ -38,7 +38,12 @@
                 toggleButton: document.getElementById('mpai-chat-toggle'),
                 closeButton: document.getElementById('mpai-chat-close'),
                 headerContainer: document.getElementById('mpai-chat-header'),
-                expandButton: document.getElementById('mpai-chat-expand')
+                expandButton: document.getElementById('mpai-chat-expand'),
+                runCommandButton: document.getElementById('mpai-run-command'),
+                commandCloseButton: document.getElementById('mpai-command-close'),
+                commandRunner: document.getElementById('mpai-command-runner'),
+                clearConversationLink: document.getElementById('mpai-clear-conversation'),
+                downloadButton: document.getElementById('mpai-download-conversation')
             };
             
             // Add clear history button to header
@@ -232,6 +237,40 @@
             if (this.elements.clearButton) {
                 this.elements.clearButton.addEventListener('click', () => this.clearHistory());
             }
+            
+            // Run command button (wrench icon)
+            if (this.elements.runCommandButton) {
+                this.elements.runCommandButton.addEventListener('click', () => this.toggleCommandRunner());
+            }
+            
+            // Command runner close button
+            if (this.elements.commandCloseButton) {
+                this.elements.commandCloseButton.addEventListener('click', () => this.hideCommandRunner());
+            }
+            
+            // Clear conversation link
+            if (this.elements.clearConversationLink) {
+                this.elements.clearConversationLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.clearHistory();
+                });
+            }
+            
+            // Download conversation button
+            if (this.elements.downloadButton) {
+                this.elements.downloadButton.addEventListener('click', () => this.downloadConversation());
+            }
+            
+            // Command items
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('mpai-command-item') || e.target.closest('.mpai-command-item')) {
+                    e.preventDefault();
+                    const commandItem = e.target.classList.contains('mpai-command-item') ?
+                        e.target : e.target.closest('.mpai-command-item');
+                    const command = commandItem.getAttribute('data-command');
+                    this.insertCommand(command);
+                }
+            });
             
             // Scroll to bottom when messages container changes
             if (this.elements.messagesContainer) {
@@ -769,6 +808,62 @@
             
             // Log the action if debug is enabled
             this.log('Chat expansion toggled:', this.state.isExpanded ? 'expanded' : 'collapsed');
+        }
+
+        /**
+         * Toggle the command runner panel
+         */
+        toggleCommandRunner() {
+            if (this.elements.commandRunner) {
+                if (this.elements.commandRunner.style.display === 'none' || !this.elements.commandRunner.style.display) {
+                    this.elements.commandRunner.style.display = 'flex';
+                    this.log('Command runner opened');
+                } else {
+                    this.elements.commandRunner.style.display = 'none';
+                    this.log('Command runner closed');
+                }
+            }
+        }
+
+        /**
+         * Hide the command runner panel
+         */
+        hideCommandRunner() {
+            if (this.elements.commandRunner) {
+                this.elements.commandRunner.style.display = 'none';
+                this.log('Command runner closed');
+            }
+        }
+
+        /**
+         * Insert a command into the chat input
+         *
+         * @param {string} command The command to insert
+         */
+        insertCommand(command) {
+            if (!command || !this.elements.input) {
+                return;
+            }
+            
+            // Set the command in the input field
+            this.elements.input.value = command;
+            
+            // Hide the command runner
+            this.hideCommandRunner();
+            
+            // Focus the input
+            this.elements.input.focus();
+            
+            this.log('Command inserted:', command);
+        }
+        
+        /**
+         * Download the conversation (placeholder for future implementation)
+         */
+        downloadConversation() {
+            // This is a placeholder for future implementation
+            alert('Download conversation functionality is not yet implemented.');
+            this.log('Download conversation requested (not yet implemented)');
         }
     }
 
