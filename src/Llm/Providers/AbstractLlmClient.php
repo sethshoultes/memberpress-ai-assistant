@@ -116,11 +116,11 @@ abstract class AbstractLlmClient implements LlmClientInterface {
     protected function makeHttpRequest(string $url, string $method = 'POST', array $headers = [], array $data = []): array {
         // Log the request details
         if (function_exists('error_log')) {
-            error_log('MPAI Debug - HTTP Request: ' . $method . ' ' . $url);
-            error_log('MPAI Debug - HTTP Headers: ' . json_encode($headers));
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - HTTP Request: ' . $method . ' ' . $url);
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - HTTP Headers: ' . json_encode($headers));
             
             // Don't log the full body as it might contain sensitive information
-            error_log('MPAI Debug - HTTP Body Size: ' . (empty($data) ? 0 : strlen(json_encode($data))) . ' bytes');
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - HTTP Body Size: ' . (empty($data) ? 0 : strlen(json_encode($data))) . ' bytes');
         }
         
         $args = [
@@ -139,7 +139,7 @@ abstract class AbstractLlmClient implements LlmClientInterface {
         $request_time = microtime(true) - $start_time;
         
         if (function_exists('error_log')) {
-            error_log('MPAI Debug - HTTP Request completed in ' . round($request_time, 2) . ' seconds');
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - HTTP Request completed in ' . round($request_time, 2) . ' seconds');
         }
 
         // Handle WP_Error
@@ -148,7 +148,7 @@ abstract class AbstractLlmClient implements LlmClientInterface {
             $error_code = $response->get_error_code();
             
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - HTTP Request WP_Error: ' . $error_message . ' (Code: ' . $error_code . ')');
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - HTTP Request WP_Error: ' . $error_message . ' (Code: ' . $error_code . ')');
             }
             
             throw new \Exception('HTTP Request Error: ' . $error_message, $error_code);
@@ -159,8 +159,8 @@ abstract class AbstractLlmClient implements LlmClientInterface {
         $response_body = wp_remote_retrieve_body($response);
         
         if (function_exists('error_log')) {
-            error_log('MPAI Debug - HTTP Response Code: ' . $response_code);
-            error_log('MPAI Debug - HTTP Response Size: ' . strlen($response_body) . ' bytes');
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - HTTP Response Code: ' . $response_code);
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - HTTP Response Size: ' . strlen($response_body) . ' bytes');
         }
         
         // Parse JSON response
@@ -171,8 +171,8 @@ abstract class AbstractLlmClient implements LlmClientInterface {
             $json_error = json_last_error_msg();
             
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - JSON Parse Error: ' . $json_error);
-                error_log('MPAI Debug - Response Body: ' . substr($response_body, 0, 1000) . '...');
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - JSON Parse Error: ' . $json_error);
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Response Body: ' . substr($response_body, 0, 1000) . '...');
             }
             
             throw new \Exception('Invalid JSON response: ' . $json_error);
@@ -185,8 +185,8 @@ abstract class AbstractLlmClient implements LlmClientInterface {
                 : (isset($response_data['error']) ? (is_string($response_data['error']) ? $response_data['error'] : json_encode($response_data['error'])) : 'Unknown error');
             
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - HTTP Error Response: ' . $error_message);
-                error_log('MPAI Debug - Full Error Response: ' . json_encode($response_data));
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - HTTP Error Response: ' . $error_message);
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Full Error Response: ' . json_encode($response_data));
             }
                 
             throw new \Exception($error_message, $response_code);

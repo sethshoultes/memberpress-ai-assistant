@@ -81,9 +81,7 @@ class LlmChatAdapter {
      */
     private function initializeWpTools(): void {
         if (!$this->toolRegistry) {
-            if (function_exists('error_log')) {
-                error_log('MPAI Debug - Tool registry not available, cannot initialize WordPress tools');
-            }
+            \MemberpressAiAssistant\Utilities\LoggingUtility::warning('Tool registry not available, cannot initialize WordPress tools');
             return;
         }
         
@@ -92,9 +90,7 @@ class LlmChatAdapter {
             $allTools = $this->toolRegistry->getAllTools();
             
             if (empty($allTools)) {
-                if (function_exists('error_log')) {
-                    error_log('MPAI Debug - No tools found in registry');
-                }
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('No tools found in registry');
                 
                 // Try to get tools from the registry using reflection
                 $reflection = new \ReflectionClass($this->toolRegistry);
@@ -102,9 +98,7 @@ class LlmChatAdapter {
                 $toolsProperty->setAccessible(true);
                 $allTools = $toolsProperty->getValue($this->toolRegistry);
                 
-                if (function_exists('error_log')) {
-                    error_log('MPAI Debug - Tools found using reflection: ' . count($allTools));
-                }
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Tools found using reflection: ' . count($allTools));
             }
             
             // Filter for WordPress-related tools
@@ -137,19 +131,13 @@ class LlmChatAdapter {
             // If no WordPress tools found, add all tools as a fallback
             if (empty($this->wpTools) && !empty($allTools)) {
                 $this->wpTools = $allTools;
-                if (function_exists('error_log')) {
-                    error_log('MPAI Debug - No WordPress-specific tools found, using all available tools');
-                }
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('No WordPress-specific tools found, using all available tools');
             }
             
-            if (function_exists('error_log')) {
-                error_log('MPAI Debug - Initialized WordPress tools: ' . implode(', ', array_keys($this->wpTools)));
-            }
+            \MemberpressAiAssistant\Utilities\LoggingUtility::info('Initialized WordPress tools: ' . implode(', ', array_keys($this->wpTools)));
         } catch (\Exception $e) {
-            if (function_exists('error_log')) {
-                error_log('MPAI Debug - Error initializing WordPress tools: ' . $e->getMessage());
-                error_log('MPAI Debug - Error trace: ' . $e->getTraceAsString());
-            }
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('Error initializing WordPress tools: ' . $e->getMessage());
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Error trace: ' . $e->getTraceAsString());
         }
     }
 
@@ -161,61 +149,30 @@ class LlmChatAdapter {
      * @return array The response data
      */
     public function processRequest(string $message, ?string $conversationId = null): array {
-        if (function_exists('error_log')) {
-            error_log('MPAI Debug - LlmChatAdapter processing request: ' . $message);
-            error_log('MPAI Debug - Conversation ID: ' . ($conversationId ?? 'new conversation'));
-        }
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processing request: ' . $message);
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Conversation ID: ' . ($conversationId ?? 'new conversation'));
         
         // Store the conversation ID locally, don't pass it to the LLM provider
         $localConversationId = $conversationId ?? $this->generateConversationId();
         
-        if (function_exists('error_log')) {
-            error_log('MPAI Debug - Using conversation ID: ' . $localConversationId);
-        }
-        
         // Get conversation history if context manager is available
         $conversationHistory = [];
         if ($this->contextManager) {
-            if (function_exists('error_log')) {
-                error_log('MPAI Debug - Getting conversation history from context manager');
-            }
-            
             $conversationHistory = $this->contextManager->getConversationHistory($localConversationId) ?? [];
             
-            if (function_exists('error_log')) {
-                error_log('MPAI Debug - Retrieved conversation history: ' . count($conversationHistory) . ' messages');
-                if (count($conversationHistory) > 0) {
-                    error_log('MPAI Debug - First history message type: ' .
-                        (isset($conversationHistory[0]['type']) ? $conversationHistory[0]['type'] : 'unknown') .
-                        ', sender: ' . (isset($conversationHistory[0]['from']) ? $conversationHistory[0]['from'] : 'unknown'));
-                }
-            }
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Retrieved conversation history: ' . count($conversationHistory) . ' messages');
         } else {
-            if (function_exists('error_log')) {
-                error_log('MPAI Debug - No context manager available');
-            }
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('No context manager available');
         }
         
         // Convert conversation history to LLM messages format
         $messages = $this->convertHistoryToMessages($conversationHistory);
         
-        if (function_exists('error_log')) {
-            error_log('MPAI Debug - Converted history to ' . count($messages) . ' LLM messages');
-        }
-        
         // Add the current user message
         $messages[] = ['role' => 'user', 'content' => $message];
         
-        if (function_exists('error_log')) {
-            error_log('MPAI Debug - Added user message, total messages: ' . count($messages));
-        }
-        
         // Prepare tools for the LLM
         $tools = $this->prepareToolsForLlm();
-        
-        if (function_exists('error_log')) {
-            error_log('MPAI Debug - Prepared ' . count($tools) . ' tools for LLM');
-        }
         
         // Create a new LlmRequest
         $request = new LlmRequest(
@@ -226,27 +183,14 @@ class LlmChatAdapter {
                 'max_tokens' => 2000
             ]
         );
-        
-        if (function_exists('error_log')) {
-            error_log('MPAI Debug - Created LlmRequest with ' . count($messages) . ' messages and ' . count($tools) . ' tools');
-            error_log('MPAI Debug - Request options: ' . json_encode($request->getOptions()));
-        }
 
         try {
-            if (function_exists('error_log')) {
-                error_log('MPAI Debug - Sending request to LlmOrchestrator');
-            }
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Sending request to LlmOrchestrator');
             
             // Process the request with the orchestrator
             $response = $this->orchestrator->processRequest($request);
             
-            if (function_exists('error_log')) {
-                error_log('MPAI Debug - Received response from LlmOrchestrator');
-                error_log('MPAI Debug - Response is error: ' . ($response->isError() ? 'Yes' : 'No'));
-                error_log('MPAI Debug - Response has tool calls: ' . ($response->hasToolCalls() ? 'Yes' : 'No'));
-                error_log('MPAI Debug - Response content length: ' . strlen($response->getContent()));
-                error_log('MPAI Debug - Response content preview: ' . substr($response->getContent(), 0, 100) . '...');
-            }
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Received response from LlmOrchestrator');
             
             // Check for tool calls in the response
             if ($response->hasToolCalls()) {
@@ -270,10 +214,8 @@ class LlmChatAdapter {
             ];
         } catch (\Exception $e) {
             // Log the error with detailed information
-            if (function_exists('error_log')) {
-                error_log('MPAI LLM Chat Error: ' . $e->getMessage());
-                error_log('MPAI LLM Chat Error Details: ' . $e->getTraceAsString());
-            }
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('LLM Chat Error: ' . $e->getMessage());
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Error Details: ' . $e->getTraceAsString());
 
             // Return error response with more user-friendly message
             return [
@@ -301,9 +243,13 @@ class LlmChatAdapter {
             $toolName = $toolCall['name'];
             $arguments = $toolCall['arguments'];
             
-            if (function_exists('error_log')) {
-                error_log('MPAI Debug - Processing tool call: ' . $toolName);
-                error_log('MPAI Debug - Tool arguments: ' . json_encode($arguments));
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processing tool call: ' . $toolName);
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Tool arguments: ' . json_encode($arguments));
+            
+            // Check if this is a WordPress tool operation
+            if (strpos($toolName, 'wordpress_') === 0) {
+                $this->processWordPressToolOperation($toolName, $arguments, $results);
+                continue;
             }
             
             // Find the tool in our registry
@@ -324,18 +270,14 @@ class LlmChatAdapter {
                         'result' => $result
                     ];
                     
-                    if (function_exists('error_log')) {
-                        error_log('MPAI Debug - Tool execution result: ' . json_encode($result));
-                    }
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Tool execution result: ' . json_encode($result));
                 } catch (\Exception $e) {
                     $results[] = [
                         'tool' => $toolName,
                         'error' => $e->getMessage()
                     ];
                     
-                    if (function_exists('error_log')) {
-                        error_log('MPAI Debug - Tool execution error: ' . $e->getMessage());
-                    }
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::warning('Tool execution error: ' . $e->getMessage());
                 }
             } else {
                 $results[] = [
@@ -343,9 +285,7 @@ class LlmChatAdapter {
                     'error' => 'Tool not found'
                 ];
                 
-                if (function_exists('error_log')) {
-                    error_log('MPAI Debug - Tool not found: ' . $toolName);
-                }
+                \MemberpressAiAssistant\Utilities\LoggingUtility::warning('Tool not found: ' . $toolName);
             }
         }
         
@@ -367,6 +307,63 @@ class LlmChatAdapter {
             'timestamp' => time(),
             'tool_results' => $results
         ];
+    }
+    
+    /**
+     * Process WordPress tool operation
+     *
+     * @param string $toolName The tool name
+     * @param array $arguments The tool arguments
+     * @param array &$results The results array to add to
+     * @return void
+     */
+    private function processWordPressToolOperation(string $toolName, array $arguments, array &$results): void {
+        // Extract the operation name from the tool name
+        $operation = str_replace('wordpress_', '', $toolName);
+        
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processing WordPress tool operation: ' . $operation);
+        
+        // Find the WordPress tool
+        $wordpressTool = null;
+        foreach ($this->wpTools as $wpTool) {
+            if ($wpTool instanceof \MemberpressAiAssistant\Tools\WordPressTool) {
+                $wordpressTool = $wpTool;
+                break;
+            }
+        }
+        
+        if (!$wordpressTool) {
+            $results[] = [
+                'tool' => $toolName,
+                'error' => 'WordPress tool not found'
+            ];
+            
+            \MemberpressAiAssistant\Utilities\LoggingUtility::warning('WordPress tool not found');
+            return;
+        }
+        
+        try {
+            // Make sure the operation is included in the arguments
+            if (!isset($arguments['operation'])) {
+                $arguments['operation'] = $operation;
+            }
+            
+            // Execute the WordPress tool with the operation
+            $result = $wordpressTool->execute($arguments);
+            $results[] = [
+                'tool' => $toolName,
+                'result' => $result
+            ];
+            
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('WordPress tool operation result: ' . json_encode($result));
+        } catch (\Exception $e) {
+            $results[] = [
+                'tool' => $toolName,
+                'error' => $e->getMessage()
+            ];
+            
+            \MemberpressAiAssistant\Utilities\LoggingUtility::warning('WordPress tool operation error: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -425,9 +422,7 @@ class LlmChatAdapter {
         $this->contextManager->addMessageToHistory($userMessageObj, $conversationId);
         $this->contextManager->addMessageToHistory($assistantMessageObj, $conversationId);
         
-        if (function_exists('error_log')) {
-            error_log('MPAI Debug - Stored conversation in context manager for ID: ' . $conversationId);
-        }
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Stored conversation in context manager for ID: ' . $conversationId);
     }
     
     /**
@@ -443,6 +438,12 @@ class LlmChatAdapter {
         $llmTools = [];
         
         foreach ($this->wpTools as $toolId => $tool) {
+            // Special handling for WordPressTool
+            if ($tool instanceof \MemberpressAiAssistant\Tools\WordPressTool) {
+                $this->prepareWordPressToolOperations($tool, $llmTools);
+                continue;
+            }
+            
             // Get tool methods using reflection
             $reflection = new \ReflectionClass($tool);
             $methods = $reflection->getMethods(\ReflectionMethod::IS_PUBLIC);
@@ -481,11 +482,53 @@ class LlmChatAdapter {
             }
         }
         
-        if (function_exists('error_log')) {
-            error_log('MPAI Debug - Prepared ' . count($llmTools) . ' WordPress tools for LLM');
-        }
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Prepared ' . count($llmTools) . ' WordPress tools for LLM');
         
         return $llmTools;
+    }
+    
+    /**
+     * Prepare WordPress tool operations
+     *
+     * @param \MemberpressAiAssistant\Tools\WordPressTool $tool The WordPress tool
+     * @param array &$llmTools The LLM tools array to add to
+     * @return void
+     */
+    private function prepareWordPressToolOperations(\MemberpressAiAssistant\Tools\WordPressTool $tool, array &$llmTools): void {
+        // Get the valid operations using reflection
+        $reflection = new \ReflectionClass($tool);
+        
+        try {
+            // Get the validOperations property
+            $validOperationsProperty = $reflection->getProperty('validOperations');
+            $validOperationsProperty->setAccessible(true);
+            $validOperations = $validOperationsProperty->getValue($tool);
+            
+            // Add each operation as a tool
+            foreach ($validOperations as $operation) {
+                // Create tool definition for each operation
+                $llmTools[] = [
+                    'name' => 'wordpress_' . $operation,
+                    'description' => 'WordPress tool: ' . $operation,
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            // Add common parameters for all operations
+                            'operation' => [
+                                'type' => 'string',
+                                'description' => 'The operation to perform',
+                                'enum' => [$operation]
+                            ]
+                        ],
+                        'required' => ['operation']
+                    ]
+                ];
+            }
+            
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Added ' . count($validOperations) . ' WordPress tool operations');
+        } catch (\Exception $e) {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('Error preparing WordPress tool operations: ' . $e->getMessage());
+        }
     }
     
     /**

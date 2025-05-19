@@ -49,6 +49,8 @@ class WordPressTool extends AbstractTool {
         // Settings operations
         'get_option',
         'update_option',
+        // Plugin operations
+        'list_plugins',
     ];
 
     /**
@@ -1330,6 +1332,47 @@ class WordPressTool extends AbstractTool {
             'data' => [
                 'name' => $option_name,
                 'value' => $option_value,
+            ],
+        ];
+    }
+    
+    /**
+     * List installed plugins
+     *
+     * @param array $parameters The parameters for the operation
+     * @return array The result of the operation
+     */
+    protected function list_plugins(array $parameters): array {
+        // Check if get_plugins function exists
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        
+        // Get all plugins
+        $all_plugins = get_plugins();
+        
+        // Get active plugins
+        $active_plugins = get_option('active_plugins', []);
+        
+        // Format plugins data
+        $plugins_data = [];
+        foreach ($all_plugins as $plugin_path => $plugin_data) {
+            $plugins_data[] = [
+                'name' => $plugin_data['Name'],
+                'version' => $plugin_data['Version'],
+                'description' => $plugin_data['Description'],
+                'author' => $plugin_data['Author'],
+                'path' => $plugin_path,
+                'active' => in_array($plugin_path, $active_plugins),
+            ];
+        }
+        
+        return [
+            'status' => 'success',
+            'message' => 'Plugins retrieved successfully',
+            'data' => [
+                'plugins' => $plugins_data,
+                'total' => count($plugins_data),
             ],
         ];
     }

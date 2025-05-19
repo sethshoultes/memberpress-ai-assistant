@@ -58,13 +58,13 @@ class LlmOrchestrator {
         if (!empty($settings) && isset($settings['primary_api'])) {
             $this->primaryProvider = $settings['primary_api'];
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - Loaded primary provider from settings: ' . $this->primaryProvider);
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Loaded primary provider from settings: ' . $this->primaryProvider);
             }
         } else {
             // Fallback to old option name for backward compatibility
             $this->primaryProvider = get_option('mpai_primary_provider', 'openai');
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - Loaded primary provider from old option: ' . $this->primaryProvider);
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Loaded primary provider from old option: ' . $this->primaryProvider);
             }
         }
     }
@@ -78,7 +78,7 @@ class LlmOrchestrator {
     public function processRequest(LlmRequest $request): LlmResponse {
         // Add detailed logging
         if (function_exists('error_log')) {
-            error_log('MPAI Debug - LlmOrchestrator processing request: ' . json_encode([
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - LlmOrchestrator processing request: ' . json_encode([
                 'messages' => $request->getMessages(),
                 'tools' => $request->getTools(),
                 'options' => $request->getOptions()
@@ -89,14 +89,14 @@ class LlmOrchestrator {
         $providerName = $request->getOption('provider', $this->primaryProvider);
         
         if (function_exists('error_log')) {
-            error_log('MPAI Debug - Using provider: ' . $providerName);
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Using provider: ' . $providerName);
         }
         
         // Check if we have a cached response
         $cachedResponse = $this->cacheAdapter->getCachedResponse($request, $providerName);
         if ($cachedResponse !== null) {
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - Using cached response');
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Using cached response');
             }
             return $cachedResponse;
         }
@@ -104,14 +104,14 @@ class LlmOrchestrator {
         try {
             // Execute the request
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - Executing request with provider: ' . $providerName);
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Executing request with provider: ' . $providerName);
             }
             
             $response = $this->executeRequest($request, $providerName);
             
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - Got response: ' . ($response->isError() ? 'ERROR' : 'SUCCESS'));
-                error_log('MPAI Debug - Response content: ' . $response->getContent());
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Got response: ' . ($response->isError() ? 'ERROR' : 'SUCCESS'));
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Response content: ' . $response->getContent());
             }
             
             // Cache the response if it's not an error
@@ -120,7 +120,7 @@ class LlmOrchestrator {
             } else if ($this->fallbackProvider !== null && $this->fallbackProvider !== $providerName) {
                 // Try fallback provider if available
                 if (function_exists('error_log')) {
-                    error_log('MPAI Debug - Trying fallback provider: ' . $this->fallbackProvider);
+                    \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Trying fallback provider: ' . $this->fallbackProvider);
                 }
                 return $this->handleFallback($request, $response);
             }
@@ -129,8 +129,8 @@ class LlmOrchestrator {
         } catch (\Exception $e) {
             // Log the error
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - LlmOrchestrator error: ' . $e->getMessage());
-                error_log('MPAI Debug - Error trace: ' . $e->getTraceAsString());
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - LlmOrchestrator error: ' . $e->getMessage());
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Error trace: ' . $e->getTraceAsString());
             }
             
             // Handle error
@@ -139,7 +139,7 @@ class LlmOrchestrator {
             // Try fallback provider if available
             if ($this->fallbackProvider !== null && $this->fallbackProvider !== $providerName) {
                 if (function_exists('error_log')) {
-                    error_log('MPAI Debug - Trying fallback provider after error: ' . $this->fallbackProvider);
+                    \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Trying fallback provider after error: ' . $this->fallbackProvider);
                 }
                 return $this->handleFallback($request, $errorResponse);
             }

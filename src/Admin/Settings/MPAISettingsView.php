@@ -332,6 +332,43 @@ class MPAISettingsView {
     }
     
     /**
+     * Render the log level field
+     *
+     * @param string $value Field value
+     * @return void
+     */
+    public function render_log_level_field($value) {
+        $log_levels = [
+            'none' => __('None (Disable All Logging)', 'memberpress-ai-assistant'),
+            'error' => __('Error (Minimal)', 'memberpress-ai-assistant'),
+            'warning' => __('Warning', 'memberpress-ai-assistant'),
+            'info' => __('Info (Recommended)', 'memberpress-ai-assistant'),
+            'debug' => __('Debug', 'memberpress-ai-assistant'),
+            'trace' => __('Trace (Verbose)', 'memberpress-ai-assistant'),
+        ];
+        ?>
+        <select id="mpai_log_level" name="mpai_settings[log_level]">
+            <?php foreach ($log_levels as $level => $label) : ?>
+                <option value="<?php echo esc_attr($level); ?>" <?php selected($value, $level); ?>>
+                    <?php echo esc_html($label); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description">
+            <?php esc_html_e('Select the logging level. Higher levels include more detailed logs but may impact performance.', 'memberpress-ai-assistant'); ?>
+            <ul>
+                <li><?php esc_html_e('None: Completely disable all logging', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Error: Only critical errors', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Warning: Errors and warnings', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Info: Normal operational information', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Debug: Detailed information for troubleshooting', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Trace: Very verbose debugging information', 'memberpress-ai-assistant'); ?></li>
+            </ul>
+        </p>
+        <?php
+    }
+    
+    /**
      * Render the chat location field
      *
      * @param string $value Field value

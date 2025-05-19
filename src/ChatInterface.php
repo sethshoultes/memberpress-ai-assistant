@@ -269,11 +269,11 @@ class ChatInterface {
 
         try {
             // Log the request for debugging
-            error_log('MPAI Debug - Chat request received: ' . $message);
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Chat request received: ' . $message);
             
             // Handle clear history request
             if ($clear_history && !empty($conversation_id) && $user_id > 0) {
-                error_log('MPAI Debug - Clearing history for conversation: ' . $conversation_id);
+                \MemberpressAiAssistant\Utilities\LoggingUtility::info('Clearing history for conversation: ' . $conversation_id);
                 $this->clearUserConversationHistory($user_id, $conversation_id);
                 
                 // Return success response
@@ -290,7 +290,7 @@ class ChatInterface {
                 $saved_conversation_id = $this->getUserConversationId($user_id);
                 if ($saved_conversation_id) {
                     $conversation_id = $saved_conversation_id;
-                    error_log('MPAI Debug - Using saved conversation ID for user: ' . $conversation_id);
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Using saved conversation ID for user: ' . $conversation_id);
                 }
             }
             
@@ -298,7 +298,7 @@ class ChatInterface {
             global $mpai_service_locator;
             
             // Log service locator status
-            error_log('MPAI Debug - Service locator available: ' . (isset($mpai_service_locator) ? 'Yes' : 'No'));
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Service locator available: ' . (isset($mpai_service_locator) ? 'Yes' : 'No'));
             
             if (!isset($mpai_service_locator)) {
                 throw new \Exception('Service locator not available');
@@ -311,16 +311,16 @@ class ChatInterface {
                 
                 // Try to load context for this conversation
                 $contextManager->loadContext('conversation_' . $conversation_id);
-                error_log('MPAI Debug - Loaded context for conversation: ' . $conversation_id);
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Loaded context for conversation: ' . $conversation_id);
                 
                 // If this is just a history load request, return the history without processing a message
                 if ($load_history) {
-                    error_log('MPAI Debug - Processing history load request for conversation: ' . $conversation_id);
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processing history load request for conversation: ' . $conversation_id);
                     
                     $history = [];
                     $rawHistory = $contextManager->getConversationHistory($conversation_id);
                     
-                    error_log('MPAI Debug - Raw history: ' . ($rawHistory ? 'Available' : 'Not available') .
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Raw history: ' . ($rawHistory ? 'Available' : 'Not available') .
                               ($rawHistory ? ' (' . count($rawHistory) . ' items)' : ''));
                     
                     if (is_array($rawHistory)) {
@@ -334,10 +334,10 @@ class ChatInterface {
                             }
                         }
                         
-                        error_log('MPAI Debug - Processed history: ' . count($history) . ' items');
-                        error_log('MPAI Debug - First history item structure: ' . json_encode(array_keys(reset($rawHistory) ?: [])));
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processed history: ' . count($history) . ' items');
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::trace('First history item structure: ' . json_encode(array_keys(reset($rawHistory) ?: [])));
                     } else {
-                        error_log('MPAI Debug - No raw history available to process');
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('No raw history available to process');
                     }
                     
                     $response = [
@@ -348,7 +348,7 @@ class ChatInterface {
                         'history' => $history
                     ];
                     
-                    error_log('MPAI Debug - Returning history response with ' . count($history) . ' items');
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Returning history response with ' . count($history) . ' items');
                     return rest_ensure_response($response);
                 }
             }
@@ -358,7 +358,7 @@ class ChatInterface {
             
             // Always use LLM services first, regardless of keywords
             $useAgentOrchestrator = false;
-            error_log('MPAI Debug - Using LLM services for all queries, including WordPress-related ones.');
+            \MemberpressAiAssistant\Utilities\LoggingUtility::info('Using LLM services for all queries, including WordPress-related ones.');
             
             // Try to use the LLM services first
             if ($mpai_service_locator->has('llm.chat_adapter') && !$useAgentOrchestrator) {
@@ -367,16 +367,17 @@ class ChatInterface {
                     $chatAdapter = $mpai_service_locator->get('llm.chat_adapter');
                     
                     // Process the request with the LLM chat adapter
-                    error_log('MPAI Debug - Processing request with LLM chat adapter');
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processing request with LLM chat adapter');
                     $response = $chatAdapter->processRequest($message, $conversation_id);
                     
                     // Check if the response contains an error message
                     if (isset($response['status']) && $response['status'] === 'error') {
-                        error_log('MPAI Debug - LLM chat adapter returned error: ' . ($response['debug_message'] ?? 'Unknown error'));
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::error('LLM chat adapter returned error: ' . ($response['debug_message'] ?? 'Unknown error'));
                         throw new \Exception('LLM chat adapter error: ' . ($response['debug_message'] ?? 'Unknown error'));
                     }
                     
-                    error_log('MPAI Debug - LLM chat adapter response: ' . json_encode($response));
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('LLM chat adapter response received');
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::trace('Response: ' . json_encode($response));
                     
                     // Get the conversation ID from the response or use the existing one
                     $conversation_id = $response['conversation_id'] ?? $conversation_id;
@@ -384,7 +385,7 @@ class ChatInterface {
                     // Save conversation ID for logged-in users
                     if ($user_id > 0 && !empty($conversation_id)) {
                         $this->saveUserConversationId($user_id, $conversation_id);
-                        error_log('MPAI Debug - Saved conversation ID for user: ' . $conversation_id);
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Saved conversation ID for user: ' . $conversation_id);
                     }
                     
                     // Get conversation history
@@ -406,13 +407,12 @@ class ChatInterface {
                                 }
                             }
                             
-                            error_log('MPAI Debug - Processed history items: ' . count($history));
+                            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processed history items: ' . count($history));
                         }
                         
                         // Persist context after processing
                         $contextManager->persistContext('conversation_' . $conversation_id);
-                        error_log('MPAI Debug - Persisted context for conversation: ' . $conversation_id);
-                        error_log('MPAI Debug - Transient key that will be used: mpai_' . $conversation_id);
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Persisted context for conversation: ' . $conversation_id);
                     }
                     
                     // Format plugin list as a table if this is a plugin list response
@@ -427,9 +427,9 @@ class ChatInterface {
                     return rest_ensure_response($response);
                 } catch (\Exception $e) {
                     // Log the error
-                    error_log('MPAI Debug - Error using LLM chat adapter: ' . $e->getMessage());
-                    error_log('MPAI Debug - Error details: ' . $e->getTraceAsString());
-                    error_log('MPAI Debug - Falling back to agent orchestrator');
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::warning('Error using LLM chat adapter: ' . $e->getMessage());
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Error details: ' . $e->getTraceAsString());
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::info('Falling back to agent orchestrator');
                     
                     // Fall back to the agent orchestrator
                     $useAgentOrchestrator = true;
@@ -447,9 +447,9 @@ class ChatInterface {
                 ];
                 
                 // Use the orchestrator to process the request
-                error_log('MPAI Debug - Processing request with orchestrator');
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processing request with orchestrator');
                 $response = $orchestrator->processUserRequest($request_data, $conversation_id);
-                error_log('MPAI Debug - Orchestrator response: ' . json_encode($response));
+                \MemberpressAiAssistant\Utilities\LoggingUtility::trace('Orchestrator response: ' . json_encode($response));
                 
                 // Get the conversation ID from the response or use the existing one
                 $conversation_id = $response['conversation_id'] ?? $conversation_id;
@@ -457,7 +457,7 @@ class ChatInterface {
                 // Save conversation ID for logged-in users
                 if ($user_id > 0 && !empty($conversation_id)) {
                     $this->saveUserConversationId($user_id, $conversation_id);
-                    error_log('MPAI Debug - Saved conversation ID for user: ' . $conversation_id);
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Saved conversation ID for user: ' . $conversation_id);
                 }
                 
                 // Get conversation history
@@ -478,13 +478,12 @@ class ChatInterface {
                             }
                         }
                         
-                        error_log('MPAI Debug - Processed history items: ' . count($history));
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processed history items: ' . count($history));
                     }
                     
                     // Persist context after processing
                     $contextManager->persistContext('conversation_' . $conversation_id);
-                    error_log('MPAI Debug - Persisted context for conversation: ' . $conversation_id);
-                    error_log('MPAI Debug - Transient key that will be used: mpai_' . $conversation_id);
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Persisted context for conversation: ' . $conversation_id);
                 }
                 
                 // Format plugin list as a table if this is a plugin list response
@@ -505,7 +504,7 @@ class ChatInterface {
                 ]);
             } else {
                 // Fallback to test response if no services are available
-                error_log('MPAI Debug - No chat services available, using fallback response');
+                \MemberpressAiAssistant\Utilities\LoggingUtility::warning('No chat services available, using fallback response');
                 $response = [
                     'status' => 'success',
                     'message' => 'This is a test response from the chat interface. Your message was: ' . $message,
@@ -517,9 +516,8 @@ class ChatInterface {
             }
         } catch (\Exception $e) {
             // Log the error
-            if (function_exists('error_log')) {
-                error_log('MPAI Chat Error: ' . $e->getMessage());
-            }
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('Chat Error: ' . $e->getMessage());
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Error trace: ' . $e->getTraceAsString());
 
             // Return error response
             return new \WP_Error(

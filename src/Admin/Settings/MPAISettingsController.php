@@ -164,6 +164,15 @@ class MPAISettingsController {
             $this->page_slug,
             'mpai_general_section'
         );
+        
+        // Add log level field
+        add_settings_field(
+            'mpai_log_level',
+            __('Log Level', 'memberpress-ai-assistant'),
+            [$this, 'render_log_level_field'],
+            $this->page_slug,
+            'mpai_general_section'
+        );
     }
 
     /**
@@ -522,6 +531,16 @@ class MPAISettingsController {
     public function render_chat_enabled_field() {
         $value = $this->model->is_chat_enabled();
         $this->view->render_chat_enabled_field($value);
+    }
+    
+    /**
+     * Render the log level field
+     *
+     * @return void
+     */
+    public function render_log_level_field() {
+        $value = $this->model->get_log_level();
+        $this->view->render_log_level_field($value);
     }
 
     /**

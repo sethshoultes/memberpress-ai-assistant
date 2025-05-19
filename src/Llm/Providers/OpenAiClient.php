@@ -57,7 +57,7 @@ class OpenAiClient extends AbstractLlmClient {
         try {
             // Log the request
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - OpenAI request: ' . json_encode([
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - OpenAI request: ' . json_encode([
                     'messages' => $request->getMessages(),
                     'options' => $request->getOptions()
                 ]));
@@ -68,7 +68,7 @@ class OpenAiClient extends AbstractLlmClient {
             $maxTokens = $this->getMaxTokensForRequest($request);
             
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - OpenAI using model: ' . $model);
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - OpenAI using model: ' . $model);
             }
             
             $payload = [
@@ -99,28 +99,28 @@ class OpenAiClient extends AbstractLlmClient {
             }
             
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - OpenAI payload: ' . json_encode($payload));
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - OpenAI payload: ' . json_encode($payload));
             }
             
             $headers = $this->buildHeaders();
             $url = $this->apiBaseUrl . '/chat/completions';
             
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - OpenAI sending request to: ' . $url);
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - OpenAI sending request to: ' . $url);
             }
             
             $responseData = $this->makeHttpRequest($url, 'POST', $headers, $payload);
             
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - OpenAI response received');
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - OpenAI response received');
             }
             
             return $this->parseResponse($responseData, $model);
         } catch (\Exception $e) {
             // Log the error
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - OpenAI error: ' . $e->getMessage());
-                error_log('MPAI Debug - OpenAI error trace: ' . $e->getTraceAsString());
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - OpenAI error: ' . $e->getMessage());
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - OpenAI error trace: ' . $e->getTraceAsString());
             }
             
             return LlmResponse::fromError($e, 'openai', $model ?? $this->config->getDefaultModel());

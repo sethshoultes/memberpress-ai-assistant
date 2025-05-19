@@ -139,30 +139,30 @@ class LlmProviderFactory {
      */
     private function getApiKey(string $provider): string {
         if (function_exists('error_log')) {
-            error_log("MPAI Debug - Getting API key for provider: $provider");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Getting API key for provider: $provider");
         }
         
         // Try to get the API key from the key manager first
         if ($this->keyManager !== null) {
             if (function_exists('error_log')) {
-                error_log("MPAI Debug - Using provided key manager instance");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Using provided key manager instance");
             }
             
             $apiKey = $this->keyManager->get_api_key($provider);
             
             if (!empty($apiKey)) {
                 if (function_exists('error_log')) {
-                    error_log("MPAI Debug - Got API key from key manager: " . substr($apiKey, 0, 10) . "... (Length: " . strlen($apiKey) . ")");
+                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Got API key from key manager: " . substr($apiKey, 0, 10) . "... (Length: " . strlen($apiKey) . ")");
                 }
                 return $apiKey;
             } else {
                 if (function_exists('error_log')) {
-                    error_log("MPAI Debug - Key manager returned empty API key");
+                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Key manager returned empty API key");
                 }
             }
         } else {
             if (function_exists('error_log')) {
-                error_log("MPAI Debug - No key manager instance provided");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - No key manager instance provided");
             }
         }
         
@@ -170,7 +170,7 @@ class LlmProviderFactory {
         global $mpai_service_locator;
         if (isset($mpai_service_locator) && $mpai_service_locator->has('key_manager')) {
             if (function_exists('error_log')) {
-                error_log("MPAI Debug - Using key manager from service locator");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Using key manager from service locator");
             }
             
             $keyManager = $mpai_service_locator->get('key_manager');
@@ -182,48 +182,48 @@ class LlmProviderFactory {
             
             if ($settingsServiceName) {
                 if (function_exists('error_log')) {
-                    error_log("MPAI Debug - Settings model is available in service locator as: " . $settingsServiceName);
+                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Settings model is available in service locator as: " . $settingsServiceName);
                 }
                 
                 if (method_exists($keyManager, 'get_settings')) {
                     if (function_exists('error_log')) {
-                        error_log("MPAI Debug - Key manager has get_settings method");
+                        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Key manager has get_settings method");
                     }
                     
                     $currentSettings = $keyManager->get_settings();
                     if (!$currentSettings) {
                         if (function_exists('error_log')) {
-                            error_log("MPAI Debug - Key manager does not have settings model set");
+                            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Key manager does not have settings model set");
                         }
                         
                         $settings = $mpai_service_locator->get($settingsServiceName);
                         if (function_exists('error_log')) {
-                            error_log("MPAI Debug - Setting settings model on key manager");
+                            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Setting settings model on key manager");
                         }
                         
                         if (method_exists($keyManager, 'set_settings')) {
                             $keyManager->set_settings($settings);
                             if (function_exists('error_log')) {
-                                error_log("MPAI Debug - Settings model set on key manager");
+                                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Settings model set on key manager");
                             }
                         } else {
                             if (function_exists('error_log')) {
-                                error_log("MPAI Debug - Key manager does not have set_settings method");
+                                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Key manager does not have set_settings method");
                             }
                         }
                     } else {
                         if (function_exists('error_log')) {
-                            error_log("MPAI Debug - Key manager already has settings model set");
+                            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Key manager already has settings model set");
                         }
                     }
                 } else {
                     if (function_exists('error_log')) {
-                        error_log("MPAI Debug - Key manager does not have get_settings method");
+                        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Key manager does not have get_settings method");
                     }
                 }
             } else {
                 if (function_exists('error_log')) {
-                    error_log("MPAI Debug - Settings model is not available in service locator");
+                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Settings model is not available in service locator");
                 }
             }
             
@@ -231,17 +231,17 @@ class LlmProviderFactory {
             
             if (!empty($apiKey)) {
                 if (function_exists('error_log')) {
-                    error_log("MPAI Debug - Got API key from service locator key manager: " . substr($apiKey, 0, 10) . "... (Length: " . strlen($apiKey) . ")");
+                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Got API key from service locator key manager: " . substr($apiKey, 0, 10) . "... (Length: " . strlen($apiKey) . ")");
                 }
                 return $apiKey;
             } else {
                 if (function_exists('error_log')) {
-                    error_log("MPAI Debug - Service locator key manager returned empty API key");
+                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Service locator key manager returned empty API key");
                 }
             }
         } else {
             if (function_exists('error_log')) {
-                error_log("MPAI Debug - No key manager available in service locator");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - No key manager available in service locator");
             }
         }
         
@@ -252,17 +252,17 @@ class LlmProviderFactory {
         
         if (!empty($apiKey)) {
             if (function_exists('error_log')) {
-                error_log("MPAI Debug - Got API key from options: " . substr($apiKey, 0, 10) . "... (Length: " . strlen($apiKey) . ")");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Got API key from options: " . substr($apiKey, 0, 10) . "... (Length: " . strlen($apiKey) . ")");
             }
             return $apiKey;
         } else {
             if (function_exists('error_log')) {
-                error_log("MPAI Debug - No API key found in options");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - No API key found in options");
             }
         }
         
         if (function_exists('error_log')) {
-            error_log("MPAI Debug - No API key available for provider: $provider");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - No API key available for provider: $provider");
         }
         
         throw new \Exception("API key for provider '$provider' is not available");

@@ -28,6 +28,19 @@ define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MPAI_VERSION', '1.0.0');
 
+// Include debug logger early to intercept debug logs
+require_once MPAI_PLUGIN_DIR . 'src/Utilities/DebugLogger.php';
+
+// Run the script to replace all error_log calls with debug_log
+// This only needs to be run once, so we'll check if it's already been run
+if (!get_option('mpai_debug_logs_replaced')) {
+    // Include the script to replace debug logs
+    require_once MPAI_PLUGIN_DIR . 'src/Utilities/replace_debug_logs.php';
+    
+    // Mark as run
+    update_option('mpai_debug_logs_replaced', true);
+}
+
 /**
  * Main plugin class
  */
@@ -104,24 +117,148 @@ class MemberpressAiAssistant {
      * Initialize the plugin
      */
     public function init() {
+        // Use a static flag to ensure we only initialize once per request
+        static $initialized = false;
+        
+        if ($initialized) {
+            return;
+        }
+        
         // Check if MemberPress is active
         if (!$this->check_dependencies()) {
             return;
         }
+
+        // Initialize DI container first
+        $this->init_container();
+
+        // Register service providers
+        $this->register_service_providers();
+        
+        // Initialize admin services to make settings model available
+        $this->init_admin_services();
+        
+        // Now initialize logging utility (settings model is available)
+        $this->init_logging();
 
         // Enable debug mode if filter is set
         if (apply_filters('mpai_debug_mode', false)) {
             $this->enable_debug_mode();
         }
 
-        // Initialize DI container
-        $this->init_container();
-
-        // Initialize services
-        $this->init_services();
+        // Initialize remaining services
+        $this->init_remaining_services();
 
         // Load text domain
         load_plugin_textdomain('memberpress-ai-assistant', false, dirname(plugin_basename(MPAI_PLUGIN_FILE)) . '/languages');
+        
+        // Mark as initialized
+        $initialized = true;
+    }
+    
+    /**
+     * Initialize admin services
+     */
+    private function init_admin_services() {
+        // Get the logger
+        $logger = $this->serviceLocator->has('logger') ? $this->serviceLocator->get('logger') : null;
+        
+        // Register and initialize admin services
+        $admin_services_registrar = new \MemberpressAiAssistant\Services\AdminServicesRegistrar('admin_services_registrar', $logger);
+        $admin_services_registrar->register($this->serviceLocator);
+        $admin_services_registrar->boot();
+    }
+    
+    /**
+     * Initialize remaining services
+     */
+    private function init_remaining_services() {
+        // Get the logger
+        $logger = $this->serviceLocator->has('logger') ? $this->serviceLocator->get('logger') : null;
+        
+        // Register key manager service
+        $key_manager = new \MemberpressAiAssistant\Admin\MPAIKeyManager('key_manager', $logger);
+        $key_manager->register($this->serviceLocator);
+        $key_manager->boot();
+        
+        // Register AJAX handler service
+        $ajax_handler = new \MemberpressAiAssistant\Admin\MPAIAjaxHandler('ajax_handler', $logger);
+        $ajax_handler->register($this->serviceLocator);
+        $ajax_handler->boot();
+        
+        // Register cache service
+        $cache_service = new \MemberpressAiAssistant\Services\CacheService('cache', $logger);
+        $cache_service->register($this->serviceLocator);
+        $cache_service->boot();
+        
+        // Register MemberPress service
+        $memberpress_service = new \MemberpressAiAssistant\Services\MemberPressService('memberpress', $logger);
+        $memberpress_service->register($this->serviceLocator);
+        $memberpress_service->boot();
+        
+        // Register orchestrator service
+        $orchestrator_service = new \MemberpressAiAssistant\Services\OrchestratorService('orchestrator', $logger);
+        $orchestrator_service->register($this->serviceLocator);
+        $orchestrator_service->boot();
+        
+        // Register chat interface service
+        $chat_interface_service = new \MemberpressAiAssistant\Services\ChatInterfaceService('chat_interface', $logger);
+        $chat_interface_service->register($this->serviceLocator);
+        $chat_interface_service->boot();
+    }
+    
+    /**
+     * Initialize logging utility
+     */
+    private function init_logging() {
+        // Use a static flag to ensure we only initialize logging once per request
+        static $logging_initialized = false;
+        
+        if ($logging_initialized) {
+            return;
+        }
+        
+        // Get settings model if available
+        $settings_model = null;
+        if (isset($this->serviceLocator) && $this->serviceLocator->has('settings.model')) {
+            $settings_model = $this->serviceLocator->get('settings.model');
+        }
+        
+        // First, try to get log level from settings
+        $log_level = \MemberpressAiAssistant\Utilities\LoggingUtility::LEVEL_INFO; // Default to INFO
+        
+        if ($settings_model !== null) {
+            $setting_level = $settings_model->get_log_level();
+            
+            // Map special values
+            if ($setting_level === 'minimal') {
+                $log_level = \MemberpressAiAssistant\Utilities\LoggingUtility::LEVEL_ERROR;
+            }
+            else if ($setting_level === 'none') {
+                $log_level = \MemberpressAiAssistant\Utilities\LoggingUtility::LEVEL_NONE;
+            }
+            else if (!empty($setting_level)) {
+                $log_level = $setting_level;
+            }
+        }
+        // Only use WP_DEBUG to set log level if no setting is available
+        else if (defined('WP_DEBUG') && WP_DEBUG) {
+            $log_level = \MemberpressAiAssistant\Utilities\LoggingUtility::LEVEL_DEBUG;
+        }
+        
+        // Allow filtering of log level
+        $log_level = apply_filters('mpai_log_level', $log_level);
+        
+        // Initialize the logging utility
+        \MemberpressAiAssistant\Utilities\LoggingUtility::init($log_level, false);
+        
+        // Only log if not in "none" mode
+        if ($log_level !== \MemberpressAiAssistant\Utilities\LoggingUtility::LEVEL_NONE) {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('Plugin initialized with log level: ' . $log_level);
+        }
+        
+        // Mark logging as initialized
+        $logging_initialized = true;
     }
     
     /**
@@ -137,8 +274,29 @@ class MemberpressAiAssistant {
             define('WP_DEBUG_LOG', true);
         }
         
-        // Log initialization events
-        error_log('MPAI: Debug mode enabled');
+        // Get settings model if available
+        $settings_model = null;
+        if (isset($this->serviceLocator) && $this->serviceLocator->has('settings.model')) {
+            $settings_model = $this->serviceLocator->get('settings.model');
+        }
+        
+        // Check if logging is disabled
+        if ($settings_model !== null && $settings_model->get_log_level() === 'none') {
+            // Respect the "none" setting even in debug mode
+            error_log('Debug mode requested but logging is disabled by settings');
+            return;
+        }
+        
+        // Set logging utility to debug level
+        \MemberpressAiAssistant\Utilities\LoggingUtility::init(
+            \MemberpressAiAssistant\Utilities\LoggingUtility::LEVEL_DEBUG,
+            false
+        );
+        
+        // Only log if not in "none" mode
+        if (\MemberpressAiAssistant\Utilities\LoggingUtility::getLogLevel() !== \MemberpressAiAssistant\Utilities\LoggingUtility::LEVEL_NONE) {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::info('Debug mode enabled');
+        }
         
         // Add admin notice about debug mode
         add_action('admin_notices', function() {
@@ -189,28 +347,40 @@ class MemberpressAiAssistant {
      * Initialize the DI container
      */
     private function init_container() {
+        // Use a static flag to ensure we only initialize the container once per request
+        static $container_initialized = false;
+        
+        if ($container_initialized) {
+            return;
+        }
+        
         $this->serviceLocator = new \MemberpressAiAssistant\DI\ServiceLocator();
         
         // Make service locator available globally for tools that need it
         global $mpai_service_locator;
         $mpai_service_locator = $this->serviceLocator;
         
-        // Add debug hook to enable debug mode
-        add_filter('mpai_debug_mode', '__return_true');
+        // Only enable debug mode if explicitly requested
+        // add_filter('mpai_debug_mode', '__return_true');
         
-        // Log service locator initialization
-        if (apply_filters('mpai_debug_mode', false)) {
-            error_log('MPAI: Initializing service locator');
-        }
-        
-        // Register core services
-        $this->register_core_services();
-        
-        if (apply_filters('mpai_debug_mode', false)) {
+        // Only log if not in "none" mode
+        if (\MemberpressAiAssistant\Utilities\LoggingUtility::getLogLevel() !== \MemberpressAiAssistant\Utilities\LoggingUtility::LEVEL_NONE) {
+            // Log service locator initialization
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('Initializing service locator');
+            
+            // Register core services
+            $this->register_core_services();
+            
             // Log registered services
             $definitions = $this->serviceLocator->getDefinitions();
-            error_log('MPAI: Registered services: ' . implode(', ', array_keys($definitions)));
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('Registered services: ' . implode(', ', array_keys($definitions)));
+        } else {
+            // Just register core services without logging
+            $this->register_core_services();
         }
+        
+        // Mark container as initialized
+        $container_initialized = true;
     }
     
     /**
@@ -268,53 +438,7 @@ class MemberpressAiAssistant {
         });
     }
 
-    /**
-     * Initialize services
-     */
-    private function init_services() {
-        // Initialize services from the service locator
-        
-        // Get the logger
-        $logger = $this->serviceLocator->has('logger') ? $this->serviceLocator->get('logger') : null;
-        
-        // Register service providers
-        $this->register_service_providers();
-        
-        // Register and initialize admin services
-        $admin_services_registrar = new \MemberpressAiAssistant\Services\AdminServicesRegistrar('admin_services_registrar', $logger);
-        $admin_services_registrar->register($this->serviceLocator);
-        $admin_services_registrar->boot();
-        
-        // Register key manager service
-        $key_manager = new \MemberpressAiAssistant\Admin\MPAIKeyManager('key_manager', $logger);
-        $key_manager->register($this->serviceLocator);
-        $key_manager->boot();
-        
-        // Register AJAX handler service
-        $ajax_handler = new \MemberpressAiAssistant\Admin\MPAIAjaxHandler('ajax_handler', $logger);
-        $ajax_handler->register($this->serviceLocator);
-        $ajax_handler->boot();
-        
-        // Register cache service
-        $cache_service = new \MemberpressAiAssistant\Services\CacheService('cache', $logger);
-        $cache_service->register($this->serviceLocator);
-        $cache_service->boot();
-        
-        // Register MemberPress service
-        $memberpress_service = new \MemberpressAiAssistant\Services\MemberPressService('memberpress', $logger);
-        $memberpress_service->register($this->serviceLocator);
-        $memberpress_service->boot();
-        
-        // Register orchestrator service
-        $orchestrator_service = new \MemberpressAiAssistant\Services\OrchestratorService('orchestrator', $logger);
-        $orchestrator_service->register($this->serviceLocator);
-        $orchestrator_service->boot();
-        
-        // Register chat interface service
-        $chat_interface_service = new \MemberpressAiAssistant\Services\ChatInterfaceService('chat_interface', $logger);
-        $chat_interface_service->register($this->serviceLocator);
-        $chat_interface_service->boot();
-    }
+    // init_services method has been replaced by init_admin_services and init_remaining_services
 
     /**
      * Plugin activation hook
@@ -341,6 +465,13 @@ class MemberpressAiAssistant {
      * Register service providers
      */
     private function register_service_providers() {
+        // Use a static flag to ensure we only register service providers once per request
+        static $providers_registered = false;
+        
+        if ($providers_registered) {
+            return;
+        }
+        
         // Get the logger
         $logger = $this->serviceLocator->has('logger') ? $this->serviceLocator->get('logger') : null;
         
@@ -359,9 +490,13 @@ class MemberpressAiAssistant {
         $tool_registry_provider->register($this->serviceLocator);
         $tool_registry_provider->boot($this->serviceLocator);
         
-        if (apply_filters('mpai_debug_mode', false)) {
-            error_log('MPAI: Service providers registered');
+        // Only log if not in "none" mode
+        if (\MemberpressAiAssistant\Utilities\LoggingUtility::getLogLevel() !== \MemberpressAiAssistant\Utilities\LoggingUtility::LEVEL_NONE) {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('Service providers registered');
         }
+        
+        // Mark providers as registered
+        $providers_registered = true;
     }
 }
 

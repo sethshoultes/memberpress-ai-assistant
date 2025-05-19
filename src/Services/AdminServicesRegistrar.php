@@ -74,6 +74,16 @@ class AdminServicesRegistrar extends AbstractService {
         $settings_view = new MPAISettingsView();
         $settings_controller = new MPAISettingsController($settings_model, $settings_view, $logger);
         
+        // Register settings model with the service locator
+        $serviceLocator->register('settings.model', function() use ($settings_model) {
+            return $settings_model;
+        });
+        
+        // Register settings model with the service locator
+        $serviceLocator->register('settings.model', function() use ($settings_model) {
+            return $settings_model;
+        });
+        
         // Register settings controller with the service locator
         $serviceLocator->register('settings_controller', function() use ($settings_controller) {
             return $settings_controller;
@@ -96,6 +106,7 @@ class AdminServicesRegistrar extends AbstractService {
         $this->log('Admin services registered', [
             'services' => [
                 'admin_menu',
+                'settings.model',
                 'settings_controller'
             ]
         ]);

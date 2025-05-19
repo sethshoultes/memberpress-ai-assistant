@@ -191,7 +191,7 @@ class AgentOrchestrator {
         }
         
         // Add direct error logging for debugging
-        error_log("MPAI Debug - Orchestrator processing request: " . json_encode($request));
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Orchestrator processing request: " . json_encode($request));
 
         try {
             // Validate the request
@@ -797,7 +797,7 @@ class AgentOrchestrator {
         $request['intent'] = $intentData['intent'];
         
         // Log the intent being passed to the agent
-        error_log("MPAI Debug - Passing intent to agent: " . $request['intent']);
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Passing intent to agent: " . $request['intent']);
         
         // Process the request with the agent
         $response = $agent->processRequest($request, $context);
@@ -1026,12 +1026,12 @@ class AgentOrchestrator {
         
         // Add logging for message history
         if (function_exists('error_log')) {
-            error_log('MPAI Debug - Added message to history: ' . ($result ? 'SUCCESS' : 'FAILED'));
-            error_log('MPAI Debug - Message content: ' . substr($message->getContent(), 0, 100) . '...');
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Added message to history: ' . ($result ? 'SUCCESS' : 'FAILED'));
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Message content: ' . substr($message->getContent(), 0, 100) . '...');
             
             // Get the updated history to verify
             $history = $this->contextManager->getConversationHistory($this->conversationId);
-            error_log('MPAI Debug - Updated history count: ' . ($history ? count($history) : 'NULL'));
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Updated history count: ' . ($history ? count($history) : 'NULL'));
         }
         
         // Invalidate cache for this conversation when new messages are added
@@ -1071,10 +1071,10 @@ class AgentOrchestrator {
         $entities = [];
         
         // Add direct error logging for debugging
-        error_log("MPAI Debug - Extracting intent from message: " . $message);
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Extracting intent from message: " . $message);
         
         // Add detailed logging for intent detection
-        error_log("MPAI Debug - Intent detection for message: " . $message);
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detection for message: " . $message);
         
         // Simple intent detection based on keywords
         // Check for specific intents first
@@ -1083,68 +1083,68 @@ class AgentOrchestrator {
             stripos($message, 'show plugins') !== false ||
             stripos($message, 'installed plugins') !== false) {
             $intent = 'list_plugins';
-            error_log("MPAI Debug - Intent detected (specific pattern 0): list_plugins");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (specific pattern 0): list_plugins");
         } elseif (stripos($message, 'create membership') !== false ||
             stripos($message, 'add membership') !== false ||
             stripos($message, 'new membership') !== false) {
             $intent = 'create_membership';
-            error_log("MPAI Debug - Intent detected (specific pattern 1): create_membership");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (specific pattern 1): create_membership");
         } elseif (stripos($message, 'update membership') !== false ||
                  stripos($message, 'edit membership') !== false ||
                  stripos($message, 'modify membership') !== false) {
             $intent = 'update_membership';
-            error_log("MPAI Debug - Intent detected (specific pattern 2): update_membership");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (specific pattern 2): update_membership");
         } elseif (stripos($message, 'delete membership') !== false ||
                  stripos($message, 'remove membership') !== false) {
             $intent = 'delete_membership';
-            error_log("MPAI Debug - Intent detected (specific pattern 3): delete_membership");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (specific pattern 3): delete_membership");
         } elseif (stripos($message, 'list memberships') !== false ||
                  stripos($message, 'show memberships') !== false ||
                  stripos($message, 'get memberships') !== false) {
             $intent = 'list_memberships';
-            error_log("MPAI Debug - Intent detected (specific pattern 4): list_memberships");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (specific pattern 4): list_memberships");
         } elseif (stripos($message, 'create post') !== false ||
                  stripos($message, 'add post') !== false ||
                  stripos($message, 'new post') !== false) {
             $intent = 'create_post';
-            error_log("MPAI Debug - Intent detected (specific pattern 5): create_post");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (specific pattern 5): create_post");
         } elseif (stripos($message, 'validate') !== false) {
             $intent = 'validate_input';
-            error_log("MPAI Debug - Intent detected (specific pattern 6): validate_input");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (specific pattern 6): validate_input");
         }
         // Then check for general categories
         elseif (stripos($message, 'hello') !== false || stripos($message, 'hi') !== false ||
                stripos($message, 'hey') !== false || stripos($message, 'greetings') !== false) {
             $intent = 'greeting';
-            error_log("MPAI Debug - Intent detected (greeting): greeting");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (greeting): greeting");
         } elseif (stripos($message, 'help') !== false) {
             $intent = 'help';
-            error_log("MPAI Debug - Intent detected (help): help");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (help): help");
         } elseif (stripos($message, 'create') !== false || stripos($message, 'add') !== false) {
             // If it contains "membership", use create_membership
             if (stripos($message, 'membership') !== false) {
                 $intent = 'create_membership';
-                error_log("MPAI Debug - Intent detected (create + membership): create_membership");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (create + membership): create_membership");
             } else {
                 $intent = 'create';
-                error_log("MPAI Debug - Intent detected (create): create");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (create): create");
             }
         } elseif (stripos($message, 'update') !== false || stripos($message, 'edit') !== false) {
             $intent = 'update';
-            error_log("MPAI Debug - Intent detected (update): update");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (update): update");
         } elseif (stripos($message, 'delete') !== false || stripos($message, 'remove') !== false) {
             $intent = 'delete';
-            error_log("MPAI Debug - Intent detected (delete): delete");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (delete): delete");
         } elseif (stripos($message, 'list') !== false || stripos($message, 'show') !== false) {
             $intent = 'list';
-            error_log("MPAI Debug - Intent detected (list): list");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (list): list");
         } elseif (stripos($message, 'search') !== false || stripos($message, 'find') !== false) {
             $intent = 'search';
-            error_log("MPAI Debug - Intent detected (search): search");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (search): search");
         } else {
             // Default to general intent if no specific intent is detected
             $intent = 'general';
-            error_log("MPAI Debug - Intent detected (default): general");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Intent detected (default): general");
         }
         
         // Log the detected intent for debugging
@@ -1178,7 +1178,7 @@ class AgentOrchestrator {
         }
         
         // Add direct error logging for debugging
-        error_log("MPAI Debug - Extracted intent: " . $intent);
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Extracted intent: " . $intent);
         
         return [
             'intent' => $intent,
@@ -1443,7 +1443,7 @@ class AgentOrchestrator {
         $intent = '';
         $entities = [];
         
-        error_log("MPAI Debug - V2 Intent detection for message: " . $message);
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detection for message: " . $message);
         
         // Check for plugin-related intents first
         if (stripos($message, 'what plugins') !== false ||
@@ -1451,83 +1451,83 @@ class AgentOrchestrator {
             stripos($message, 'show plugins') !== false ||
             stripos($message, 'installed plugins') !== false) {
             $intent = 'list_plugins';
-            error_log("MPAI Debug - V2 Intent detected: list_plugins");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: list_plugins");
         }
         // Check for membership-related intents
         elseif (stripos($message, 'membership') !== false) {
             if (stripos($message, 'create') !== false || stripos($message, 'add') !== false || stripos($message, 'new') !== false) {
                 $intent = 'create_membership';
-                error_log("MPAI Debug - V2 Intent detected: create_membership");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: create_membership");
             } elseif (stripos($message, 'update') !== false || stripos($message, 'edit') !== false || stripos($message, 'modify') !== false) {
                 $intent = 'update_membership';
-                error_log("MPAI Debug - V2 Intent detected: update_membership");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: update_membership");
             } elseif (stripos($message, 'delete') !== false || stripos($message, 'remove') !== false) {
                 $intent = 'delete_membership';
-                error_log("MPAI Debug - V2 Intent detected: delete_membership");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: delete_membership");
             } elseif (stripos($message, 'list') !== false || stripos($message, 'show') !== false || stripos($message, 'get') !== false) {
                 $intent = 'list_memberships';
-                error_log("MPAI Debug - V2 Intent detected: list_memberships");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: list_memberships");
             } else {
                 // Default to create_membership if it contains "membership" but no specific action
                 $intent = 'create_membership';
-                error_log("MPAI Debug - V2 Intent detected (default membership): create_membership");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected (default membership): create_membership");
             }
         }
         // Check for post-related intents
         elseif (stripos($message, 'post') !== false) {
             if (stripos($message, 'create') !== false || stripos($message, 'add') !== false || stripos($message, 'new') !== false) {
                 $intent = 'create_post';
-                error_log("MPAI Debug - V2 Intent detected: create_post");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: create_post");
             } elseif (stripos($message, 'update') !== false || stripos($message, 'edit') !== false || stripos($message, 'modify') !== false) {
                 $intent = 'update_post';
-                error_log("MPAI Debug - V2 Intent detected: update_post");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: update_post");
             } elseif (stripos($message, 'delete') !== false || stripos($message, 'remove') !== false) {
                 $intent = 'delete_post';
-                error_log("MPAI Debug - V2 Intent detected: delete_post");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: delete_post");
             } elseif (stripos($message, 'list') !== false || stripos($message, 'show') !== false || stripos($message, 'get') !== false) {
                 $intent = 'list_posts';
-                error_log("MPAI Debug - V2 Intent detected: list_posts");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: list_posts");
             } else {
                 $intent = 'create_post';
-                error_log("MPAI Debug - V2 Intent detected (default post): create_post");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected (default post): create_post");
             }
         }
         // Check for validation-related intents
         elseif (stripos($message, 'validate') !== false || stripos($message, 'validation') !== false) {
             $intent = 'validate_input';
-            error_log("MPAI Debug - V2 Intent detected: validate_input");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: validate_input");
         }
         // Check for greeting intents
         elseif (stripos($message, 'hello') !== false || stripos($message, 'hi') !== false ||
                stripos($message, 'hey') !== false || stripos($message, 'greetings') !== false) {
             $intent = 'greeting';
-            error_log("MPAI Debug - V2 Intent detected: greeting");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: greeting");
         }
         // Check for help intents
         elseif (stripos($message, 'help') !== false) {
             $intent = 'help';
-            error_log("MPAI Debug - V2 Intent detected: help");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: help");
         }
         // Check for general action intents
         elseif (stripos($message, 'create') !== false || stripos($message, 'add') !== false || stripos($message, 'new') !== false) {
             $intent = 'create';
-            error_log("MPAI Debug - V2 Intent detected: create");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: create");
         } elseif (stripos($message, 'update') !== false || stripos($message, 'edit') !== false || stripos($message, 'modify') !== false) {
             $intent = 'update';
-            error_log("MPAI Debug - V2 Intent detected: update");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: update");
         } elseif (stripos($message, 'delete') !== false || stripos($message, 'remove') !== false) {
             $intent = 'delete';
-            error_log("MPAI Debug - V2 Intent detected: delete");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: delete");
         } elseif (stripos($message, 'list') !== false || stripos($message, 'show') !== false || stripos($message, 'get') !== false) {
             $intent = 'list';
-            error_log("MPAI Debug - V2 Intent detected: list");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: list");
         } elseif (stripos($message, 'search') !== false || stripos($message, 'find') !== false) {
             $intent = 'search';
-            error_log("MPAI Debug - V2 Intent detected: search");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected: search");
         } else {
             // Default to general intent if no specific intent is detected
             $intent = 'general';
-            error_log("MPAI Debug - V2 Intent detected (default): general");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - V2 Intent detected (default): general");
         }
         
         // Simple entity extraction

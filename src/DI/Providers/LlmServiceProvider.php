@@ -78,7 +78,7 @@ class LlmServiceProvider extends ServiceProvider {
             
             // Log what we found
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - LlmChatAdapter dependencies: ' .
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - LlmChatAdapter dependencies: ' .
                     'ToolRegistry: ' . ($toolRegistry ? 'Yes' : 'No') . ', ' .
                     'ContextManager: ' . ($contextManager ? 'Yes' : 'No'));
             }

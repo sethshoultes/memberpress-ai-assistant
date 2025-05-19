@@ -47,7 +47,7 @@ class ToolRegistryProvider extends ServiceProvider {
     protected function registerBuiltInTools(ToolRegistry $registry, ServiceLocator $locator): void {
         // Log registration
         if (function_exists('error_log')) {
-            error_log('MPAI Debug - Registering built-in tools with the registry');
+            \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Registering built-in tools with the registry');
         }
         
         try {
@@ -59,11 +59,11 @@ class ToolRegistryProvider extends ServiceProvider {
                     $registry->registerTool($wpTool);
                     
                     if (function_exists('error_log')) {
-                        error_log('MPAI Debug - Registered WordPress tool');
+                        \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Registered WordPress tool');
                     }
                 } catch (\Exception $e) {
                     if (function_exists('error_log')) {
-                        error_log('MPAI Debug - Error registering WordPress tool: ' . $e->getMessage());
+                        \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Error registering WordPress tool: ' . $e->getMessage());
                     }
                 }
             }
@@ -81,11 +81,11 @@ class ToolRegistryProvider extends ServiceProvider {
                     $registry->registerTool($mpTool);
                     
                     if (function_exists('error_log')) {
-                        error_log('MPAI Debug - Registered MemberPress tool');
+                        \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Registered MemberPress tool');
                     }
                 } else {
                     if (function_exists('error_log')) {
-                        error_log('MPAI Debug - MemberPress service not available, skipping MemberPress tool registration');
+                        \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - MemberPress service not available, skipping MemberPress tool registration');
                     }
                 }
             }
@@ -98,18 +98,18 @@ class ToolRegistryProvider extends ServiceProvider {
                     $registry->registerTool($contentTool);
                     
                     if (function_exists('error_log')) {
-                        error_log('MPAI Debug - Registered Content tool');
+                        \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Registered Content tool');
                     }
                 } catch (\Exception $e) {
                     if (function_exists('error_log')) {
-                        error_log('MPAI Debug - Error registering Content tool: ' . $e->getMessage());
+                        \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Error registering Content tool: ' . $e->getMessage());
                     }
                 }
             }
         } catch (\Exception $e) {
             if (function_exists('error_log')) {
-                error_log('MPAI Debug - Error registering built-in tools: ' . $e->getMessage());
-                error_log('MPAI Debug - Error trace: ' . $e->getTraceAsString());
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Error registering built-in tools: ' . $e->getMessage());
+                \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Error trace: ' . $e->getTraceAsString());
             }
         }
     }

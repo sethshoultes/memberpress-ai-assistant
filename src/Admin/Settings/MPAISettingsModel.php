@@ -30,6 +30,7 @@ class MPAISettingsModel {
     private $defaults = [
         // General settings
         'chat_enabled' => true,
+        'log_level' => 'info', // Options: none, error, warning, info, debug, trace, minimal
         
         // Chat settings
         'chat_location' => 'admin_only',
@@ -194,6 +195,10 @@ class MPAISettingsModel {
                 case 'chat_enabled':
                 case 'consent_required':
                     $validated[$key] = $this->validate_boolean($value);
+                    break;
+                    
+                case 'log_level':
+                    $validated[$key] = $this->validate_log_level($value);
                     break;
                     
                 case 'chat_location':
@@ -472,6 +477,29 @@ class MPAISettingsModel {
         
         return 'openai';
     }
+    
+    /**
+     * Validate log level setting
+     *
+     * @param mixed $value Value to validate
+     * @return string Validated log level
+     */
+    private function validate_log_level($value) {
+        $valid_levels = ['none', 'error', 'warning', 'info', 'debug', 'trace', 'minimal'];
+        
+        if (in_array($value, $valid_levels, true)) {
+            return $value;
+        }
+        
+        if ($this->logger) {
+            $this->logger->warning('Invalid log level', [
+                'value' => $value,
+                'valid_levels' => $valid_levels
+            ]);
+        }
+        
+        return 'info';
+    }
 
     /**
      * Check if chat is enabled
@@ -608,5 +636,15 @@ class MPAISettingsModel {
      */
     public function is_consent_required() {
         return (bool) $this->get('consent_required', true);
+    }
+    
+    /**
+     * Get the log level
+     *
+     * @return string Log level
+     */
+    public function get_log_level() {
+        $log_level = $this->get('log_level', 'info');
+        return $log_level;
     }
 }

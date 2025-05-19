@@ -126,74 +126,74 @@ class MPAIKeyManager extends AbstractService {
         
         // If an addon has provided a key, use it
         if ($override_key !== null) {
-            error_log("MPAI Debug - Using override key from addon for service: {$service_type}");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Using override key from addon for service: {$service_type}");
             return $override_key;
         }
         
         // Add detailed logging
-        error_log("MPAI Debug - Getting API key for service: {$service_type}");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Getting API key for service: {$service_type}");
         
         // Verify security context first
         if (!$this->verify_security_context()) {
-            error_log("MPAI Debug - Security context verification failed");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security context verification failed");
             return false;
         }
         
         // Get the API key from settings
         if ($this->settings !== null) {
-            error_log("MPAI Debug - Settings model is available");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Settings model is available");
             
             if ($service_type === self::SERVICE_OPENAI) {
                 $key = $this->settings->get_openai_api_key();
-                error_log("MPAI Debug - Got OpenAI key from settings: " . (empty($key) ? "empty" : "not empty"));
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Got OpenAI key from settings: " . (empty($key) ? "empty" : "not empty"));
             } elseif ($service_type === self::SERVICE_ANTHROPIC) {
                 $key = $this->settings->get_anthropic_api_key();
-                error_log("MPAI Debug - Got Anthropic key from settings: " . (empty($key) ? "empty" : "not empty"));
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Got Anthropic key from settings: " . (empty($key) ? "empty" : "not empty"));
             } else {
-                error_log("MPAI Debug - Unknown service type: {$service_type}");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Unknown service type: {$service_type}");
                 return false;
             }
             
             // Validate the key format
             if (!empty($key)) {
                 if ($this->validate_key_format($service_type, $key)) {
-                    error_log("MPAI Debug - Key format is valid for service: {$service_type}");
+                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Key format is valid for service: {$service_type}");
                     return $key;
                 } else {
-                    error_log("MPAI Debug - Invalid key format for service: {$service_type}");
+                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Invalid key format for service: {$service_type}");
                     return false;
                 }
             } else {
-                error_log("MPAI Debug - Empty key for service: {$service_type}");
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Empty key for service: {$service_type}");
             }
         } else {
-            error_log("MPAI Debug - Settings model is not available");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Settings model is not available");
         }
         
         // If settings model is not available or key is empty, try to get the key from WordPress options
         $all_settings = get_option('mpai_settings', []);
-        error_log("MPAI Debug - Trying to get key from WordPress options directly");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Trying to get key from WordPress options directly");
         
         if (!empty($all_settings)) {
             if ($service_type === self::SERVICE_OPENAI && isset($all_settings['openai_api_key'])) {
                 $key = $all_settings['openai_api_key'];
-                error_log("MPAI Debug - Got OpenAI key from WordPress options: " . (empty($key) ? "empty" : "not empty"));
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Got OpenAI key from WordPress options: " . (empty($key) ? "empty" : "not empty"));
                 
                 if (!empty($key) && $this->validate_key_format($service_type, $key)) {
-                    error_log("MPAI Debug - Key format is valid for service: {$service_type}");
+                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Key format is valid for service: {$service_type}");
                     return $key;
                 }
             } elseif ($service_type === self::SERVICE_ANTHROPIC && isset($all_settings['anthropic_api_key'])) {
                 $key = $all_settings['anthropic_api_key'];
-                error_log("MPAI Debug - Got Anthropic key from WordPress options: " . (empty($key) ? "empty" : "not empty"));
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Got Anthropic key from WordPress options: " . (empty($key) ? "empty" : "not empty"));
                 
                 if (!empty($key) && $this->validate_key_format($service_type, $key)) {
-                    error_log("MPAI Debug - Key format is valid for service: {$service_type}");
+                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Key format is valid for service: {$service_type}");
                     return $key;
                 }
             }
         } else {
-            error_log("MPAI Debug - No settings found in WordPress options");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - No settings found in WordPress options");
         }
         
         // As a last resort, try the old option name format
@@ -201,11 +201,11 @@ class MPAIKeyManager extends AbstractService {
         $key = get_option($option_name, '');
         
         if (!empty($key)) {
-            error_log("MPAI Debug - Got key from old option name format: " . $option_name);
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Got key from old option name format: " . $option_name);
             return $key;
         }
         
-        error_log("MPAI Debug - No API key found for service type: {$service_type}");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - No API key found for service type: {$service_type}");
         return false;
     }
     
@@ -215,7 +215,7 @@ class MPAIKeyManager extends AbstractService {
      * @return bool True if security context is valid, false otherwise
      */
     private function verify_security_context() {
-        error_log("MPAI Debug - Verifying security context for API key access");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Verifying security context for API key access");
         
         // For chat interface, bypass security checks
         $is_chat_request = false;
@@ -228,62 +228,62 @@ class MPAIKeyManager extends AbstractService {
                  strpos($trace['class'], 'LlmChatAdapter') !== false ||
                  strpos($trace['class'], 'LlmProviderFactory') !== false)) {
                 $is_chat_request = true;
-                error_log("MPAI Debug - Detected chat request from: " . $trace['class'] . "::" . $trace['function']);
+                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Detected chat request from: " . $trace['class'] . "::" . $trace['function']);
                 break;
             }
         }
         
         if ($is_chat_request) {
-            error_log("MPAI Debug - Bypassing security checks for chat request");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Bypassing security checks for chat request");
             return true;
         }
         
         // Must be in WordPress admin context
         if (!is_admin()) {
             $this->log_error('Not in admin context');
-            error_log("MPAI Debug - Security check failed: Not in admin context");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security check failed: Not in admin context");
             return false;
         } else {
-            error_log("MPAI Debug - Security check passed: In admin context");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security check passed: In admin context");
         }
         
         // User must have appropriate capabilities
         if (!current_user_can('manage_options')) {
             $this->log_error('User lacks required capabilities');
-            error_log("MPAI Debug - Security check failed: User lacks required capabilities");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security check failed: User lacks required capabilities");
             return false;
         } else {
-            error_log("MPAI Debug - Security check passed: User has required capabilities");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security check passed: User has required capabilities");
         }
         
         // Verify request origin
         if (!$this->verify_request_origin()) {
             $this->log_error('Invalid request origin');
-            error_log("MPAI Debug - Security check failed: Invalid request origin");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security check failed: Invalid request origin");
             return false;
         } else {
-            error_log("MPAI Debug - Security check passed: Valid request origin");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security check passed: Valid request origin");
         }
         
         // Verify plugin integrity
         if (!$this->verify_plugin_integrity()) {
             $this->log_error('Plugin integrity check failed');
-            error_log("MPAI Debug - Security check failed: Plugin integrity check failed");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security check failed: Plugin integrity check failed");
             return false;
         } else {
-            error_log("MPAI Debug - Security check passed: Plugin integrity verified");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security check passed: Plugin integrity verified");
         }
         
         // Check rate limiting
         if (!$this->check_rate_limit()) {
             $this->log_error('Rate limit exceeded');
-            error_log("MPAI Debug - Security check failed: Rate limit exceeded");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security check failed: Rate limit exceeded");
             return false;
         } else {
-            error_log("MPAI Debug - Security check passed: Within rate limits");
+            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Security check passed: Within rate limits");
         }
         
-        error_log("MPAI Debug - All security checks passed");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - All security checks passed");
         return true;
     }
     
@@ -376,8 +376,8 @@ class MPAIKeyManager extends AbstractService {
         $api_key = $this->get_api_key($service_type);
         
         // Log the key info for debugging (redacted for security)
-        error_log("MPAI Debug - Testing {$service_type} API connection");
-        error_log("MPAI Debug - API key available: " . (empty($api_key) ? 'No' : 'Yes'));
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Testing {$service_type} API connection");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - API key available: " . (empty($api_key) ? 'No' : 'Yes'));
         
         // Fire action before API request
         do_action('mpai_before_api_request', $service_type);
@@ -421,9 +421,9 @@ class MPAIKeyManager extends AbstractService {
         $endpoint = 'https://api.openai.com/v1/models';
         
         // Log the request details
-        error_log("MPAI Debug - Testing OpenAI connection to: {$endpoint}");
-        error_log("MPAI Debug - API key length: " . strlen($api_key));
-        error_log("MPAI Debug - API key format check: " . (strpos($api_key, 'sk-') === 0 ? 'valid' : 'invalid') . " format");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Testing OpenAI connection to: {$endpoint}");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - API key length: " . strlen($api_key));
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - API key format check: " . (strpos($api_key, 'sk-') === 0 ? 'valid' : 'invalid') . " format");
         
         // Make the API request
         $response = wp_remote_get($endpoint, [
@@ -447,8 +447,8 @@ class MPAIKeyManager extends AbstractService {
         $response_body = wp_remote_retrieve_body($response);
         
         // Log the response
-        error_log("MPAI Debug - OpenAI API response code: {$response_code}");
-        error_log("MPAI Debug - OpenAI API response body: {$response_body}");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - OpenAI API response code: {$response_code}");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - OpenAI API response body: {$response_body}");
         
         if ($response_code !== 200) {
             return [
@@ -488,9 +488,9 @@ class MPAIKeyManager extends AbstractService {
         $endpoint = 'https://api.anthropic.com/v1/complete';
         
         // Log the request details
-        error_log("MPAI Debug - Testing Anthropic connection to: {$endpoint}");
-        error_log("MPAI Debug - API key length: " . strlen($api_key));
-        error_log("MPAI Debug - API key format check: " . (strpos($api_key, 'sk-ant-') === 0 ? 'valid' : 'invalid') . " format");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Testing Anthropic connection to: {$endpoint}");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - API key length: " . strlen($api_key));
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - API key format check: " . (strpos($api_key, 'sk-ant-') === 0 ? 'valid' : 'invalid') . " format");
         
         // Request body
         $body = json_encode([
@@ -523,8 +523,8 @@ class MPAIKeyManager extends AbstractService {
         $response_body = wp_remote_retrieve_body($response);
         
         // Log the response
-        error_log("MPAI Debug - Anthropic API response code: {$response_code}");
-        error_log("MPAI Debug - Anthropic API response body: {$response_body}");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Anthropic API response code: {$response_code}");
+        \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Anthropic API response body: {$response_body}");
         
         if ($response_code !== 200) {
             return [
