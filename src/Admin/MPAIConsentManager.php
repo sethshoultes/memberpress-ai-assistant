@@ -92,7 +92,7 @@ class MPAIConsentManager extends AbstractService {
      */
     protected function addHooks(): void {
         // Register hooks for consent processing
-        \add_action('admin_init', array($this, 'processConsentForm'));
+        \add_action('admin_init', array($this, 'processConsentForm'), 10);
         \add_action('wp_ajax_mpai_save_consent', array($this, 'saveConsentAjax'));
         
         // Register hooks for extensions
@@ -121,6 +121,28 @@ class MPAIConsentManager extends AbstractService {
         $has_consented = \get_user_meta($user_id, self::CONSENT_META_KEY, true);
         
         return (bool) $has_consented;
+    }
+    
+    /**
+     * Check if user has consented and redirect if not
+     *
+     * @param string $redirect_url URL to redirect to if user hasn't consented
+     * @return bool True if user has consented, false otherwise
+     */
+    public function checkConsentAndRedirect($redirect_url = '') {
+        // Check if user has consented
+        if (!$this->hasUserConsented()) {
+            // Set default redirect URL if not provided
+            if (empty($redirect_url)) {
+                $redirect_url = \admin_url('admin.php?page=mpai-welcome');
+            }
+            
+            // Redirect to the welcome page
+            \wp_redirect($redirect_url);
+            exit;
+        }
+        
+        return true;
     }
 
     /**
@@ -154,8 +176,13 @@ class MPAIConsentManager extends AbstractService {
     public function processConsentForm() {
         $this->log('Checking for consent form submission');
         
+        // Debug: Log all POST data
+        $this->log('POST data: ' . print_r($_POST, true));
+        
         // Check if the consent form was submitted
         if (isset($_POST['mpai_save_consent']) && isset($_POST['mpai_consent'])) {
+            $this->log('Consent form submitted');
+            
             // Verify nonce
             if (!isset($_POST['mpai_consent_nonce']) || !\wp_verify_nonce($_POST['mpai_consent_nonce'], 'mpai_consent_nonce')) {
                 $this->log('Consent form nonce verification failed', ['error' => true]);
@@ -186,14 +213,17 @@ class MPAIConsentManager extends AbstractService {
             );
             
             // Get redirect URL
-            $redirect_url = \admin_url('admin.php?page=memberpress-ai-assistant&consent=given');
+            $redirect_url = \admin_url('admin.php?page=mpai-settings');
             
             // Allow extensions to filter the redirect URL
             $redirect_url = \apply_filters('mpai_consent_redirect_url', $redirect_url, $user_id);
             
             // Redirect to remove POST data
+            $this->log('Redirecting to: ' . $redirect_url);
             \wp_redirect($redirect_url);
             exit;
+        } else {
+            $this->log('No consent form submission detected. POST keys: ' . implode(', ', array_keys($_POST)));
         }
     }
 

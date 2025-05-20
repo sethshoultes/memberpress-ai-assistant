@@ -84,6 +84,12 @@ class MemberpressAiAssistant {
         // Register activation and deactivation hooks
         register_activation_hook(MPAI_PLUGIN_FILE, [$this, 'activate']);
         register_deactivation_hook(MPAI_PLUGIN_FILE, [$this, 'deactivate']);
+        
+        // Handle redirection after plugin activation
+        add_action('admin_init', [$this, 'maybe_redirect_after_activation']);
+        
+        // Register the welcome page
+        add_action('admin_menu', [$this, 'register_welcome_page']);
     }
 
     /**
@@ -447,8 +453,58 @@ class MemberpressAiAssistant {
         // Create necessary database tables
         // Set up initial configuration
         
+        // Reset all user consents upon activation
+        \MemberpressAiAssistant\Admin\MPAIConsentManager::resetAllConsents();
+        
         // Flush rewrite rules
         flush_rewrite_rules();
+        
+        // Set a transient to redirect after activation
+        set_transient('mpai_activation_redirect', true, 30);
+    }
+    
+    /**
+     * Redirect after plugin activation
+     */
+    public function maybe_redirect_after_activation() {
+        // Check if we should redirect after activation
+        if (get_transient('mpai_activation_redirect')) {
+            // Delete the transient
+            delete_transient('mpai_activation_redirect');
+            
+            // Make sure this is not an AJAX, cron, or other system request
+            if (!wp_doing_ajax() && !wp_doing_cron() && !defined('DOING_AUTOSAVE') && !defined('WP_INSTALLING')) {
+                // Redirect to the welcome page
+                wp_safe_redirect(admin_url('admin.php?page=mpai-welcome'));
+                exit;
+            }
+        }
+    }
+    
+    /**
+     * Register the welcome page
+     * This page is hidden from the menu but accessible via URL
+     */
+    public function register_welcome_page() {
+        add_submenu_page(
+            null, // No parent menu - hidden page
+            __('Welcome to MemberPress AI Assistant', 'memberpress-ai-assistant'),
+            __('Welcome', 'memberpress-ai-assistant'),
+            'manage_options',
+            'mpai-welcome',
+            [$this, 'render_welcome_page']
+        );
+    }
+    
+    /**
+     * Render the welcome page
+     */
+    public function render_welcome_page() {
+        // Get the consent manager
+        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
+        
+        // Include the welcome page template
+        include plugin_dir_path(__FILE__) . 'templates/welcome-page.php';
     }
 
     /**

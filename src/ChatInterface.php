@@ -193,6 +193,13 @@ class ChatInterface {
         if (!$this->shouldLoadChatInterface()) {
             return;
         }
+        
+        // Check if user has consented
+        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
+        if (!$consent_manager->hasUserConsented()) {
+            // Don't render the chat interface if user hasn't consented
+            return;
+        }
 
         // Include the chat interface template
         $this->includeChatTemplate();
@@ -204,6 +211,17 @@ class ChatInterface {
     public function renderAdminChatInterface() {
         // Only render on appropriate admin pages
         if (!$this->shouldLoadAdminChatInterface(get_current_screen()->id)) {
+            return;
+        }
+        
+        // Check if user has consented
+        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
+        if (!$consent_manager->hasUserConsented()) {
+            // Redirect to the welcome page if not on it already
+            if (!isset($_GET['page']) || $_GET['page'] !== 'mpai-welcome') {
+                wp_redirect(admin_url('admin.php?page=mpai-welcome'));
+                exit;
+            }
             return;
         }
 
@@ -598,6 +616,16 @@ class ChatInterface {
             return new \WP_Error(
                 'mpai_insufficient_permissions',
                 __('You do not have permission to use the chat.', 'memberpress-ai-assistant'),
+                ['status' => 403]
+            );
+        }
+        
+        // Check if user has consented
+        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
+        if (!$consent_manager->hasUserConsented()) {
+            return new \WP_Error(
+                'mpai_consent_required',
+                __('You must agree to the terms before using the AI Assistant.', 'memberpress-ai-assistant'),
                 ['status' => 403]
             );
         }

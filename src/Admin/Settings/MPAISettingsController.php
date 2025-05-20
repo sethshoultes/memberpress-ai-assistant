@@ -70,6 +70,7 @@ class MPAISettingsController {
             'api' => __('API Settings', 'memberpress-ai-assistant'),
             'chat' => __('Chat Settings', 'memberpress-ai-assistant'),
             'access' => __('Access Control', 'memberpress-ai-assistant'),
+            // Removed consent tab as it's now handled automatically
         ];
     }
 
@@ -87,9 +88,6 @@ class MPAISettingsController {
         
         // Handle reset all consents action
         add_action('admin_init', [$this, 'handle_reset_all_consents']);
-        
-        // Register consent preview page
-        add_action('admin_menu', [$this, 'register_consent_preview_page'], 30);
         
         // Enqueue scripts and styles
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
@@ -384,8 +382,7 @@ class MPAISettingsController {
     public function handle_reset_all_consents() {
         // Check if we're on the settings page and the reset action is requested
         if (!isset($_GET['page']) || $_GET['page'] !== 'mpai-settings' ||
-            !isset($_GET['action']) || $_GET['action'] !== 'mpai_reset_all_consents' ||
-            !isset($_GET['tab']) || $_GET['tab'] !== 'consent') {
+            !isset($_GET['action']) || $_GET['action'] !== 'mpai_reset_all_consents') {
             return;
         }
         
@@ -418,65 +415,15 @@ class MPAISettingsController {
         add_settings_error(
             'mpai_messages',
             'mpai_reset_consents_success',
-            __('All user consents have been reset successfully.', 'memberpress-ai-assistant'),
+            __('All user consents have been reset successfully. Users will need to consent again upon accessing the AI Assistant.', 'memberpress-ai-assistant'),
             'updated'
         );
         
         // Redirect to remove the action from the URL
         wp_redirect(add_query_arg([
             'page' => 'mpai-settings',
-            'tab' => 'consent',
             'settings-updated' => 'true'
         ], admin_url('admin.php')));
-        exit;
-    }
-
-    /**
-     * Register consent preview page
-     *
-     * This adds a hidden admin page that displays the consent form for preview purposes
-     *
-     * @return void
-     */
-    public function register_consent_preview_page() {
-        // Add a hidden submenu page for the consent form preview
-        add_submenu_page(
-            null, // No parent menu
-            __('Consent Form Preview', 'memberpress-ai-assistant'),
-            __('Consent Form Preview', 'memberpress-ai-assistant'),
-            'manage_options',
-            'mpai-consent-preview',
-            [$this, 'render_consent_preview_page']
-        );
-    }
-
-    /**
-     * Render the consent preview page
-     *
-     * @return void
-     */
-    public function render_consent_preview_page() {
-        // Get the consent manager instance
-        $consent_manager = MPAIConsentManager::getInstance();
-        
-        // Output minimal header
-        echo '<!DOCTYPE html>';
-        echo '<html>';
-        echo '<head>';
-        echo '<meta charset="utf-8">';
-        echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
-        echo '<title>' . esc_html__('Consent Form Preview', 'memberpress-ai-assistant') . '</title>';
-        wp_head();
-        echo '</head>';
-        echo '<body class="mpai-consent-preview-body">';
-        
-        // Render the consent form
-        $consent_manager->renderConsentForm();
-        
-        // Output minimal footer
-        wp_footer();
-        echo '</body>';
-        echo '</html>';
         exit;
     }
 

@@ -157,10 +157,6 @@ class MPAISettingsView {
                 $this->render_section('mpai_access_section', $page_slug);
                 break;
                 
-            case 'consent':
-                $this->render_section('mpai_consent_section', $page_slug);
-                break;
-                
             default:
                 do_settings_sections($page_slug);
                 break;
