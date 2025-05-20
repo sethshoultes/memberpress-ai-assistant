@@ -931,7 +931,7 @@
             // Prepare the data for the AJAX request
             const data = {
                 action: 'mpai_create_post',
-                nonce: window.mpai_nonce || '',
+                _wpnonce: window.mpai_nonce || '', // Use _wpnonce for WordPress AJAX
                 title: postData.title,
                 content: postData.content,
                 excerpt: postData.excerpt,
@@ -939,50 +939,58 @@
                 post_type: postData.type || 'post'
             };
             
-            // Send the AJAX request
-            fetch(ajaxurl || '/wp-admin/admin-ajax.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
+            console.log('[MPAI Debug] Creating post with nonce:', window.mpai_nonce);
+            
+            // Use jQuery AJAX instead of fetch
+            console.log('[MPAI Debug] Using jQuery AJAX to create post');
+            
+            // Add a debug message with the data being sent
+            console.log('[MPAI Debug] AJAX data:', data);
+            console.log('[MPAI Debug] AJAX URL:', ajaxurl || '/wp-admin/admin-ajax.php');
+            console.log('[MPAI Debug] Nonce:', window.mpai_nonce);
+            
+            jQuery.ajax({
+                url: ajaxurl || '/wp-admin/admin-ajax.php',
+                type: 'POST',
+                data: data,
+                success: function(response) {
+                    console.log('[MPAI Debug] Post created successfully:', response);
+                    
+                    // Update the button
+                    button.disabled = false;
+                    button.textContent = 'Post Created!';
+                    
+                    // Add the edit link if available
+                    if (response.success && response.data && response.data.edit_url) {
+                        const editLink = document.createElement('a');
+                        editLink.className = 'mpai-edit-post-link';
+                        editLink.href = response.data.edit_url;
+                        editLink.target = '_blank';
+                        editLink.textContent = 'Edit Post';
+                        card.querySelector('.mpai-post-preview-actions').appendChild(editLink);
+                    }
+                    
+                    // Show a success message
+                    const successMessage = document.createElement('div');
+                    successMessage.className = response.success ? 'mpai-post-success-message' : 'mpai-post-error-message';
+                    successMessage.textContent = response.data && response.data.message ? response.data.message :
+                        (response.success ? 'Post created successfully!' : 'Error creating post');
+                    card.appendChild(successMessage);
                 },
-                body: new URLSearchParams(data)
-            })
-            .then(response => response.json())
-            .then(response => {
-                console.log('[MPAI Debug] Post created successfully:', response);
-                
-                // Update the button
-                button.disabled = false;
-                button.textContent = 'Post Created!';
-                
-                // Add the edit link if available
-                if (response.data && response.data.edit_url) {
-                    const editLink = document.createElement('a');
-                    editLink.className = 'mpai-edit-post-link';
-                    editLink.href = response.data.edit_url;
-                    editLink.target = '_blank';
-                    editLink.textContent = 'Edit Post';
-                    card.querySelector('.mpai-post-preview-actions').appendChild(editLink);
+                error: function(xhr, status, error) {
+                    console.error('[MPAI Debug] Error creating post:', error);
+                    console.error('[MPAI Debug] Response:', xhr.responseText);
+                    
+                    // Update the button
+                    button.disabled = false;
+                    button.textContent = 'Create Post';
+                    
+                    // Show an error message
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'mpai-post-error-message';
+                    errorMessage.textContent = 'Error creating post: ' + error;
+                    card.appendChild(errorMessage);
                 }
-                
-                // Show a success message
-                const successMessage = document.createElement('div');
-                successMessage.className = 'mpai-post-success-message';
-                successMessage.textContent = response.data && response.data.message ? response.data.message : 'Post created successfully!';
-                card.appendChild(successMessage);
-            })
-            .catch(error => {
-                console.error('[MPAI Debug] Error creating post:', error);
-                
-                // Update the button
-                button.disabled = false;
-                button.textContent = 'Create Post';
-                
-                // Show an error message
-                const errorMessage = document.createElement('div');
-                errorMessage.className = 'mpai-post-error-message';
-                errorMessage.textContent = 'Error creating post: ' + error.message;
-                card.appendChild(errorMessage);
             });
         }
 

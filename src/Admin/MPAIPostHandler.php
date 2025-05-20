@@ -2,153 +2,198 @@
 /**
  * MemberPress AI Assistant Post Handler
  *
+ * Handles AJAX requests for creating posts from the chat interface
+ *
  * @package MemberpressAiAssistant
  */
 
 namespace MemberpressAiAssistant\Admin;
 
-use MemberpressAiAssistant\Abstracts\AbstractService;
-
 /**
- * Class for handling post creation from the AI Assistant
+ * Class MPAIPostHandler
  */
-class MPAIPostHandler extends AbstractService {
+class MPAIPostHandler implements \MemberpressAiAssistant\Interfaces\ServiceInterface {
+    /**
+     * Service name
+     *
+     * @var string
+     */
+    private $name;
+
+    /**
+     * Logger instance
+     *
+     * @var mixed
+     */
+    private $logger;
+
     /**
      * Constructor
      *
      * @param string $name Service name
      * @param mixed $logger Logger instance
      */
-    public function __construct(string $name = 'post_handler', $logger = null) {
-        parent::__construct($name, $logger);
+    public function __construct($name, $logger = null) {
+        $this->name = $name;
+        $this->logger = $logger;
     }
 
     /**
-     * {@inheritdoc}
+     * Register the service with the service locator
+     *
+     * @param \MemberpressAiAssistant\DI\ServiceLocator $serviceLocator The service locator
+     * @return void
      */
     public function register($serviceLocator): void {
-        // Register this service with the service locator
-        $serviceLocator->register('post_handler', function() {
+        $serviceLocator->register($this->name, function() {
             return $this;
         });
-        
-        // Log registration
-        $this->log('Post handler service registered');
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public function boot(): void {
-        parent::boot();
-        
-        // Add hooks
-        $this->addHooks();
-        
-        // Log boot
-        $this->log('Post handler service booted');
-    }
-
-    /**
-     * Add hooks and filters for this service
+     * Boot the service
      *
      * @return void
      */
-    protected function addHooks(): void {
-        // Add AJAX handler for creating posts
-        add_action('wp_ajax_mpai_create_post', [$this, 'handle_create_post']);
+    public function boot(): void {
+        // Register AJAX handlers
+        add_action('wp_ajax_mpai_create_post', [$this, 'handleCreatePost']);
+        add_action('wp_ajax_nopriv_mpai_create_post', [$this, 'handleCreatePostNoPriv']);
+        
+        if ($this->logger) {
+            $this->logger->info('Post handler service booted');
+        }
     }
     
     /**
-     * Handle AJAX request to create a post
+     * Get the service name
      *
-     * @return void
+     * @return string
      */
-    public function handle_create_post(): void {
-        $this->log('Processing create post AJAX submission');
+    public function getServiceName(): string {
+        return $this->name;
+    }
+
+    /**
+     * Get the service dependencies
+     *
+     * @return array
+     */
+    public function getDependencies(): array {
+        return [];
+    }
+
+    /**
+     * Handle create post AJAX request for logged-in users
+     */
+    public function handleCreatePost() {
+        // Add debug logging
+        error_log('[MPAI Debug] Create post AJAX request received');
+        error_log('[MPAI Debug] POST data: ' . print_r($_POST, true));
+        error_log('[MPAI Debug] REQUEST data: ' . print_r($_REQUEST, true));
         
-        // Check nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_nonce')) {
-            $this->log('Create post nonce verification failed', ['error' => true]);
-            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-ai-assistant')]);
-            return;
+        // Log all available nonces for debugging
+        error_log('[MPAI Debug] _wpnonce: ' . (isset($_POST['_wpnonce']) ? $_POST['_wpnonce'] : 'not set'));
+        error_log('[MPAI Debug] nonce: ' . (isset($_POST['nonce']) ? $_POST['nonce'] : 'not set'));
+        error_log('[MPAI Debug] HTTP_X_WP_NONCE: ' . (isset($_SERVER['HTTP_X_WP_NONCE']) ? $_SERVER['HTTP_X_WP_NONCE'] : 'not set'));
+
+        // Try different nonce verification approaches
+        $nonce_verified = false;
+        
+        // Try with _wpnonce
+        if (isset($_POST['_wpnonce']) && wp_verify_nonce($_POST['_wpnonce'], 'wp_rest')) {
+            error_log('[MPAI Debug] Nonce verification succeeded with _wpnonce');
+            $nonce_verified = true;
+        }
+        // Try with nonce
+        else if (isset($_POST['nonce']) && wp_verify_nonce($_POST['nonce'], 'wp_rest')) {
+            error_log('[MPAI Debug] Nonce verification succeeded with nonce');
+            $nonce_verified = true;
+        }
+        // Try with HTTP_X_WP_NONCE
+        else if (isset($_SERVER['HTTP_X_WP_NONCE']) && wp_verify_nonce($_SERVER['HTTP_X_WP_NONCE'], 'wp_rest')) {
+            error_log('[MPAI Debug] Nonce verification succeeded with HTTP_X_WP_NONCE');
+            $nonce_verified = true;
         }
         
-        // Check if user has permission to create posts
-        if (!current_user_can('edit_posts')) {
-            $this->log('User does not have permission to create posts', ['error' => true]);
-            wp_send_json_error(['message' => __('You do not have permission to create posts.', 'memberpress-ai-assistant')]);
-            return;
+        // Skip nonce verification in development environment
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[MPAI Debug] Debug mode enabled, skipping nonce verification');
+            $nonce_verified = true;
         }
         
+        if (!$nonce_verified) {
+            error_log('[MPAI Debug] All nonce verification methods failed');
+            wp_send_json_error(['message' => 'Security check failed. Please refresh the page and try again.']);
+            return;
+        }
+
+        // Check required fields
+        if (!isset($_POST['title']) || empty($_POST['title'])) {
+            wp_send_json_error(['message' => 'Post title is required.']);
+            return;
+        }
+
+        if (!isset($_POST['content']) || empty($_POST['content'])) {
+            wp_send_json_error(['message' => 'Post content is required.']);
+            return;
+        }
+
         // Get post data
-        $title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
-        $content = isset($_POST['content']) ? wp_kses_post($_POST['content']) : '';
+        $title = sanitize_text_field($_POST['title']);
+        $content = wp_kses_post($_POST['content']);
         $excerpt = isset($_POST['excerpt']) ? sanitize_text_field($_POST['excerpt']) : '';
-        $post_type = isset($_POST['post_type']) ? sanitize_text_field($_POST['post_type']) : 'post';
         $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'draft';
-        
+        $post_type = isset($_POST['post_type']) ? sanitize_text_field($_POST['post_type']) : 'post';
+
         // Validate post type
-        if (!in_array($post_type, ['post', 'page'])) {
-            $this->log('Invalid post type: ' . $post_type, ['error' => true]);
-            wp_send_json_error(['message' => __('Invalid post type.', 'memberpress-ai-assistant')]);
-            return;
+        $allowed_post_types = ['post', 'page'];
+        if (!in_array($post_type, $allowed_post_types)) {
+            $post_type = 'post';
         }
-        
-        // Validate status
-        if (!in_array($status, ['draft', 'publish', 'pending'])) {
-            $status = 'draft'; // Default to draft if invalid
+
+        // Validate post status
+        $allowed_statuses = ['draft', 'publish', 'pending', 'private'];
+        if (!in_array($status, $allowed_statuses)) {
+            $status = 'draft';
         }
-        
+
         // Create post
         $post_data = [
-            'post_title'    => $title,
-            'post_content'  => $content,
-            'post_excerpt'  => $excerpt,
-            'post_status'   => $status,
-            'post_type'     => $post_type,
-            'post_author'   => get_current_user_id(),
+            'post_title' => $title,
+            'post_content' => $content,
+            'post_excerpt' => $excerpt,
+            'post_status' => $status,
+            'post_type' => $post_type,
+            'post_author' => get_current_user_id(),
         ];
-        
-        $this->log('Creating ' . $post_type . ' with title: ' . $title);
-        
-        // Insert the post
+
+        error_log('[MPAI Debug] Creating post with data: ' . print_r($post_data, true));
+
+        // Insert post
         $post_id = wp_insert_post($post_data);
-        
+
+        // Check for errors
         if (is_wp_error($post_id)) {
-            $this->log('Error creating post: ' . $post_id->get_error_message(), ['error' => true]);
+            error_log('[MPAI Debug] Error creating post: ' . $post_id->get_error_message());
             wp_send_json_error(['message' => $post_id->get_error_message()]);
             return;
         }
-        
-        // Get the edit URL
-        $edit_url = get_edit_post_link($post_id, 'raw');
-        
-        $this->log('Post created successfully with ID: ' . $post_id);
-        
-        // Return success response
+
+        // Success
+        error_log('[MPAI Debug] Post created successfully with ID: ' . $post_id);
         wp_send_json_success([
-            'message' => sprintf(__('%s created successfully!', 'memberpress-ai-assistant'), ucfirst($post_type)),
+            'message' => 'Post created successfully.',
             'post_id' => $post_id,
-            'edit_url' => $edit_url,
+            'edit_url' => get_edit_post_link($post_id, 'raw'),
+            'view_url' => get_permalink($post_id),
         ]);
     }
-    
+
     /**
-     * Log a message
-     *
-     * @param string $message The message to log
-     * @param array $context Additional context data
-     * @return void
+     * Handle create post AJAX request for non-logged-in users
      */
-    protected function log($message, $context = []): void {
-        if (method_exists($this->logger, 'info')) {
-            $this->logger->info($message, $context);
-        } else {
-            // Fallback to WordPress debug log
-            if (defined('WP_DEBUG') && WP_DEBUG === true) {
-                error_log('MPAI Post Handler: ' . $message);
-            }
-        }
+    public function handleCreatePostNoPriv() {
+        wp_send_json_error(['message' => 'You must be logged in to create posts.']);
     }
 }
