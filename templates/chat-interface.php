@@ -103,6 +103,12 @@ if (!defined('ABSPATH')) {
                     <li><a href="#" class="mpai-command-item" data-command="wp user list">wp user list</a></li>
                     <li><a href="#" class="mpai-command-item" data-command="wp post list">wp post list</a></li>
                 </ul>
+                
+                <h5><?php esc_html_e('Content Creation', 'memberpress-ai-assistant'); ?></h5>
+                <ul>
+                    <li><a href="#" class="mpai-command-item" data-command="Create a blog post about">Create a blog post</a></li>
+                    <li><a href="#" class="mpai-command-item" data-command="Create a page about">Create a page</a></li>
+                </ul>
             </div>
         </div>
     </div>
@@ -112,3 +118,26 @@ if (!defined('ABSPATH')) {
 <button id="mpai-chat-toggle" class="mpai-chat-toggle" aria-label="<?php esc_attr_e('Toggle chat', 'memberpress-ai-assistant'); ?>">
     <span class="dashicons dashicons-format-chat"></span>
 </button>
+
+<!-- Add direct script loading for blog formatter -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('[MPAI Debug] DOM content loaded, checking for blog formatter');
+        if (window.MPAI_BlogFormatter) {
+            console.log('[MPAI Debug] Blog formatter found, initializing');
+            window.MPAI_BlogFormatter.init();
+        } else {
+            console.log('[MPAI Debug] Blog formatter not found, loading directly');
+            // Create script element
+            var script = document.createElement('script');
+            script.src = '<?php echo esc_url(MPAI_PLUGIN_URL . 'assets/js/blog-formatter.js'); ?>';
+            script.onload = function() {
+                console.log('[MPAI Debug] Blog formatter loaded directly, initializing');
+                if (window.MPAI_BlogFormatter) {
+                    window.MPAI_BlogFormatter.init();
+                }
+            };
+            document.head.appendChild(script);
+        }
+    });
+</script>

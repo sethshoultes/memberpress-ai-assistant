@@ -192,6 +192,11 @@ class MemberpressAiAssistant {
         $ajax_handler->register($this->serviceLocator);
         $ajax_handler->boot();
         
+        // Register post handler service
+        $post_handler = new \MemberpressAiAssistant\Admin\MPAIPostHandler('post_handler', $logger);
+        $post_handler->register($this->serviceLocator);
+        $post_handler->boot();
+        
         // Register cache service
         $cache_service = new \MemberpressAiAssistant\Services\CacheService('cache', $logger);
         $cache_service->register($this->serviceLocator);

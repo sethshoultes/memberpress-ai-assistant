@@ -64,6 +64,14 @@ class ChatInterface {
             [],
             MPAI_VERSION
         );
+        
+        // Register blog post styles
+        wp_register_style(
+            'mpai-blog-post',
+            MPAI_PLUGIN_URL . 'assets/css/blog-post.css',
+            [],
+            MPAI_VERSION
+        );
 
         // Register scripts
         // Register response formatting modules first
@@ -91,20 +99,31 @@ class ChatInterface {
             true
         );
         
+        // Register blog formatter module
+        wp_register_script(
+            'mpai-blog-formatter',
+            MPAI_PLUGIN_URL . 'assets/js/blog-formatter.js',
+            ['jquery'],
+            MPAI_VERSION,
+            true
+        );
+        
         // Register main chat script with dependencies
         wp_register_script(
             'mpai-chat',
             MPAI_PLUGIN_URL . 'assets/js/chat.js',
-            ['mpai-xml-processor', 'mpai-data-handler', 'mpai-text-formatter'],
+            ['mpai-xml-processor', 'mpai-data-handler', 'mpai-text-formatter', 'mpai-blog-formatter'],
             MPAI_VERSION,
             true
         );
 
         // Enqueue assets
         wp_enqueue_style('mpai-chat');
+        wp_enqueue_style('mpai-blog-post');
         wp_enqueue_script('mpai-xml-processor');
         wp_enqueue_script('mpai-data-handler');
         wp_enqueue_script('mpai-text-formatter');
+        wp_enqueue_script('mpai-blog-formatter');
         wp_enqueue_script('mpai-chat');
         
         // Add WordPress dashicons for icons
@@ -135,6 +154,14 @@ class ChatInterface {
             [],
             MPAI_VERSION
         );
+        
+        // Register blog post styles
+        wp_register_style(
+            'mpai-blog-post-admin',
+            MPAI_PLUGIN_URL . 'assets/css/blog-post.css',
+            [],
+            MPAI_VERSION
+        );
 
         // Register scripts
         // Register response formatting modules first
@@ -162,20 +189,31 @@ class ChatInterface {
             true
         );
         
+        // Register blog formatter module
+        wp_register_script(
+            'mpai-blog-formatter-admin',
+            MPAI_PLUGIN_URL . 'assets/js/blog-formatter.js',
+            ['jquery'],
+            MPAI_VERSION,
+            true
+        );
+        
         // Register main chat script with dependencies
         wp_register_script(
             'mpai-chat-admin',
             MPAI_PLUGIN_URL . 'assets/js/chat.js',
-            ['mpai-xml-processor-admin', 'mpai-data-handler-admin', 'mpai-text-formatter-admin'],
+            ['mpai-xml-processor-admin', 'mpai-data-handler-admin', 'mpai-text-formatter-admin', 'mpai-blog-formatter-admin'],
             MPAI_VERSION,
             true
         );
 
         // Enqueue assets
         wp_enqueue_style('mpai-chat-admin');
+        wp_enqueue_style('mpai-blog-post-admin');
         wp_enqueue_script('mpai-xml-processor-admin');
         wp_enqueue_script('mpai-data-handler-admin');
         wp_enqueue_script('mpai-text-formatter-admin');
+        wp_enqueue_script('mpai-blog-formatter-admin');
         wp_enqueue_script('mpai-chat-admin');
 
         // Localize script with configuration
@@ -276,6 +314,28 @@ class ChatInterface {
         $load_history = (bool)$request->get_param('load_history');
         $clear_history = (bool)$request->get_param('clear_history');
         $user_logged_in = (bool)$request->get_param('user_logged_in');
+        
+        // Check if this is a blog post request
+        $isBlogPostRequest = false;
+        if ($message && (
+            stripos($message, 'blog post') !== false ||
+            stripos($message, 'create post') !== false ||
+            stripos($message, 'write a post') !== false ||
+            stripos($message, 'write a blog') !== false
+        )) {
+            $isBlogPostRequest = true;
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Blog post request detected: ' . $message);
+            
+            // Enhance the prompt with XML formatting instructions
+            $message = $this->enhanceBlogPostPrompt($message);
+            
+            // Force using Anthropic for blog posts
+            add_filter('mpai_override_provider', function() {
+                return 'anthropic';
+            });
+            
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Using Anthropic for blog post generation');
+        }
         
         // Get the current user ID if logged in
         $user_id = is_user_logged_in() ? get_current_user_id() : 0;
@@ -847,5 +907,42 @@ class ChatInterface {
             'format' => \MemberpressAiAssistant\Utilities\TableFormatter::FORMAT_HTML,
             'summary' => $summary
         ]);
+    }
+/**
+     * Enhance a blog post prompt with XML formatting instructions
+     *
+     * @param string $message The original message
+     * @return string The enhanced message
+     */
+    private function enhanceBlogPostPrompt($message) {
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Enhancing blog post prompt: ' . $message);
+        
+        $enhancedPrompt = $message . "\n\n";
+        $enhancedPrompt .= "I need you to write a blog post in XML format. This is VERY IMPORTANT - the output MUST be wrapped in XML tags EXACTLY as shown in this example. The format must be exactly like this, with no deviations:\n\n";
+        $enhancedPrompt .= "```xml\n";
+        $enhancedPrompt .= "<wp-post>\n";
+        $enhancedPrompt .= "  <post-title>Title of the blog post</post-title>\n";
+        $enhancedPrompt .= "  <post-content>\n";
+        $enhancedPrompt .= "    <block type=\"paragraph\">Introduction paragraph here.</block>\n";
+        $enhancedPrompt .= "    <block type=\"heading\" level=\"2\">First Section Heading</block>\n";
+        $enhancedPrompt .= "    <block type=\"paragraph\">Content of the first section.</block>\n";
+        $enhancedPrompt .= "    <block type=\"paragraph\">Another paragraph with content.</block>\n";
+        $enhancedPrompt .= "    <block type=\"heading\" level=\"2\">Second Section Heading</block>\n";
+        $enhancedPrompt .= "    <block type=\"paragraph\">Content for this section.</block>\n";
+        $enhancedPrompt .= "    <block type=\"list\">\n";
+        $enhancedPrompt .= "      <item>First list item</item>\n";
+        $enhancedPrompt .= "      <item>Second list item</item>\n";
+        $enhancedPrompt .= "      <item>Third list item</item>\n";
+        $enhancedPrompt .= "    </block>\n";
+        $enhancedPrompt .= "  </post-content>\n";
+        $enhancedPrompt .= "  <post-excerpt>A brief summary of the post.</post-excerpt>\n";
+        $enhancedPrompt .= "  <post-status>draft</post-status>\n";
+        $enhancedPrompt .= "</wp-post>\n";
+        $enhancedPrompt .= "```\n\n";
+        $enhancedPrompt .= "The XML structure is required for proper WordPress integration. IMPORTANT: The opening and closing tags must be exactly <wp-post> and </wp-post>. Please ensure the XML is not inside any additional code blocks or formatting - just keep the exact format shown above, with the same indentation patterns. The content must be complete and well-formed.";
+        
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Enhanced blog post prompt created');
+        
+        return $enhancedPrompt;
     }
 }

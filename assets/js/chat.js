@@ -570,6 +570,30 @@
             const contentDiv = document.createElement('div');
             contentDiv.className = 'mpai-chat-message-content';
             
+            // Add debug logging for blog post content detection
+            if (role === 'assistant' && content && (
+                content.includes('<wp-post>') ||
+                content.includes('</wp-post>') ||
+                content.includes('<post-title>') ||
+                content.includes('</post-title>') ||
+                content.includes('<post-content>') ||
+                content.includes('</post-content>')
+            )) {
+                console.log('[MPAI Debug] Blog post content detected in assistant message');
+                
+                // Check if blog formatter is available
+                if (window.MPAI_BlogFormatter) {
+                    console.log('[MPAI Debug] Blog formatter module is available');
+                    
+                    // Store the original XML content for later processing
+                    window.originalXmlResponse = content;
+                } else {
+                    console.log('[MPAI Debug] Blog post formatter module not available');
+                }
+                
+                console.log('[MPAI Debug] Content preview:', content.substring(0, 150) + '...');
+            }
+            
             // Process message content based on role
             if (role === 'user') {
                 // For user messages, just format plain text with auto-linking

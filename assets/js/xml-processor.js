@@ -69,6 +69,27 @@
     function containsXML(content) {
         // Simple check for XML-like content
         const xmlPattern = /<\/?[a-z][a-z0-9]*(?:\s+[a-z0-9-]+(?:=(?:"[^"]*"|'[^']*'|[^'">\s]+))?)*\s*\/?>/i;
+        
+        // Add debug logging for blog post XML detection
+        if (content && (
+            content.includes('<wp-post>') ||
+            content.includes('</wp-post>') ||
+            content.includes('<post-title>') ||
+            content.includes('</post-title>') ||
+            content.includes('<post-content>') ||
+            content.includes('</post-content>')
+        )) {
+            console.log('[MPAI Debug] Blog post XML detected in content');
+            console.log('[MPAI Debug] XML content preview:', content.substring(0, 150) + '...');
+            
+            // Check if blog formatter is available
+            if (window.MPAI_BlogFormatter) {
+                console.log('[MPAI Debug] Blog formatter is available, will process this content');
+            } else {
+                console.log('[MPAI Debug] Blog formatter is NOT available');
+            }
+        }
+        
         return xmlPattern.test(content);
     }
 
@@ -385,6 +406,38 @@
         // Check if content contains XML
         if (!containsXML(content)) {
             return content;
+        }
+        
+        // Check specifically for blog post XML
+        if (content && (
+            content.includes('<wp-post>') ||
+            content.includes('</wp-post>') ||
+            content.includes('<post-title>') ||
+            content.includes('</post-title>') ||
+            content.includes('<post-content>') ||
+            content.includes('</post-content>')
+        )) {
+            console.log('[MPAI Debug] Blog post XML detected in processMessage');
+            
+            // If blog formatter is available, let it process this content
+            if (window.MPAI_BlogFormatter) {
+                console.log('[MPAI Debug] Delegating to blog formatter for processing');
+                
+                // Process with blog formatter
+                setTimeout(function() {
+                    // Find the latest assistant message
+                    const $assistantMessages = $('.mpai-chat-message-assistant');
+                    if ($assistantMessages.length > 0) {
+                        const $latestMessage = $($assistantMessages[$assistantMessages.length - 1]);
+                        window.MPAI_BlogFormatter.processAssistantMessage($latestMessage, content);
+                    }
+                }, 500);
+                
+                // Return the content as is, the blog formatter will add the UI elements
+                return content;
+            } else {
+                console.log('[MPAI Debug] No blog formatter module available to handle this content');
+            }
         }
 
         // Split content into XML and non-XML parts
