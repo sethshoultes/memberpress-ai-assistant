@@ -304,14 +304,6 @@ class MPAISettingsView {
         <?php
     }
     
-    /**
-     * Render the consent section description
-     *
-     * @return void
-     */
-    public function render_consent_section() {
-        echo '<p>' . esc_html__('Configure consent settings for the MemberPress AI Assistant. These settings control how user consent is managed.', 'memberpress-ai-assistant') . '</p>';
-    }
     
     /**
      * Render the chat enabled field
@@ -652,69 +644,6 @@ class MPAISettingsView {
         <?php
     }
     
-    /**
-     * Render the consent required field
-     *
-     * @param bool $value Field value
-     * @return void
-     */
-    public function render_consent_required_field($value) {
-        ?>
-        <label for="mpai_consent_required">
-            <input type="checkbox" id="mpai_consent_required" name="mpai_settings[consent_required]" value="1" <?php checked($value, true); ?> />
-            <?php esc_html_e('Require users to consent before using the AI Assistant', 'memberpress-ai-assistant'); ?>
-        </label>
-        <p class="description">
-            <?php esc_html_e('When enabled, users will be required to agree to the terms before using the AI Assistant.', 'memberpress-ai-assistant'); ?>
-        </p>
-        <?php
-    }
-    
-    /**
-     * Render the consent form preview field
-     *
-     * @return void
-     */
-    public function render_consent_form_preview_field() {
-        ?>
-        <div class="mpai-consent-preview">
-            <p><?php esc_html_e('This is a preview of the consent form that users will see:', 'memberpress-ai-assistant'); ?></p>
-            <div class="mpai-consent-preview-frame">
-                <iframe src="<?php echo esc_url(admin_url('admin.php?page=mpai-consent-preview')); ?>" width="100%" height="400" style="border: 1px solid #ddd; background: #fff;"></iframe>
-            </div>
-            <p class="description">
-                <?php esc_html_e('The consent form template can be customized by adding a filter to the "mpai_consent_form_template" hook.', 'memberpress-ai-assistant'); ?>
-            </p>
-        </div>
-        <?php
-    }
-    
-    /**
-     * Render the reset all consents field
-     *
-     * @return void
-     */
-    public function render_reset_all_consents_field() {
-        $reset_url = wp_nonce_url(
-            add_query_arg(
-                [
-                    'page' => 'mpai-settings',
-                    'tab' => 'consent',
-                    'action' => 'mpai_reset_all_consents',
-                ],
-                admin_url('admin.php')
-            ),
-            'mpai_reset_all_consents_nonce'
-        );
-        ?>
-        <div class="mpai-reset-consents">
-            <p><?php esc_html_e('This will reset consent status for all users. They will need to agree to the terms again before using the AI Assistant.', 'memberpress-ai-assistant'); ?></p>
-            <a href="<?php echo esc_url($reset_url); ?>" class="button button-secondary mpai-reset-consents-button" onclick="return confirm('<?php esc_attr_e('Are you sure you want to reset consent for all users? This action cannot be undone.', 'memberpress-ai-assistant'); ?>');">
-                <?php esc_html_e('Reset All User Consents', 'memberpress-ai-assistant'); ?>
-            </a>
-        </div>
-        <?php
-    }
     
     /**
      * Log an error message

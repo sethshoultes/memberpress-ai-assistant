@@ -70,7 +70,6 @@ class MPAISettingsController {
             'api' => __('API Settings', 'memberpress-ai-assistant'),
             'chat' => __('Chat Settings', 'memberpress-ai-assistant'),
             'access' => __('Access Control', 'memberpress-ai-assistant'),
-            'consent' => __('Consent', 'memberpress-ai-assistant'),
         ];
     }
 
@@ -139,7 +138,6 @@ class MPAISettingsController {
         $this->register_api_section();
         $this->register_chat_section();
         $this->register_access_section();
-        $this->register_consent_section();
     }
 
     /**
@@ -336,47 +334,6 @@ class MPAISettingsController {
         );
     }
 
-    /**
-     * Register consent section and fields
-     *
-     * @return void
-     */
-    protected function register_consent_section() {
-        // Register Consent Settings section
-        add_settings_section(
-            'mpai_consent_section',
-            __('Consent Settings', 'memberpress-ai-assistant'),
-            [$this->view, 'render_consent_section'],
-            $this->page_slug
-        );
-        
-        // Add Consent Required field
-        add_settings_field(
-            'mpai_consent_required',
-            __('Require User Consent', 'memberpress-ai-assistant'),
-            [$this, 'render_consent_required_field'],
-            $this->page_slug,
-            'mpai_consent_section'
-        );
-        
-        // Add Consent Form Preview field
-        add_settings_field(
-            'mpai_consent_form_preview',
-            __('Consent Form Preview', 'memberpress-ai-assistant'),
-            [$this, 'render_consent_form_preview_field'],
-            $this->page_slug,
-            'mpai_consent_section'
-        );
-        
-        // Add Reset All Consents field
-        add_settings_field(
-            'mpai_reset_all_consents',
-            __('Reset All User Consents', 'memberpress-ai-assistant'),
-            [$this, 'render_reset_all_consents_field'],
-            $this->page_slug,
-            'mpai_consent_section'
-        );
-    }
 
     /**
      * Handle form submission
@@ -679,33 +636,6 @@ class MPAISettingsController {
         $this->view->render_primary_api_field($value);
     }
 
-    /**
-     * Render the consent required field
-     *
-     * @return void
-     */
-    public function render_consent_required_field() {
-        $value = $this->model->is_consent_required();
-        $this->view->render_consent_required_field($value);
-    }
-
-    /**
-     * Render the consent form preview field
-     *
-     * @return void
-     */
-    public function render_consent_form_preview_field() {
-        $this->view->render_consent_form_preview_field();
-    }
-
-    /**
-     * Render the reset all consents field
-     *
-     * @return void
-     */
-    public function render_reset_all_consents_field() {
-        $this->view->render_reset_all_consents_field();
-    }
 
     /**
      * Get the settings tabs

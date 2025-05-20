@@ -457,6 +457,9 @@ class MemberpressAiAssistant {
     public function deactivate() {
         // Clean up if necessary
         
+        // Reset all user consents
+        \MemberpressAiAssistant\Admin\MPAIConsentManager::resetAllConsents();
+        
         // Flush rewrite rules
         flush_rewrite_rules();
     }

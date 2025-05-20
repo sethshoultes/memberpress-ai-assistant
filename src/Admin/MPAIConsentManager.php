@@ -117,7 +117,7 @@ class MPAIConsentManager extends AbstractService {
             return false;
         }
         
-        // Check user meta
+        // Check user meta - consent is always required regardless of settings
         $has_consented = \get_user_meta($user_id, self::CONSENT_META_KEY, true);
         
         return (bool) $has_consented;

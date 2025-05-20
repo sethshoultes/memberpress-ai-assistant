@@ -49,9 +49,6 @@ class MPAISettingsModel {
         'anthropic_temperature' => 0.7,
         'anthropic_max_tokens' => 1000,
         'primary_api' => 'openai',
-        
-        // Consent settings
-        'consent_required' => true,
     ];
 
     /**
@@ -193,7 +190,6 @@ class MPAISettingsModel {
         foreach ($settings as $key => $value) {
             switch ($key) {
                 case 'chat_enabled':
-                case 'consent_required':
                     $validated[$key] = $this->validate_boolean($value);
                     break;
                     
@@ -629,14 +625,6 @@ class MPAISettingsModel {
         return $this->get('primary_api', 'openai');
     }
 
-    /**
-     * Check if consent is required
-     *
-     * @return bool Whether consent is required
-     */
-    public function is_consent_required() {
-        return (bool) $this->get('consent_required', true);
-    }
     
     /**
      * Get the log level
