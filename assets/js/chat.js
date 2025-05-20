@@ -43,7 +43,8 @@
                 commandCloseButton: document.getElementById('mpai-command-close'),
                 commandRunner: document.getElementById('mpai-command-runner'),
                 clearConversationLink: document.getElementById('mpai-clear-conversation'),
-                downloadButton: document.getElementById('mpai-download-conversation')
+                downloadButton: document.getElementById('mpai-download-conversation'),
+                exportFormatMenu: document.getElementById('mpai-export-format-menu')
             };
             
             // Add clear history button to header
@@ -75,6 +76,8 @@
          * Initialize the chat interface
          */
         init() {
+            // Add a direct console log to verify logging is working
+            console.log('[MPAI Debug] Direct console log test - init method called');
             this.log('Initializing chat interface');
             
             // Bind event listeners
@@ -258,8 +261,50 @@
             
             // Download conversation button
             if (this.elements.downloadButton) {
-                this.elements.downloadButton.addEventListener('click', () => this.downloadConversation());
+                console.log('[MPAI Debug] Adding click event listener to download button');
+                this.elements.downloadButton.addEventListener('click', () => {
+                    console.log('[MPAI Debug] Download button clicked');
+                    console.log('[MPAI Debug] Current state:', this.state);
+                    console.log('[MPAI Debug] Messages length:', this.state.messages ? this.state.messages.length : 'undefined');
+                    
+                    // Check if we have messages to download
+                    if (!this.state.messages || this.state.messages.length === 0) {
+                        console.log('[MPAI Debug] No messages to download');
+                        alert('No conversation to download.');
+                        return;
+                    }
+                    
+                    // Download as HTML by default (simpler approach)
+                    this.downloadConversation('html');
+                });
+            } else {
+                console.log('[MPAI Debug] Download button element not found');
             }
+            
+            // Export button reference removed (not used in the HTML template)
+            
+            // Add event delegation for format selection buttons
+            document.addEventListener('click', (e) => {
+                console.log('[MPAI Debug] Document click event detected on:', e.target);
+                console.log('[MPAI Debug] Target classList:', e.target.classList);
+                
+                // Find the closest format button, even if a child element was clicked
+                const formatButton = e.target.closest('.mpai-export-format-btn');
+                if (formatButton) {
+                    console.log('[MPAI Debug] Format button clicked via event delegation');
+                    const format = formatButton.getAttribute('data-format');
+                    console.log('[MPAI Debug] Format selected via event delegation:', format);
+                    this.downloadConversation(format);
+                }
+                
+                // Close the format menu when clicking outside
+                if (this.elements.exportFormatMenu &&
+                    this.elements.exportFormatMenu.style.display !== 'none' &&
+                    !this.elements.exportFormatMenu.contains(e.target) &&
+                    e.target !== this.elements.downloadButton) {
+                    this.elements.exportFormatMenu.style.display = 'none';
+                }
+            });
             
             // Command items
             document.addEventListener('click', (e) => {
@@ -858,12 +903,253 @@
         }
         
         /**
-         * Download the conversation (placeholder for future implementation)
+         * Show export format selection menu
          */
-        downloadConversation() {
-            // This is a placeholder for future implementation
-            alert('Download conversation functionality is not yet implemented.');
-            this.log('Download conversation requested (not yet implemented)');
+        showExportFormatMenu() {
+            console.log('[MPAI Debug] showExportFormatMenu called');
+            console.log('[MPAI Debug] Download button element:', this.elements.downloadButton);
+            console.log('[MPAI Debug] Export format menu element:', this.elements.exportFormatMenu);
+            console.log('[MPAI Debug] State:', this.state);
+            console.log('[MPAI Debug] Messages:', this.state.messages);
+            
+            // Check if we have messages to download
+            if (!this.state.messages || this.state.messages.length === 0) {
+                console.log('[MPAI Debug] No messages to download');
+                alert('No conversation to download.');
+                return;
+            }
+            
+            // Use the static menu from the HTML template
+            if (this.elements.exportFormatMenu) {
+                console.log('[MPAI Debug] Using static export format menu from HTML template');
+                
+                // Position the menu near the download button
+                const buttonRect = this.elements.downloadButton.getBoundingClientRect();
+                console.log('[MPAI Debug] Download button rect:', {
+                    top: buttonRect.top,
+                    right: buttonRect.right,
+                    bottom: buttonRect.bottom,
+                    left: buttonRect.left
+                });
+                
+                console.log('[MPAI Debug] Window dimensions:', {
+                    innerWidth: window.innerWidth,
+                    innerHeight: window.innerHeight,
+                    scrollX: window.scrollX,
+                    scrollY: window.scrollY
+                });
+                
+                // Fix menu positioning - position it relative to the button without using scrollY
+                // This ensures it appears near the button regardless of scroll position
+                this.elements.exportFormatMenu.style.position = 'fixed';
+                this.elements.exportFormatMenu.style.top = `${buttonRect.bottom + 5}px`;
+                this.elements.exportFormatMenu.style.left = `${buttonRect.left}px`;
+                this.elements.exportFormatMenu.style.right = 'auto'; // Clear the right property
+                
+                console.log('[MPAI Debug] Menu position calculated:', {
+                    top: this.elements.exportFormatMenu.style.top,
+                    right: this.elements.exportFormatMenu.style.right
+                });
+                
+                // Show the menu
+                this.elements.exportFormatMenu.style.display = 'block';
+                
+                // Log menu style after display is set
+                console.log('[MPAI Debug] Menu style after display set:', {
+                    display: this.elements.exportFormatMenu.style.display,
+                    top: this.elements.exportFormatMenu.style.top,
+                    right: this.elements.exportFormatMenu.style.right,
+                    width: this.elements.exportFormatMenu.offsetWidth,
+                    height: this.elements.exportFormatMenu.offsetHeight,
+                    visibility: window.getComputedStyle(this.elements.exportFormatMenu).visibility,
+                    zIndex: window.getComputedStyle(this.elements.exportFormatMenu).zIndex
+                });
+                
+                // Close menu when clicking outside
+                const closeMenu = (e) => {
+                    if (!this.elements.exportFormatMenu.contains(e.target) && e.target !== this.elements.downloadButton) {
+                        this.elements.exportFormatMenu.style.display = 'none';
+                        document.removeEventListener('click', closeMenu);
+                    }
+                };
+                
+                // Add a small delay before adding the click listener to prevent immediate closing
+                setTimeout(() => {
+                    document.addEventListener('click', closeMenu);
+                }, 100);
+                
+                this.log('Export format menu displayed');
+            } else {
+                console.log('[MPAI Debug] Export format menu element not found in HTML template');
+                alert('Error: Export format menu not found.');
+            }
+        }
+        
+        // First implementation of downloadConversation removed to avoid duplication
+        
+        // Removed duplicate HTML/Markdown formatting methods
+        
+        // toggleExportFormatMenu method removed (not used anymore)
+
+        /**
+         * Download the conversation in the specified format
+         *
+         * @param {string} format The format to download (html or markdown)
+         */
+        downloadConversation(format) {
+            console.log('[MPAI Debug] downloadConversation called with format:', format);
+            console.log('[MPAI Debug] Messages state:', this.state.messages);
+            this.log('Downloading conversation in format:', format);
+            
+            // Check if we have messages to download
+            if (!format || !this.state.messages || this.state.messages.length === 0) {
+                alert('No conversation to download.');
+                return;
+            }
+            
+            let content = '';
+            let mimeType = '';
+            
+            // Generate filename based on date and time
+            const date = new Date();
+            const formattedDate = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+            const formattedTime = `${date.getHours().toString().padStart(2, '0')}-${date.getMinutes().toString().padStart(2, '0')}`;
+            let filename = `memberpress-ai-conversation-${formattedDate}-${formattedTime}`;
+            
+            if (format === 'html') {
+                content = this.formatConversationAsHTML();
+                filename += '.html';
+                mimeType = 'text/html';
+            } else if (format === 'markdown') {
+                content = this.formatConversationAsMarkdown();
+                filename += '.md';
+                mimeType = 'text/markdown';
+            } else {
+                return;
+            }
+            
+            // Hide the format menu
+            if (this.elements.exportFormatMenu) {
+                this.elements.exportFormatMenu.style.display = 'none';
+            }
+            
+            // Download the file
+            this.downloadTextFile(content, filename, mimeType);
+            
+            this.log('Conversation downloaded as:', filename);
+        }
+
+        /**
+         * Format the conversation as HTML
+         *
+         * @returns {string} The conversation formatted as HTML
+         */
+        formatConversationAsHTML() {
+            console.log('[MPAI Debug] formatConversationAsHTML called (second implementation)');
+            let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>MemberPress AI Chat - ${new Date().toLocaleString()}</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .message { margin-bottom: 20px; padding: 10px 15px; border-radius: 10px; }
+        .user { background-color: #f0f7ff; border-left: 3px solid #0073aa; }
+        .assistant { background-color: #f9f9f9; border-left: 3px solid #ddd; }
+        .timestamp { font-size: 12px; color: #666; margin-top: 5px; }
+        h1 { color: #0073aa; }
+        pre { background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        code { background-color: #f5f5f5; padding: 2px 4px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>MemberPress AI Chat</h1>
+    <p>Exported on ${new Date().toLocaleString()}</p>
+    <div class="conversation">
+`;
+
+            this.state.messages.forEach(message => {
+                const role = message.role;
+                const content = message.content;
+                const timestamp = message.timestamp ? new Date(message.timestamp).toLocaleString() : '';
+                
+                html += `<div class="message ${role}">
+            <div class="content">${content}</div>
+            ${timestamp ? `<div class="timestamp">${timestamp}</div>` : ''}
+        </div>
+`;
+            });
+
+            html += `    </div>
+</body>
+</html>`;
+
+            return html;
+        }
+
+        /**
+         * Format the conversation as Markdown
+         *
+         * @returns {string} The conversation formatted as Markdown
+         */
+        formatConversationAsMarkdown() {
+            console.log('[MPAI Debug] formatConversationAsMarkdown called (second implementation)');
+            let markdown = `# MemberPress AI Chat\n\nExported on ${new Date().toLocaleString()}\n\n`;
+
+            this.state.messages.forEach(message => {
+                const role = message.role;
+                const content = message.content.replace(/<[^>]*>/g, ''); // Strip HTML tags
+                const timestamp = message.timestamp ? new Date(message.timestamp).toLocaleString() : '';
+                
+                markdown += `## ${role === 'user' ? 'You' : 'MemberPress AI'}\n\n${content}\n\n`;
+                if (timestamp) {
+                    markdown += `*${timestamp}*\n\n`;
+                }
+                markdown += `---\n\n`;
+            });
+
+            return markdown;
+        }
+        
+        /**
+         * Helper function to download text as a file
+         *
+         * @param {string} content - The text content to download
+         * @param {string} filename - The name of the file to download
+         * @param {string} mimeType - The MIME type of the file
+         */
+        downloadTextFile(content, filename, mimeType) {
+            console.log('[MPAI Debug] downloadTextFile called with filename:', filename, 'and mimeType:', mimeType);
+            
+            try {
+                // Create a blob with the content and appropriate MIME type
+                const blob = new Blob([content], { type: mimeType || 'text/plain' });
+                
+                // Create a URL for the blob
+                const url = URL.createObjectURL(blob);
+                
+                // Create a temporary anchor element
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                
+                // Append to the document and trigger the download
+                document.body.appendChild(a);
+                a.click();
+                
+                // Clean up
+                setTimeout(function() {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                console.log('[MPAI Debug] Download initiated successfully');
+                return true;
+            } catch (error) {
+                console.error('[MPAI Debug] Error downloading file:', error);
+                alert('There was an error downloading the conversation. Please try again.');
+                return false;
+            }
         }
     }
 

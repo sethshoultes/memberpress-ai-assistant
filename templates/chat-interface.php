@@ -68,6 +68,15 @@ if (!defined('ABSPATH')) {
                 </button>
             </div>
         </div>
+        
+        <!-- Add this after the chat-footer div -->
+        <div id="mpai-export-format-menu" class="mpai-export-format-menu" style="display: none;">
+            <div class="mpai-export-format-title"><?php esc_html_e('Export Format', 'memberpress-ai-assistant'); ?></div>
+            <div class="mpai-export-format-options">
+                <button class="mpai-export-format-btn" data-format="html"><?php esc_html_e('HTML', 'memberpress-ai-assistant'); ?></button>
+                <button class="mpai-export-format-btn" data-format="markdown"><?php esc_html_e('Markdown', 'memberpress-ai-assistant'); ?></button>
+            </div>
+        </div>
     </div>
     
     <!-- Command runner panel (initially hidden) -->
