@@ -123,9 +123,37 @@ if (!defined('ABSPATH')) {
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         console.log('[MPAI Debug] DOM content loaded, checking for blog formatter');
+        
+        // Function to process existing messages
+        function processExistingMessages() {
+            console.log('[MPAI Debug] Processing existing messages for blog post XML');
+            $('.mpai-chat-message-assistant').each(function() {
+                const $message = $(this);
+                const content = $message.find('.mpai-chat-message-content').text();
+                
+                if (content && (
+                    content.includes('<wp-post>') ||
+                    content.includes('</wp-post>') ||
+                    content.includes('<post-title>') ||
+                    content.includes('</post-title>') ||
+                    content.includes('<post-content>') ||
+                    content.includes('</post-content>')
+                )) {
+                    console.log('[MPAI Debug] Found existing blog post XML in message');
+                    if (window.MPAI_BlogFormatter) {
+                        window.MPAI_BlogFormatter.processAssistantMessage($message, content);
+                    }
+                }
+            });
+        }
+        
+        // Check if blog formatter is available
         if (window.MPAI_BlogFormatter) {
             console.log('[MPAI Debug] Blog formatter found, initializing');
             window.MPAI_BlogFormatter.init();
+            
+            // Process existing messages after a delay
+            setTimeout(processExistingMessages, 1000);
         } else {
             console.log('[MPAI Debug] Blog formatter not found, loading directly');
             // Create script element
@@ -135,9 +163,39 @@ if (!defined('ABSPATH')) {
                 console.log('[MPAI Debug] Blog formatter loaded directly, initializing');
                 if (window.MPAI_BlogFormatter) {
                     window.MPAI_BlogFormatter.init();
+                    
+                    // Process existing messages after a delay
+                    setTimeout(processExistingMessages, 1000);
                 }
             };
             document.head.appendChild(script);
+        }
+        
+        // Set up a mutation observer to watch for new messages
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    // Check each added node
+                    mutation.addedNodes.forEach(function(node) {
+                        // If it's an element node
+                        if (node.nodeType === 1) {
+                            // Check if it's a message or contains messages
+                            const $node = $(node);
+                            if ($node.hasClass('mpai-chat-message-assistant') || $node.find('.mpai-chat-message-assistant').length > 0) {
+                                console.log('[MPAI Debug] New message detected, processing');
+                                setTimeout(processExistingMessages, 500);
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Start observing the chat container
+        const chatContainer = document.querySelector('.mpai-chat-messages');
+        if (chatContainer) {
+            observer.observe(chatContainer, { childList: true, subtree: true });
+            console.log('[MPAI Debug] Mutation observer set up for chat container');
         }
     });
 </script>

@@ -570,7 +570,7 @@
             const contentDiv = document.createElement('div');
             contentDiv.className = 'mpai-chat-message-content';
             
-            // Add debug logging for blog post content detection
+            // Check if this is a blog post response
             if (role === 'assistant' && content && (
                 content.includes('<wp-post>') ||
                 content.includes('</wp-post>') ||
@@ -581,17 +581,13 @@
             )) {
                 console.log('[MPAI Debug] Blog post content detected in assistant message');
                 
-                // Check if blog formatter is available
-                if (window.MPAI_BlogFormatter) {
-                    console.log('[MPAI Debug] Blog formatter module is available');
-                    
-                    // Store the original XML content for later processing
-                    window.originalXmlResponse = content;
-                } else {
-                    console.log('[MPAI Debug] Blog post formatter module not available');
-                }
+                // Process the blog post content directly here
+                this.processBlogPostContent(contentDiv, content);
                 
-                console.log('[MPAI Debug] Content preview:', content.substring(0, 150) + '...');
+                // Add the content div to the message div
+                messageDiv.appendChild(contentDiv);
+                
+                return messageDiv;
             }
             
             // Process message content based on role
@@ -642,6 +638,352 @@
             messageDiv.appendChild(contentDiv);
             
             return messageDiv;
+        }
+        
+        /**
+         * Process blog post content and create a preview card
+         *
+         * @param {HTMLElement} contentDiv - The content div to add the preview card to
+         * @param {string} content - The content containing blog post XML
+         */
+        processBlogPostContent(contentDiv, content) {
+            console.log('[MPAI Debug] Processing blog post content');
+            
+            // Extract the XML content
+            const xmlContent = this.extractXmlContent(content);
+            
+            if (!xmlContent) {
+                console.error('[MPAI Debug] Failed to extract XML content');
+                contentDiv.textContent = content;
+                return;
+            }
+            
+            console.log('[MPAI Debug] Extracted XML content:', xmlContent.substring(0, 100) + '...');
+            
+            // Parse the XML content
+            const postData = this.parsePostXml(xmlContent);
+            
+            if (!postData) {
+                console.error('[MPAI Debug] Failed to parse XML content');
+                contentDiv.textContent = content;
+                return;
+            }
+            
+            console.log('[MPAI Debug] Parsed post data:', postData);
+            
+            // Create the post preview card
+            this.createPostPreviewCard(contentDiv, postData, xmlContent);
+        }
+        
+        /**
+         * Extract XML content from a message
+         *
+         * @param {string} content - The message content
+         * @return {string|null} The XML content or null if not found
+         */
+        extractXmlContent(content) {
+            // First, try to extract from code blocks
+            const codeBlockRegex = /```(?:xml)?\s*(<wp-post>[\s\S]*?<\/wp-post>)\s*```/;
+            const codeBlockMatch = content.match(codeBlockRegex);
+            
+            if (codeBlockMatch && codeBlockMatch[1]) {
+                return codeBlockMatch[1];
+            }
+            
+            // If not found in code blocks, try to extract directly
+            const directRegex = /(<wp-post>[\s\S]*?<\/wp-post>)/;
+            const directMatch = content.match(directRegex);
+            
+            if (directMatch && directMatch[1]) {
+                return directMatch[1];
+            }
+            
+            return null;
+        }
+        
+        /**
+         * Parse post XML content
+         *
+         * @param {string} xmlContent - The XML content
+         * @return {object|null} The parsed post data or null if parsing failed
+         */
+        parsePostXml(xmlContent) {
+            try {
+                // Create a temporary DOM element to parse the XML
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
+                
+                // Check for parsing errors
+                const parseError = xmlDoc.querySelector('parsererror');
+                if (parseError) {
+                    console.error('[MPAI Debug] XML parsing error:', parseError.textContent);
+                    return null;
+                }
+                
+                // Extract post data
+                const postElement = xmlDoc.querySelector('wp-post');
+                if (!postElement) {
+                    console.error('[MPAI Debug] No wp-post element found in XML');
+                    return null;
+                }
+                
+                const title = postElement.querySelector('post-title')?.textContent || '';
+                const excerpt = postElement.querySelector('post-excerpt')?.textContent || '';
+                const status = postElement.querySelector('post-status')?.textContent || 'draft';
+                const type = postElement.querySelector('post-type')?.textContent || 'post';
+                
+                // Extract content blocks
+                const contentElement = postElement.querySelector('post-content');
+                let content = '';
+                
+                if (contentElement) {
+                    // Convert content blocks to HTML
+                    const blocks = contentElement.querySelectorAll('block');
+                    
+                    for (const block of blocks) {
+                        const blockType = block.getAttribute('type');
+                        
+                        if (blockType === 'paragraph') {
+                            content += `<p>${block.textContent}</p>`;
+                        } else if (blockType === 'heading') {
+                            const level = block.getAttribute('level') || '2';
+                            content += `<h${level}>${block.textContent}</h${level}>`;
+                        } else if (blockType === 'list') {
+                            content += '<ul>';
+                            const items = block.querySelectorAll('item');
+                            for (const item of items) {
+                                content += `<li>${item.textContent}</li>`;
+                            }
+                            content += '</ul>';
+                        }
+                    }
+                }
+                
+                return {
+                    title,
+                    content,
+                    excerpt,
+                    status,
+                    type
+                };
+            } catch (error) {
+                console.error('[MPAI Debug] Error parsing XML:', error);
+                return null;
+            }
+        }
+        
+        /**
+         * Create a post preview card
+         *
+         * @param {HTMLElement} contentDiv - The content div to add the preview card to
+         * @param {object} postData - The post data
+         * @param {string} xmlContent - The original XML content
+         */
+        createPostPreviewCard(contentDiv, postData, xmlContent) {
+            console.log('[MPAI Debug] Creating post preview card');
+            
+            // Create the card element
+            const card = document.createElement('div');
+            card.className = 'mpai-post-preview-card';
+            
+            // Add the header
+            const header = document.createElement('div');
+            header.className = 'mpai-post-preview-header';
+            
+            const typeDiv = document.createElement('div');
+            typeDiv.className = 'mpai-post-preview-type';
+            typeDiv.textContent = 'BLOG POST';
+            header.appendChild(typeDiv);
+            
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'mpai-post-preview-icon';
+            iconDiv.innerHTML = '<span class="dashicons dashicons-edit"></span>';
+            header.appendChild(iconDiv);
+            
+            card.appendChild(header);
+            
+            // Add the title
+            const title = document.createElement('h3');
+            title.className = 'mpai-post-preview-title';
+            title.textContent = postData.title;
+            card.appendChild(title);
+            
+            // Add the excerpt
+            const excerpt = document.createElement('div');
+            excerpt.className = 'mpai-post-preview-excerpt';
+            excerpt.textContent = postData.excerpt;
+            card.appendChild(excerpt);
+            
+            // Add the action buttons
+            const actions = document.createElement('div');
+            actions.className = 'mpai-post-preview-actions';
+            
+            const createButton = document.createElement('button');
+            createButton.className = 'mpai-create-post-button';
+            createButton.textContent = 'Create Post';
+            createButton.addEventListener('click', () => this.createPost(card, postData, xmlContent));
+            actions.appendChild(createButton);
+            
+            const previewButton = document.createElement('button');
+            previewButton.className = 'mpai-preview-post-button';
+            previewButton.textContent = 'Preview';
+            previewButton.addEventListener('click', () => this.togglePreview(card));
+            actions.appendChild(previewButton);
+            
+            const xmlButton = document.createElement('button');
+            xmlButton.className = 'mpai-toggle-xml-button';
+            xmlButton.textContent = 'View XML';
+            xmlButton.addEventListener('click', () => this.toggleXml(card));
+            actions.appendChild(xmlButton);
+            
+            card.appendChild(actions);
+            
+            // Add the XML content (hidden by default)
+            const xmlDiv = document.createElement('div');
+            xmlDiv.className = 'mpai-post-xml-content';
+            xmlDiv.style.display = 'none';
+            
+            const xmlPre = document.createElement('pre');
+            xmlPre.textContent = xmlContent;
+            xmlDiv.appendChild(xmlPre);
+            
+            card.appendChild(xmlDiv);
+            
+            // Add the preview content (hidden by default)
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'mpai-post-preview-content';
+            previewDiv.style.display = 'none';
+            
+            const previewContainer = document.createElement('div');
+            previewContainer.className = 'mpai-post-preview-container';
+            previewContainer.innerHTML = postData.content;
+            previewDiv.appendChild(previewContainer);
+            
+            card.appendChild(previewDiv);
+            
+            // Add the card to the content div
+            contentDiv.appendChild(card);
+            
+            console.log('[MPAI Debug] Post preview card created');
+        }
+        
+        /**
+         * Toggle the XML content visibility
+         *
+         * @param {HTMLElement} card - The card element
+         */
+        toggleXml(card) {
+            const xmlContent = card.querySelector('.mpai-post-xml-content');
+            const button = card.querySelector('.mpai-toggle-xml-button');
+            
+            if (xmlContent.style.display === 'none') {
+                xmlContent.style.display = 'block';
+                button.textContent = 'Hide XML';
+                
+                // Hide the preview if it's visible
+                const previewContent = card.querySelector('.mpai-post-preview-content');
+                previewContent.style.display = 'none';
+                card.querySelector('.mpai-preview-post-button').textContent = 'Preview';
+            } else {
+                xmlContent.style.display = 'none';
+                button.textContent = 'View XML';
+            }
+        }
+        
+        /**
+         * Toggle the preview content visibility
+         *
+         * @param {HTMLElement} card - The card element
+         */
+        togglePreview(card) {
+            const previewContent = card.querySelector('.mpai-post-preview-content');
+            const button = card.querySelector('.mpai-preview-post-button');
+            
+            if (previewContent.style.display === 'none') {
+                previewContent.style.display = 'block';
+                button.textContent = 'Hide Preview';
+                
+                // Hide the XML if it's visible
+                const xmlContent = card.querySelector('.mpai-post-xml-content');
+                xmlContent.style.display = 'none';
+                card.querySelector('.mpai-toggle-xml-button').textContent = 'View XML';
+            } else {
+                previewContent.style.display = 'none';
+                button.textContent = 'Preview';
+            }
+        }
+        
+        /**
+         * Create a post from the preview
+         *
+         * @param {HTMLElement} card - The card element
+         * @param {object} postData - The post data
+         * @param {string} xmlContent - The original XML content
+         */
+        createPost(card, postData, xmlContent) {
+            console.log('[MPAI Debug] Creating post:', postData);
+            
+            // Disable the button to prevent multiple submissions
+            const button = card.querySelector('.mpai-create-post-button');
+            button.disabled = true;
+            button.textContent = 'Creating...';
+            
+            // Prepare the data for the AJAX request
+            const data = {
+                action: 'mpai_create_post',
+                nonce: window.mpai_nonce || '',
+                title: postData.title,
+                content: postData.content,
+                excerpt: postData.excerpt,
+                status: postData.status,
+                post_type: postData.type || 'post'
+            };
+            
+            // Send the AJAX request
+            fetch(ajaxurl || '/wp-admin/admin-ajax.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(data)
+            })
+            .then(response => response.json())
+            .then(response => {
+                console.log('[MPAI Debug] Post created successfully:', response);
+                
+                // Update the button
+                button.disabled = false;
+                button.textContent = 'Post Created!';
+                
+                // Add the edit link if available
+                if (response.data && response.data.edit_url) {
+                    const editLink = document.createElement('a');
+                    editLink.className = 'mpai-edit-post-link';
+                    editLink.href = response.data.edit_url;
+                    editLink.target = '_blank';
+                    editLink.textContent = 'Edit Post';
+                    card.querySelector('.mpai-post-preview-actions').appendChild(editLink);
+                }
+                
+                // Show a success message
+                const successMessage = document.createElement('div');
+                successMessage.className = 'mpai-post-success-message';
+                successMessage.textContent = response.data && response.data.message ? response.data.message : 'Post created successfully!';
+                card.appendChild(successMessage);
+            })
+            .catch(error => {
+                console.error('[MPAI Debug] Error creating post:', error);
+                
+                // Update the button
+                button.disabled = false;
+                button.textContent = 'Create Post';
+                
+                // Show an error message
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'mpai-post-error-message';
+                errorMessage.textContent = 'Error creating post: ' + error.message;
+                card.appendChild(errorMessage);
+            });
         }
 
         /**
