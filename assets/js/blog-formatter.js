@@ -3,8 +3,22 @@
  * 
  * Handles formatting and processing of blog post XML content
  */
+// Add diagnostic logging before IIFE
+console.log('[MPAI Debug] blog-formatter.js loading');
+console.log('[MPAI Debug] jQuery available before IIFE:', typeof jQuery !== 'undefined');
+console.log('[MPAI Debug] $ available before IIFE:', typeof $ !== 'undefined');
+
+// Make jQuery available as $ in the global scope if it's not already
+if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
+    window.$ = jQuery;
+    console.log('[MPAI Debug] Set $ to jQuery in global scope');
+}
+
 (function($) {
     'use strict';
+
+    // Log jQuery parameter
+    console.log('[MPAI Debug] jQuery parameter in IIFE:', $ !== undefined && typeof $ === 'function');
 
     // Create a global reference to this module
     window.MPAI_BlogFormatter = {};
@@ -418,6 +432,14 @@
 // Add a direct script tag to ensure the blog formatter is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('[MPAI Debug] DOM content loaded, checking for blog formatter');
+    console.log('[MPAI Debug] jQuery available in DOMContentLoaded:', typeof jQuery !== 'undefined');
+    console.log('[MPAI Debug] $ available in DOMContentLoaded:', typeof $ !== 'undefined');
+    
+    // Make jQuery available as $ in the global scope if it's not already
+    if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
+        window.$ = jQuery;
+        console.log('[MPAI Debug] Set $ to jQuery in DOMContentLoaded');
+    }
     
     // Set a flag to track initialization
     if (window.MPAI_BlogFormatter) {
@@ -428,22 +450,55 @@ document.addEventListener('DOMContentLoaded', function() {
         // Process any existing messages
         setTimeout(function() {
             console.log('[MPAI Debug] Processing existing messages after delay');
-            $('.mpai-chat-message-assistant').each(function() {
-                const $message = $(this);
-                const content = $message.find('.mpai-chat-message-content').text();
-                
-                if (content && (
-                    content.includes('<wp-post>') ||
-                    content.includes('</wp-post>') ||
-                    content.includes('<post-title>') ||
-                    content.includes('</post-title>') ||
-                    content.includes('<post-content>') ||
-                    content.includes('</post-content>')
-                )) {
-                    console.log('[MPAI Debug] Found existing blog post XML in message');
-                    window.MPAI_BlogFormatter.processAssistantMessage($message, content);
+            console.log('[MPAI Debug] jQuery available in setTimeout:', typeof jQuery !== 'undefined');
+            console.log('[MPAI Debug] $ available in setTimeout:', typeof $ !== 'undefined');
+            
+            // Make jQuery available as $ in the global scope if it's not already
+            if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
+                window.$ = jQuery;
+                console.log('[MPAI Debug] Set $ to jQuery in setTimeout');
+            }
+            
+            if (typeof $ === 'undefined') {
+                console.error('[MPAI Debug] $ is not defined in setTimeout, trying to use jQuery directly');
+                if (typeof jQuery !== 'undefined') {
+                    jQuery('.mpai-chat-message-assistant').each(function() {
+                        const $message = jQuery(this);
+                        const content = $message.find('.mpai-chat-message-content').text();
+                        
+                        if (content && (
+                            content.includes('<wp-post>') ||
+                            content.includes('</wp-post>') ||
+                            content.includes('<post-title>') ||
+                            content.includes('</post-title>') ||
+                            content.includes('<post-content>') ||
+                            content.includes('</post-content>')
+                        )) {
+                            console.log('[MPAI Debug] Found existing blog post XML in message');
+                            window.MPAI_BlogFormatter.processAssistantMessage($message, content);
+                        }
+                    });
+                } else {
+                    console.error('[MPAI Debug] jQuery is also not defined in setTimeout');
                 }
-            });
+            } else {
+                $('.mpai-chat-message-assistant').each(function() {
+                    const $message = $(this);
+                    const content = $message.find('.mpai-chat-message-content').text();
+                    
+                    if (content && (
+                        content.includes('<wp-post>') ||
+                        content.includes('</wp-post>') ||
+                        content.includes('<post-title>') ||
+                        content.includes('</post-title>') ||
+                        content.includes('<post-content>') ||
+                        content.includes('</post-content>')
+                    )) {
+                        console.log('[MPAI Debug] Found existing blog post XML in message');
+                        window.MPAI_BlogFormatter.processAssistantMessage($message, content);
+                    }
+                });
+            }
         }, 1000);
     }
 });

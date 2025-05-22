@@ -99,6 +99,9 @@ class ChatInterface {
             true
         );
         
+        // Explicitly enqueue jQuery
+        wp_enqueue_script('jquery');
+        
         // Register blog formatter module
         wp_register_script(
             'mpai-blog-formatter',
@@ -108,14 +111,39 @@ class ChatInterface {
             true
         );
         
-        // Register main chat script with dependencies
-        wp_register_script(
-            'mpai-chat',
-            MPAI_PLUGIN_URL . 'assets/js/chat.js',
-            ['mpai-xml-processor', 'mpai-data-handler', 'mpai-text-formatter', 'mpai-blog-formatter'],
+        // Register direct chat implementation (non-module approach)
+        wp_enqueue_script(
+            'mpai-chat-direct',
+            MPAI_PLUGIN_URL . 'assets/js/chat-direct.js',
+            ['jquery'],
             MPAI_VERSION,
             true
         );
+        
+        // Add debug logging
+        error_log('MPAI Debug: Using direct chat implementation (non-module approach)');
+        
+        // Register module scripts
+        $module_scripts = [
+            'mpai-chat-core' => 'assets/js/chat/core/chat-core.js',
+            'mpai-state-manager' => 'assets/js/chat/core/state-manager.js',
+            'mpai-ui-manager' => 'assets/js/chat/core/ui-manager.js',
+            'mpai-api-client' => 'assets/js/chat/core/api-client.js',
+            'mpai-event-bus' => 'assets/js/chat/core/event-bus.js',
+            'mpai-logger' => 'assets/js/chat/utils/logger.js',
+            'mpai-storage-manager' => 'assets/js/chat/utils/storage-manager.js'
+        ];
+
+        foreach ($module_scripts as $handle => $path) {
+            wp_register_script(
+                $handle,
+                MPAI_PLUGIN_URL . $path,
+                [],
+                MPAI_VERSION,
+                true
+            );
+            wp_script_add_data($handle, 'type', 'module');
+        }
 
         // Enqueue assets
         wp_enqueue_style('mpai-chat');
@@ -189,6 +217,9 @@ class ChatInterface {
             true
         );
         
+        // Explicitly enqueue jQuery
+        wp_enqueue_script('jquery');
+        
         // Register blog formatter module
         wp_register_script(
             'mpai-blog-formatter-admin',
@@ -198,14 +229,39 @@ class ChatInterface {
             true
         );
         
-        // Register main chat script with dependencies
-        wp_register_script(
-            'mpai-chat-admin',
-            MPAI_PLUGIN_URL . 'assets/js/chat.js',
-            ['mpai-xml-processor-admin', 'mpai-data-handler-admin', 'mpai-text-formatter-admin', 'mpai-blog-formatter-admin'],
+        // Register direct chat implementation (non-module approach) for admin
+        wp_enqueue_script(
+            'mpai-chat-admin-direct',
+            MPAI_PLUGIN_URL . 'assets/js/chat-direct.js',
+            ['jquery'],
             MPAI_VERSION,
             true
         );
+        
+        // Add debug logging
+        error_log('MPAI Debug: Using direct chat implementation (non-module approach) in admin');
+        
+        // Register module scripts for admin
+        $module_scripts = [
+            'mpai-chat-core-admin' => 'assets/js/chat/core/chat-core.js',
+            'mpai-state-manager-admin' => 'assets/js/chat/core/state-manager.js',
+            'mpai-ui-manager-admin' => 'assets/js/chat/core/ui-manager.js',
+            'mpai-api-client-admin' => 'assets/js/chat/core/api-client.js',
+            'mpai-event-bus-admin' => 'assets/js/chat/core/event-bus.js',
+            'mpai-logger-admin' => 'assets/js/chat/utils/logger.js',
+            'mpai-storage-manager-admin' => 'assets/js/chat/utils/storage-manager.js'
+        ];
+
+        foreach ($module_scripts as $handle => $path) {
+            wp_register_script(
+                $handle,
+                MPAI_PLUGIN_URL . $path,
+                [],
+                MPAI_VERSION,
+                true
+            );
+            wp_script_add_data($handle, 'type', 'module');
+        }
 
         // Enqueue assets
         wp_enqueue_style('mpai-chat-admin');

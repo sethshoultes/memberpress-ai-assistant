@@ -66,17 +66,65 @@ class ChatCore {
    * @returns {Promise<void>} A promise that resolves when initialization is complete
    */
   async initialize() {
-    // Initialize modules
+    console.log('[MPAI Debug] ChatCore.initialize called');
+    
+    // Store references to the modules
+    this._stateManager = window.stateManager;
+    this._uiManager = window.uiManager;
+    this._apiClient = window.apiClient;
+    this._eventBus = window.eventBus;
+    
+    // Check if all required modules are available
+    if (!this._stateManager) {
+      console.error('[MPAI Debug] StateManager not found');
+    }
+    if (!this._uiManager) {
+      console.error('[MPAI Debug] UIManager not found');
+    }
+    if (!this._apiClient) {
+      console.error('[MPAI Debug] APIClient not found');
+    }
+    if (!this._eventBus) {
+      console.error('[MPAI Debug] EventBus not found');
+    }
+    
+    // Set up event listeners
+    if (this._eventBus) {
+      this._eventBus.subscribe('ui.button.click', (data) => {
+        console.log('[MPAI Debug] UI button click event received:', data);
+        if (data.button === 'chat-toggle') {
+          this.toggleChat();
+        }
+      });
+    }
+    
+    console.log('[MPAI Debug] ChatCore initialized');
+    return true;
   }
 
   /**
    * Starts the chat interface after initialization
-   * 
+   *
    * @public
    * @returns {Promise<void>} A promise that resolves when the chat interface is ready
    */
   async start() {
-    // Start the chat interface
+    console.log('[MPAI Debug] ChatCore.start called');
+    
+    // Add click handler for chat button if it exists
+    const chatButton = document.querySelector('.mpai-chat-button');
+    if (chatButton) {
+      console.log('[MPAI Debug] Found chat button, adding click handler');
+      chatButton.addEventListener('click', () => {
+        console.log('[MPAI Debug] Chat button clicked');
+        this.toggleChat();
+      });
+    } else {
+      console.warn('[MPAI Debug] Chat button not found');
+    }
+    
+    console.log('[MPAI Debug] ChatCore started');
+    return true;
   }
 
   /**
@@ -118,6 +166,48 @@ class ChatCore {
    */
   getState() {
     // Return current state
+    if (this._stateManager) {
+      return this._stateManager.getState();
+    }
+    return null;
+  }
+  
+  /**
+   * Toggles the chat interface open/closed state
+   *
+   * @public
+   * @returns {boolean} The new open state
+   */
+  toggleChat() {
+    console.log('[MPAI Debug] toggleChat method called');
+    
+    if (!this._stateManager || !this._uiManager) {
+      console.error('[MPAI Debug] StateManager or UIManager not initialized');
+      return false;
+    }
+    
+    // Get the current UI state
+    const uiState = this._stateManager.getState('ui');
+    const isChatOpen = uiState?.isChatOpen || false;
+    
+    // Toggle the chat open state
+    const newState = !isChatOpen;
+    console.log('[MPAI Debug] Toggling chat state from', isChatOpen, 'to', newState);
+    
+    // Update the state
+    this._stateManager.updateUI({
+      isChatOpen: newState
+    });
+    
+    // Also update the UI directly
+    if (this._uiManager && typeof this._uiManager.toggleChatVisibility === 'function') {
+      this._uiManager.toggleChatVisibility(newState);
+      console.log('[MPAI Debug] Called UIManager.toggleChatVisibility with', newState);
+    } else {
+      console.error('[MPAI Debug] UIManager or toggleChatVisibility not available');
+    }
+    
+    return newState;
   }
 }
 

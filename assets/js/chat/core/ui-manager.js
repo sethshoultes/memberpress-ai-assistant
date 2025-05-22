@@ -70,7 +70,53 @@ class UIManager {
    * @returns {Promise<void>} A promise that resolves when initialization is complete
    */
   async initialize(containerSelector) {
-    // Initialize UI manager
+    console.log('[MPAI Debug] UIManager.initialize called with:', containerSelector);
+    
+    // Get the container element
+    let container;
+    if (typeof containerSelector === 'string') {
+      container = document.querySelector(containerSelector);
+    } else if (containerSelector instanceof HTMLElement) {
+      container = containerSelector;
+    }
+    
+    if (!container) {
+      console.error('[MPAI Debug] Chat container not found:', containerSelector);
+      return false;
+    }
+    
+    console.log('[MPAI Debug] Chat container found');
+    
+    // Store references to DOM elements
+    this._elements.container = container;
+    this._elements.messageList = container.querySelector('.mpai-chat-messages');
+    this._elements.inputForm = container.querySelector('.mpai-chat-input-form');
+    this._elements.inputField = container.querySelector('.mpai-chat-input');
+    this._elements.sendButton = container.querySelector('.mpai-chat-send-button');
+    this._elements.clearButton = container.querySelector('.mpai-chat-clear-button');
+    this._elements.loadingIndicator = container.querySelector('.mpai-chat-loading');
+    
+    // Log which elements were found
+    console.log('[MPAI Debug] Message list found:', !!this._elements.messageList);
+    console.log('[MPAI Debug] Input form found:', !!this._elements.inputForm);
+    console.log('[MPAI Debug] Input field found:', !!this._elements.inputField);
+    console.log('[MPAI Debug] Send button found:', !!this._elements.sendButton);
+    console.log('[MPAI Debug] Clear button found:', !!this._elements.clearButton);
+    console.log('[MPAI Debug] Loading indicator found:', !!this._elements.loadingIndicator);
+    
+    // Set up event listeners
+    this._setupEventListeners();
+    
+    // Apply initial state
+    const uiState = this._stateManager.getState('ui');
+    if (uiState) {
+      // Apply chat open state
+      this.toggleChatVisibility(uiState.isChatOpen);
+      console.log('[MPAI Debug] Applied initial chat visibility:', uiState.isChatOpen);
+    }
+    
+    console.log('[MPAI Debug] UIManager initialized');
+    return true;
   }
 
   /**
@@ -80,7 +126,66 @@ class UIManager {
    * @returns {void}
    */
   _setupEventListeners() {
-    // Set up event listeners
+    console.log('[MPAI Debug] UIManager._setupEventListeners called');
+    
+    // Set up form submission handler
+    if (this._elements.inputForm) {
+      this._elements.inputForm.addEventListener('submit', (event) => {
+        this._handleSubmit(event);
+      });
+      console.log('[MPAI Debug] Added submit event listener to input form');
+    }
+    
+    // Set up clear button handler
+    if (this._elements.clearButton) {
+      this._elements.clearButton.addEventListener('click', (event) => {
+        this._handleClear(event);
+      });
+      console.log('[MPAI Debug] Added click event listener to clear button');
+    }
+    
+    // Set up chat button handler with the correct selector
+    const chatButton = document.querySelector('.mpai-chat-toggle');
+    if (chatButton) {
+      chatButton.addEventListener('click', () => {
+        console.log('[MPAI Debug] Chat button clicked in UIManager');
+        // Publish an event that the chat button was clicked
+        if (this._eventBus) {
+          this._eventBus.publish('ui.button.click', { button: 'chat-toggle' });
+          console.log('[MPAI Debug] Published ui.button.click event');
+        }
+        // Also toggle the chat visibility directly
+        this.toggleChatVisibility();
+      });
+      console.log('[MPAI Debug] Added click event listener to chat button with class .mpai-chat-toggle');
+    } else {
+      console.warn('[MPAI Debug] Chat button with class .mpai-chat-toggle not found');
+      
+      // Try alternative selectors
+      const alternativeSelectors = ['#mpai-chat-toggle', '[aria-label="Toggle chat"]'];
+      for (const selector of alternativeSelectors) {
+        const altButton = document.querySelector(selector);
+        if (altButton) {
+          altButton.addEventListener('click', () => {
+            console.log(`[MPAI Debug] Chat button clicked (found with selector: ${selector})`);
+            this.toggleChatVisibility();
+          });
+          console.log(`[MPAI Debug] Added click event listener to chat button with selector: ${selector}`);
+          break;
+        }
+      }
+    }
+    
+    // Subscribe to state changes
+    if (this._eventBus) {
+      this._eventBus.subscribe('state.ui.changed', (data) => {
+        console.log('[MPAI Debug] State UI changed event received:', data);
+        this.updateFromState(data.state, data.previousState);
+      });
+      console.log('[MPAI Debug] Subscribed to state.ui.changed event');
+    }
+    
+    console.log('[MPAI Debug] Event listeners set up');
   }
 
   /**
@@ -183,7 +288,18 @@ class UIManager {
    * @returns {void}
    */
   focusInput() {
-    // Focus input field
+    console.log('[MPAI Debug] focusInput called');
+    
+    if (this._elements.inputField) {
+      try {
+        this._elements.inputField.focus();
+        console.log('[MPAI Debug] Input field focused');
+      } catch (error) {
+        console.error('[MPAI Debug] Error focusing input field:', error);
+      }
+    } else {
+      console.warn('[MPAI Debug] Input field not found');
+    }
   }
 
   /**
@@ -218,6 +334,58 @@ class UIManager {
    */
   _handleClear(event) {
     // Handle clear button click
+  }
+  
+  /**
+   * Toggles the visibility of the chat interface
+   *
+   * @public
+   * @param {boolean} [isVisible] - Force visibility to this value if provided
+   * @returns {boolean} The new visibility state
+   */
+  toggleChatVisibility(isVisible) {
+    console.log('[MPAI Debug] toggleChatVisibility called with:', isVisible);
+    
+    // Get the container element
+    const container = this._elements.container;
+    if (!container) {
+      console.error('[MPAI Debug] Chat container not found');
+      return false;
+    }
+    
+    // If isVisible is not provided, toggle the current state
+    let newVisibility = isVisible;
+    if (typeof newVisibility !== 'boolean') {
+      const currentVisibility = !container.classList.contains('mpai-chat-hidden');
+      newVisibility = !currentVisibility;
+      console.log('[MPAI Debug] Toggling visibility from', currentVisibility, 'to', newVisibility);
+    }
+    
+    // Update the container class
+    if (newVisibility) {
+      container.classList.remove('mpai-chat-hidden');
+      container.classList.add('mpai-chat-visible');
+      console.log('[MPAI Debug] Chat made visible');
+    } else {
+      container.classList.remove('mpai-chat-visible');
+      container.classList.add('mpai-chat-hidden');
+      console.log('[MPAI Debug] Chat hidden');
+    }
+    
+    // Update the state
+    if (this._stateManager) {
+      this._stateManager.updateUI({
+        isChatOpen: newVisibility
+      });
+      console.log('[MPAI Debug] Updated state with isChatOpen:', newVisibility);
+    }
+    
+    // Focus the input field if the chat is now visible
+    if (newVisibility) {
+      this.focusInput();
+    }
+    
+    return newVisibility;
   }
 }
 
