@@ -226,28 +226,66 @@ class UIManager {
    * @returns {void}
    */
   showLoading() {
-    // Show loading indicator
+    console.log('[MPAI Debug] showLoading called');
+    if (this._elements.loadingIndicator) {
+      this._elements.loadingIndicator.style.display = 'block';
+      console.log('[MPAI Debug] Loading indicator shown');
+    } else {
+      console.warn('[MPAI Debug] Loading indicator element not found');
+    }
   }
 
   /**
    * Hides the loading indicator
-   * 
+   *
    * @public
    * @returns {void}
    */
   hideLoading() {
-    // Hide loading indicator
+    console.log('[MPAI Debug] hideLoading called');
+    if (this._elements.loadingIndicator) {
+      this._elements.loadingIndicator.style.display = 'none';
+      console.log('[MPAI Debug] Loading indicator hidden');
+    } else {
+      console.warn('[MPAI Debug] Loading indicator element not found');
+    }
   }
 
   /**
    * Shows an error message
-   * 
+   *
    * @public
    * @param {string} message - Error message to display
    * @returns {void}
    */
   showError(message) {
-    // Show error message
+    console.log('[MPAI Debug] showError called with:', message);
+    
+    // Create an error message element
+    const errorElement = document.createElement('div');
+    errorElement.className = 'mpai-chat-error';
+    errorElement.textContent = message;
+    
+    // Add it to the message list
+    if (this._elements.messageList) {
+      this._elements.messageList.appendChild(errorElement);
+      console.log('[MPAI Debug] Error message added to message list');
+      
+      // Scroll to the bottom
+      this.scrollToBottom();
+      
+      // Remove the error message after 5 seconds
+      setTimeout(() => {
+        if (errorElement.parentNode) {
+          errorElement.parentNode.removeChild(errorElement);
+          console.log('[MPAI Debug] Error message removed after timeout');
+        }
+      }, 5000);
+    } else {
+      console.warn('[MPAI Debug] Message list element not found');
+      // Fallback to console error
+      console.error('[MPAI Chat Error]', message);
+    }
   }
 
   /**
@@ -278,7 +316,65 @@ class UIManager {
    * @returns {void}
    */
   scrollToBottom(smooth = true) {
-    // Scroll to bottom
+    console.log('[MPAI Debug] scrollToBottom called with smooth:', smooth);
+    
+    if (this._elements.messageList) {
+      this._elements.messageList.scrollTo({
+        top: this._elements.messageList.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+      console.log('[MPAI Debug] Scrolled to bottom of message list');
+    } else {
+      console.warn('[MPAI Debug] Message list element not found');
+    }
+  }
+  
+  /**
+   * Disables the input field and send button
+   *
+   * @public
+   * @returns {void}
+   */
+  disableInput() {
+    console.log('[MPAI Debug] disableInput called');
+    
+    if (this._elements.inputField) {
+      this._elements.inputField.disabled = true;
+      console.log('[MPAI Debug] Input field disabled');
+    } else {
+      console.warn('[MPAI Debug] Input field element not found');
+    }
+    
+    if (this._elements.sendButton) {
+      this._elements.sendButton.disabled = true;
+      console.log('[MPAI Debug] Send button disabled');
+    } else {
+      console.warn('[MPAI Debug] Send button element not found');
+    }
+  }
+  
+  /**
+   * Enables the input field and send button
+   *
+   * @public
+   * @returns {void}
+   */
+  enableInput() {
+    console.log('[MPAI Debug] enableInput called');
+    
+    if (this._elements.inputField) {
+      this._elements.inputField.disabled = false;
+      console.log('[MPAI Debug] Input field enabled');
+    } else {
+      console.warn('[MPAI Debug] Input field element not found');
+    }
+    
+    if (this._elements.sendButton) {
+      this._elements.sendButton.disabled = false;
+      console.log('[MPAI Debug] Send button enabled');
+    } else {
+      console.warn('[MPAI Debug] Send button element not found');
+    }
   }
 
   /**
@@ -322,7 +418,95 @@ class UIManager {
    * @returns {void}
    */
   _handleSubmit(event) {
-    // Handle form submission
+    // Prevent default form submission
+    event.preventDefault();
+    
+    console.log('[MPAI Debug] Form submitted');
+    
+    // Get the input field
+    const inputField = this._elements.inputField;
+    if (!inputField) {
+      console.error('[MPAI Debug] Input field not found');
+      return;
+    }
+    
+    // Get the message text
+    const message = inputField.value.trim();
+    if (!message) {
+      console.log('[MPAI Debug] Empty message, not submitting');
+      return;
+    }
+    
+    console.log('[MPAI Debug] Submitting message:', message);
+    
+    // Clear the input field
+    inputField.value = '';
+    
+    // Resize the input field if auto-resize is implemented
+    if (typeof this._autoResize === 'function') {
+      this._autoResize();
+    }
+    
+    // Show loading indicator
+    this.showLoading();
+    
+    // Disable the input field while processing
+    this.disableInput();
+    
+    // Add the user message to the UI
+    this._eventBus.publish('message.user', { content: message });
+    
+    // Send the message to the API
+    if (window.mpaiChat && typeof window.mpaiChat.sendMessage === 'function') {
+      window.mpaiChat.sendMessage(message)
+        .then(response => {
+          console.log('[MPAI Debug] Message sent successfully:', response);
+          
+          // Hide loading indicator
+          this.hideLoading();
+          
+          // Enable the input field
+          this.enableInput();
+          
+          // Focus the input field
+          this.focusInput();
+        })
+        .catch(error => {
+          console.error('[MPAI Debug] Error sending message:', error);
+          
+          // Hide loading indicator
+          this.hideLoading();
+          
+          // Enable the input field
+          this.enableInput();
+          
+          // Focus the input field
+          this.focusInput();
+          
+          // Show error message
+          this.showError('Error sending message: ' + (error.message || 'Unknown error'));
+        });
+    } else {
+      console.error('[MPAI Debug] mpaiChat or sendMessage function not available');
+      
+      // Hide loading indicator
+      this.hideLoading();
+      
+      // Enable the input field
+      this.enableInput();
+      
+      // Focus the input field
+      this.focusInput();
+      
+      // Show error message
+      this.showError('Chat system not properly initialized');
+      
+      // Publish an error event
+      this._eventBus.publish('error', {
+        message: 'Chat system not properly initialized',
+        source: 'UIManager._handleSubmit'
+      });
+    }
   }
 
   /**

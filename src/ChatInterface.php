@@ -46,6 +46,50 @@ class ChatInterface {
         
         // Register REST API endpoints
         add_action('rest_api_init', [$this, 'registerRestRoutes']);
+        
+        // Add filter to modify script tags for ES6 modules
+        add_filter('script_loader_tag', [$this, 'addModuleTypeToScripts'], 10, 3);
+    }
+    
+    /**
+     * Add type="module" attribute to script tags for ES6 modules
+     *
+     * @param string $tag The script tag
+     * @param string $handle The script handle
+     * @param string $src The script source
+     * @return string The modified script tag
+     */
+    public function addModuleTypeToScripts($tag, $handle, $src) {
+        // List of script handles that should be loaded as modules
+        $module_scripts = [
+            'mpai-chat',
+            'mpai-chat-admin',
+            'mpai-chat-core',
+            'mpai-state-manager',
+            'mpai-ui-manager',
+            'mpai-api-client',
+            'mpai-event-bus',
+            'mpai-logger',
+            'mpai-storage-manager',
+            'mpai-chat-core-admin',
+            'mpai-state-manager-admin',
+            'mpai-ui-manager-admin',
+            'mpai-api-client-admin',
+            'mpai-event-bus-admin',
+            'mpai-logger-admin',
+            'mpai-storage-manager-admin'
+        ];
+        
+        // Check if this script should be loaded as a module
+        if (in_array($handle, $module_scripts)) {
+            // Replace the script tag with one that has type="module"
+            $tag = str_replace(' src=', ' type="module" src=', $tag);
+            
+            // Log for debugging
+            error_log("MPAI Debug: Added type=module to script: $handle");
+        }
+        
+        return $tag;
     }
 
     /**
@@ -111,17 +155,16 @@ class ChatInterface {
             true
         );
         
-        // Register direct chat implementation (non-module approach)
-        wp_enqueue_script(
-            'mpai-chat-direct',
-            MPAI_PLUGIN_URL . 'assets/js/chat-direct.js',
-            ['jquery'],
+        // Register main chat script as a module
+        wp_register_script(
+            'mpai-chat',
+            MPAI_PLUGIN_URL . 'assets/js/chat.js',
+            ['jquery'], // Add jQuery as dependency
             MPAI_VERSION,
             true
         );
-        
-        // Add debug logging
-        error_log('MPAI Debug: Using direct chat implementation (non-module approach)');
+        // Add the module type
+        wp_script_add_data('mpai-chat', 'type', 'module');
         
         // Register module scripts
         $module_scripts = [
@@ -143,6 +186,7 @@ class ChatInterface {
                 true
             );
             wp_script_add_data($handle, 'type', 'module');
+            wp_enqueue_script($handle); // Enqueue each module script
         }
 
         // Enqueue assets
@@ -229,17 +273,16 @@ class ChatInterface {
             true
         );
         
-        // Register direct chat implementation (non-module approach) for admin
-        wp_enqueue_script(
-            'mpai-chat-admin-direct',
-            MPAI_PLUGIN_URL . 'assets/js/chat-direct.js',
-            ['jquery'],
+        // Register main chat script as a module for admin
+        wp_register_script(
+            'mpai-chat-admin',
+            MPAI_PLUGIN_URL . 'assets/js/chat.js',
+            ['jquery'], // Add jQuery as dependency
             MPAI_VERSION,
             true
         );
-        
-        // Add debug logging
-        error_log('MPAI Debug: Using direct chat implementation (non-module approach) in admin');
+        // Add the module type
+        wp_script_add_data('mpai-chat-admin', 'type', 'module');
         
         // Register module scripts for admin
         $module_scripts = [
@@ -261,6 +304,7 @@ class ChatInterface {
                 true
             );
             wp_script_add_data($handle, 'type', 'module');
+            wp_enqueue_script($handle); // Enqueue each module script
         }
 
         // Enqueue assets

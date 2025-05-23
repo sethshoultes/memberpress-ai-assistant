@@ -67,7 +67,43 @@ class APIClient {
    * @returns {Promise<void>} A promise that resolves when initialization is complete
    */
   async initialize() {
-    // Initialize API client
+    console.log('[MPAI Debug] APIClient.initialize called');
+    
+    // Check if the API endpoint is available
+    try {
+      // Make a simple request to check if the API is available
+      const response = await fetch(this._config.baseUrl, {
+        method: 'HEAD',
+        headers: {
+          'X-WP-Nonce': window.mpai_nonce || ''
+        }
+      });
+      
+      console.log('[MPAI Debug] API endpoint check result:', response.status);
+      
+      // Publish an event that the API client is ready
+      if (this._eventBus) {
+        this._eventBus.publish('api.ready', {
+          baseUrl: this._config.baseUrl
+        });
+        console.log('[MPAI Debug] Published api.ready event');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('[MPAI Debug] Error initializing API client:', error);
+      
+      // Publish an error event
+      if (this._eventBus) {
+        this._eventBus.publish('api.error', {
+          message: 'Failed to initialize API client',
+          error
+        });
+        console.log('[MPAI Debug] Published api.error event');
+      }
+      
+      return false;
+    }
   }
 
   /**
@@ -90,7 +126,60 @@ class APIClient {
    * @returns {Promise<Object>} A promise that resolves with the API response
    */
   async sendMessage(message, options = {}) {
-    // Send message to API
+    try {
+      console.log('[MPAI Debug] APIClient.sendMessage called with:', message);
+      
+      // Generate a unique request ID
+      const requestId = this._generateRequestId();
+      
+      // Create an abort controller for this request
+      const abortController = new AbortController();
+      this._abortControllers.set(requestId, abortController);
+      
+      // Prepare the request data
+      const data = {
+        message: message,
+        conversation_id: options.conversationId || null,
+        user_logged_in: options.userLoggedIn || false
+      };
+      
+      // Make the API request
+      const response = await this._makeRequest('chat', data, {
+        signal: abortController.signal,
+        timeout: options.timeout || this._config.timeout
+      });
+      
+      // Remove the abort controller
+      this._abortControllers.delete(requestId);
+      
+      // Publish an event with the response
+      if (this._eventBus) {
+        this._eventBus.publish('api.message.received', {
+          requestId,
+          response
+        });
+        console.log('[MPAI Debug] Published api.message.received event');
+      }
+      
+      return response;
+    } catch (error) {
+      // Handle the error
+      const processedError = this._handleError(error, {
+        message,
+        options
+      });
+      
+      // Publish an event with the error
+      if (this._eventBus) {
+        this._eventBus.publish('api.message.error', {
+          error: processedError
+        });
+        console.log('[MPAI Debug] Published api.message.error event');
+      }
+      
+      // Re-throw the error
+      throw processedError;
+    }
   }
 
   /**
@@ -145,29 +234,85 @@ class APIClient {
    * @returns {Promise<Object>} A promise that resolves with the API response
    */
   async _makeRequest(endpoint, data, options = {}) {
-    // Make API request
+    try {
+      console.log('[MPAI Debug] APIClient._makeRequest called with endpoint:', endpoint);
+      
+      // Prepare the fetch options
+      const fetchOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': window.mpai_nonce || ''
+        },
+        body: JSON.stringify(data),
+        signal: options.signal
+      };
+      
+      // Add authorization header if we have a token
+      if (this._authToken) {
+        fetchOptions.headers['Authorization'] = `Bearer ${this._authToken}`;
+      }
+      
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Request timed out'));
+        }, options.timeout || this._config.timeout);
+      });
+      
+      // Make the request with timeout
+      const response = await Promise.race([
+        fetch(`${this._config.baseUrl}`, fetchOptions),
+        timeoutPromise
+      ]);
+      
+      // Check if the response is ok
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API error (${response.status}): ${errorText}`);
+      }
+      
+      // Parse the response
+      const responseData = await response.json();
+      console.log('[MPAI Debug] API response received:', responseData);
+      
+      return responseData;
+    } catch (error) {
+      console.error('[MPAI Debug] Error in _makeRequest:', error);
+      // Re-throw the error
+      throw error;
+    }
   }
 
   /**
    * Handles API errors
-   * 
+   *
    * @private
    * @param {Error} error - Error object
    * @param {Object} requestInfo - Information about the failed request
    * @returns {Error} The processed error
    */
   _handleError(error, requestInfo) {
-    // Handle API error
+    // Log the error
+    console.error('[MPAI Debug] API error:', error, requestInfo);
+    
+    // If this is an abort error, create a more user-friendly error
+    if (error.name === 'AbortError') {
+      return new Error('Request was cancelled');
+    }
+    
+    // Return the original error
+    return error;
   }
 
   /**
    * Generates a unique request ID
-   * 
+   *
    * @private
    * @returns {string} A unique request ID
    */
   _generateRequestId() {
-    // Generate request ID
+    return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }
 

@@ -134,7 +134,30 @@ class ChatCore {
    * @returns {Promise<void>} A promise that resolves when the chat interface is stopped
    */
   async stop() {
-    // Stop the chat interface
+    console.log('[MPAI Debug] ChatCore.stop called');
+    
+    // Cancel any ongoing API requests
+    if (this._apiClient && typeof this._apiClient.cancelAllRequests === 'function') {
+      this._apiClient.cancelAllRequests();
+      console.log('[MPAI Debug] Cancelled all API requests');
+    }
+    
+    // Persist state before stopping
+    if (this._stateManager && typeof this._stateManager.persistState === 'function') {
+      await this._stateManager.persistState();
+      console.log('[MPAI Debug] Persisted state');
+    }
+    
+    // Publish a stop event
+    if (this._eventBus) {
+      this._eventBus.publish('chat.stopped', {
+        timestamp: new Date().toISOString()
+      });
+      console.log('[MPAI Debug] Published chat.stopped event');
+    }
+    
+    console.log('[MPAI Debug] ChatCore stopped');
+    return true;
   }
 
   /**
@@ -145,7 +168,55 @@ class ChatCore {
    * @returns {Promise<Object>} A promise that resolves with the response
    */
   async sendMessage(message) {
-    // Send a message
+    console.log('[MPAI Debug] ChatCore.sendMessage called with:', message);
+    
+    if (!this._apiClient) {
+      console.error('[MPAI Debug] APIClient not initialized');
+      throw new Error('Chat system not properly initialized');
+    }
+    
+    try {
+      // Get the current state
+      const state = this._stateManager.getState();
+      
+      // Send the message to the API
+      const response = await this._apiClient.sendMessage(message, {
+        conversationId: state?.conversation?.id,
+        userLoggedIn: state?.user?.isAuthenticated || false
+      });
+      
+      console.log('[MPAI Debug] Message sent successfully:', response);
+      
+      // Update the state with the response
+      if (response.conversation_id) {
+        this._stateManager.setState({
+          conversation: {
+            id: response.conversation_id
+          }
+        });
+      }
+      
+      // Add the assistant message to the UI
+      if (response.message) {
+        this._stateManager.addMessage({
+          role: 'assistant',
+          content: response.message,
+          timestamp: response.timestamp || new Date().toISOString()
+        });
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('[MPAI Debug] Error sending message:', error);
+      
+      // Update the state with the error
+      if (this._stateManager) {
+        this._stateManager.setError(error);
+      }
+      
+      // Re-throw the error
+      throw error;
+    }
   }
 
   /**
@@ -155,7 +226,43 @@ class ChatCore {
    * @returns {Promise<void>} A promise that resolves when the history is cleared
    */
   async clearHistory() {
-    // Clear chat history
+    console.log('[MPAI Debug] ChatCore.clearHistory called');
+    
+    if (!this._stateManager) {
+      console.error('[MPAI Debug] StateManager not initialized');
+      return false;
+    }
+    
+    try {
+      // Clear conversation history in state manager
+      this._stateManager.clearConversation();
+      console.log('[MPAI Debug] Cleared conversation history in state manager');
+      
+      // Clear conversation on the server if API client is available
+      if (this._apiClient && typeof this._apiClient.clearConversation === 'function') {
+        await this._apiClient.clearConversation();
+        console.log('[MPAI Debug] Cleared conversation history on server');
+      }
+      
+      // Publish a history cleared event
+      if (this._eventBus) {
+        this._eventBus.publish('chat.history.cleared', {
+          timestamp: new Date().toISOString()
+        });
+        console.log('[MPAI Debug] Published chat.history.cleared event');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('[MPAI Debug] Error clearing history:', error);
+      
+      // Update the state with the error
+      if (this._stateManager) {
+        this._stateManager.setError(error);
+      }
+      
+      return false;
+    }
   }
 
   /**

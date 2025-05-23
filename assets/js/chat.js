@@ -25,7 +25,15 @@ if (typeof jQuery !== 'undefined') {
   console.error('[MPAI Debug] jQuery not found in global scope');
 }
 
+// Get the plugin URL dynamically
+const scriptElement = document.querySelector('script[src*="memberpress-ai-assistant"]');
+const pluginUrl = scriptElement ? scriptElement.src.split('/assets/')[0] : '/wp-content/plugins/memberpress-ai-assistant';
+
+console.log('[MPAI Debug] Detected plugin URL:', pluginUrl);
+
 // Import core modules - using relative paths
+// We can't use dynamic imports with template literals in the import statement
+// So we'll use relative paths instead
 import ChatCore from './chat/core/chat-core.js';
 import StateManager from './chat/core/state-manager.js';
 import UIManager from './chat/core/ui-manager.js';
