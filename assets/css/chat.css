@@ -26,10 +26,18 @@
     pointer-events: none;
 }
 
-.mpai-chat-container.active {
+.mpai-chat-container.active,
+.mpai-chat-container.mpai-chat-visible {
     transform: translateY(0);
     opacity: 1;
     pointer-events: all;
+}
+
+.mpai-chat-container.mpai-chat-hidden {
+    transform: translateY(20px);
+    opacity: 0;
+    pointer-events: none;
+    display: none !important;
 }
 
 /* Chat Header */

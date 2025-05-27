@@ -258,8 +258,6 @@ class UIManager {
    * @returns {HTMLElement} The rendered message element
    */
   renderMessage(message) {
-    console.log('[MPAI Debug] Rendering message:', message);
-    
     if (!this._elements.messageList) {
       console.error('[MPAI Debug] Message list element not found');
       return null;
@@ -274,18 +272,9 @@ class UIManager {
       messageElement.dataset.messageId = message.id;
     }
     
-    // Add timestamp as data attribute if available
+    // Add timestamp as data attribute if available (but don't display it)
     if (message.timestamp) {
       messageElement.dataset.timestamp = message.timestamp;
-      
-      // Add a human-readable timestamp
-      const date = new Date(message.timestamp);
-      const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      
-      const timestampElement = document.createElement('div');
-      timestampElement.className = 'mpai-chat-message-timestamp';
-      timestampElement.textContent = timeString;
-      messageElement.appendChild(timestampElement);
     }
     
     // Create message content element
@@ -298,9 +287,7 @@ class UIManager {
     this._elements.messageList.appendChild(messageElement);
     
     // Scroll to the bottom
-    this.scrollToBottom();
-    
-    console.log('[MPAI Debug] Message rendered');
+    this.scrollToBottom(false); // Use instant scroll to reduce visual noise
     
     return messageElement;
   }
@@ -312,8 +299,6 @@ class UIManager {
    * @returns {void}
    */
   renderMessages() {
-    console.log('[MPAI Debug] Rendering all messages');
-    
     if (!this._elements.messageList) {
       console.error('[MPAI Debug] Message list element not found');
       return;
@@ -337,9 +322,7 @@ class UIManager {
     } else if (messages && typeof messages === 'object') {
       // Convert object to array if it's an object with numeric keys
       messagesArray = Object.values(messages);
-      console.warn('[MPAI Debug] Messages was an object, converted to array:', messagesArray);
     } else {
-      console.warn('[MPAI Debug] Messages is not an array or object:', typeof messages, messages);
       return;
     }
     
@@ -347,8 +330,6 @@ class UIManager {
     messagesArray.forEach(message => {
       this.renderMessage(message);
     });
-    
-    console.log('[MPAI Debug] All messages rendered:', messagesArray.length);
   }
 
   /**
@@ -448,16 +429,11 @@ class UIManager {
    * @returns {void}
    */
   scrollToBottom(smooth = true) {
-    console.log('[MPAI Debug] scrollToBottom called with smooth:', smooth);
-    
     if (this._elements.messageList) {
       this._elements.messageList.scrollTo({
         top: this._elements.messageList.scrollHeight,
         behavior: smooth ? 'smooth' : 'auto'
       });
-      console.log('[MPAI Debug] Scrolled to bottom of message list');
-    } else {
-      console.warn('[MPAI Debug] Message list element not found');
     }
   }
   
@@ -468,20 +444,12 @@ class UIManager {
    * @returns {void}
    */
   disableInput() {
-    console.log('[MPAI Debug] disableInput called');
-    
     if (this._elements.inputField) {
       this._elements.inputField.disabled = true;
-      console.log('[MPAI Debug] Input field disabled');
-    } else {
-      console.warn('[MPAI Debug] Input field element not found');
     }
     
     if (this._elements.sendButton) {
       this._elements.sendButton.disabled = true;
-      console.log('[MPAI Debug] Send button disabled');
-    } else {
-      console.warn('[MPAI Debug] Send button element not found');
     }
   }
   
@@ -492,20 +460,12 @@ class UIManager {
    * @returns {void}
    */
   enableInput() {
-    console.log('[MPAI Debug] enableInput called');
-    
     if (this._elements.inputField) {
       this._elements.inputField.disabled = false;
-      console.log('[MPAI Debug] Input field enabled');
-    } else {
-      console.warn('[MPAI Debug] Input field element not found');
     }
     
     if (this._elements.sendButton) {
       this._elements.sendButton.disabled = false;
-      console.log('[MPAI Debug] Send button enabled');
-    } else {
-      console.warn('[MPAI Debug] Send button element not found');
     }
   }
 
@@ -516,17 +476,12 @@ class UIManager {
    * @returns {void}
    */
   focusInput() {
-    console.log('[MPAI Debug] focusInput called');
-    
     if (this._elements.inputField) {
       try {
         this._elements.inputField.focus();
-        console.log('[MPAI Debug] Input field focused');
       } catch (error) {
         console.error('[MPAI Debug] Error focusing input field:', error);
       }
-    } else {
-      console.warn('[MPAI Debug] Input field not found');
     }
   }
 
@@ -539,8 +494,6 @@ class UIManager {
    * @returns {void}
    */
   updateFromState(state, previousState) {
-    console.log('[MPAI Debug] Updating UI from state:', state);
-    
     // Check if conversation messages have changed
     if (state && state.conversation && state.conversation.messages) {
       // Render all messages
@@ -599,22 +552,7 @@ class UIManager {
     // Disable the input field while processing
     this.disableInput();
     
-    // Add the user message to the state and UI
-    if (this._stateManager && typeof this._stateManager.addMessage === 'function') {
-      this._stateManager.addMessage({
-        role: 'user',
-        content: message,
-        timestamp: new Date().toISOString()
-      });
-      console.log('[MPAI Debug] Added user message to state');
-    } else {
-      console.warn('[MPAI Debug] StateManager or addMessage function not available');
-      // Fallback to event bus
-      if (this._eventBus) {
-        this._eventBus.publish('message.user', { content: message });
-        console.log('[MPAI Debug] Published message.user event');
-      }
-    }
+    // Don't add the user message here - let ChatCore handle it to avoid duplicates
     
     // Send the message to the API
     if (window.mpaiChat && typeof window.mpaiChat.sendMessage === 'function') {
