@@ -58,6 +58,7 @@ class UIManager {
       inputField: null,
       sendButton: null,
       clearButton: null,
+      expandButton: null,
       loadingIndicator: null
     };
   }
@@ -94,6 +95,7 @@ class UIManager {
     this._elements.inputField = container.querySelector('.mpai-chat-input');
     this._elements.sendButton = container.querySelector('.mpai-chat-submit');
     this._elements.clearButton = container.querySelector('#mpai-clear-conversation');
+    this._elements.expandButton = container.querySelector('.mpai-chat-expand');
     
     // Create loading indicator if it doesn't exist
     let loadingIndicator = container.querySelector('.mpai-chat-loading');
@@ -113,6 +115,7 @@ class UIManager {
     console.log('[MPAI Debug] Input field found:', !!this._elements.inputField);
     console.log('[MPAI Debug] Send button found:', !!this._elements.sendButton);
     console.log('[MPAI Debug] Clear button found:', !!this._elements.clearButton);
+    console.log('[MPAI Debug] Expand button found:', !!this._elements.expandButton);
     console.log('[MPAI Debug] Loading indicator found:', !!this._elements.loadingIndicator);
     
     // Set up event listeners
@@ -124,6 +127,12 @@ class UIManager {
       // Apply chat open state
       this.toggleChatVisibility(uiState.isChatOpen);
       console.log('[MPAI Debug] Applied initial chat visibility:', uiState.isChatOpen);
+      
+      // Apply chat expanded state
+      if (typeof uiState.isExpanded === 'boolean') {
+        this.toggleChatExpanded(uiState.isExpanded);
+        console.log('[MPAI Debug] Applied initial chat expanded state:', uiState.isExpanded);
+      }
       
       // Render messages from state
       this.renderMessages();
@@ -185,6 +194,14 @@ class UIManager {
         this._handleClear(event);
       });
       console.log('[MPAI Debug] Added click event listener to clear button');
+    }
+    
+    // Set up expand button handler
+    if (this._elements.expandButton) {
+      this._elements.expandButton.addEventListener('click', (event) => {
+        this._handleExpand(event);
+      });
+      console.log('[MPAI Debug] Added click event listener to expand button');
     }
     
     // Set up chat button handler with multiple selectors
@@ -506,6 +523,11 @@ class UIManager {
       if (typeof state.ui.isChatOpen === 'boolean') {
         this.toggleChatVisibility(state.ui.isChatOpen);
       }
+      
+      // Update chat expanded state if needed
+      if (typeof state.ui.isExpanded === 'boolean') {
+        this.toggleChatExpanded(state.ui.isExpanded);
+      }
     }
   }
 
@@ -609,13 +631,63 @@ class UIManager {
 
   /**
    * Handles clear button click
-   * 
+   *
    * @private
    * @param {Event} event - Click event
    * @returns {void}
    */
   _handleClear(event) {
     // Handle clear button click
+  }
+  
+  /**
+   * Handles expand button click
+   *
+   * @private
+   * @param {Event} event - Click event
+   * @returns {void}
+   */
+  _handleExpand(event) {
+    event.preventDefault();
+    console.log('[MPAI Debug] Expand button clicked');
+    
+    // Get the container element
+    const container = this._elements.container;
+    if (!container) {
+      console.error('[MPAI Debug] Chat container not found');
+      return;
+    }
+    
+    // Toggle the expanded state
+    const isCurrentlyExpanded = container.classList.contains('mpai-chat-expanded');
+    const newExpandedState = !isCurrentlyExpanded;
+    
+    console.log('[MPAI Debug] Toggling expand state from', isCurrentlyExpanded, 'to', newExpandedState);
+    
+    if (newExpandedState) {
+      // Expand the chat
+      container.classList.add('mpai-chat-expanded');
+      console.log('[MPAI Debug] Chat expanded');
+    } else {
+      // Collapse the chat
+      container.classList.remove('mpai-chat-expanded');
+      console.log('[MPAI Debug] Chat collapsed');
+    }
+    
+    // Store expanded state in localStorage for persistence
+    try {
+      localStorage.setItem('mpai_chat_expanded', newExpandedState ? 'true' : 'false');
+    } catch (e) {
+      console.warn('[MPAI Debug] Could not save chat expanded state to localStorage:', e);
+    }
+    
+    // Update the state
+    if (this._stateManager) {
+      this._stateManager.updateUI({
+        isExpanded: newExpandedState
+      });
+      console.log('[MPAI Debug] Updated state with isExpanded:', newExpandedState);
+    }
   }
   
   /**
@@ -701,6 +773,60 @@ class UIManager {
     }
     
     return newVisibility;
+  }
+  
+  /**
+   * Toggles the expanded state of the chat interface
+   *
+   * @public
+   * @param {boolean} [isExpanded] - Force expanded state to this value if provided
+   * @returns {boolean} The new expanded state
+   */
+  toggleChatExpanded(isExpanded) {
+    console.log('[MPAI Debug] toggleChatExpanded called with:', isExpanded);
+    
+    // Get the container element
+    const container = this._elements.container;
+    if (!container) {
+      console.error('[MPAI Debug] Chat container not found');
+      return false;
+    }
+    
+    // If isExpanded is not provided, toggle the current state
+    let newExpandedState = isExpanded;
+    if (typeof newExpandedState !== 'boolean') {
+      const isCurrentlyExpanded = container.classList.contains('mpai-chat-expanded');
+      newExpandedState = !isCurrentlyExpanded;
+      console.log('[MPAI Debug] Toggling expanded state from', isCurrentlyExpanded, 'to', newExpandedState);
+    }
+    
+    // Update the container classes
+    if (newExpandedState) {
+      // Expand the chat
+      container.classList.add('mpai-chat-expanded');
+      console.log('[MPAI Debug] Chat expanded');
+    } else {
+      // Collapse the chat
+      container.classList.remove('mpai-chat-expanded');
+      console.log('[MPAI Debug] Chat collapsed');
+    }
+    
+    // Store expanded state in localStorage for persistence
+    try {
+      localStorage.setItem('mpai_chat_expanded', newExpandedState ? 'true' : 'false');
+    } catch (e) {
+      console.warn('[MPAI Debug] Could not save chat expanded state to localStorage:', e);
+    }
+    
+    // Update the state
+    if (this._stateManager) {
+      this._stateManager.updateUI({
+        isExpanded: newExpandedState
+      });
+      console.log('[MPAI Debug] Updated state with isExpanded:', newExpandedState);
+    }
+    
+    return newExpandedState;
   }
 }
 
