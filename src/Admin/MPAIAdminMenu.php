@@ -127,6 +127,7 @@ class MPAIAdminMenu extends AbstractService {
      * @return void
      */
     protected function register_memberpress_submenu(): void {
+        // Add the main settings page
         add_submenu_page(
             $this->parent_menu_slug,
             __('AI Assistant', 'memberpress-ai-assistant'),
@@ -134,6 +135,16 @@ class MPAIAdminMenu extends AbstractService {
             'manage_options',
             $this->menu_slug,
             [$this, 'render_settings_page']
+        );
+        
+        // Add the welcome page (hidden from menu)
+        add_submenu_page(
+            null, // Hidden from menu
+            __('AI Assistant Welcome', 'memberpress-ai-assistant'),
+            __('AI Assistant Welcome', 'memberpress-ai-assistant'),
+            'manage_options',
+            'mpai-welcome',
+            [$this, 'render_welcome_page']
         );
         
         $this->log('Registered as MemberPress submenu', ['level' => 'info']);
@@ -153,6 +164,16 @@ class MPAIAdminMenu extends AbstractService {
             [$this, 'render_settings_page'],
             'dashicons-admin-generic',
             30
+        );
+        
+        // Add the welcome page (hidden from menu)
+        add_submenu_page(
+            null, // Hidden from menu
+            __('AI Assistant Welcome', 'memberpress-ai-assistant'),
+            __('AI Assistant Welcome', 'memberpress-ai-assistant'),
+            'manage_options',
+            'mpai-welcome',
+            [$this, 'render_welcome_page']
         );
         
         $this->log('Registered as top-level menu', ['level' => 'info']);
@@ -212,6 +233,35 @@ class MPAIAdminMenu extends AbstractService {
         echo '</div>';
         
         $this->logWithLevel('Fallback settings page rendered due to initialization error', 'warning');
+    }
+
+    /**
+     * Render the welcome page with consent form
+     *
+     * @return void
+     */
+    public function render_welcome_page(): void {
+        // Check if user has already consented
+        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
+        if ($consent_manager->hasUserConsented()) {
+            // User has already consented, redirect to settings
+            wp_redirect(admin_url('admin.php?page=mpai-settings'));
+            exit;
+        }
+        
+        // Include the welcome page template
+        $template_path = MPAI_PLUGIN_DIR . 'templates/welcome-page.php';
+        
+        if (file_exists($template_path)) {
+            include $template_path;
+        } else {
+            echo '<div class="wrap">';
+            echo '<h1>' . esc_html__('MemberPress AI Assistant Welcome', 'memberpress-ai-assistant') . '</h1>';
+            echo '<div class="notice notice-error">';
+            echo '<p>' . esc_html__('Welcome page template not found.', 'memberpress-ai-assistant') . '</p>';
+            echo '</div>';
+            echo '</div>';
+        }
     }
 
     /**

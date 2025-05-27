@@ -163,7 +163,12 @@ async function initializeChat() {
   logger.debug('UI manager initialized');
   
   // Initialize chat core with all dependencies
-  // This will connect all the modules together
+  // Pass the existing instances to avoid creating duplicates
+  chatCore._stateManager = stateManager;
+  chatCore._uiManager = uiManager;
+  chatCore._apiClient = apiClient;
+  chatCore._eventBus = eventBus;
+  
   await chatCore.initialize();
   logger.debug('Chat core initialized');
   
@@ -208,19 +213,11 @@ async function initializeChat() {
   
   logger.info('Chat system initialization complete');
   
-  // Add click handler for chat button if it exists
-  const chatButton = document.querySelector('.mpai-chat-button');
+  // Chat button click handling is now managed by UIManager
+  // Just log that we found the button for debugging
+  const chatButton = document.querySelector('.mpai-chat-toggle, #mpai-chat-toggle');
   if (chatButton) {
-    console.log('[MPAI Debug] Found chat button, adding click handler');
-    chatButton.addEventListener('click', function() {
-      console.log('[MPAI Debug] Chat button clicked');
-      if (window.mpaiChat && typeof window.mpaiChat.toggleChat === 'function') {
-        console.log('[MPAI Debug] Calling toggleChat function');
-        window.mpaiChat.toggleChat();
-      } else {
-        console.error('[MPAI Debug] window.mpaiChat or toggleChat function not available');
-      }
-    });
+    console.log('[MPAI Debug] Found chat button with selector: .mpai-chat-toggle');
   } else {
     console.warn('[MPAI Debug] Chat button not found');
   }

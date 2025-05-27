@@ -90,11 +90,22 @@ class UIManager {
     // Store references to DOM elements
     this._elements.container = container;
     this._elements.messageList = container.querySelector('.mpai-chat-messages');
-    this._elements.inputForm = container.querySelector('.mpai-chat-input-form');
+    this._elements.inputForm = container.querySelector('.mpai-chat-input-container');
     this._elements.inputField = container.querySelector('.mpai-chat-input');
-    this._elements.sendButton = container.querySelector('.mpai-chat-send-button');
-    this._elements.clearButton = container.querySelector('.mpai-chat-clear-button');
-    this._elements.loadingIndicator = container.querySelector('.mpai-chat-loading');
+    this._elements.sendButton = container.querySelector('.mpai-chat-submit');
+    this._elements.clearButton = container.querySelector('#mpai-clear-conversation');
+    
+    // Create loading indicator if it doesn't exist
+    let loadingIndicator = container.querySelector('.mpai-chat-loading');
+    if (!loadingIndicator) {
+      loadingIndicator = document.createElement('div');
+      loadingIndicator.className = 'mpai-chat-loading';
+      loadingIndicator.innerHTML = '<div class="mpai-chat-loading-spinner"></div>';
+      loadingIndicator.style.display = 'none';
+      container.querySelector('.mpai-chat-messages').appendChild(loadingIndicator);
+      console.log('[MPAI Debug] Created missing loading indicator');
+    }
+    this._elements.loadingIndicator = loadingIndicator;
     
     // Log which elements were found
     console.log('[MPAI Debug] Message list found:', !!this._elements.messageList);
@@ -113,6 +124,10 @@ class UIManager {
       // Apply chat open state
       this.toggleChatVisibility(uiState.isChatOpen);
       console.log('[MPAI Debug] Applied initial chat visibility:', uiState.isChatOpen);
+      
+      // Render messages from state
+      this.renderMessages();
+      console.log('[MPAI Debug] Rendered messages from state');
     }
     
     console.log('[MPAI Debug] UIManager initialized');
@@ -130,10 +145,38 @@ class UIManager {
     
     // Set up form submission handler
     if (this._elements.inputForm) {
-      this._elements.inputForm.addEventListener('submit', (event) => {
+      // Create a submit event handler for the input container
+      const handleSubmit = (event) => {
+        if (event.type === 'keydown' && event.key !== 'Enter') {
+          return;
+        }
+        if (event.type === 'keydown' && event.shiftKey) {
+          return; // Allow shift+enter for new line
+        }
+        if (event.type === 'keydown') {
+          event.preventDefault(); // Prevent default for Enter key
+        }
         this._handleSubmit(event);
-      });
-      console.log('[MPAI Debug] Added submit event listener to input form');
+      };
+      
+      // Add click handler to send button
+      if (this._elements.sendButton) {
+        this._elements.sendButton.addEventListener('click', handleSubmit);
+        console.log('[MPAI Debug] Added click event listener to send button');
+      }
+      
+      // Add keydown handler to input field
+      if (this._elements.inputField) {
+        this._elements.inputField.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            handleSubmit(event);
+          }
+        });
+        console.log('[MPAI Debug] Added keydown event listener to input field');
+      }
+      
+      console.log('[MPAI Debug] Set up submit handlers for input');
     }
     
     // Set up clear button handler
@@ -144,36 +187,45 @@ class UIManager {
       console.log('[MPAI Debug] Added click event listener to clear button');
     }
     
-    // Set up chat button handler with the correct selector
-    const chatButton = document.querySelector('.mpai-chat-toggle');
-    if (chatButton) {
-      chatButton.addEventListener('click', () => {
-        console.log('[MPAI Debug] Chat button clicked in UIManager');
-        // Publish an event that the chat button was clicked
-        if (this._eventBus) {
-          this._eventBus.publish('ui.button.click', { button: 'chat-toggle' });
-          console.log('[MPAI Debug] Published ui.button.click event');
-        }
-        // Also toggle the chat visibility directly
-        this.toggleChatVisibility();
-      });
-      console.log('[MPAI Debug] Added click event listener to chat button with class .mpai-chat-toggle');
-    } else {
-      console.warn('[MPAI Debug] Chat button with class .mpai-chat-toggle not found');
-      
-      // Try alternative selectors
-      const alternativeSelectors = ['#mpai-chat-toggle', '[aria-label="Toggle chat"]'];
-      for (const selector of alternativeSelectors) {
-        const altButton = document.querySelector(selector);
-        if (altButton) {
-          altButton.addEventListener('click', () => {
-            console.log(`[MPAI Debug] Chat button clicked (found with selector: ${selector})`);
-            this.toggleChatVisibility();
-          });
-          console.log(`[MPAI Debug] Added click event listener to chat button with selector: ${selector}`);
-          break;
-        }
+    // Set up chat button handler with multiple selectors
+    const chatButtonSelectors = [
+      '.mpai-chat-toggle',
+      '#mpai-chat-toggle',
+      '[aria-label="Toggle chat"]',
+      '.mpai-chat-button'
+    ];
+    
+    let chatButtonFound = false;
+    
+    for (const selector of chatButtonSelectors) {
+      const chatButton = document.querySelector(selector);
+      if (chatButton) {
+        // Remove any existing event listeners to prevent duplicates
+        chatButton.removeEventListener('click', this._chatButtonClickHandler);
+        
+        // Create a bound handler function
+        this._chatButtonClickHandler = (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          console.log(`[MPAI Debug] Chat button clicked (found with selector: ${selector})`);
+          
+          // Get current visibility state
+          const container = this._elements.container;
+          const isCurrentlyVisible = container && !container.classList.contains('mpai-chat-hidden') && container.style.display !== 'none';
+          
+          // Toggle to opposite state
+          this.toggleChatVisibility(!isCurrentlyVisible);
+        };
+        
+        chatButton.addEventListener('click', this._chatButtonClickHandler);
+        console.log(`[MPAI Debug] Added click event listener to chat button with selector: ${selector}`);
+        chatButtonFound = true;
+        break;
       }
+    }
+    
+    if (!chatButtonFound) {
+      console.warn('[MPAI Debug] Chat button not found with any selector');
     }
     
     // Subscribe to state changes
@@ -200,23 +252,103 @@ class UIManager {
 
   /**
    * Renders a single message in the chat interface
-   * 
+   *
    * @public
    * @param {Object} message - Message object to render
    * @returns {HTMLElement} The rendered message element
    */
   renderMessage(message) {
-    // Render a message
+    console.log('[MPAI Debug] Rendering message:', message);
+    
+    if (!this._elements.messageList) {
+      console.error('[MPAI Debug] Message list element not found');
+      return null;
+    }
+    
+    // Create message element
+    const messageElement = document.createElement('div');
+    messageElement.className = `mpai-chat-message mpai-chat-message-${message.role || 'assistant'}`;
+    
+    // Add message ID as data attribute if available
+    if (message.id) {
+      messageElement.dataset.messageId = message.id;
+    }
+    
+    // Add timestamp as data attribute if available
+    if (message.timestamp) {
+      messageElement.dataset.timestamp = message.timestamp;
+      
+      // Add a human-readable timestamp
+      const date = new Date(message.timestamp);
+      const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      const timestampElement = document.createElement('div');
+      timestampElement.className = 'mpai-chat-message-timestamp';
+      timestampElement.textContent = timeString;
+      messageElement.appendChild(timestampElement);
+    }
+    
+    // Create message content element
+    const contentElement = document.createElement('div');
+    contentElement.className = 'mpai-chat-message-content';
+    contentElement.textContent = message.content || '';
+    messageElement.appendChild(contentElement);
+    
+    // Add the message to the message list
+    this._elements.messageList.appendChild(messageElement);
+    
+    // Scroll to the bottom
+    this.scrollToBottom();
+    
+    console.log('[MPAI Debug] Message rendered');
+    
+    return messageElement;
   }
 
   /**
    * Renders all messages in the conversation history
-   * 
+   *
    * @public
    * @returns {void}
    */
   renderMessages() {
-    // Render all messages
+    console.log('[MPAI Debug] Rendering all messages');
+    
+    if (!this._elements.messageList) {
+      console.error('[MPAI Debug] Message list element not found');
+      return;
+    }
+    
+    if (!this._stateManager) {
+      console.error('[MPAI Debug] State manager not found');
+      return;
+    }
+    
+    // Clear the message list
+    this._elements.messageList.innerHTML = '';
+    
+    // Get all messages from the state
+    const messages = this._stateManager.getState('conversation.messages') || [];
+    
+    // Ensure messages is an array before trying to iterate
+    let messagesArray = [];
+    if (Array.isArray(messages)) {
+      messagesArray = messages;
+    } else if (messages && typeof messages === 'object') {
+      // Convert object to array if it's an object with numeric keys
+      messagesArray = Object.values(messages);
+      console.warn('[MPAI Debug] Messages was an object, converted to array:', messagesArray);
+    } else {
+      console.warn('[MPAI Debug] Messages is not an array or object:', typeof messages, messages);
+      return;
+    }
+    
+    // Render each message
+    messagesArray.forEach(message => {
+      this.renderMessage(message);
+    });
+    
+    console.log('[MPAI Debug] All messages rendered:', messagesArray.length);
   }
 
   /**
@@ -407,7 +539,21 @@ class UIManager {
    * @returns {void}
    */
   updateFromState(state, previousState) {
-    // Update UI from state
+    console.log('[MPAI Debug] Updating UI from state:', state);
+    
+    // Check if conversation messages have changed
+    if (state && state.conversation && state.conversation.messages) {
+      // Render all messages
+      this.renderMessages();
+    }
+    
+    // Check if UI state has changed
+    if (state && state.ui) {
+      // Update chat visibility if needed
+      if (typeof state.ui.isChatOpen === 'boolean') {
+        this.toggleChatVisibility(state.ui.isChatOpen);
+      }
+    }
   }
 
   /**
@@ -453,8 +599,22 @@ class UIManager {
     // Disable the input field while processing
     this.disableInput();
     
-    // Add the user message to the UI
-    this._eventBus.publish('message.user', { content: message });
+    // Add the user message to the state and UI
+    if (this._stateManager && typeof this._stateManager.addMessage === 'function') {
+      this._stateManager.addMessage({
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString()
+      });
+      console.log('[MPAI Debug] Added user message to state');
+    } else {
+      console.warn('[MPAI Debug] StateManager or addMessage function not available');
+      // Fallback to event bus
+      if (this._eventBus) {
+        this._eventBus.publish('message.user', { content: message });
+        console.log('[MPAI Debug] Published message.user event');
+      }
+    }
     
     // Send the message to the API
     if (window.mpaiChat && typeof window.mpaiChat.sendMessage === 'function') {
@@ -540,20 +700,53 @@ class UIManager {
     // If isVisible is not provided, toggle the current state
     let newVisibility = isVisible;
     if (typeof newVisibility !== 'boolean') {
-      const currentVisibility = !container.classList.contains('mpai-chat-hidden');
-      newVisibility = !currentVisibility;
-      console.log('[MPAI Debug] Toggling visibility from', currentVisibility, 'to', newVisibility);
+      // Check for any visibility class or style
+      const isCurrentlyHidden =
+        container.classList.contains('mpai-chat-hidden') ||
+        container.style.display === 'none' ||
+        container.style.visibility === 'hidden' ||
+        container.style.opacity === '0';
+      
+      newVisibility = isCurrentlyHidden;
+      console.log('[MPAI Debug] Toggling visibility from hidden:', isCurrentlyHidden, 'to visible:', newVisibility);
     }
     
-    // Update the container class
+    // Update the container style and classes
     if (newVisibility) {
+      // Make visible
       container.classList.remove('mpai-chat-hidden');
       container.classList.add('mpai-chat-visible');
+      container.style.display = 'flex';
+      container.style.visibility = 'visible';
+      container.style.opacity = '1';
       console.log('[MPAI Debug] Chat made visible');
+      
+      // Also update the toggle button if it exists
+      const toggleButton = document.querySelector('#mpai-chat-toggle, .mpai-chat-toggle');
+      if (toggleButton) {
+        toggleButton.classList.add('active');
+        toggleButton.setAttribute('aria-expanded', 'true');
+      }
     } else {
+      // Hide
       container.classList.remove('mpai-chat-visible');
       container.classList.add('mpai-chat-hidden');
+      container.style.display = 'none';
       console.log('[MPAI Debug] Chat hidden');
+      
+      // Also update the toggle button if it exists
+      const toggleButton = document.querySelector('#mpai-chat-toggle, .mpai-chat-toggle');
+      if (toggleButton) {
+        toggleButton.classList.remove('active');
+        toggleButton.setAttribute('aria-expanded', 'false');
+      }
+    }
+    
+    // Store visibility in localStorage for persistence
+    try {
+      localStorage.setItem('mpai_chat_open', newVisibility ? 'true' : 'false');
+    } catch (e) {
+      console.warn('[MPAI Debug] Could not save chat state to localStorage:', e);
     }
     
     // Update the state

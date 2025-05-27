@@ -68,38 +68,89 @@ class ChatCore {
   async initialize() {
     console.log('[MPAI Debug] ChatCore.initialize called');
     
-    // Store references to the modules
-    this._stateManager = window.stateManager;
-    this._uiManager = window.uiManager;
-    this._apiClient = window.apiClient;
-    this._eventBus = window.eventBus;
-    
-    // Check if all required modules are available
-    if (!this._stateManager) {
-      console.error('[MPAI Debug] StateManager not found');
+    try {
+      // Create new instances of the required modules if they're not already provided
+      // Create EventBus first since other modules depend on it
+      if (!this._eventBus) {
+        console.log('[MPAI Debug] Creating new EventBus instance');
+        // Import EventBus dynamically if needed
+        const EventBus = (await import('../core/event-bus.js')).default;
+        this._eventBus = new EventBus();
+      } else {
+        console.log('[MPAI Debug] Using existing EventBus instance');
+      }
+      
+      // Now create StateManager with the EventBus
+      if (!this._stateManager) {
+        console.log('[MPAI Debug] Creating new StateManager instance');
+        // Import StateManager dynamically if needed
+        const StateManager = (await import('../core/state-manager.js')).default;
+        this._stateManager = new StateManager({}, this._eventBus);
+      } else {
+        console.log('[MPAI Debug] Using existing StateManager instance');
+      }
+      
+      if (!this._apiClient) {
+        console.log('[MPAI Debug] Creating new APIClient instance');
+        // Import APIClient dynamically if needed
+        const APIClient = (await import('../core/api-client.js')).default;
+        this._apiClient = new APIClient({}, this._eventBus);
+      } else {
+        console.log('[MPAI Debug] Using existing APIClient instance');
+      }
+      
+      if (!this._uiManager) {
+        console.log('[MPAI Debug] Creating new UIManager instance');
+        // Import UIManager dynamically if needed
+        const UIManager = (await import('../core/ui-manager.js')).default;
+        this._uiManager = new UIManager({}, this._stateManager, this._eventBus);
+        
+        // Initialize the UI manager with the chat container
+        await this._uiManager.initialize('#mpai-chat-container');
+      } else {
+        console.log('[MPAI Debug] Using existing UIManager instance');
+      }
+      
+      // Initialize the modules in the correct order
+      if (this._eventBus) {
+        console.log('[MPAI Debug] Setting up event listeners');
+        
+        // Chat button handling is now managed by UIManager to avoid conflicts
+        // Removed ui.button.click subscription to prevent duplicate event handling
+        
+        // Subscribe to message events
+        this._eventBus.subscribe('message.user', (data) => {
+          console.log('[MPAI Debug] User message event received:', data);
+          if (this._stateManager && data.content) {
+            this._stateManager.addMessage({
+              role: 'user',
+              content: data.content,
+              timestamp: data.timestamp || new Date().toISOString()
+            });
+          }
+        });
+        
+        // Subscribe to conversation state changes
+        this._eventBus.subscribe('state.conversation.changed', (data) => {
+          console.log('[MPAI Debug] Conversation state changed:', data);
+          if (this._uiManager) {
+            this._uiManager.renderMessages();
+          }
+        });
+      }
+      
+      // Store the module instances in the global scope for debugging
+      window.stateManager = this._stateManager;
+      window.uiManager = this._uiManager;
+      window.apiClient = this._apiClient;
+      window.eventBus = this._eventBus;
+      
+      console.log('[MPAI Debug] ChatCore initialized with all dependencies');
+      return true;
+    } catch (error) {
+      console.error('[MPAI Debug] Error initializing ChatCore:', error);
+      return false;
     }
-    if (!this._uiManager) {
-      console.error('[MPAI Debug] UIManager not found');
-    }
-    if (!this._apiClient) {
-      console.error('[MPAI Debug] APIClient not found');
-    }
-    if (!this._eventBus) {
-      console.error('[MPAI Debug] EventBus not found');
-    }
-    
-    // Set up event listeners
-    if (this._eventBus) {
-      this._eventBus.subscribe('ui.button.click', (data) => {
-        console.log('[MPAI Debug] UI button click event received:', data);
-        if (data.button === 'chat-toggle') {
-          this.toggleChat();
-        }
-      });
-    }
-    
-    console.log('[MPAI Debug] ChatCore initialized');
-    return true;
   }
 
   /**
@@ -111,16 +162,22 @@ class ChatCore {
   async start() {
     console.log('[MPAI Debug] ChatCore.start called');
     
-    // Add click handler for chat button if it exists
-    const chatButton = document.querySelector('.mpai-chat-button');
+    // Chat button click handling is now managed by UIManager to avoid conflicts
+    // Just check if the button exists for debugging
+    const chatButton = document.querySelector('.mpai-chat-toggle, #mpai-chat-toggle');
     if (chatButton) {
-      console.log('[MPAI Debug] Found chat button, adding click handler');
-      chatButton.addEventListener('click', () => {
-        console.log('[MPAI Debug] Chat button clicked');
-        this.toggleChat();
-      });
+      console.log('[MPAI Debug] Found chat button - click handling managed by UIManager');
     } else {
       console.warn('[MPAI Debug] Chat button not found');
+    }
+    
+    // Set initial visibility based on state
+    if (this._stateManager) {
+      const uiState = this._stateManager.getState('ui');
+      if (uiState && uiState.isChatOpen) {
+        console.log('[MPAI Debug] Setting initial chat visibility to open based on state');
+        this.toggleChat(true);
+      }
     }
     
     console.log('[MPAI Debug] ChatCore started');
@@ -178,6 +235,16 @@ class ChatCore {
     try {
       // Get the current state
       const state = this._stateManager.getState();
+      
+      // Add the user message to the state
+      if (this._stateManager) {
+        this._stateManager.addMessage({
+          role: 'user',
+          content: message,
+          timestamp: new Date().toISOString()
+        });
+        console.log('[MPAI Debug] Added user message to state in ChatCore');
+      }
       
       // Send the message to the API
       const response = await this._apiClient.sendMessage(message, {

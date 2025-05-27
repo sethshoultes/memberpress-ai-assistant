@@ -1,14 +1,17 @@
 /**
  * StateManager - Manages all application state for the chat interface
- * 
+ *
  * This module is responsible for managing all application state including
  * conversation history, UI state, and user state. It provides a centralized
  * store for all data and state changes in the application.
- * 
+ *
  * @module StateManager
  * @author MemberPress
  * @since 1.0.0
  */
+
+// Import StorageManager
+import StorageManager from '../utils/storage-manager.js';
 
 /**
  * StateManager class - Manages application state
@@ -120,21 +123,25 @@ class StateManager {
     // Deep merge the updates with the current state
     this._state = this._deepMerge(this._state, updates);
     
-    // Publish state change event
-    this._eventBus.publish('state.changed', {
-      state: this._state,
-      updates,
-      source
-    });
-    
-    // Publish specific events for updated sections
-    Object.keys(updates).forEach(section => {
-      this._eventBus.publish(`state.${section}.changed`, {
-        state: this._state[section],
-        updates: updates[section],
+    // Publish state change event if event bus exists
+    if (this._eventBus) {
+      this._eventBus.publish('state.changed', {
+        state: this._state,
+        updates,
         source
       });
-    });
+      
+      // Publish specific events for updated sections
+      Object.keys(updates).forEach(section => {
+        this._eventBus.publish(`state.${section}.changed`, {
+          state: this._state[section],
+          updates: updates[section],
+          source
+        });
+      });
+    } else {
+      console.warn('[MPAI Debug] Event bus not available for state updates');
+    }
     
     return this._state;
   }
@@ -155,19 +162,35 @@ class StateManager {
     };
     
     // Update the state with the new message
+    // Get current messages or default to empty array if not found
+    const currentMessages = this.getState('conversation.messages') || [];
+    
+    // Ensure currentMessages is an array before spreading
+    let messagesArray = [];
+    if (Array.isArray(currentMessages)) {
+      messagesArray = currentMessages;
+    } else if (currentMessages && typeof currentMessages === 'object') {
+      // Convert object to array if it's an object with numeric keys
+      messagesArray = Object.values(currentMessages);
+    }
+    
+    console.log('[MPAI Debug] Current messages:', messagesArray);
+    
     const updates = {
       conversation: {
-        messages: [...this.getState('conversation.messages'), enhancedMessage]
+        messages: [...messagesArray, enhancedMessage]
       }
     };
     
     // Use setState to update the state and trigger events
     this.setState(updates, 'message.added');
     
-    // Publish a specific event for the new message
-    this._eventBus.publish('conversation.message.added', {
-      message: enhancedMessage
-    });
+    // Publish a specific event for the new message if event bus exists
+    if (this._eventBus) {
+      this._eventBus.publish('conversation.message.added', {
+        message: enhancedMessage
+      });
+    }
     
     return this.getState('conversation');
   }
@@ -189,10 +212,12 @@ class StateManager {
     // Use setState to update the state and trigger events
     this.setState(updates, 'conversation.cleared');
     
-    // Publish a specific event for clearing the conversation
-    this._eventBus.publish('conversation.cleared', {
-      timestamp: new Date().toISOString()
-    });
+    // Publish a specific event for clearing the conversation if event bus exists
+    if (this._eventBus) {
+      this._eventBus.publish('conversation.cleared', {
+        timestamp: new Date().toISOString()
+      });
+    }
     
     return this.getState('conversation');
   }
@@ -215,10 +240,12 @@ class StateManager {
     // Use setState to update the state and trigger events
     this.setState(updates, 'loading.changed');
     
-    // Publish a specific event for the loading state change
-    this._eventBus.publish('conversation.loading.changed', {
-      isLoading
-    });
+    // Publish a specific event for the loading state change if event bus exists
+    if (this._eventBus) {
+      this._eventBus.publish('conversation.loading.changed', {
+        isLoading
+      });
+    }
     
     return this.getState('conversation');
   }
@@ -241,10 +268,12 @@ class StateManager {
     // Use setState to update the state and trigger events
     this.setState(updates, 'error.changed');
     
-    // Publish a specific event for the error state change
-    this._eventBus.publish('conversation.error.changed', {
-      error: updates.conversation.error
-    });
+    // Publish a specific event for the error state change if event bus exists
+    if (this._eventBus) {
+      this._eventBus.publish('conversation.error.changed', {
+        error: updates.conversation.error
+      });
+    }
     
     return this.getState('conversation');
   }
@@ -267,10 +296,12 @@ class StateManager {
     // Use setState to update the state and trigger events
     this.setState(updates, 'user.updated');
     
-    // Publish a specific event for the user update
-    this._eventBus.publish('user.updated', {
-      user: this.getState('user')
-    });
+    // Publish a specific event for the user update if event bus exists
+    if (this._eventBus) {
+      this._eventBus.publish('user.updated', {
+        user: this.getState('user')
+      });
+    }
     
     return this.getState('user');
   }
@@ -293,10 +324,12 @@ class StateManager {
     // Use setState to update the state and trigger events
     this.setState(updates, 'ui.updated');
     
-    // Publish a specific event for the UI update
-    this._eventBus.publish('ui.updated', {
-      ui: this.getState('ui')
-    });
+    // Publish a specific event for the UI update if event bus exists
+    if (this._eventBus) {
+      this._eventBus.publish('ui.updated', {
+        ui: this.getState('ui')
+      });
+    }
     
     return this.getState('ui');
   }
@@ -309,9 +342,16 @@ class StateManager {
    */
   async persistState() {
     try {
-      // Get an instance of the StorageManager
-      // This assumes StorageManager is available as a global or imported
-      const storageManager = new StorageManager();
+      console.log('[MPAI Debug] Persisting state to storage');
+      
+      // Create a new instance of StorageManager
+      const storageManager = new StorageManager({
+        storagePrefix: 'mpai_',
+        defaultExpiration: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+      
+      // Initialize the storage manager
+      await storageManager.initialize();
       
       // Save the current state to storage
       const success = storageManager.save('chatState', this._state, {
@@ -319,9 +359,10 @@ class StateManager {
         expiration: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
       });
       
+      console.log('[MPAI Debug] State persisted successfully:', success);
       return success;
     } catch (error) {
-      console.error('Failed to persist state:', error);
+      console.error('[MPAI Debug] Failed to persist state:', error);
       return false;
     }
   }
@@ -334,26 +375,38 @@ class StateManager {
    */
   async loadState() {
     try {
-      // Get an instance of the StorageManager
-      // This assumes StorageManager is available as a global or imported
-      const storageManager = new StorageManager();
+      console.log('[MPAI Debug] Loading state from storage');
+      
+      // Create a new instance of StorageManager
+      const storageManager = new StorageManager({
+        storagePrefix: 'mpai_',
+        defaultExpiration: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+      
+      // Initialize the storage manager
+      await storageManager.initialize();
       
       // Load state from storage
       const savedState = storageManager.get('chatState');
+      console.log('[MPAI Debug] Loaded state from storage:', savedState ? 'Found' : 'Not found');
       
       // If there's saved state, update the current state
       if (savedState) {
         this._state = this._deepMerge(this._state, savedState);
         
-        // Publish an event to notify that state was loaded
-        this._eventBus.publish('state.loaded', {
-          state: this._state
-        });
+        // Publish an event to notify that state was loaded if event bus exists
+        if (this._eventBus) {
+          this._eventBus.publish('state.loaded', {
+            state: this._state
+          });
+        }
+        
+        console.log('[MPAI Debug] State updated from storage');
       }
       
       return this._state;
     } catch (error) {
-      console.error('Failed to load state:', error);
+      console.error('[MPAI Debug] Failed to load state:', error);
       return this._state;
     }
   }

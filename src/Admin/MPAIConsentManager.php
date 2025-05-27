@@ -231,8 +231,15 @@ class MPAIConsentManager extends AbstractService {
      * AJAX handler for saving consent
      */
     public function saveConsentAjax() {
-        // Check nonce
-        if (!isset($_POST['nonce']) || !\wp_verify_nonce($_POST['nonce'], 'mpai_nonce')) {
+        // Check nonce - support both nonce formats
+        $nonce_valid = false;
+        if (isset($_POST['nonce']) && \wp_verify_nonce($_POST['nonce'], 'mpai_nonce')) {
+            $nonce_valid = true;
+        } elseif (isset($_POST['mpai_consent_nonce']) && \wp_verify_nonce($_POST['mpai_consent_nonce'], 'mpai_consent_nonce')) {
+            $nonce_valid = true;
+        }
+        
+        if (!$nonce_valid) {
             \wp_send_json_error('Invalid nonce');
             return;
         }

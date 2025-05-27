@@ -61,6 +61,9 @@ class MPAIAjaxHandler extends AbstractService {
         // Add AJAX handler for processing chat messages
         add_action('wp_ajax_mpai_process_chat', [$this, 'handle_process_chat']);
         
+        // Add AJAX handler for chat requests (new modular system)
+        add_action('wp_ajax_mpai_chat_request', [$this, 'handle_chat_request']);
+        
         // Add AJAX handler for saving consent
         add_action('wp_ajax_mpai_save_consent', [$this, 'handle_save_consent']);
     }
@@ -168,6 +171,85 @@ class MPAIAjaxHandler extends AbstractService {
             wp_send_json_error(['message' => $response->get_error_message()]);
         } else {
             wp_send_json_success($response->get_data());
+        }
+    }
+    
+    /**
+     * Handle AJAX request for chat messages (new modular system)
+     *
+     * @return void
+     */
+    public function handle_chat_request(): void {
+        $this->log('Processing chat request via new modular system');
+        
+        // Check nonce if available
+        if (isset($_POST['nonce']) && !wp_verify_nonce($_POST['nonce'], 'mpai_ajax_nonce')) {
+            $this->log('Chat request nonce verification failed', ['error' => true]);
+            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-ai-assistant')]);
+            return;
+        }
+        
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            $this->log('Chat request from non-logged-in user', ['error' => true]);
+            wp_send_json_error(['message' => __('You must be logged in to use the chat.', 'memberpress-ai-assistant')]);
+            return;
+        }
+        
+        // Get the endpoint and data
+        $endpoint = isset($_POST['endpoint']) ? sanitize_text_field($_POST['endpoint']) : '';
+        $data_json = isset($_POST['data']) ? $_POST['data'] : '{}';
+        
+        // Parse the data
+        $data = json_decode($data_json, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->log('Invalid JSON data in chat request', ['error' => true]);
+            wp_send_json_error(['message' => __('Invalid request data.', 'memberpress-ai-assistant')]);
+            return;
+        }
+        
+        // Get message from data
+        $message = isset($data['message']) ? sanitize_text_field($data['message']) : '';
+        
+        if (empty($message)) {
+            $this->log('Empty message in chat request', ['error' => true]);
+            wp_send_json_error(['message' => __('Message cannot be empty.', 'memberpress-ai-assistant')]);
+            return;
+        }
+        
+        $this->log('Processing chat message: ' . substr($message, 0, 50) . '...');
+        
+        // Process the message (delegate to ChatInterface)
+        global $mpai_service_locator;
+        if (!isset($mpai_service_locator) || !$mpai_service_locator->has('chat_interface')) {
+            $this->log('Chat interface service not available', ['error' => true]);
+            wp_send_json_error(['message' => __('Chat interface not available.', 'memberpress-ai-assistant')]);
+            return;
+        }
+        
+        $chat_interface = $mpai_service_locator->get('chat_interface');
+        
+        // Create a mock request object
+        $request = new \stdClass();
+        $request->get_param = function($param) use ($data) {
+            return isset($data[$param]) ? $data[$param] : null;
+        };
+        
+        try {
+            // Process the request
+            $response = $chat_interface->processChatRequest($request);
+            
+            // Send the response
+            if (is_wp_error($response)) {
+                $this->log('Chat processing error: ' . $response->get_error_message(), ['error' => true]);
+                wp_send_json_error(['message' => $response->get_error_message()]);
+            } else {
+                $this->log('Chat request processed successfully');
+                wp_send_json_success($response->get_data());
+            }
+        } catch (\Exception $e) {
+            $this->log('Exception in chat processing: ' . $e->getMessage(), ['error' => true]);
+            wp_send_json_error(['message' => __('An error occurred while processing your message.', 'memberpress-ai-assistant')]);
         }
     }
     
