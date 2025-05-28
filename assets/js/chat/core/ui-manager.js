@@ -725,15 +725,41 @@ class UIManager {
     event.preventDefault();
     console.log('[MPAI Debug] Clear button clicked');
     
+    // DEBUG: Log current state before clearing
+    const currentState = this._stateManager.getState();
+    console.log('[MPAI Debug] Clear - Current state before clearing:', currentState);
+    console.log('[MPAI Debug] Clear - Current messages count:',
+      currentState?.conversation?.messages ?
+      (Array.isArray(currentState.conversation.messages) ? currentState.conversation.messages.length : Object.keys(currentState.conversation.messages).length) :
+      'No messages found');
+    
     // Confirm with user before clearing
     if (confirm('Are you sure you want to clear the conversation? This action cannot be undone.')) {
+      console.log('[MPAI Debug] Clear - User confirmed, proceeding with clear');
+      
       // Clear conversation through ChatCore
       if (window.mpaiChat && typeof window.mpaiChat.clearHistory === 'function') {
+        console.log('[MPAI Debug] Clear - Calling window.mpaiChat.clearHistory()');
         window.mpaiChat.clearHistory()
           .then(() => {
-            console.log('[MPAI Debug] Conversation cleared successfully');
+            console.log('[MPAI Debug] Clear - Conversation cleared successfully');
+            
+            // DEBUG: Log state after clearing
+            const stateAfterClear = this._stateManager.getState();
+            console.log('[MPAI Debug] Clear - State after clearing:', stateAfterClear);
+            
             // Clear the UI messages immediately
             this.clearMessages();
+            
+            // DEBUG: Check if conversation ID changed (this is key for the diagnosis)
+            console.log('[MPAI Debug] Clear - Conversation ID before:', currentState?.conversation?.id);
+            console.log('[MPAI Debug] Clear - Conversation ID after:', stateAfterClear?.conversation?.id);
+            
+            if (currentState?.conversation?.id === stateAfterClear?.conversation?.id) {
+              console.warn('[MPAI Debug] Clear - WARNING: Conversation ID did not change! This may cause messages to reload.');
+            } else {
+              console.log('[MPAI Debug] Clear - Good: Conversation ID changed, old messages should not reload.');
+            }
           })
           .catch(error => {
             console.error('[MPAI Debug] Error clearing conversation:', error);
@@ -743,6 +769,8 @@ class UIManager {
         console.error('[MPAI Debug] mpaiChat or clearHistory function not available');
         this.showError('Chat system not properly initialized');
       }
+    } else {
+      console.log('[MPAI Debug] Clear - User cancelled clear operation');
     }
   }
   
@@ -825,7 +853,60 @@ class UIManager {
     // Get all messages from the state
     const messages = this._stateManager.getState('conversation.messages') || [];
     
-    if (!Array.isArray(messages) || messages.length === 0) {
+    console.log('[MPAI Debug] Download - messages from state:', messages);
+    console.log('[MPAI Debug] Download - messages type:', typeof messages);
+    console.log('[MPAI Debug] Download - messages length:', Array.isArray(messages) ? messages.length : 'not array');
+    
+    // DEBUG: Log the entire state for comparison
+    const fullState = this._stateManager.getState();
+    console.log('[MPAI Debug] Download - Full state manager state:', fullState);
+    
+    // DEBUG: Also check if we can get messages from DOM as fallback
+    const domMessages = document.querySelectorAll('.mpai-chat-message');
+    console.log('[MPAI Debug] Download - DOM messages found:', domMessages.length);
+    
+    // Handle both array and object formats with improved robustness
+    let messagesArray = [];
+    if (Array.isArray(messages)) {
+      messagesArray = messages;
+      console.log('[MPAI Debug] Download - Messages are in array format');
+    } else if (messages && typeof messages === 'object') {
+      // Handle object format (could be indexed object)
+      messagesArray = Object.values(messages);
+      console.log('[MPAI Debug] Download - Messages converted from object to array');
+    } else {
+      console.log('[MPAI Debug] Download - Messages are not in expected format:', typeof messages);
+    }
+    
+    // Filter out any invalid messages
+    messagesArray = messagesArray.filter(msg =>
+      msg &&
+      typeof msg === 'object' &&
+      msg.content &&
+      typeof msg.content === 'string' &&
+      msg.content.trim().length > 0
+    );
+    
+    console.log('[MPAI Debug] Download - Final messagesArray:', messagesArray);
+    console.log('[MPAI Debug] Download - Final messagesArray length after filtering:', messagesArray.length);
+    
+    if (messagesArray.length === 0) {
+      console.log('[MPAI Debug] Download - No valid messages found, checking DOM fallback...');
+      
+      // Enhanced DOM fallback check - exclude welcome messages
+      const validDomMessages = Array.from(domMessages).filter(el =>
+        !el.classList.contains('mpai-chat-welcome') &&
+        el.querySelector('.mpai-chat-message-content') &&
+        el.querySelector('.mpai-chat-message-content').textContent.trim().length > 0
+      );
+      
+      console.log('[MPAI Debug] Download - Valid DOM messages found:', validDomMessages.length);
+      
+      if (validDomMessages.length > 0) {
+        console.log('[MPAI Debug] Download - Using DOM fallback method');
+        this._downloadFromDOM();
+        return;
+      }
       this.showError('No conversation to download');
       return;
     }
@@ -834,7 +915,7 @@ class UIManager {
     let conversationText = 'MemberPress AI Assistant Conversation\n';
     conversationText += '=====================================\n\n';
     
-    messages.forEach((message, index) => {
+    messagesArray.forEach((message, index) => {
       const role = message.role === 'user' ? 'You' : 'AI Assistant';
       const timestamp = message.timestamp ? new Date(message.timestamp).toLocaleString() : '';
       conversationText += `${role}${timestamp ? ` (${timestamp})` : ''}:\n`;
@@ -853,6 +934,70 @@ class UIManager {
     URL.revokeObjectURL(url);
     
     console.log('[MPAI Debug] Conversation downloaded');
+  }
+  
+  /**
+   * Download conversation from DOM as fallback (like old system)
+   *
+   * @private
+   * @returns {void}
+   */
+  _downloadFromDOM() {
+    console.log('[MPAI Debug] Using DOM fallback for download');
+    
+    const domMessages = document.querySelectorAll('.mpai-chat-message');
+    let conversationText = 'MemberPress AI Assistant Conversation\n';
+    conversationText += '=====================================\n\n';
+    
+    let validMessageCount = 0;
+    
+    domMessages.forEach((messageEl, index) => {
+      // Skip welcome messages and empty messages
+      if (messageEl.classList.contains('mpai-chat-welcome')) {
+        console.log('[MPAI Debug] DOM Download - Skipping welcome message');
+        return;
+      }
+      
+      const isUser = messageEl.classList.contains('mpai-chat-message-user');
+      const role = isUser ? 'You' : 'AI Assistant';
+      const contentEl = messageEl.querySelector('.mpai-chat-message-content');
+      const content = contentEl ? contentEl.textContent.trim() : '';
+      
+      // Skip empty messages
+      if (!content || content.length === 0) {
+        console.log('[MPAI Debug] DOM Download - Skipping empty message');
+        return;
+      }
+      
+      // Get timestamp if available
+      const timestamp = messageEl.dataset.timestamp ?
+        new Date(messageEl.dataset.timestamp).toLocaleString() : '';
+      
+      conversationText += `${role}${timestamp ? ` (${timestamp})` : ''}:\n`;
+      conversationText += `${content}\n\n`;
+      validMessageCount++;
+    });
+    
+    console.log('[MPAI Debug] DOM Download - Valid messages processed:', validMessageCount);
+    
+    if (validMessageCount === 0) {
+      console.log('[MPAI Debug] DOM Download - No valid messages found in DOM');
+      this.showError('No valid conversation messages found to download');
+      return;
+    }
+    
+    // Create and download file
+    const blob = new Blob([conversationText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mpai-conversation-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    console.log('[MPAI Debug] Conversation downloaded from DOM with', validMessageCount, 'messages');
   }
   
   /**

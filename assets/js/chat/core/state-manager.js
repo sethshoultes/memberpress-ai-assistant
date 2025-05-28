@@ -202,22 +202,63 @@ class StateManager {
    * @returns {Object} The updated conversation state
    */
   clearConversation() {
-    // Reset the conversation.messages array to empty
+    // DEBUG: Log current state before clearing
+    const stateBefore = this.getState();
+    console.log('[MPAI Debug] StateManager.clearConversation - State before clearing:', stateBefore);
+    console.log('[MPAI Debug] StateManager.clearConversation - Conversation ID before:', stateBefore?.conversation?.id);
+    console.log('[MPAI Debug] StateManager.clearConversation - Messages count before:',
+      stateBefore?.conversation?.messages ?
+      (Array.isArray(stateBefore.conversation.messages) ? stateBefore.conversation.messages.length : Object.keys(stateBefore.conversation.messages).length) :
+      'No messages found');
+    
+    // Reset the conversation.messages array to empty AND generate a new conversation ID
+    // This prevents old messages from reloading on page refresh
+    const newConversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('[MPAI Debug] StateManager.clearConversation - Generating new conversation ID:', newConversationId);
+    
     const updates = {
       conversation: {
-        messages: []
+        messages: [],
+        id: newConversationId  // NEW: Generate fresh conversation ID to prevent old message reload
       }
     };
+    
+    console.log('[MPAI Debug] StateManager.clearConversation - Updates to apply:', updates);
     
     // Use setState to update the state and trigger events
     this.setState(updates, 'conversation.cleared');
     
+    // DEBUG: Log state after clearing
+    const stateAfter = this.getState();
+    console.log('[MPAI Debug] StateManager.clearConversation - State after clearing:', stateAfter);
+    console.log('[MPAI Debug] StateManager.clearConversation - Conversation ID after:', stateAfter?.conversation?.id);
+    
+    // DEBUG: Check if conversation ID changed (key diagnostic)
+    if (stateBefore?.conversation?.id === stateAfter?.conversation?.id) {
+      console.warn('[MPAI Debug] StateManager.clearConversation - WARNING: Conversation ID did not change!');
+      console.warn('[MPAI Debug] StateManager.clearConversation - This means old messages may reload on page refresh');
+      console.warn('[MPAI Debug] StateManager.clearConversation - The old system generated a new conversation ID to prevent this');
+    } else {
+      console.log('[MPAI Debug] StateManager.clearConversation - Good: Conversation ID changed from',
+        stateBefore?.conversation?.id, 'to', stateAfter?.conversation?.id);
+    }
+    
     // Publish a specific event for clearing the conversation if event bus exists
     if (this._eventBus) {
       this._eventBus.publish('conversation.cleared', {
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        oldConversationId: stateBefore?.conversation?.id,
+        newConversationId: stateAfter?.conversation?.id
       });
     }
+    
+    // CRITICAL: Immediately persist the cleared state to prevent old messages from reloading
+    console.log('[MPAI Debug] StateManager.clearConversation - Persisting cleared state immediately');
+    this.persistState().then(success => {
+      console.log('[MPAI Debug] StateManager.clearConversation - State persistence result:', success);
+    }).catch(error => {
+      console.error('[MPAI Debug] StateManager.clearConversation - Failed to persist cleared state:', error);
+    });
     
     return this.getState('conversation');
   }
@@ -430,8 +471,18 @@ class StateManager {
     
     // Iterate through source properties
     Object.keys(source).forEach(key => {
-      // If the property is an object, recursively merge
-      if (source[key] && typeof source[key] === 'object' &&
+      // SURGICAL FIX: Only handle conversation.messages specifically
+      // This prevents old messages from being merged back in after clearing
+      if (key === 'conversation' && source[key] && source[key].messages !== undefined) {
+        console.log('[MPAI Debug] _deepMerge - Handling conversation with messages, using replacement strategy');
+        output[key] = {
+          ...target[key],
+          ...source[key],
+          messages: source[key].messages  // REPLACE, don't merge messages array
+        };
+      }
+      // If the property is an object, recursively merge (normal deep merge behavior)
+      else if (source[key] && typeof source[key] === 'object' &&
           target[key] && typeof target[key] === 'object') {
         output[key] = this._deepMerge(target[key], source[key]);
       } else {

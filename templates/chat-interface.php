@@ -103,7 +103,8 @@ if (!defined('ABSPATH')) {
                     <li><a href="#" class="mpai-command-item" data-command="wp user list">wp user list</a></li>
                     <li><a href="#" class="mpai-command-item" data-command="wp post list">wp post list</a></li>
                 </ul>
-                
+            </div>
+            <div class="mpai-command-list">
                 <h5><?php esc_html_e('Content Creation', 'memberpress-ai-assistant'); ?></h5>
                 <ul>
                     <li><a href="#" class="mpai-command-item" data-command="Create a blog post about">Create a blog post</a></li>

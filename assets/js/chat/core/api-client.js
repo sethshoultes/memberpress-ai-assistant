@@ -170,7 +170,58 @@ class APIClient {
    * @returns {Promise<boolean>} A promise that resolves with success status
    */
   async clearConversation() {
-    // Clear conversation history
+    try {
+      console.log('[MPAI Debug] APIClient.clearConversation - Sending clear request to server');
+      
+      // Generate a unique request ID
+      const requestId = this._generateRequestId();
+      
+      // Create an abort controller for this request
+      const abortController = new AbortController();
+      this._abortControllers.set(requestId, abortController);
+      
+      // Prepare the request data for clearing conversation
+      const data = {
+        action: 'clear_conversation'
+      };
+      
+      // Make the API request to clear conversation
+      const response = await this._makeRequest('clear', data, {
+        signal: abortController.signal,
+        timeout: this._config.timeout
+      });
+      
+      // Remove the abort controller
+      this._abortControllers.delete(requestId);
+      
+      console.log('[MPAI Debug] APIClient.clearConversation - Server response:', response);
+      
+      // Publish an event with the response
+      if (this._eventBus) {
+        this._eventBus.publish('api.conversation.cleared', {
+          requestId,
+          response
+        });
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('[MPAI Debug] APIClient.clearConversation - Error clearing conversation on server:', error);
+      
+      // Even if server clear fails, we should continue with local clear
+      // This ensures the frontend is cleared even if backend has issues
+      console.log('[MPAI Debug] APIClient.clearConversation - Continuing with local clear despite server error');
+      
+      // Publish an event with the error
+      if (this._eventBus) {
+        this._eventBus.publish('api.conversation.clear.error', {
+          error: error
+        });
+      }
+      
+      // Return true to allow local clearing to proceed
+      return true;
+    }
   }
 
   /**

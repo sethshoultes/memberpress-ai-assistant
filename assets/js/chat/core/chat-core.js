@@ -340,20 +340,55 @@ class ChatCore {
     }
     
     try {
+      // DEBUG: Log current state before clearing
+      const stateBefore = this._stateManager.getState();
+      console.log('[MPAI Debug] ChatCore.clearHistory - State before clearing:', stateBefore);
+      console.log('[MPAI Debug] ChatCore.clearHistory - Conversation ID before:', stateBefore?.conversation?.id);
+      console.log('[MPAI Debug] ChatCore.clearHistory - Messages count before:',
+        stateBefore?.conversation?.messages ?
+        (Array.isArray(stateBefore.conversation.messages) ? stateBefore.conversation.messages.length : Object.keys(stateBefore.conversation.messages).length) :
+        'No messages found');
+      
       // Clear conversation history in state manager
+      console.log('[MPAI Debug] ChatCore.clearHistory - Calling stateManager.clearConversation()');
       this._stateManager.clearConversation();
       console.log('[MPAI Debug] Cleared conversation history in state manager');
       
+      // DEBUG: Log state after state manager clear
+      const stateAfterStateManagerClear = this._stateManager.getState();
+      console.log('[MPAI Debug] ChatCore.clearHistory - State after state manager clear:', stateAfterStateManagerClear);
+      console.log('[MPAI Debug] ChatCore.clearHistory - Conversation ID after state manager clear:', stateAfterStateManagerClear?.conversation?.id);
+      
       // Clear conversation on the server if API client is available
       if (this._apiClient && typeof this._apiClient.clearConversation === 'function') {
+        console.log('[MPAI Debug] ChatCore.clearHistory - Calling apiClient.clearConversation()');
         await this._apiClient.clearConversation();
         console.log('[MPAI Debug] Cleared conversation history on server');
+      } else {
+        console.log('[MPAI Debug] ChatCore.clearHistory - No API client clearConversation method available');
+      }
+      
+      // DEBUG: Log final state after server clear
+      const stateFinal = this._stateManager.getState();
+      console.log('[MPAI Debug] ChatCore.clearHistory - Final state after server clear:', stateFinal);
+      console.log('[MPAI Debug] ChatCore.clearHistory - Final conversation ID:', stateFinal?.conversation?.id);
+      
+      // DEBUG: Check if conversation ID changed (key diagnostic)
+      if (stateBefore?.conversation?.id === stateFinal?.conversation?.id) {
+        console.warn('[MPAI Debug] ChatCore.clearHistory - WARNING: Conversation ID did not change!');
+        console.warn('[MPAI Debug] ChatCore.clearHistory - This means old messages may reload on page refresh');
+        console.warn('[MPAI Debug] ChatCore.clearHistory - Old system created new conversation ID to prevent this');
+      } else {
+        console.log('[MPAI Debug] ChatCore.clearHistory - Good: Conversation ID changed from',
+          stateBefore?.conversation?.id, 'to', stateFinal?.conversation?.id);
       }
       
       // Publish a history cleared event
       if (this._eventBus) {
         this._eventBus.publish('chat.history.cleared', {
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          oldConversationId: stateBefore?.conversation?.id,
+          newConversationId: stateFinal?.conversation?.id
         });
         console.log('[MPAI Debug] Published chat.history.cleared event');
       }
