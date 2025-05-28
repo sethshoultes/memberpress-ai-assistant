@@ -130,6 +130,10 @@ EOT;
         // Extract the intent from the request
         $intent = $request['intent'] ?? '';
         
+        // Add comprehensive logging for membership creation debugging
+        \MemberpressAiAssistant\Utilities\debug_log("[MEMBERSHIP DEBUG] MemberPressAgent processing request with intent: " . $intent);
+        \MemberpressAiAssistant\Utilities\debug_log("[MEMBERSHIP DEBUG] Full request: " . json_encode($request, JSON_PRETTY_PRINT));
+        
         // Process based on intent
         switch ($intent) {
             case 'create_membership':
@@ -194,22 +198,28 @@ EOT;
         $period_type = 'month';
         $period = 1;
         
+        \MemberpressAiAssistant\Utilities\debug_log("[MEMBERSHIP DEBUG] Parsing message: " . $message);
+        
         // Parse the message to extract membership details
         if (preg_match('/called\s+([^\s]+)/i', $message, $matches)) {
             $name = $matches[1];
+            \MemberpressAiAssistant\Utilities\debug_log("[MEMBERSHIP DEBUG] Extracted name: " . $name);
         }
         
         if (preg_match('/\$(\d+(\.\d+)?)/i', $message, $matches)) {
             $price = floatval($matches[1]);
+            \MemberpressAiAssistant\Utilities\debug_log("[MEMBERSHIP DEBUG] Extracted price: " . $price);
         }
         
         if (preg_match('/per\s+(month|year|week|day)/i', $message, $matches)) {
             $period_type = strtolower($matches[1]);
+            \MemberpressAiAssistant\Utilities\debug_log("[MEMBERSHIP DEBUG] Extracted period_type: " . $period_type);
         }
         
         if (preg_match('/for\s+(\d+)\s+(month|year|week|day)/i', $message, $matches)) {
             $period = intval($matches[1]);
             $period_type = strtolower($matches[2]);
+            \MemberpressAiAssistant\Utilities\debug_log("[MEMBERSHIP DEBUG] Extracted period: " . $period . " " . $period_type);
         }
         
         // Prepare membership data for MemberPress

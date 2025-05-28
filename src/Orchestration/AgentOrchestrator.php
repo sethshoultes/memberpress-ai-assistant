@@ -798,6 +798,7 @@ class AgentOrchestrator {
         
         // Log the intent being passed to the agent
         \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Passing intent to agent: " . $request['intent']);
+        \MemberpressAiAssistant\Utilities\debug_log("[MEMBERSHIP DEBUG] Agent selected: " . $agent->getAgentName() . " for intent: " . $request['intent']);
         
         // Process the request with the agent
         $response = $agent->processRequest($request, $context);

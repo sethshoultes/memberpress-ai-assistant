@@ -110,6 +110,7 @@ class LlmChatAdapter {
                 // Check by ID
                 if (stripos($toolId, 'WordPress') !== false ||
                     stripos($toolId, 'MemberPress') !== false ||
+                    stripos($toolId, 'memberpress') !== false ||
                     stripos($toolId, 'Content') !== false ||
                     stripos($toolId, 'WP') !== false) {
                     $isWpTool = true;
@@ -126,6 +127,7 @@ class LlmChatAdapter {
                 
                 if ($isWpTool) {
                     $this->wpTools[$toolId] = $tool;
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Added tool to wpTools: ' . $toolId . ' (' . $className . ')');
                 }
             }
             
@@ -250,6 +252,12 @@ class LlmChatAdapter {
             // Check if this is a WordPress tool operation
             if (strpos($toolName, 'wordpress_') === 0) {
                 $this->processWordPressToolOperation($toolName, $arguments, $results);
+                continue;
+            }
+            
+            // Check if this is a MemberPress tool operation
+            if ($toolName === 'create_membership' || $toolName === 'list_memberships') {
+                $this->processMemberPressToolOperation($toolName, $arguments, $results);
                 continue;
             }
             
@@ -490,6 +498,63 @@ class LlmChatAdapter {
     }
     
     /**
+     * Process MemberPress tool operation
+     *
+     * @param string $toolName The tool name
+     * @param array $arguments The tool arguments
+     * @param array &$results The results array to add to
+     * @return void
+     */
+    private function processMemberPressToolOperation(string $toolName, array $arguments, array &$results): void {
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Processing MemberPress tool operation: ' . $toolName);
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Tool arguments: ' . json_encode($arguments));
+        
+        // Find the MemberPress tool
+        $memberPressTool = null;
+        foreach ($this->wpTools as $wpTool) {
+            if ($wpTool instanceof \MemberpressAiAssistant\Tools\MemberPressTool) {
+                $memberPressTool = $wpTool;
+                break;
+            }
+        }
+        
+        if (!$memberPressTool) {
+            $results[] = [
+                'tool' => $toolName,
+                'error' => 'MemberPress tool not found'
+            ];
+            
+            \MemberpressAiAssistant\Utilities\LoggingUtility::warning('[MEMBERSHIP DEBUG] MemberPress tool not found');
+            return;
+        }
+        
+        try {
+            // Execute the MemberPress tool with the operation
+            if ($toolName === 'create_membership') {
+                $result = $memberPressTool->createMembership($arguments);
+            } elseif ($toolName === 'list_memberships') {
+                $result = $memberPressTool->listMemberships($arguments);
+            } else {
+                throw new \Exception('Unknown MemberPress operation: ' . $toolName);
+            }
+            
+            $results[] = [
+                'tool' => $toolName,
+                'result' => $result
+            ];
+            
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] MemberPress tool operation result: ' . json_encode($result));
+        } catch (\Exception $e) {
+            $results[] = [
+                'tool' => $toolName,
+                'error' => $e->getMessage()
+            ];
+            
+            \MemberpressAiAssistant\Utilities\LoggingUtility::warning('[MEMBERSHIP DEBUG] MemberPress tool operation error: ' . $e->getMessage());
+        }
+    }
+    
+    /**
      * Convert conversation history to LLM messages format
      *
      * @param array $history The conversation history
@@ -561,9 +626,17 @@ class LlmChatAdapter {
         $llmTools = [];
         
         foreach ($this->wpTools as $toolId => $tool) {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Processing tool for LLM: ' . $toolId . ' (' . get_class($tool) . ')');
+            
             // Special handling for WordPressTool
             if ($tool instanceof \MemberpressAiAssistant\Tools\WordPressTool) {
                 $this->prepareWordPressToolOperations($tool, $llmTools);
+                continue;
+            }
+            
+            // Special handling for MemberPressTool
+            if ($tool instanceof \MemberpressAiAssistant\Tools\MemberPressTool) {
+                $this->prepareMemberPressToolOperations($tool, $llmTools);
                 continue;
             }
             
@@ -602,6 +675,8 @@ class LlmChatAdapter {
                         'required' => $required
                     ]
                 ];
+                
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Added method to LLM tools: ' . $method->getName());
             }
         }
         
@@ -652,6 +727,55 @@ class LlmChatAdapter {
         } catch (\Exception $e) {
             \MemberpressAiAssistant\Utilities\LoggingUtility::error('Error preparing WordPress tool operations: ' . $e->getMessage());
         }
+    }
+    
+    /**
+     * Prepare MemberPress tool operations
+     *
+     * @param \MemberpressAiAssistant\Tools\MemberPressTool $tool The MemberPress tool
+     * @param array &$llmTools The LLM tools array to add to
+     * @return void
+     */
+    private function prepareMemberPressToolOperations(\MemberpressAiAssistant\Tools\MemberPressTool $tool, array &$llmTools): void {
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Preparing MemberPress tool operations');
+        
+        // Add create_membership operation
+        $llmTools[] = [
+            'name' => 'create_membership',
+            'description' => 'Create a new MemberPress membership with specified title, price, and billing terms',
+            'parameters' => [
+                'type' => 'object',
+                'properties' => [
+                    'title' => [
+                        'type' => 'string',
+                        'description' => 'The title/name of the membership'
+                    ],
+                    'price' => [
+                        'type' => 'number',
+                        'description' => 'The price of the membership'
+                    ],
+                    'period' => [
+                        'type' => 'string',
+                        'description' => 'The billing period (weekly, monthly, yearly, lifetime)',
+                        'enum' => ['weekly', 'monthly', 'yearly', 'lifetime']
+                    ]
+                ],
+                'required' => ['title', 'price', 'period']
+            ]
+        ];
+        
+        // Add list_memberships operation
+        $llmTools[] = [
+            'name' => 'list_memberships',
+            'description' => 'List all MemberPress memberships',
+            'parameters' => [
+                'type' => 'object',
+                'properties' => (object)[],  // Empty object, not empty array
+                'required' => []
+            ]
+        ];
+        
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Added MemberPress tool operations: create_membership, list_memberships');
     }
     
     /**

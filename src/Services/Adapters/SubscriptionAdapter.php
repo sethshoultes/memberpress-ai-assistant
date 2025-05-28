@@ -39,10 +39,19 @@ class SubscriptionAdapter {
                 throw new \Exception('MemberPress is not active');
             }
 
+            // MPAI DEBUG: Log subscription creation attempt
+            error_log('MPAI DEBUG: SubscriptionAdapter creating MeprSubscription with ID: ' . $id);
+            
             $subscription = new \MeprSubscription($id);
+            
+            // MPAI DEBUG: Check subscription object properties
+            error_log('MPAI DEBUG: SubscriptionAdapter MeprSubscription created - ID: ' . ($subscription->id ?? 'NULL') .
+                     ', user_id: ' . ($subscription->user_id ?? 'NULL') .
+                     ', product_id: ' . ($subscription->product_id ?? 'NULL'));
             
             // Check if the subscription exists
             if (!$subscription->id || $subscription->id == 0) {
+                error_log('MPAI DEBUG: SubscriptionAdapter - Invalid subscription ID, returning null');
                 return null;
             }
             
@@ -135,7 +144,16 @@ class SubscriptionAdapter {
 
             // Convert results to MeprSubscription objects
             foreach ($results as $result) {
-                $subscriptions[] = new \MeprSubscription($result->id);
+                // MPAI DEBUG: Log bulk subscription creation
+                error_log('MPAI DEBUG: SubscriptionAdapter bulk creating MeprSubscription with ID: ' . $result->id);
+                
+                $subscription = new \MeprSubscription($result->id);
+                
+                // MPAI DEBUG: Check bulk subscription object
+                error_log('MPAI DEBUG: SubscriptionAdapter bulk MeprSubscription - ID: ' . ($subscription->id ?? 'NULL') .
+                         ', user_id: ' . ($subscription->user_id ?? 'NULL'));
+                
+                $subscriptions[] = $subscription;
             }
 
             return $subscriptions;
@@ -167,8 +185,14 @@ class SubscriptionAdapter {
                 throw new \Exception('User ID and Product ID are required');
             }
 
+            // MPAI DEBUG: Log new subscription creation
+            error_log('MPAI DEBUG: SubscriptionAdapter creating new empty MeprSubscription');
+            
             // Create a new subscription
             $subscription = new \MeprSubscription();
+            
+            // MPAI DEBUG: Check new subscription object
+            error_log('MPAI DEBUG: SubscriptionAdapter new MeprSubscription created - ID: ' . ($subscription->id ?? 'NULL'));
             
             // Set subscription properties
             if (isset($data['user_id'])) {

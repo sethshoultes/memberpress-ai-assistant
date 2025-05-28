@@ -39,10 +39,19 @@ class TransactionAdapter {
                 throw new \Exception('MemberPress is not active');
             }
 
+            // MPAI DEBUG: Log transaction creation attempt
+            error_log('MPAI DEBUG: TransactionAdapter creating MeprTransaction with ID: ' . $id);
+            
             $transaction = new \MeprTransaction($id);
+            
+            // MPAI DEBUG: Check transaction object properties
+            error_log('MPAI DEBUG: TransactionAdapter MeprTransaction created - ID: ' . ($transaction->id ?? 'NULL') .
+                     ', user_id: ' . ($transaction->user_id ?? 'NULL') .
+                     ', product_id: ' . ($transaction->product_id ?? 'NULL'));
             
             // Check if the transaction exists
             if (!$transaction->id || $transaction->id == 0) {
+                error_log('MPAI DEBUG: TransactionAdapter - Invalid transaction ID, returning null');
                 return null;
             }
             
@@ -156,7 +165,16 @@ class TransactionAdapter {
 
             // Convert results to MeprTransaction objects
             foreach ($results as $result) {
-                $transactions[] = new \MeprTransaction($result->id);
+                // MPAI DEBUG: Log bulk transaction creation
+                error_log('MPAI DEBUG: TransactionAdapter bulk creating MeprTransaction with ID: ' . $result->id);
+                
+                $transaction = new \MeprTransaction($result->id);
+                
+                // MPAI DEBUG: Check bulk transaction object
+                error_log('MPAI DEBUG: TransactionAdapter bulk MeprTransaction - ID: ' . ($transaction->id ?? 'NULL') .
+                         ', user_id: ' . ($transaction->user_id ?? 'NULL'));
+                
+                $transactions[] = $transaction;
             }
 
             return $transactions;
@@ -188,8 +206,14 @@ class TransactionAdapter {
                 throw new \Exception('User ID and Product ID are required');
             }
 
+            // MPAI DEBUG: Log new transaction creation
+            error_log('MPAI DEBUG: TransactionAdapter creating new empty MeprTransaction');
+            
             // Create a new transaction
             $transaction = new \MeprTransaction();
+            
+            // MPAI DEBUG: Check new transaction object
+            error_log('MPAI DEBUG: TransactionAdapter new MeprTransaction created - ID: ' . ($transaction->id ?? 'NULL'));
             
             // Set transaction properties
             if (isset($data['user_id'])) {
@@ -464,8 +488,15 @@ class TransactionAdapter {
                 return null;
             }
             
+            // MPAI DEBUG: Log subscription creation in transaction context
+            error_log('MPAI DEBUG: TransactionAdapter creating MeprSubscription with ID: ' . $transaction->subscription_id);
+            
             // Get the subscription
             $subscription = new \MeprSubscription($transaction->subscription_id);
+            
+            // MPAI DEBUG: Check subscription object in transaction context
+            error_log('MPAI DEBUG: TransactionAdapter MeprSubscription created - ID: ' . ($subscription->id ?? 'NULL') .
+                     ', user_id: ' . ($subscription->user_id ?? 'NULL'));
             
             // Check if the subscription exists
             if (!$subscription->id || $subscription->id == 0) {
@@ -530,8 +561,15 @@ class TransactionAdapter {
                 return null;
             }
             
+            // MPAI DEBUG: Log user creation in transaction context
+            error_log('MPAI DEBUG: TransactionAdapter creating MeprUser with ID: ' . $transaction->user_id);
+            
             // Get the user
             $user = new \MeprUser($transaction->user_id);
+            
+            // MPAI DEBUG: Check user object in transaction context
+            error_log('MPAI DEBUG: TransactionAdapter MeprUser created - ID: ' . ($user->ID ?? 'NULL') .
+                     ', user_login: ' . ($user->user_login ?? 'NULL'));
             
             // Check if the user exists
             if (!$user->ID || $user->ID == 0) {

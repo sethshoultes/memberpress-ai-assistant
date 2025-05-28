@@ -230,7 +230,8 @@ class ProductTransformer {
      * @return string The product pricing display text
      */
     protected function getPricingDisplayText(\MeprProduct $product): string {
-        return $product->pricing_display_text;
+        // Handle null values by returning empty string as fallback
+        return $product->pricing_display_text ?? '';
     }
 
     /**
@@ -240,7 +241,20 @@ class ProductTransformer {
      * @return string Who can purchase the product
      */
     protected function getWhoCanPurchase(\MeprProduct $product): string {
-        return $product->who_can_purchase;
+        $whoCanPurchase = $product->who_can_purchase;
+        
+        // Handle case where who_can_purchase might be an array
+        if (is_array($whoCanPurchase)) {
+            // Convert array to JSON string for consistent string return type
+            return json_encode($whoCanPurchase);
+        }
+        
+        // Handle null or other non-string values
+        if (!is_string($whoCanPurchase)) {
+            return '';
+        }
+        
+        return $whoCanPurchase;
     }
 
     /**

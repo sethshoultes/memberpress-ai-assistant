@@ -205,6 +205,9 @@ class APIClient {
    */
   async _makeRequest(endpoint, data, options = {}) {
     try {
+      console.log('[MPAI Debug] Making request to:', this._config.baseUrl);
+      console.log('[MPAI Debug] Request data:', data);
+      
       const response = await fetch(this._config.baseUrl, {
         method: 'POST',
         headers: {
@@ -215,22 +218,47 @@ class APIClient {
         signal: options.signal
       });
       
+      console.log('[MPAI Debug] Response status:', response.status);
+      console.log('[MPAI Debug] Response headers:', Object.fromEntries(response.headers.entries()));
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('[MPAI Debug] HTTP error response body:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
       
-      const responseData = await response.json();
+      const responseText = await response.text();
+      console.log('[MPAI Debug] Raw response text:', responseText);
+      
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+        console.log('[MPAI Debug] Parsed response data:', responseData);
+      } catch (parseError) {
+        console.error('[MPAI Debug] JSON parsing error:', parseError);
+        console.error('[MPAI Debug] Failed to parse response:', responseText);
+        throw new Error(`JSON parsing failed: ${parseError.message}`);
+      }
+      
       return responseData;
     } catch (error) {
+      console.error('[MPAI Debug] Request failed, falling back to mock response');
+      console.error('[MPAI Debug] Error details:', error);
+      console.error('[MPAI Debug] Error type:', error.constructor.name);
+      console.error('[MPAI Debug] Error message:', error.message);
+      
       // Fallback to mock response
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      return {
+      const mockResponse = {
         status: 'success',
         message: `Mock response: "${data.message}"`,
         conversation_id: data.conversation_id || `mock_conv_${Date.now()}`,
         timestamp: new Date().toISOString()
       };
+      
+      console.log('[MPAI Debug] Returning mock response:', mockResponse);
+      return mockResponse;
     }
   }
 

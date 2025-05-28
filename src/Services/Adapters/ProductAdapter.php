@@ -122,6 +122,20 @@ class ProductAdapter {
      */
     public function create(array $data) {
         try {
+            // Add comprehensive debug logging
+            if ($this->logger) {
+                $this->logger->info('[MEMBERSHIP DEBUG] ProductAdapter::create - Data received from service', [
+                    'received_data' => $data,
+                    'data_keys' => array_keys($data),
+                    'title_isset' => isset($data['title']),
+                    'title_value' => $data['title'] ?? 'NOT_SET',
+                    'price_isset' => isset($data['price']),
+                    'price_value' => $data['price'] ?? 'NOT_SET',
+                    'period_type_isset' => isset($data['period_type']),
+                    'period_type_value' => $data['period_type'] ?? 'NOT_SET'
+                ]);
+            }
+            
             if (!class_exists('\MeprProduct')) {
                 throw new \Exception('MemberPress is not active');
             }
@@ -132,6 +146,12 @@ class ProductAdapter {
             // Set product properties
             if (isset($data['title'])) {
                 $product->post_title = sanitize_text_field($data['title']);
+                if ($this->logger) {
+                    $this->logger->info('[MEMBERSHIP DEBUG] ProductAdapter::create - Set title', [
+                        'original_title' => $data['title'],
+                        'sanitized_title' => $product->post_title
+                    ]);
+                }
             }
             
             if (isset($data['description'])) {
@@ -140,14 +160,32 @@ class ProductAdapter {
             
             if (isset($data['price'])) {
                 $product->price = floatval($data['price']);
+                if ($this->logger) {
+                    $this->logger->info('[MEMBERSHIP DEBUG] ProductAdapter::create - Set price', [
+                        'original_price' => $data['price'],
+                        'converted_price' => $product->price
+                    ]);
+                }
             }
             
             if (isset($data['period'])) {
                 $product->period = intval($data['period']);
+                if ($this->logger) {
+                    $this->logger->info('[MEMBERSHIP DEBUG] ProductAdapter::create - Set period', [
+                        'original_period' => $data['period'],
+                        'converted_period' => $product->period
+                    ]);
+                }
             }
             
             if (isset($data['period_type'])) {
                 $product->period_type = sanitize_text_field($data['period_type']);
+                if ($this->logger) {
+                    $this->logger->info('[MEMBERSHIP DEBUG] ProductAdapter::create - Set period_type', [
+                        'original_period_type' => $data['period_type'],
+                        'sanitized_period_type' => $product->period_type
+                    ]);
+                }
             }
             
             if (isset($data['trial'])) {
@@ -270,8 +308,30 @@ class ProductAdapter {
                 $product->thank_you_page_url = esc_url_raw($data['thank_you_page_url']);
             }
             
+            // Log final product state before saving
+            if ($this->logger) {
+                $this->logger->info('[MEMBERSHIP DEBUG] ProductAdapter::create - Final product state before save', [
+                    'product_post_title' => $product->post_title ?? 'NOT_SET',
+                    'product_price' => $product->price ?? 'NOT_SET',
+                    'product_period' => $product->period ?? 'NOT_SET',
+                    'product_period_type' => $product->period_type ?? 'NOT_SET',
+                    'product_id_before_save' => $product->ID ?? 'NOT_SET'
+                ]);
+            }
+            
             // Save the product
             $product->store();
+            
+            // Log product state after saving
+            if ($this->logger) {
+                $this->logger->info('[MEMBERSHIP DEBUG] ProductAdapter::create - Product state after save', [
+                    'product_id_after_save' => $product->ID ?? 'NOT_SET',
+                    'product_post_title_after_save' => $product->post_title ?? 'NOT_SET',
+                    'product_price_after_save' => $product->price ?? 'NOT_SET',
+                    'product_period_type_after_save' => $product->period_type ?? 'NOT_SET',
+                    'save_successful' => !empty($product->ID)
+                ]);
+            }
             
             return $product;
         } catch (\Exception $e) {

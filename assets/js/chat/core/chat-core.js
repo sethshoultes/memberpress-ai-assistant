@@ -255,21 +255,45 @@ class ChatCore {
       console.log('[MPAI Debug] Message sent successfully:', response);
       
       // Update the state with the response
-      if (response.conversation_id) {
+      // Handle both direct response.conversation_id and response.data.conversation_id formats
+      let conversationId = response.conversation_id || response.data?.conversation_id;
+      if (conversationId) {
         this._stateManager.setState({
           conversation: {
-            id: response.conversation_id
+            id: conversationId
           }
         });
+        console.log('[MPAI Debug] Updated conversation ID:', conversationId);
       }
       
       // Add the assistant message to the UI
+      // Handle both direct response.message and response.data.message formats
+      console.log('[MPAI Debug] Processing response for assistant message:', response);
+      
+      let messageContent = null;
       if (response.message) {
-        this._stateManager.addMessage({
+        messageContent = response.message;
+        console.log('[MPAI Debug] Found message in response.message:', messageContent);
+      } else if (response.data && response.data.message) {
+        messageContent = response.data.message;
+        console.log('[MPAI Debug] Found message in response.data.message:', messageContent);
+      }
+      
+      if (messageContent) {
+        console.log('[MPAI Debug] About to add assistant message to state manager');
+        const messageObj = {
           role: 'assistant',
-          content: response.message,
-          timestamp: response.timestamp || new Date().toISOString()
-        });
+          content: messageContent,
+          timestamp: response.timestamp || response.data?.timestamp || new Date().toISOString()
+        };
+        console.log('[MPAI Debug] Message object to add:', messageObj);
+        
+        const result = this._stateManager.addMessage(messageObj);
+        console.log('[MPAI Debug] StateManager.addMessage result:', result);
+        console.log('[MPAI Debug] Current state after adding message:', this._stateManager.getState());
+      } else {
+        console.warn('[MPAI Debug] No message content found in response:', response);
+        console.warn('[MPAI Debug] Response structure:', JSON.stringify(response, null, 2));
       }
       
       return response;

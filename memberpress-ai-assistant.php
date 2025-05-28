@@ -28,6 +28,68 @@ define('MPAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MPAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('MPAI_VERSION', '1.0.0');
 
+// TARGETED FIX: Only suppress specific trim() deprecation warning during JSON responses
+add_action('init', function() {
+    // Set custom error handler specifically for trim() deprecation warnings during JSON responses
+    set_error_handler(function($errno, $errstr, $errfile, $errline) {
+        // Only handle the specific trim() deprecation warning from WordPress core
+        if ($errno === E_DEPRECATED &&
+            strpos($errstr, 'trim(): Passing null to parameter') !== false &&
+            strpos($errfile, 'class-wp-hook.php') !== false) {
+            
+            // Only suppress during JSON response contexts to maintain clean API responses
+            $is_json_context = false;
+            
+            // Check for AJAX requests that expect JSON responses
+            if (defined('DOING_AJAX') && DOING_AJAX &&
+                isset($_REQUEST['action']) && $_REQUEST['action'] === 'mpai_chat') {
+                $is_json_context = true;
+            }
+            
+            // Check for REST API requests to our chat endpoint
+            if (defined('REST_REQUEST') && REST_REQUEST &&
+                strpos($_SERVER['REQUEST_URI'] ?? '', '/wp-json/memberpress-ai/v1/chat') !== false) {
+                $is_json_context = true;
+            }
+            
+            // Check for requests with JSON content type expectation
+            if (isset($_SERVER['HTTP_ACCEPT']) &&
+                strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false &&
+                (strpos($_SERVER['REQUEST_URI'] ?? '', '/wp-json/memberpress-ai/') !== false ||
+                 (isset($_REQUEST['action']) && $_REQUEST['action'] === 'mpai_chat'))) {
+                $is_json_context = true;
+            }
+            
+            // Only suppress in JSON contexts - allow all other debug logging
+            if ($is_json_context) {
+                return true; // Suppress only this specific warning in JSON contexts
+            }
+        }
+        
+        // For all other errors and contexts, use the default handler to preserve debug logging
+        return false;
+    }, E_DEPRECATED);
+}, 1); // Very early priority
+
+// Clean output buffer only for our specific REST endpoint to ensure clean JSON
+add_action('rest_api_init', function() {
+    add_filter('rest_pre_serve_request', function($served, $result, $request, $server) {
+        $route = $request->get_route();
+        if ($route === '/memberpress-ai/v1/chat') {
+            // Clean any output that might have been generated before our response
+            if (ob_get_level()) {
+                ob_clean();
+            }
+            
+            // Ensure clean JSON output with proper headers
+            header('Content-Type: application/json');
+            echo json_encode($result);
+            return true; // Prevent default serving
+        }
+        return $served;
+    }, 10, 4);
+});
+
 // Include debug logger early to intercept debug logs
 require_once MPAI_PLUGIN_DIR . 'src/Utilities/DebugLogger.php';
 
@@ -151,6 +213,8 @@ class MemberpressAiAssistant {
         if (apply_filters('mpai_debug_mode', false)) {
             $this->enable_debug_mode();
         }
+        
+        // Debug monitoring removed - was causing 500 errors due to missing file
 
         // Initialize remaining services
         $this->init_remaining_services();

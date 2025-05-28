@@ -395,28 +395,43 @@ class SubscriptionTransformer {
                 $user = $subscription->user();
                 
                 if ($user) {
-                    $name = trim($user->first_name . ' ' . $user->last_name);
+                    $first_name = $user->first_name ?? '';
+                    $last_name = $user->last_name ?? '';
+                    $name = trim($first_name . ' ' . $last_name);
                     
                     if (!empty($name)) {
                         return $name;
                     }
                     
-                    return $user->user_login;
+                    return $user->user_login ?? '';
                 }
             }
             
             // Fallback to getting the user directly
             if (class_exists('\MeprUser') && $subscription->user_id) {
+                // MPAI DEBUG: Log user creation attempt
+                error_log('MPAI DEBUG: SubscriptionTransformer creating MeprUser with ID: ' . $subscription->user_id);
+                
                 $user = new \MeprUser($subscription->user_id);
                 
+                // MPAI DEBUG: Check if user object has valid properties
                 if ($user) {
-                    $name = trim($user->first_name . ' ' . $user->last_name);
+                    error_log('MPAI DEBUG: MeprUser created - ID: ' . ($user->ID ?? 'NULL') .
+                             ', first_name: ' . ($user->first_name ?? 'NULL') .
+                             ', last_name: ' . ($user->last_name ?? 'NULL') .
+                             ', user_login: ' . ($user->user_login ?? 'NULL'));
+                    
+                    $first_name = $user->first_name ?? '';
+                    $last_name = $user->last_name ?? '';
+                    $name = trim($first_name . ' ' . $last_name);
                     
                     if (!empty($name)) {
                         return $name;
                     }
                     
-                    return $user->user_login;
+                    return $user->user_login ?? '';
+                } else {
+                    error_log('MPAI DEBUG: MeprUser creation failed for user_id: ' . $subscription->user_id);
                 }
             }
             
@@ -444,10 +459,21 @@ class SubscriptionTransformer {
             
             // Fallback to getting the user directly
             if (class_exists('\MeprUser') && $subscription->user_id) {
+                // MPAI DEBUG: Log user creation attempt for email
+                error_log('MPAI DEBUG: SubscriptionTransformer creating MeprUser for email with ID: ' . $subscription->user_id);
+                
                 $user = new \MeprUser($subscription->user_id);
                 
-                if ($user && isset($user->user_email)) {
-                    return $user->user_email;
+                // MPAI DEBUG: Check if user object has valid email
+                if ($user) {
+                    error_log('MPAI DEBUG: MeprUser email check - ID: ' . ($user->ID ?? 'NULL') .
+                             ', user_email: ' . ($user->user_email ?? 'NULL'));
+                    
+                    if (isset($user->user_email)) {
+                        return $user->user_email;
+                    }
+                } else {
+                    error_log('MPAI DEBUG: MeprUser creation failed for email lookup, user_id: ' . $subscription->user_id);
                 }
             }
             

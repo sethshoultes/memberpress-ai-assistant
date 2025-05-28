@@ -371,8 +371,8 @@ class MPAISettingsModel {
      * @return string Validated API key
      */
     private function validate_api_key($value) {
-        // Just ensure it's a string and trim it
-        return trim((string) $value);
+        // Just ensure it's a string and trim it, handling null values
+        return trim((string) ($value ?? ''));
     }
 
     /**

@@ -32,6 +32,13 @@ class MemberPressService extends AbstractService {
     protected $transformers = [];
     
     /**
+     * Service locator instance
+     *
+     * @var ServiceLocator|null
+     */
+    protected $serviceLocator = null;
+    
+    /**
      * Cache service instance
      *
      * @var CacheService|null
@@ -70,6 +77,9 @@ class MemberPressService extends AbstractService {
      * {@inheritdoc}
      */
     public function register($serviceLocator): void {
+        // Store the service locator for later use
+        $this->serviceLocator = $serviceLocator;
+        
         // Register this service with the service locator
         $serviceLocator->register('memberpress', function() {
             return $this;
@@ -351,7 +361,36 @@ class MemberPressService extends AbstractService {
      * @return mixed|null The adapter instance or null if not found
      */
     public function getAdapter(string $type) {
-        return $this->adapters[$type] ?? null;
+        // First check the local adapters array (current behavior)
+        if (isset($this->adapters[$type])) {
+            return $this->adapters[$type];
+        }
+        
+        // If not found locally, attempt to retrieve from ServiceLocator
+        if ($this->serviceLocator !== null) {
+            $serviceKey = 'memberpress.adapters.' . $type;
+            
+            try {
+                if ($this->serviceLocator->has($serviceKey)) {
+                    $adapter = $this->serviceLocator->get($serviceKey);
+                    
+                    // Store it in the local array for future use
+                    $this->adapters[$type] = $adapter;
+                    
+                    return $adapter;
+                }
+            } catch (\Exception $e) {
+                $this->log('Error retrieving adapter from ServiceLocator: ' . $e->getMessage(), [
+                    'adapter_type' => $type,
+                    'service_key' => $serviceKey,
+                    'exception' => $e,
+                    'level' => 'error'
+                ]);
+            }
+        }
+        
+        // Return null if not found anywhere
+        return null;
     }
 
     /**
@@ -361,7 +400,36 @@ class MemberPressService extends AbstractService {
      * @return mixed|null The transformer instance or null if not found
      */
     public function getTransformer(string $type) {
-        return $this->transformers[$type] ?? null;
+        // First check the local transformers array (current behavior)
+        if (isset($this->transformers[$type])) {
+            return $this->transformers[$type];
+        }
+        
+        // If not found locally, attempt to retrieve from ServiceLocator
+        if ($this->serviceLocator !== null) {
+            $serviceKey = 'memberpress.transformers.' . $type;
+            
+            try {
+                if ($this->serviceLocator->has($serviceKey)) {
+                    $transformer = $this->serviceLocator->get($serviceKey);
+                    
+                    // Store it in the local array for future use
+                    $this->transformers[$type] = $transformer;
+                    
+                    return $transformer;
+                }
+            } catch (\Exception $e) {
+                $this->log('Error retrieving transformer from ServiceLocator: ' . $e->getMessage(), [
+                    'transformer_type' => $type,
+                    'service_key' => $serviceKey,
+                    'exception' => $e,
+                    'level' => 'error'
+                ]);
+            }
+        }
+        
+        // Return null if not found anywhere
+        return null;
     }
 
     /**
@@ -1021,6 +1089,15 @@ class MemberPressService extends AbstractService {
      */
     public function createMembership(array $data): array {
         try {
+            // Add comprehensive debug logging
+            $this->log('[MEMBERSHIP DEBUG] MemberPressService::createMembership - Data received from tool', [
+                'received_data' => $data,
+                'data_keys' => array_keys($data),
+                'title_value' => $data['title'] ?? 'NOT_SET',
+                'price_value' => $data['price'] ?? 'NOT_SET',
+                'period_type_value' => $data['period_type'] ?? 'NOT_SET'
+            ]);
+            
             if (!$this->isMemberPressActive()) {
                 throw new \Exception('MemberPress is not active');
             }
@@ -1030,10 +1107,23 @@ class MemberPressService extends AbstractService {
                 throw new \Exception('Product adapter not found');
             }
 
+            $this->log('[MEMBERSHIP DEBUG] MemberPressService::createMembership - Calling ProductAdapter::create', [
+                'adapter_found' => true,
+                'data_to_adapter' => $data
+            ]);
+
             $product = $productAdapter->create($data);
             if (!$product) {
                 throw new \Exception('Failed to create membership');
             }
+            
+            $this->log('[MEMBERSHIP DEBUG] MemberPressService::createMembership - ProductAdapter returned product', [
+                'product_created' => true,
+                'product_id' => $product->ID ?? 'NO_ID',
+                'product_title' => $product->post_title ?? 'NO_TITLE',
+                'product_price' => $product->price ?? 'NO_PRICE',
+                'product_period_type' => $product->period_type ?? 'NO_PERIOD_TYPE'
+            ]);
             
             // Transform product if transformer exists
             $transformer = $this->getTransformer('product');

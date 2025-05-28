@@ -55,6 +55,10 @@ class WordPressTool extends AbstractTool {
         // MemberPress operations
         'memberpress_list_memberships',
         'memberpress_list_membership_levels',
+        'memberpress_create_membership',
+        'memberpress_get_membership',
+        'memberpress_update_membership',
+        'memberpress_delete_membership',
     ];
 
     /**
@@ -1829,5 +1833,286 @@ class WordPressTool extends AbstractTool {
                 'offset' => $args['offset'],
             ],
         ];
+    }
+    
+    /**
+     * Create a MemberPress membership
+     *
+     * @param array $parameters The parameters for the operation
+     * @return array The result of the operation
+     */
+    protected function memberpress_create_membership(array $parameters): array {
+        // Add comprehensive debug logging for membership creation
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] WordPressTool::memberpress_create_membership - Starting membership creation');
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Raw parameters received: ' . json_encode($parameters));
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Parameter analysis: name=' . ($parameters['name'] ?? 'MISSING') .
+                  ', price=' . ($parameters['price'] ?? 'MISSING') . ', terms=' . ($parameters['terms'] ?? 'MISSING'));
+        
+        // Check if MemberPress tool is available
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Attempting to get MemberPress tool for delegation');
+        $memberPressTool = $this->getMemberPressTool();
+        
+        if (!$memberPressTool) {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('[MEMBERSHIP DEBUG] MemberPress tool not available - delegation failed');
+            return [
+                'status' => 'error',
+                'message' => 'MemberPress tool not available - delegation failed',
+                'debug_info' => [
+                    'delegation_failed' => true,
+                    'tool_available' => false,
+                    'original_parameters' => $parameters
+                ]
+            ];
+        }
+        
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] MemberPress tool obtained successfully: ' . get_class($memberPressTool));
+        
+        try {
+            // Prepare delegation parameters with comprehensive logging
+            $delegationParams = [
+                'operation' => 'create_membership',
+                'name' => $parameters['name'] ?? '',
+                'price' => $parameters['price'] ?? '',
+                'terms' => $parameters['terms'] ?? '',
+                'description' => $parameters['description'] ?? '',
+            ];
+            
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Delegation parameters prepared: ' . json_encode($delegationParams));
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Parameter validation: name_empty=' . empty($delegationParams['name']) .
+                      ', price_zero=' . ($delegationParams['price'] == 0) . ', terms_value=' . $delegationParams['terms']);
+            
+            // Delegate to MemberPress tool
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Calling MemberPressTool->execute() with delegation parameters');
+            $result = $memberPressTool->execute($delegationParams);
+            
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] MemberPressTool execution completed');
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Delegation result: ' . json_encode($result));
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Result status: ' . ($result['status'] ?? 'NO_STATUS'));
+            
+            // Validate the result to ensure delegation worked
+            if (isset($result['status']) && $result['status'] === 'success') {
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Delegation successful - membership created');
+                if (isset($result['data'])) {
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Created membership data: ' . json_encode($result['data']));
+                }
+            } else {
+                \MemberpressAiAssistant\Utilities\LoggingUtility::warning('[MEMBERSHIP DEBUG] Delegation completed but result indicates failure');
+            }
+            
+            return $result;
+        } catch (\Exception $e) {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('[MEMBERSHIP DEBUG] Exception during delegation: ' . $e->getMessage());
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Exception trace: ' . $e->getTraceAsString());
+            
+            return [
+                'status' => 'error',
+                'message' => 'Error creating membership: ' . $e->getMessage(),
+                'debug_info' => [
+                    'delegation_failed' => true,
+                    'exception_occurred' => true,
+                    'exception_message' => $e->getMessage(),
+                    'original_parameters' => $parameters
+                ]
+            ];
+        }
+    }
+    
+    /**
+     * Get a MemberPress membership
+     *
+     * @param array $parameters The parameters for the operation
+     * @return array The result of the operation
+     */
+    protected function memberpress_get_membership(array $parameters): array {
+        // Check if MemberPress tool is available
+        $memberPressTool = $this->getMemberPressTool();
+        if (!$memberPressTool) {
+            return [
+                'status' => 'error',
+                'message' => 'MemberPress tool not available',
+            ];
+        }
+        
+        try {
+            // Delegate to MemberPress tool
+            return $memberPressTool->execute([
+                'operation' => 'get_membership',
+                'membership_id' => $parameters['membership_id'] ?? '',
+            ]);
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Error getting membership: ' . $e->getMessage(),
+            ];
+        }
+    }
+    
+    /**
+     * Update a MemberPress membership
+     *
+     * @param array $parameters The parameters for the operation
+     * @return array The result of the operation
+     */
+    protected function memberpress_update_membership(array $parameters): array {
+        // Check if MemberPress tool is available
+        $memberPressTool = $this->getMemberPressTool();
+        if (!$memberPressTool) {
+            return [
+                'status' => 'error',
+                'message' => 'MemberPress tool not available',
+            ];
+        }
+        
+        try {
+            // Delegate to MemberPress tool
+            return $memberPressTool->execute([
+                'operation' => 'update_membership',
+                'membership_id' => $parameters['membership_id'] ?? '',
+                'name' => $parameters['name'] ?? '',
+                'price' => $parameters['price'] ?? '',
+                'terms' => $parameters['terms'] ?? '',
+                'description' => $parameters['description'] ?? '',
+            ]);
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Error updating membership: ' . $e->getMessage(),
+            ];
+        }
+    }
+    
+    /**
+     * Delete a MemberPress membership
+     *
+     * @param array $parameters The parameters for the operation
+     * @return array The result of the operation
+     */
+    protected function memberpress_delete_membership(array $parameters): array {
+        // Check if MemberPress tool is available
+        $memberPressTool = $this->getMemberPressTool();
+        if (!$memberPressTool) {
+            return [
+                'status' => 'error',
+                'message' => 'MemberPress tool not available',
+            ];
+        }
+        
+        try {
+            // Delegate to MemberPress tool
+            return $memberPressTool->execute([
+                'operation' => 'delete_membership',
+                'membership_id' => $parameters['membership_id'] ?? '',
+            ]);
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Error deleting membership: ' . $e->getMessage(),
+            ];
+        }
+    }
+    
+    /**
+     * Get MemberPress tool instance
+     *
+     * @return \MemberpressAiAssistant\Tools\MemberPressTool|null
+     */
+    private function getMemberPressTool() {
+        // Add comprehensive debug logging for delegation diagnosis
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] WordPressTool::getMemberPressTool - Starting tool delegation process');
+        
+        // Try to get MemberPress tool from global service locator
+        global $mpai_service_locator;
+        
+        if (isset($mpai_service_locator)) {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Service locator is available, attempting to get MemberPress tool');
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Service locator class: ' . get_class($mpai_service_locator));
+            
+            try {
+                // FIXED: Check for correct tool registry key 'tool_registry' instead of 'tool.registry'
+                if ($mpai_service_locator->has('tool_registry')) {
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Tool registry found in service locator with key "tool_registry"');
+                    
+                    $toolRegistry = $mpai_service_locator->get('tool_registry');
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Tool registry retrieved: ' . get_class($toolRegistry));
+                    
+                    if ($toolRegistry && method_exists($toolRegistry, 'getTool')) {
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Tool registry has getTool method');
+                        
+                        // Log all available tools for debugging
+                        if (method_exists($toolRegistry, 'getAllTools')) {
+                            $allTools = $toolRegistry->getAllTools();
+                            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Available tools in registry: ' . implode(', ', array_keys($allTools)));
+                        }
+                        
+                        // FIXED: Use correct tool name 'memberpress' instead of 'MemberPressTool'
+                        $memberPressTool = $toolRegistry->getTool('memberpress');
+                        if ($memberPressTool) {
+                            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Successfully retrieved MemberPressTool from registry with name "memberpress"');
+                            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Retrieved tool class: ' . get_class($memberPressTool));
+                            return $memberPressTool;
+                        } else {
+                            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] MemberPressTool not found in registry with name "memberpress", falling back to new instance');
+                        }
+                    } else {
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Tool registry does not have getTool method');
+                    }
+                } else {
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Tool registry not found in service locator with key "tool_registry"');
+                    
+                    // Check what services are actually available
+                    if (method_exists($mpai_service_locator, 'getServices') || method_exists($mpai_service_locator, 'keys')) {
+                        try {
+                            $availableServices = method_exists($mpai_service_locator, 'getServices')
+                                ? array_keys($mpai_service_locator->getServices())
+                                : $mpai_service_locator->keys();
+                            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Available services in locator: ' . implode(', ', $availableServices));
+                        } catch (\Exception $e) {
+                            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Could not list available services: ' . $e->getMessage());
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                \MemberpressAiAssistant\Utilities\LoggingUtility::error('[MEMBERSHIP DEBUG] Error accessing tool registry: ' . $e->getMessage());
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Error trace: ' . $e->getTraceAsString());
+            }
+        } else {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Global service locator not available, falling back to new instance');
+        }
+        
+        // Fall back to creating a new instance
+        if (class_exists('\MemberpressAiAssistant\Tools\MemberPressTool')) {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Creating new MemberPressTool instance');
+            
+            // Try to get MemberPressService from service locator
+            $memberPressService = null;
+            if (isset($mpai_service_locator) && $mpai_service_locator->has('memberpress')) {
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Getting MemberPressService from service locator');
+                $memberPressService = $mpai_service_locator->get('memberpress');
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] MemberPressService retrieved: ' . get_class($memberPressService));
+            } else {
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Creating new MemberPressService instance');
+                // Create a new MemberPressService instance
+                if (class_exists('\MemberpressAiAssistant\Services\MemberPressService')) {
+                    $memberPressService = new \MemberpressAiAssistant\Services\MemberPressService();
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] New MemberPressService created: ' . get_class($memberPressService));
+                } else {
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::error('[MEMBERSHIP DEBUG] MemberPressService class not found');
+                }
+            }
+            
+            if ($memberPressService) {
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Successfully created MemberPressTool with MemberPressService');
+                $newTool = new \MemberpressAiAssistant\Tools\MemberPressTool($memberPressService);
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] New MemberPressTool instance created: ' . get_class($newTool));
+                return $newTool;
+            } else {
+                \MemberpressAiAssistant\Utilities\LoggingUtility::error('[MEMBERSHIP DEBUG] Could not create MemberPressService for MemberPressTool');
+            }
+        } else {
+            \MemberpressAiAssistant\Utilities\LoggingUtility::error('[MEMBERSHIP DEBUG] MemberPressTool class not found');
+        }
+        
+        \MemberpressAiAssistant\Utilities\LoggingUtility::error('[MEMBERSHIP DEBUG] Failed to get or create MemberPressTool - delegation will fail');
+        return null;
     }
 }

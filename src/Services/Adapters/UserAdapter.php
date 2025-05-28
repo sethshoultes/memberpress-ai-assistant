@@ -39,10 +39,19 @@ class UserAdapter {
                 throw new \Exception('MemberPress is not active');
             }
 
+            // MPAI DEBUG: Log user creation attempt
+            error_log('MPAI DEBUG: UserAdapter creating MeprUser with ID: ' . $id);
+            
             $user = new \MeprUser($id);
+            
+            // MPAI DEBUG: Check user object properties
+            error_log('MPAI DEBUG: UserAdapter MeprUser created - ID: ' . ($user->ID ?? 'NULL') .
+                     ', user_login: ' . ($user->user_login ?? 'NULL') .
+                     ', user_email: ' . ($user->user_email ?? 'NULL'));
             
             // Check if the user exists
             if (!$user->ID || $user->ID == 0) {
+                error_log('MPAI DEBUG: UserAdapter - Invalid user ID, returning null');
                 return null;
             }
             
@@ -96,7 +105,14 @@ class UserAdapter {
 
             // Convert WP_User objects to MeprUser objects
             foreach ($wp_users as $wp_user) {
+                // MPAI DEBUG: Log bulk user creation
+                error_log('MPAI DEBUG: UserAdapter bulk creating MeprUser with ID: ' . $wp_user->ID);
+                
                 $mepr_user = new \MeprUser($wp_user->ID);
+                
+                // MPAI DEBUG: Check bulk user object properties
+                error_log('MPAI DEBUG: UserAdapter bulk MeprUser - ID: ' . ($mepr_user->ID ?? 'NULL') .
+                         ', valid: ' . (($mepr_user->ID && $mepr_user->ID > 0) ? 'YES' : 'NO'));
                 
                 // Filter by subscription status if requested
                 if ($args['has_subscription'] && !$this->hasSubscription($mepr_user)) {
@@ -156,8 +172,16 @@ class UserAdapter {
                 throw new \Exception($user_id->get_error_message());
             }
 
+            // MPAI DEBUG: Log user creation during user creation
+            error_log('MPAI DEBUG: UserAdapter creating new MeprUser during create() with ID: ' . $user_id);
+            
             // Create MeprUser
             $user = new \MeprUser($user_id);
+            
+            // MPAI DEBUG: Check newly created user object
+            error_log('MPAI DEBUG: UserAdapter new MeprUser created - ID: ' . ($user->ID ?? 'NULL') .
+                     ', user_login: ' . ($user->user_login ?? 'NULL') .
+                     ', user_email: ' . ($user->user_email ?? 'NULL'));
             
             // Set user properties
             if (isset($data['first_name'])) {
@@ -545,8 +569,10 @@ class UserAdapter {
                 // Save the transaction
                 $txn->store();
                 
-                // Process transaction-related hooks
-                do_action('mepr-txn-status-complete', $txn);
+                // Process transaction-related hooks - ensure object is valid before triggering hooks
+                if ($txn && $txn->ID && !empty($txn->ID)) {
+                    do_action('mepr-txn-status-complete', $txn);
+                }
             }
             
             // Create a subscription if needed
@@ -578,9 +604,11 @@ class UserAdapter {
                 // Save the subscription
                 $sub->store();
                 
-                // Process subscription-related hooks
-                do_action('mepr-signup', $sub);
-                do_action('mepr-subscription-status-active', $sub);
+                // Process subscription-related hooks - ensure object is valid before triggering hooks
+                if ($sub && $sub->ID && !empty($sub->ID)) {
+                    do_action('mepr-signup', $sub);
+                    do_action('mepr-subscription-status-active', $sub);
+                }
             }
             
             return true;
@@ -636,8 +664,10 @@ class UserAdapter {
                     $transaction->status = \MeprTransaction::$expired_str;
                     $transaction->store();
                     
-                    // Process transaction-related hooks
-                    do_action('mepr-txn-status-expired', $transaction);
+                    // Process transaction-related hooks - ensure object is valid before triggering hooks
+                    if ($transaction && $transaction->ID && !empty($transaction->ID)) {
+                        do_action('mepr-txn-status-expired', $transaction);
+                    }
                 }
             }
             
@@ -649,8 +679,10 @@ class UserAdapter {
                     $subscription->status = \MeprSubscription::$cancelled_str;
                     $subscription->store();
                     
-                    // Process subscription-related hooks
-                    do_action('mepr-subscription-status-cancelled', $subscription, $subscription->status);
+                    // Process subscription-related hooks - ensure object is valid before triggering hooks
+                    if ($subscription && $subscription->ID && !empty($subscription->ID)) {
+                        do_action('mepr-subscription-status-cancelled', $subscription, $subscription->status);
+                    }
                 }
             }
             

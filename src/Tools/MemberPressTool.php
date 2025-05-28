@@ -118,8 +118,8 @@ class MemberPressTool extends AbstractTool {
                 ],
                 'terms' => [
                     'type' => 'string',
-                    'description' => 'The billing terms (monthly, yearly, lifetime, etc.)',
-                    'enum' => ['monthly', 'yearly', 'quarterly', 'lifetime', 'one-time'],
+                    'description' => 'The billing terms (monthly, weekly, yearly, lifetime, etc.)',
+                    'enum' => ['monthly', 'weekly', 'yearly', 'quarterly', 'lifetime', 'one-time'],
                 ],
                 'billing_type' => [
                     'type' => 'string',
@@ -128,8 +128,8 @@ class MemberPressTool extends AbstractTool {
                 ],
                 'billing_frequency' => [
                     'type' => 'string',
-                    'description' => 'The frequency of billing (monthly, yearly, etc.)',
-                    'enum' => ['monthly', 'yearly', 'quarterly'],
+                    'description' => 'The frequency of billing (monthly, weekly, yearly, etc.)',
+                    'enum' => ['monthly', 'weekly', 'yearly', 'quarterly'],
                 ],
                 'access_rules' => [
                     'type' => 'array',
@@ -337,7 +337,10 @@ class MemberPressTool extends AbstractTool {
                 }
             } else {
                 // Validate parameters for non-batch operations
-                $errors = array_merge($errors, $this->validateSingleOperation($parameters) ?: []);
+                $singleOpResult = $this->validateSingleOperation($parameters);
+                if (is_array($singleOpResult)) {
+                    $errors = array_merge($errors, $singleOpResult);
+                }
             }
         }
 
@@ -486,14 +489,37 @@ class MemberPressTool extends AbstractTool {
      * @return array The result of the operation
      */
     protected function create_membership(array $parameters): array {
+        // Add comprehensive debug logging for parameter tracing
+        if ($this->logger) {
+            $this->logger->info('[MEMBERSHIP DEBUG] MemberPressTool::create_membership - Raw parameters received', [
+                'raw_parameters' => $parameters,
+                'parameter_count' => count($parameters),
+                'has_name' => isset($parameters['name']),
+                'has_price' => isset($parameters['price']),
+                'has_terms' => isset($parameters['terms'])
+            ]);
+        }
+        
         // Sanitize inputs
         $name = sanitize_text_field($parameters['name']);
         $price = floatval($parameters['price']);
         $terms = sanitize_text_field($parameters['terms']);
         
+        // Log sanitized values
+        if ($this->logger) {
+            $this->logger->info('[MEMBERSHIP DEBUG] MemberPressTool::create_membership - Sanitized parameters', [
+                'sanitized_name' => $name,
+                'sanitized_price' => $price,
+                'sanitized_terms' => $terms,
+                'name_empty' => empty($name),
+                'price_zero' => ($price == 0),
+                'terms_value' => $terms
+            ]);
+        }
+        
         // Prepare data for the service
         $membershipData = [
-            'name' => $name,
+            'title' => $name,  // Fixed: Changed from 'name' to 'title'
             'price' => $price,
         ];
         
@@ -502,6 +528,10 @@ class MemberPressTool extends AbstractTool {
             case 'monthly':
                 $membershipData['period'] = 1;
                 $membershipData['period_type'] = 'months';
+                break;
+            case 'weekly':
+                $membershipData['period'] = 1;
+                $membershipData['period_type'] = 'weeks';
                 break;
             case 'yearly':
                 $membershipData['period'] = 1;
@@ -518,8 +548,28 @@ class MemberPressTool extends AbstractTool {
                 break;
         }
         
+        // Log final membership data before sending to service
+        if ($this->logger) {
+            $this->logger->info('[MEMBERSHIP DEBUG] MemberPressTool::create_membership - Final data for service', [
+                'final_membership_data' => $membershipData,
+                'terms_matched' => !empty($membershipData['period_type']),
+                'period_type_set' => $membershipData['period_type'] ?? 'NOT_SET'
+            ]);
+        }
+        
         // Use the service to create the membership
-        return $this->memberPressService->createMembership($membershipData);
+        $result = $this->memberPressService->createMembership($membershipData);
+        
+        // Log service result
+        if ($this->logger) {
+            $this->logger->info('[MEMBERSHIP DEBUG] MemberPressTool::create_membership - Service result', [
+                'service_result' => $result,
+                'result_status' => $result['status'] ?? 'NO_STATUS',
+                'result_has_data' => isset($result['data'])
+            ]);
+        }
+        
+        return $result;
     }
 
     /**
@@ -556,7 +606,7 @@ class MemberPressTool extends AbstractTool {
         
         // Only include parameters that are set
         if (isset($parameters['name'])) {
-            $updateData['name'] = sanitize_text_field($parameters['name']);
+            $updateData['title'] = sanitize_text_field($parameters['name']);  // Fixed: Changed from 'name' to 'title'
         }
         
         if (isset($parameters['price'])) {
@@ -571,6 +621,10 @@ class MemberPressTool extends AbstractTool {
                 case 'monthly':
                     $updateData['period'] = 1;
                     $updateData['period_type'] = 'months';
+                    break;
+                case 'weekly':
+                    $updateData['period'] = 1;
+                    $updateData['period_type'] = 'weeks';
                     break;
                 case 'yearly':
                     $updateData['period'] = 1;
@@ -741,6 +795,10 @@ class MemberPressTool extends AbstractTool {
                 case 'monthly':
                     $pricingData['period'] = 1;
                     $pricingData['period_type'] = 'months';
+                    break;
+                case 'weekly':
+                    $pricingData['period'] = 1;
+                    $pricingData['period_type'] = 'weeks';
                     break;
                 case 'yearly':
                     $pricingData['period'] = 1;

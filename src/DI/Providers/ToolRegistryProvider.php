@@ -54,8 +54,8 @@ class ToolRegistryProvider extends ServiceProvider {
             // Register WordPress tool
             if (class_exists('MemberpressAiAssistant\Tools\WordPressTool')) {
                 try {
-                    $logger = $locator->has('logger') ? $locator->get('logger') : null;
-                    $wpTool = new WordPressTool($logger);
+                    // FIXED: WordPressTool constructor doesn't accept logger parameter
+                    $wpTool = new WordPressTool();
                     $registry->registerTool($wpTool);
                     
                     if (function_exists('error_log')) {
@@ -64,6 +64,7 @@ class ToolRegistryProvider extends ServiceProvider {
                 } catch (\Exception $e) {
                     if (function_exists('error_log')) {
                         \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Error registering WordPress tool: ' . $e->getMessage());
+                        \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - WordPress tool error trace: ' . $e->getTraceAsString());
                     }
                 }
             }
@@ -93,8 +94,19 @@ class ToolRegistryProvider extends ServiceProvider {
             // Register Content tool
             if (class_exists('MemberpressAiAssistant\Tools\ContentTool')) {
                 try {
-                    $logger = $locator->has('logger') ? $locator->get('logger') : null;
-                    $contentTool = new ContentTool($logger);
+                    // Check ContentTool constructor signature
+                    $reflection = new \ReflectionClass('MemberpressAiAssistant\Tools\ContentTool');
+                    $constructor = $reflection->getConstructor();
+                    
+                    if ($constructor && $constructor->getNumberOfParameters() > 0) {
+                        // ContentTool accepts logger parameter
+                        $logger = $locator->has('logger') ? $locator->get('logger') : null;
+                        $contentTool = new ContentTool($logger);
+                    } else {
+                        // ContentTool doesn't accept parameters
+                        $contentTool = new ContentTool();
+                    }
+                    
                     $registry->registerTool($contentTool);
                     
                     if (function_exists('error_log')) {
@@ -103,6 +115,7 @@ class ToolRegistryProvider extends ServiceProvider {
                 } catch (\Exception $e) {
                     if (function_exists('error_log')) {
                         \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Error registering Content tool: ' . $e->getMessage());
+                        \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - Content tool error trace: ' . $e->getTraceAsString());
                     }
                 }
             }
