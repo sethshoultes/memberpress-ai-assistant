@@ -59,6 +59,10 @@ class UIManager {
       sendButton: null,
       clearButton: null,
       expandButton: null,
+      closeButton: null,
+      downloadButton: null,
+      commandButton: null,
+      commandPanel: null,
       loadingIndicator: null
     };
   }
@@ -96,6 +100,17 @@ class UIManager {
     this._elements.sendButton = container.querySelector('.mpai-chat-submit');
     this._elements.clearButton = container.querySelector('#mpai-clear-conversation');
     this._elements.expandButton = container.querySelector('.mpai-chat-expand');
+    this._elements.closeButton = container.querySelector('.mpai-chat-close');
+    this._elements.downloadButton = container.querySelector('#mpai-download-conversation');
+    this._elements.commandButton = container.querySelector('#mpai-run-command');
+    this._elements.commandPanel = container.querySelector('#mpai-command-runner');
+    
+    // Debug: Log the actual elements found
+    console.log('[MPAI Debug] Element search results:');
+    console.log('[MPAI Debug] clearButton element:', this._elements.clearButton);
+    console.log('[MPAI Debug] downloadButton element:', this._elements.downloadButton);
+    console.log('[MPAI Debug] commandButton element:', this._elements.commandButton);
+    console.log('[MPAI Debug] commandPanel element:', this._elements.commandPanel);
     
     // Create loading indicator if it doesn't exist
     let loadingIndicator = container.querySelector('.mpai-chat-loading');
@@ -116,6 +131,10 @@ class UIManager {
     console.log('[MPAI Debug] Send button found:', !!this._elements.sendButton);
     console.log('[MPAI Debug] Clear button found:', !!this._elements.clearButton);
     console.log('[MPAI Debug] Expand button found:', !!this._elements.expandButton);
+    console.log('[MPAI Debug] Close button found:', !!this._elements.closeButton);
+    console.log('[MPAI Debug] Download button found:', !!this._elements.downloadButton);
+    console.log('[MPAI Debug] Command button found:', !!this._elements.commandButton);
+    console.log('[MPAI Debug] Command panel found:', !!this._elements.commandPanel);
     console.log('[MPAI Debug] Loading indicator found:', !!this._elements.loadingIndicator);
     
     // Set up event listeners
@@ -123,20 +142,42 @@ class UIManager {
     
     // Apply initial state
     const uiState = this._stateManager.getState('ui');
-    if (uiState) {
-      // Apply chat open state
-      this.toggleChatVisibility(uiState.isChatOpen);
-      console.log('[MPAI Debug] Applied initial chat visibility:', uiState.isChatOpen);
+    
+    // Also check localStorage directly as a fallback
+    let chatOpenFromStorage = false;
+    let chatExpandedFromStorage = false;
+    
+    try {
+      const storedChatOpen = localStorage.getItem('mpai_chat_open');
+      const storedChatExpanded = localStorage.getItem('mpai_chat_expanded');
       
-      // Apply chat expanded state
-      if (typeof uiState.isExpanded === 'boolean') {
-        this.toggleChatExpanded(uiState.isExpanded);
-        console.log('[MPAI Debug] Applied initial chat expanded state:', uiState.isExpanded);
-      }
+      chatOpenFromStorage = storedChatOpen === 'true';
+      chatExpandedFromStorage = storedChatExpanded === 'true';
+      
+      console.log('[MPAI Debug] Loaded from localStorage - chatOpen:', chatOpenFromStorage, 'chatExpanded:', chatExpandedFromStorage);
+    } catch (e) {
+      console.warn('[MPAI Debug] Could not read from localStorage:', e);
+    }
+    
+    if (uiState) {
+      // Apply chat open state (prefer state manager, fallback to localStorage)
+      const shouldBeOpen = typeof uiState.isChatOpen === 'boolean' ? uiState.isChatOpen : chatOpenFromStorage;
+      this.toggleChatVisibility(shouldBeOpen);
+      console.log('[MPAI Debug] Applied initial chat visibility:', shouldBeOpen);
+      
+      // Apply chat expanded state (prefer state manager, fallback to localStorage)
+      const shouldBeExpanded = typeof uiState.isExpanded === 'boolean' ? uiState.isExpanded : chatExpandedFromStorage;
+      this.toggleChatExpanded(shouldBeExpanded);
+      console.log('[MPAI Debug] Applied initial chat expanded state:', shouldBeExpanded);
       
       // Render messages from state
       this.renderMessages();
       console.log('[MPAI Debug] Rendered messages from state');
+    } else {
+      // No state manager state, use localStorage values
+      this.toggleChatVisibility(chatOpenFromStorage);
+      this.toggleChatExpanded(chatExpandedFromStorage);
+      console.log('[MPAI Debug] Applied localStorage fallback - chatOpen:', chatOpenFromStorage, 'chatExpanded:', chatExpandedFromStorage);
     }
     
     console.log('[MPAI Debug] UIManager initialized');
@@ -202,6 +243,30 @@ class UIManager {
         this._handleExpand(event);
       });
       console.log('[MPAI Debug] Added click event listener to expand button');
+    }
+    
+    // Set up close button handler
+    if (this._elements.closeButton) {
+      this._elements.closeButton.addEventListener('click', (event) => {
+        this._handleClose(event);
+      });
+      console.log('[MPAI Debug] Added click event listener to close button');
+    }
+    
+    // Set up download button handler
+    if (this._elements.downloadButton) {
+      this._elements.downloadButton.addEventListener('click', (event) => {
+        this._handleDownload(event);
+      });
+      console.log('[MPAI Debug] Added click event listener to download button');
+    }
+    
+    // Set up command button handler
+    if (this._elements.commandButton) {
+      this._elements.commandButton.addEventListener('click', (event) => {
+        this._handleCommand(event);
+      });
+      console.log('[MPAI Debug] Added click event listener to command button');
     }
     
     // Set up chat button handler with multiple selectors
@@ -430,12 +495,32 @@ class UIManager {
 
   /**
    * Clears the message list
-   * 
+   *
    * @public
    * @returns {void}
    */
   clearMessages() {
-    // Clear message list
+    console.log('[MPAI Debug] clearMessages called');
+    if (this._elements.messageList) {
+      // Clear all messages from the UI
+      this._elements.messageList.innerHTML = '';
+      console.log('[MPAI Debug] Message list cleared from UI');
+      
+      // Add back the welcome message
+      const welcomeMessage = document.createElement('div');
+      welcomeMessage.className = 'mpai-chat-welcome';
+      welcomeMessage.innerHTML = `
+        <div class="mpai-chat-message mpai-chat-message-assistant">
+          <div class="mpai-chat-message-content">
+            Hello! I'm your MemberPress AI Assistant. How can I help you today?
+          </div>
+        </div>
+      `;
+      this._elements.messageList.appendChild(welcomeMessage);
+      console.log('[MPAI Debug] Welcome message restored');
+    } else {
+      console.warn('[MPAI Debug] Message list element not found');
+    }
   }
 
   /**
@@ -637,7 +722,28 @@ class UIManager {
    * @returns {void}
    */
   _handleClear(event) {
-    // Handle clear button click
+    event.preventDefault();
+    console.log('[MPAI Debug] Clear button clicked');
+    
+    // Confirm with user before clearing
+    if (confirm('Are you sure you want to clear the conversation? This action cannot be undone.')) {
+      // Clear conversation through ChatCore
+      if (window.mpaiChat && typeof window.mpaiChat.clearHistory === 'function') {
+        window.mpaiChat.clearHistory()
+          .then(() => {
+            console.log('[MPAI Debug] Conversation cleared successfully');
+            // Clear the UI messages immediately
+            this.clearMessages();
+          })
+          .catch(error => {
+            console.error('[MPAI Debug] Error clearing conversation:', error);
+            this.showError('Error clearing conversation: ' + (error.message || 'Unknown error'));
+          });
+      } else {
+        console.error('[MPAI Debug] mpaiChat or clearHistory function not available');
+        this.showError('Chat system not properly initialized');
+      }
+    }
   }
   
   /**
@@ -687,6 +793,131 @@ class UIManager {
         isExpanded: newExpandedState
       });
       console.log('[MPAI Debug] Updated state with isExpanded:', newExpandedState);
+    }
+  }
+  
+  /**
+   * Handles close button click
+   *
+   * @private
+   * @param {Event} event - Click event
+   * @returns {void}
+   */
+  _handleClose(event) {
+    event.preventDefault();
+    console.log('[MPAI Debug] Close button clicked');
+    
+    // Close the chat interface
+    this.toggleChatVisibility(false);
+  }
+  
+  /**
+   * Handles download button click
+   *
+   * @private
+   * @param {Event} event - Click event
+   * @returns {void}
+   */
+  _handleDownload(event) {
+    event.preventDefault();
+    console.log('[MPAI Debug] Download button clicked');
+    
+    // Get all messages from the state
+    const messages = this._stateManager.getState('conversation.messages') || [];
+    
+    if (!Array.isArray(messages) || messages.length === 0) {
+      this.showError('No conversation to download');
+      return;
+    }
+    
+    // Create conversation text
+    let conversationText = 'MemberPress AI Assistant Conversation\n';
+    conversationText += '=====================================\n\n';
+    
+    messages.forEach((message, index) => {
+      const role = message.role === 'user' ? 'You' : 'AI Assistant';
+      const timestamp = message.timestamp ? new Date(message.timestamp).toLocaleString() : '';
+      conversationText += `${role}${timestamp ? ` (${timestamp})` : ''}:\n`;
+      conversationText += `${message.content}\n\n`;
+    });
+    
+    // Create and download file
+    const blob = new Blob([conversationText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mpai-conversation-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    console.log('[MPAI Debug] Conversation downloaded');
+  }
+  
+  /**
+   * Handles command button click
+   *
+   * @private
+   * @param {Event} event - Click event
+   * @returns {void}
+   */
+  _handleCommand(event) {
+    event.preventDefault();
+    console.log('[MPAI Debug] Command button clicked');
+    
+    // Toggle command panel visibility
+    if (this._elements.commandPanel) {
+      const isVisible = this._elements.commandPanel.style.display !== 'none';
+      this._elements.commandPanel.style.display = isVisible ? 'none' : 'block';
+      console.log('[MPAI Debug] Command panel toggled to:', !isVisible ? 'visible' : 'hidden');
+      
+      // Set up command item handlers if panel is now visible
+      if (!isVisible) {
+        this._setupCommandHandlers();
+      }
+    } else {
+      console.warn('[MPAI Debug] Command panel not found');
+    }
+  }
+  
+  /**
+   * Sets up event handlers for command items
+   *
+   * @private
+   * @returns {void}
+   */
+  _setupCommandHandlers() {
+    const commandItems = this._elements.commandPanel.querySelectorAll('.mpai-command-item');
+    const commandClose = this._elements.commandPanel.querySelector('.mpai-command-close');
+    
+    // Set up command item click handlers
+    commandItems.forEach(item => {
+      item.addEventListener('click', (event) => {
+        event.preventDefault();
+        const command = item.dataset.command;
+        if (command) {
+          console.log('[MPAI Debug] Command selected:', command);
+          
+          // Insert command into input field
+          if (this._elements.inputField) {
+            this._elements.inputField.value = command;
+            this._elements.inputField.focus();
+          }
+          
+          // Hide command panel
+          this._elements.commandPanel.style.display = 'none';
+        }
+      });
+    });
+    
+    // Set up close button handler
+    if (commandClose) {
+      commandClose.addEventListener('click', (event) => {
+        event.preventDefault();
+        this._elements.commandPanel.style.display = 'none';
+        console.log('[MPAI Debug] Command panel closed');
+      });
     }
   }
   

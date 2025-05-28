@@ -105,11 +105,18 @@ async function initializeChat() {
   logger.debug('Storage manager created');
   
   // Create state manager
+  const chatOpenFromStorage = localStorage.getItem('mpai_chat_open') === 'true';
+  const chatExpandedFromStorage = localStorage.getItem('mpai_chat_expanded') === 'true';
+  
+  console.log('[MPAI Debug] chat.js - Loading initial state from localStorage:');
+  console.log('[MPAI Debug] chat.js - mpai_chat_open:', localStorage.getItem('mpai_chat_open'), '-> parsed as:', chatOpenFromStorage);
+  console.log('[MPAI Debug] chat.js - mpai_chat_expanded:', localStorage.getItem('mpai_chat_expanded'), '-> parsed as:', chatExpandedFromStorage);
+  
   const stateManager = new StateManager({
     // Initial state can be loaded from storage
     ui: {
-      isChatOpen: localStorage.getItem('mpai_chat_open') === 'true',
-      isExpanded: localStorage.getItem('mpai_chat_expanded') === 'true'
+      isChatOpen: chatOpenFromStorage,
+      isExpanded: chatExpandedFromStorage
     }
   }, eventBus);
   logger.debug('State manager created');

@@ -69,46 +69,61 @@ class ChatCore {
     console.log('[MPAI Debug] ChatCore.initialize called');
     
     try {
-      // Create new instances of the required modules if they're not already provided
-      // Create EventBus first since other modules depend on it
-      if (!this._eventBus) {
-        console.log('[MPAI Debug] Creating new EventBus instance');
-        // Import EventBus dynamically if needed
-        const EventBus = (await import('../core/event-bus.js')).default;
-        this._eventBus = new EventBus();
+      // Check if instances are already provided (from chat.js)
+      if (this._stateManager && this._uiManager && this._apiClient && this._eventBus) {
+        console.log('[MPAI Debug] Using pre-initialized instances from chat.js');
+        console.log('[MPAI Debug] StateManager available:', !!this._stateManager);
+        console.log('[MPAI Debug] UIManager available:', !!this._uiManager);
+        console.log('[MPAI Debug] APIClient available:', !!this._apiClient);
+        console.log('[MPAI Debug] EventBus available:', !!this._eventBus);
       } else {
-        console.log('[MPAI Debug] Using existing EventBus instance');
-      }
-      
-      // Now create StateManager with the EventBus
-      if (!this._stateManager) {
-        console.log('[MPAI Debug] Creating new StateManager instance');
-        // Import StateManager dynamically if needed
-        const StateManager = (await import('../core/state-manager.js')).default;
-        this._stateManager = new StateManager({}, this._eventBus);
-      } else {
-        console.log('[MPAI Debug] Using existing StateManager instance');
-      }
-      
-      if (!this._apiClient) {
-        console.log('[MPAI Debug] Creating new APIClient instance');
-        // Import APIClient dynamically if needed
-        const APIClient = (await import('../core/api-client.js')).default;
-        this._apiClient = new APIClient({}, this._eventBus);
-      } else {
-        console.log('[MPAI Debug] Using existing APIClient instance');
-      }
-      
-      if (!this._uiManager) {
-        console.log('[MPAI Debug] Creating new UIManager instance');
-        // Import UIManager dynamically if needed
-        const UIManager = (await import('../core/ui-manager.js')).default;
-        this._uiManager = new UIManager({}, this._stateManager, this._eventBus);
+        console.log('[MPAI Debug] Creating new instances (fallback mode)');
         
-        // Initialize the UI manager with the chat container
-        await this._uiManager.initialize('#mpai-chat-container');
-      } else {
-        console.log('[MPAI Debug] Using existing UIManager instance');
+        // Create new instances of the required modules if they're not already provided
+        // Create EventBus first since other modules depend on it
+        if (!this._eventBus) {
+          console.log('[MPAI Debug] Creating new EventBus instance');
+          // Import EventBus dynamically if needed
+          const EventBus = (await import('../core/event-bus.js')).default;
+          this._eventBus = new EventBus();
+        } else {
+          console.log('[MPAI Debug] Using existing EventBus instance');
+        }
+        
+        // Now create StateManager with the EventBus
+        if (!this._stateManager) {
+          console.log('[MPAI Debug] Creating new StateManager instance');
+          // Import StateManager dynamically if needed
+          const StateManager = (await import('../core/state-manager.js')).default;
+          this._stateManager = new StateManager({}, this._eventBus);
+          
+          // Initialize the StateManager to load state from localStorage
+          await this._stateManager.initialize();
+          console.log('[MPAI Debug] StateManager initialized and state loaded from localStorage');
+        } else {
+          console.log('[MPAI Debug] Using existing StateManager instance');
+        }
+        
+        if (!this._apiClient) {
+          console.log('[MPAI Debug] Creating new APIClient instance');
+          // Import APIClient dynamically if needed
+          const APIClient = (await import('../core/api-client.js')).default;
+          this._apiClient = new APIClient({}, this._eventBus);
+        } else {
+          console.log('[MPAI Debug] Using existing APIClient instance');
+        }
+        
+        if (!this._uiManager) {
+          console.log('[MPAI Debug] Creating new UIManager instance');
+          // Import UIManager dynamically if needed
+          const UIManager = (await import('../core/ui-manager.js')).default;
+          this._uiManager = new UIManager({}, this._stateManager, this._eventBus);
+          
+          // Initialize the UI manager with the chat container
+          await this._uiManager.initialize('#mpai-chat-container');
+        } else {
+          console.log('[MPAI Debug] Using existing UIManager instance');
+        }
       }
       
       // Initialize the modules in the correct order
@@ -374,10 +389,11 @@ class ChatCore {
    * Toggles the chat interface open/closed state
    *
    * @public
+   * @param {boolean} [forceState] - Force the chat to this state instead of toggling
    * @returns {boolean} The new open state
    */
-  toggleChat() {
-    console.log('[MPAI Debug] toggleChat method called');
+  toggleChat(forceState) {
+    console.log('[MPAI Debug] toggleChat method called with forceState:', forceState);
     
     if (!this._stateManager || !this._uiManager) {
       console.error('[MPAI Debug] StateManager or UIManager not initialized');
@@ -388,9 +404,9 @@ class ChatCore {
     const uiState = this._stateManager.getState('ui');
     const isChatOpen = uiState?.isChatOpen || false;
     
-    // Toggle the chat open state
-    const newState = !isChatOpen;
-    console.log('[MPAI Debug] Toggling chat state from', isChatOpen, 'to', newState);
+    // Set the chat state - use forceState if provided, otherwise toggle
+    const newState = typeof forceState === 'boolean' ? forceState : !isChatOpen;
+    console.log('[MPAI Debug] Setting chat state from', isChatOpen, 'to', newState, '(forced:', typeof forceState === 'boolean', ')');
     
     // Update the state
     this._stateManager.updateUI({
