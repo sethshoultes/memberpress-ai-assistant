@@ -117,6 +117,14 @@ class ChatInterface {
             [],
             MPAI_VERSION
         );
+        
+        // Register table styles for WordPress tool outputs
+        wp_register_style(
+            'mpai-table-styles',
+            MPAI_PLUGIN_URL . 'assets/css/mpai-table-styles.css',
+            ['mpai-chat'],
+            MPAI_VERSION
+        );
 
         // Register scripts
         // Register response formatting modules first
@@ -193,6 +201,7 @@ class ChatInterface {
         // Enqueue assets
         wp_enqueue_style('mpai-chat');
         wp_enqueue_style('mpai-blog-post');
+        wp_enqueue_style('mpai-table-styles');
         wp_enqueue_script('mpai-xml-processor');
         wp_enqueue_script('mpai-data-handler');
         wp_enqueue_script('mpai-text-formatter');
@@ -240,6 +249,14 @@ class ChatInterface {
             'mpai-blog-post-admin',
             MPAI_PLUGIN_URL . 'assets/css/blog-post.css',
             [],
+            MPAI_VERSION
+        );
+        
+        // Register table styles for WordPress tool outputs
+        wp_register_style(
+            'mpai-table-styles-admin',
+            MPAI_PLUGIN_URL . 'assets/css/mpai-table-styles.css',
+            ['mpai-chat-admin'],
             MPAI_VERSION
         );
 
@@ -318,6 +335,7 @@ class ChatInterface {
         // Enqueue assets
         wp_enqueue_style('mpai-chat-admin');
         wp_enqueue_style('mpai-blog-post-admin');
+        wp_enqueue_style('mpai-table-styles-admin');
         wp_enqueue_script('mpai-xml-processor-admin');
         wp_enqueue_script('mpai-data-handler-admin');
         wp_enqueue_script('mpai-text-formatter-admin');

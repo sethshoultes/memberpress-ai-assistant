@@ -359,7 +359,22 @@ class UIManager {
     // Create message content element
     const contentElement = document.createElement('div');
     contentElement.className = 'mpai-chat-message-content';
-    contentElement.textContent = message.content || '';
+    
+    // Check if content contains HTML and handle appropriately
+    const content = message.content || '';
+    const containsHtml = /<[^>]+>/.test(content);
+    
+    if (containsHtml && message.role === 'assistant') {
+      // For assistant messages with HTML, sanitize and render as HTML
+      console.log('[MPAI Debug] Rendering HTML content for assistant message');
+      const sanitizedHtml = this._sanitizeHtml(content);
+      contentElement.innerHTML = sanitizedHtml;
+    } else {
+      // For user messages or plain text, use textContent for security
+      console.log('[MPAI Debug] Rendering plain text content');
+      contentElement.textContent = content;
+    }
+    
     messageElement.appendChild(contentElement);
     
     // Add the message to the message list
@@ -1284,6 +1299,106 @@ class UIManager {
     }
     
     return newExpandedState;
+  }
+
+  /**
+   * Sanitizes HTML content to prevent XSS while allowing safe formatting elements
+   *
+   * @private
+   * @param {string} html - The HTML content to sanitize
+   * @returns {string} The sanitized HTML
+   */
+  _sanitizeHtml(html) {
+    // Create a temporary DOM element to parse and sanitize the HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    // Define allowed tags and attributes
+    const allowedTags = [
+      'div', 'span', 'p', 'br', 'strong', 'b', 'em', 'i', 'u',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td',
+      'a', 'code', 'pre', 'blockquote'
+    ];
+    
+    const allowedAttributes = {
+      'a': ['href', 'target', 'rel'],
+      'table': ['class'],
+      'div': ['class'],
+      'span': ['class'],
+      'th': ['class'],
+      'td': ['class'],
+      'tr': ['class'],
+      'thead': ['class'],
+      'tbody': ['class'],
+      'h1': ['class'],
+      'h2': ['class'],
+      'h3': ['class'],
+      'h4': ['class'],
+      'h5': ['class'],
+      'h6': ['class'],
+      'p': ['class'],
+      'ul': ['class'],
+      'ol': ['class'],
+      'li': ['class'],
+      'code': ['class'],
+      'pre': ['class'],
+      'blockquote': ['class']
+    };
+    
+    // Recursively sanitize elements
+    this._sanitizeElement(tempDiv, allowedTags, allowedAttributes);
+    
+    return tempDiv.innerHTML;
+  }
+  
+  /**
+   * Recursively sanitizes a DOM element and its children
+   *
+   * @private
+   * @param {Element} element - The element to sanitize
+   * @param {Array} allowedTags - Array of allowed tag names
+   * @param {Object} allowedAttributes - Object mapping tag names to allowed attributes
+   */
+  _sanitizeElement(element, allowedTags, allowedAttributes) {
+    // Get all child elements
+    const children = Array.from(element.children);
+    
+    children.forEach(child => {
+      const tagName = child.tagName.toLowerCase();
+      
+      // Remove disallowed tags
+      if (!allowedTags.includes(tagName)) {
+        console.log('[MPAI Debug] Removing disallowed tag:', tagName);
+        child.remove();
+        return;
+      }
+      
+      // Remove disallowed attributes
+      const allowedAttrs = allowedAttributes[tagName] || [];
+      const attributes = Array.from(child.attributes);
+      
+      attributes.forEach(attr => {
+        if (!allowedAttrs.includes(attr.name)) {
+          console.log('[MPAI Debug] Removing disallowed attribute:', attr.name, 'from', tagName);
+          child.removeAttribute(attr.name);
+        }
+      });
+      
+      // Sanitize href attributes for links
+      if (tagName === 'a' && child.hasAttribute('href')) {
+        const href = child.getAttribute('href');
+        // Only allow http, https, and mailto links
+        if (!href.match(/^(https?:\/\/|mailto:)/i)) {
+          console.log('[MPAI Debug] Removing unsafe href:', href);
+          child.removeAttribute('href');
+        }
+      }
+      
+      // Recursively sanitize children
+      this._sanitizeElement(child, allowedTags, allowedAttributes);
+    });
   }
 }
 
