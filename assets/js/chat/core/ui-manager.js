@@ -62,8 +62,7 @@ class UIManager {
       closeButton: null,
       downloadButton: null,
       commandButton: null,
-      commandPanel: null,
-      loadingIndicator: null
+      commandPanel: null
     };
   }
 
@@ -112,18 +111,17 @@ class UIManager {
     console.log('[MPAI Debug] commandButton element:', this._elements.commandButton);
     console.log('[MPAI Debug] commandPanel element:', this._elements.commandPanel);
     
-    // Create loading indicator if it doesn't exist
-    let loadingIndicator = container.querySelector('.mpai-chat-loading');
-    if (!loadingIndicator) {
-      loadingIndicator = document.createElement('div');
-      loadingIndicator.className = 'mpai-chat-loading';
-      loadingIndicator.innerHTML = '<div class="mpai-chat-loading-spinner"></div>';
-      loadingIndicator.style.display = 'none';
-      container.querySelector('.mpai-chat-messages').appendChild(loadingIndicator);
-      console.log('[MPAI Debug] Created missing loading indicator');
-    }
-    this._elements.loadingIndicator = loadingIndicator;
-    
+    // Continue with the rest of initialization
+    this._continueInitialization();
+  }
+
+  /**
+   * Continues with element initialization
+   *
+   * @private
+   * @returns {void}
+   */
+  _continueInitialization() {
     // Log which elements were found
     console.log('[MPAI Debug] Message list found:', !!this._elements.messageList);
     console.log('[MPAI Debug] Input form found:', !!this._elements.inputForm);
@@ -135,7 +133,6 @@ class UIManager {
     console.log('[MPAI Debug] Download button found:', !!this._elements.downloadButton);
     console.log('[MPAI Debug] Command button found:', !!this._elements.commandButton);
     console.log('[MPAI Debug] Command panel found:', !!this._elements.commandPanel);
-    console.log('[MPAI Debug] Loading indicator found:', !!this._elements.loadingIndicator);
     
     // Set up event listeners
     this._setupEventListeners();
@@ -391,6 +388,10 @@ class UIManager {
       return;
     }
     
+    // Preserve loading indicator if it exists
+    const existingLoading = this._elements.messageList.querySelector('.mpai-chat-loading');
+    console.log('[MPAI Debug] renderMessages - Found existing loading indicator:', !!existingLoading);
+    
     // Clear the message list
     this._elements.messageList.innerHTML = '';
     
@@ -412,22 +413,69 @@ class UIManager {
     messagesArray.forEach(message => {
       this.renderMessage(message);
     });
+    
+    // Restore loading indicator if it existed
+    if (existingLoading) {
+      console.log('[MPAI Debug] renderMessages - Restoring loading indicator');
+      this._elements.messageList.appendChild(existingLoading);
+    }
   }
 
   /**
    * Shows the loading indicator
-   * 
+   *
    * @public
    * @returns {void}
    */
   showLoading() {
-    console.log('[MPAI Debug] showLoading called');
-    if (this._elements.loadingIndicator) {
-      this._elements.loadingIndicator.style.display = 'block';
-      console.log('[MPAI Debug] Loading indicator shown');
-    } else {
-      console.warn('[MPAI Debug] Loading indicator element not found');
+    console.log('[MPAI Debug] showLoading() called');
+    console.log('[MPAI Debug] messageList element:', this._elements.messageList);
+    
+    if (!this._elements.messageList) {
+      console.error('[MPAI Debug] messageList element not found - cannot show loading indicator');
+      return;
     }
+    
+    // Remove any existing loading indicator
+    const existing = this._elements.messageList.querySelector('.mpai-chat-loading');
+    if (existing) {
+      console.log('[MPAI Debug] Removing existing loading indicator');
+      existing.remove();
+    }
+    
+    // Create new loading indicator with animated dots
+    const loading = document.createElement('div');
+    loading.className = 'mpai-chat-loading';
+    loading.innerHTML = '<span class="mpai-chat-loading-dot"></span><span class="mpai-chat-loading-dot"></span><span class="mpai-chat-loading-dot"></span>';
+    
+    console.log('[MPAI Debug] Created STATIC loading element:', loading);
+    console.log('[MPAI Debug] Loading element HTML:', loading.outerHTML);
+    console.log('[MPAI Debug] Loading element computed styles:', window.getComputedStyle(loading));
+    
+    // Add to DOM
+    this._elements.messageList.appendChild(loading);
+    
+    // Store the timestamp when loading started for minimum display time
+    this._loadingStartTime = Date.now();
+    
+    // Verify it was added and is visible
+    const addedElement = this._elements.messageList.querySelector('.mpai-chat-loading');
+    console.log('[MPAI Debug] Loading indicator added to DOM:', !!addedElement);
+    console.log('[MPAI Debug] Added element:', addedElement);
+    console.log('[MPAI Debug] Element offsetHeight:', addedElement?.offsetHeight);
+    console.log('[MPAI Debug] Element offsetWidth:', addedElement?.offsetWidth);
+    console.log('[MPAI Debug] Element getBoundingClientRect:', addedElement?.getBoundingClientRect());
+    
+    // Force a reflow to ensure visibility
+    if (addedElement) {
+      addedElement.offsetHeight;
+    }
+    
+    // Scroll to bottom to show the loading indicator
+    setTimeout(() => {
+      this.scrollToBottom(true);
+      console.log('[MPAI Debug] Scrolled to show loading indicator');
+    }, 50);
   }
 
   /**
@@ -437,12 +485,42 @@ class UIManager {
    * @returns {void}
    */
   hideLoading() {
-    console.log('[MPAI Debug] hideLoading called');
-    if (this._elements.loadingIndicator) {
-      this._elements.loadingIndicator.style.display = 'none';
-      console.log('[MPAI Debug] Loading indicator hidden');
+    console.log('[MPAI Debug] hideLoading() called');
+    console.log('[MPAI Debug] messageList element:', this._elements.messageList);
+    
+    if (!this._elements.messageList) {
+      console.error('[MPAI Debug] messageList element not found - cannot hide loading indicator');
+      return;
+    }
+    
+    const loading = this._elements.messageList.querySelector('.mpai-chat-loading');
+    console.log('[MPAI Debug] Found loading indicator to remove:', !!loading);
+    
+    if (loading) {
+      // Ensure minimum display time of 800ms for better UX
+      const minDisplayTime = 800;
+      const elapsedTime = this._loadingStartTime ? Date.now() - this._loadingStartTime : minDisplayTime;
+      const remainingTime = Math.max(0, minDisplayTime - elapsedTime);
+      
+      console.log('[MPAI Debug] Loading elapsed time:', elapsedTime, 'ms, remaining time:', remainingTime, 'ms');
+      
+      if (remainingTime > 0) {
+        console.log('[MPAI Debug] Delaying loading indicator removal by', remainingTime, 'ms');
+        setTimeout(() => {
+          const stillExists = this._elements.messageList.querySelector('.mpai-chat-loading');
+          if (stillExists) {
+            console.log('[MPAI Debug] Removing loading indicator after delay:', stillExists);
+            stillExists.remove();
+            console.log('[MPAI Debug] Loading indicator removed successfully after delay');
+          }
+        }, remainingTime);
+      } else {
+        console.log('[MPAI Debug] Removing loading indicator immediately:', loading);
+        loading.remove();
+        console.log('[MPAI Debug] Loading indicator removed successfully');
+      }
     } else {
-      console.warn('[MPAI Debug] Loading indicator element not found');
+      console.log('[MPAI Debug] No loading indicator found to remove');
     }
   }
 
@@ -505,6 +583,7 @@ class UIManager {
       // Clear all messages from the UI
       this._elements.messageList.innerHTML = '';
       console.log('[MPAI Debug] Message list cleared from UI');
+      
       
       // Add back the welcome message
       const welcomeMessage = document.createElement('div');
@@ -654,7 +733,9 @@ class UIManager {
     }
     
     // Show loading indicator
+    console.log('[MPAI Debug] About to call showLoading()');
     this.showLoading();
+    console.log('[MPAI Debug] showLoading() call completed');
     
     // Disable the input field while processing
     this.disableInput();

@@ -53,7 +53,6 @@ class UIControls {
     this._elements = {
       container: null,
       clearButton: null,
-      loadingIndicator: null,
       toggleButtons: {},
       actionButtons: {}
     };
@@ -104,25 +103,6 @@ class UIControls {
     // Register button
   }
 
-  /**
-   * Shows the loading indicator
-   * 
-   * @public
-   * @returns {void}
-   */
-  showLoading() {
-    // Show loading indicator
-  }
-
-  /**
-   * Hides the loading indicator
-   * 
-   * @public
-   * @returns {void}
-   */
-  hideLoading() {
-    // Hide loading indicator
-  }
 
   /**
    * Enables a button

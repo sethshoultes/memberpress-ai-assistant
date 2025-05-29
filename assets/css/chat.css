@@ -161,24 +161,41 @@
 }
 
 /* Loading Indicator */
+/* Typing indicator - fixed positioning and animated dots */
 .mpai-chat-loading {
-    display: flex;
+    background-color: #fff;
+    border: 1px solid #e1e1e1;
+    border-radius: 10px;
+    padding: 12px 15px;
+    margin: 5px 0;
+    display: flex !important;
     align-items: center;
-    gap: 4px;
-    padding: 8px 12px;
-    background-color: #e9e9e9;
-    border-radius: 18px;
-    border-bottom-left-radius: 4px;
-    align-self: flex-start;
-    max-width: 60px;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 1 !important;
+    width: fit-content;
+    max-width: 85%;
+    /* Ensure it appears in the message flow */
+    order: 999;
 }
 
 .mpai-chat-loading-dot {
-    width: 8px;
     height: 8px;
-    background-color: #888;
+    width: 8px;
+    background-color: #0073aa;
     border-radius: 50%;
-    animation: mpai-loading-pulse 1.5s infinite ease-in-out;
+    display: inline-block;
+    margin-right: 5px;
+    opacity: 0.4;
+    /* Start animation immediately */
+    animation: mpai-typing 1s infinite ease-in-out;
+    /* Ensure proper rendering */
+    will-change: opacity, transform;
+}
+
+.mpai-chat-loading-dot:nth-child(1) {
+    animation-delay: 0s;
 }
 
 .mpai-chat-loading-dot:nth-child(2) {
@@ -187,16 +204,21 @@
 
 .mpai-chat-loading-dot:nth-child(3) {
     animation-delay: 0.4s;
+    margin-right: 0;
 }
 
-@keyframes mpai-loading-pulse {
-    0%, 100% {
-        transform: scale(0.8);
-        opacity: 0.6;
+@keyframes mpai-typing {
+    0% {
+        opacity: 0.4;
+        transform: translateY(0);
     }
     50% {
-        transform: scale(1);
         opacity: 1;
+        transform: translateY(-5px);
+    }
+    100% {
+        opacity: 0.4;
+        transform: translateY(0);
     }
 }
 
