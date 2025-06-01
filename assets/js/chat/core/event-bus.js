@@ -158,6 +158,18 @@ class EventBus {
   }
 
   /**
+   * Alias for publish() method to maintain compatibility with different event bus APIs
+   *
+   * @public
+   * @param {string} event - Name of the event to emit
+   * @param {*} data - Data to pass to subscribers
+   * @returns {boolean} Whether the event had subscribers
+   */
+  emit(event, data) {
+    return this.publish(event, data);
+  }
+
+  /**
    * Subscribes to an event and automatically unsubscribes after it's published once
    * 
    * @public
