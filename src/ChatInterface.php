@@ -9,6 +9,8 @@
 
 namespace MemberpressAiAssistant;
 
+use MemberpressAiAssistant\Utilities\LoggingUtility;
+
 /**
  * Class ChatInterface
  *
@@ -86,7 +88,7 @@ class ChatInterface {
             $tag = str_replace(' src=', ' type="module" src=', $tag);
             
             // Log for debugging
-            error_log("MPAI Debug: Added type=module to script: $handle");
+            LoggingUtility::debug("Added type=module to script: $handle");
         }
         
         return $tag;

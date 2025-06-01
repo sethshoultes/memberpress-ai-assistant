@@ -9,6 +9,8 @@
 
 namespace MemberpressAiAssistant\Admin;
 
+use MemberpressAiAssistant\Utilities\LoggingUtility;
+
 /**
  * Class MPAIPostHandler
  */
@@ -88,42 +90,42 @@ class MPAIPostHandler implements \MemberpressAiAssistant\Interfaces\ServiceInter
      */
     public function handleCreatePost() {
         // Add debug logging
-        error_log('[MPAI Debug] Create post AJAX request received');
-        error_log('[MPAI Debug] POST data: ' . print_r($_POST, true));
-        error_log('[MPAI Debug] REQUEST data: ' . print_r($_REQUEST, true));
+        LoggingUtility::debug('Create post AJAX request received');
+        LoggingUtility::debug('POST data: ' . print_r($_POST, true));
+        LoggingUtility::debug('REQUEST data: ' . print_r($_REQUEST, true));
         
         // Log all available nonces for debugging
-        error_log('[MPAI Debug] _wpnonce: ' . (isset($_POST['_wpnonce']) ? $_POST['_wpnonce'] : 'not set'));
-        error_log('[MPAI Debug] nonce: ' . (isset($_POST['nonce']) ? $_POST['nonce'] : 'not set'));
-        error_log('[MPAI Debug] HTTP_X_WP_NONCE: ' . (isset($_SERVER['HTTP_X_WP_NONCE']) ? $_SERVER['HTTP_X_WP_NONCE'] : 'not set'));
+        LoggingUtility::debug('_wpnonce: ' . (isset($_POST['_wpnonce']) ? $_POST['_wpnonce'] : 'not set'));
+        LoggingUtility::debug('nonce: ' . (isset($_POST['nonce']) ? $_POST['nonce'] : 'not set'));
+        LoggingUtility::debug('HTTP_X_WP_NONCE: ' . (isset($_SERVER['HTTP_X_WP_NONCE']) ? $_SERVER['HTTP_X_WP_NONCE'] : 'not set'));
 
         // Try different nonce verification approaches
         $nonce_verified = false;
         
         // Try with _wpnonce
         if (isset($_POST['_wpnonce']) && wp_verify_nonce($_POST['_wpnonce'], 'wp_rest')) {
-            error_log('[MPAI Debug] Nonce verification succeeded with _wpnonce');
+            LoggingUtility::debug('Nonce verification succeeded with _wpnonce');
             $nonce_verified = true;
         }
         // Try with nonce
         else if (isset($_POST['nonce']) && wp_verify_nonce($_POST['nonce'], 'wp_rest')) {
-            error_log('[MPAI Debug] Nonce verification succeeded with nonce');
+            LoggingUtility::debug('Nonce verification succeeded with nonce');
             $nonce_verified = true;
         }
         // Try with HTTP_X_WP_NONCE
         else if (isset($_SERVER['HTTP_X_WP_NONCE']) && wp_verify_nonce($_SERVER['HTTP_X_WP_NONCE'], 'wp_rest')) {
-            error_log('[MPAI Debug] Nonce verification succeeded with HTTP_X_WP_NONCE');
+            LoggingUtility::debug('Nonce verification succeeded with HTTP_X_WP_NONCE');
             $nonce_verified = true;
         }
         
         // Skip nonce verification in development environment
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[MPAI Debug] Debug mode enabled, skipping nonce verification');
+            LoggingUtility::debug('Debug mode enabled, skipping nonce verification');
             $nonce_verified = true;
         }
         
         if (!$nonce_verified) {
-            error_log('[MPAI Debug] All nonce verification methods failed');
+            LoggingUtility::debug('All nonce verification methods failed');
             wp_send_json_error(['message' => 'Security check failed. Please refresh the page and try again.']);
             return;
         }
@@ -168,20 +170,20 @@ class MPAIPostHandler implements \MemberpressAiAssistant\Interfaces\ServiceInter
             'post_author' => get_current_user_id(),
         ];
 
-        error_log('[MPAI Debug] Creating post with data: ' . print_r($post_data, true));
+        LoggingUtility::debug('Creating post with data: ' . print_r($post_data, true));
 
         // Insert post
         $post_id = wp_insert_post($post_data);
 
         // Check for errors
         if (is_wp_error($post_id)) {
-            error_log('[MPAI Debug] Error creating post: ' . $post_id->get_error_message());
+            LoggingUtility::error('Error creating post: ' . $post_id->get_error_message());
             wp_send_json_error(['message' => $post_id->get_error_message()]);
             return;
         }
 
         // Success
-        error_log('[MPAI Debug] Post created successfully with ID: ' . $post_id);
+        LoggingUtility::debug('Post created successfully with ID: ' . $post_id);
         wp_send_json_success([
             'message' => 'Post created successfully.',
             'post_id' => $post_id,

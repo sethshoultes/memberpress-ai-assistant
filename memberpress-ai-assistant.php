@@ -358,7 +358,7 @@ class MemberpressAiAssistant {
         // Check if logging is disabled
         if ($settings_model !== null && $settings_model->get_log_level() === 'none') {
             // Respect the "none" setting even in debug mode
-            error_log('Debug mode requested but logging is disabled by settings');
+            \MemberpressAiAssistant\Utilities\LoggingUtility::info('Debug mode requested but logging is disabled by settings');
             return;
         }
         
@@ -469,8 +469,7 @@ class MemberpressAiAssistant {
                 public function info($message, array $context = []) {
                     // Log to WordPress debug log if enabled
                     if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log(sprintf('[INFO] %s: %s %s',
-                            date('Y-m-d H:i:s'),
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::info(sprintf('%s %s',
                             $message,
                             !empty($context) ? json_encode($context) : ''
                         ));
@@ -480,8 +479,7 @@ class MemberpressAiAssistant {
                 public function error($message, array $context = []) {
                     // Log to WordPress debug log if enabled
                     if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log(sprintf('[ERROR] %s: %s %s',
-                            date('Y-m-d H:i:s'),
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::error(sprintf('%s %s',
                             $message,
                             !empty($context) ? json_encode($context) : ''
                         ));
@@ -491,8 +489,7 @@ class MemberpressAiAssistant {
                 public function warning($message, array $context = []) {
                     // Log to WordPress debug log if enabled
                     if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log(sprintf('[WARNING] %s: %s %s',
-                            date('Y-m-d H:i:s'),
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::warning(sprintf('%s %s',
                             $message,
                             !empty($context) ? json_encode($context) : ''
                         ));
@@ -502,8 +499,7 @@ class MemberpressAiAssistant {
                 public function debug($message, array $context = []) {
                     // Log to WordPress debug log if enabled
                     if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log(sprintf('[DEBUG] %s: %s %s',
-                            date('Y-m-d H:i:s'),
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::debug(sprintf('%s %s',
                             $message,
                             !empty($context) ? json_encode($context) : ''
                         ));

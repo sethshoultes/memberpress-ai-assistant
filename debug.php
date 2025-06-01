@@ -27,8 +27,8 @@ if (!defined('WP_DEBUG_DISPLAY')) {
 
 // Log that debug mode is enabled
 add_action('plugins_loaded', function() {
-    error_log('MPAI DEBUG MODE: Enabled via debug.php file');
-    error_log('MPAI MEMORY: ' . memberpress_ai_assistant_memory_info());
+    \MemberpressAiAssistant\Utilities\LoggingUtility::info('DEBUG MODE: Enabled via debug.php file');
+    \MemberpressAiAssistant\Utilities\LoggingUtility::info('MEMORY: ' . memberpress_ai_assistant_memory_info());
 }, 1);
 
 /**

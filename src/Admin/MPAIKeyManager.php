@@ -12,6 +12,7 @@ namespace MemberpressAiAssistant\Admin;
 // in a WordPress environment where these functions are globally available.
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
+use MemberpressAiAssistant\Utilities\LoggingUtility;
 
 /**
  * MPAIKeyManager - Manages API keys for AI services
@@ -563,7 +564,7 @@ class MPAIKeyManager extends AbstractService {
         if ($this->logger) {
             $this->logger->error('Key Manager: ' . $message);
         } else {
-            error_log('MPAI Error - ' . $message);
+            LoggingUtility::error($message);
         }
     }
     

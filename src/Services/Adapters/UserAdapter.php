@@ -7,6 +7,8 @@
 
 namespace MemberpressAiAssistant\Services\Adapters;
 
+use MemberpressAiAssistant\Utilities\LoggingUtility;
+
 /**
  * Adapter for MemberPress Users (Members)
  */
@@ -39,19 +41,19 @@ class UserAdapter {
                 throw new \Exception('MemberPress is not active');
             }
 
-            // MPAI DEBUG: Log user creation attempt
-            error_log('MPAI DEBUG: UserAdapter creating MeprUser with ID: ' . $id);
+            // Log user creation attempt
+            LoggingUtility::debug('UserAdapter creating MeprUser with ID: ' . $id);
             
             $user = new \MeprUser($id);
             
-            // MPAI DEBUG: Check user object properties
-            error_log('MPAI DEBUG: UserAdapter MeprUser created - ID: ' . ($user->ID ?? 'NULL') .
+            // Check user object properties
+            LoggingUtility::debug('UserAdapter MeprUser created - ID: ' . ($user->ID ?? 'NULL') .
                      ', user_login: ' . ($user->user_login ?? 'NULL') .
                      ', user_email: ' . ($user->user_email ?? 'NULL'));
             
             // Check if the user exists
             if (!$user->ID || $user->ID == 0) {
-                error_log('MPAI DEBUG: UserAdapter - Invalid user ID, returning null');
+                LoggingUtility::debug('UserAdapter - Invalid user ID, returning null');
                 return null;
             }
             
@@ -105,13 +107,13 @@ class UserAdapter {
 
             // Convert WP_User objects to MeprUser objects
             foreach ($wp_users as $wp_user) {
-                // MPAI DEBUG: Log bulk user creation
-                error_log('MPAI DEBUG: UserAdapter bulk creating MeprUser with ID: ' . $wp_user->ID);
+                // Log bulk user creation
+                LoggingUtility::debug('UserAdapter bulk creating MeprUser with ID: ' . $wp_user->ID);
                 
                 $mepr_user = new \MeprUser($wp_user->ID);
                 
-                // MPAI DEBUG: Check bulk user object properties
-                error_log('MPAI DEBUG: UserAdapter bulk MeprUser - ID: ' . ($mepr_user->ID ?? 'NULL') .
+                // Check bulk user object properties
+                LoggingUtility::debug('UserAdapter bulk MeprUser - ID: ' . ($mepr_user->ID ?? 'NULL') .
                          ', valid: ' . (($mepr_user->ID && $mepr_user->ID > 0) ? 'YES' : 'NO'));
                 
                 // Filter by subscription status if requested
@@ -172,14 +174,14 @@ class UserAdapter {
                 throw new \Exception($user_id->get_error_message());
             }
 
-            // MPAI DEBUG: Log user creation during user creation
-            error_log('MPAI DEBUG: UserAdapter creating new MeprUser during create() with ID: ' . $user_id);
+            // Log user creation during user creation
+            LoggingUtility::debug('UserAdapter creating new MeprUser during create() with ID: ' . $user_id);
             
             // Create MeprUser
             $user = new \MeprUser($user_id);
             
-            // MPAI DEBUG: Check newly created user object
-            error_log('MPAI DEBUG: UserAdapter new MeprUser created - ID: ' . ($user->ID ?? 'NULL') .
+            // Check newly created user object
+            LoggingUtility::debug('UserAdapter new MeprUser created - ID: ' . ($user->ID ?? 'NULL') .
                      ', user_login: ' . ($user->user_login ?? 'NULL') .
                      ', user_email: ' . ($user->user_email ?? 'NULL'));
             

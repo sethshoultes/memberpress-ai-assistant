@@ -7,6 +7,8 @@
 
 namespace MemberpressAiAssistant\Services\Transformers;
 
+use MemberpressAiAssistant\Utilities\LoggingUtility;
+
 /**
  * Transformer for MemberPress Subscriptions
  */
@@ -409,14 +411,14 @@ class SubscriptionTransformer {
             
             // Fallback to getting the user directly
             if (class_exists('\MeprUser') && $subscription->user_id) {
-                // MPAI DEBUG: Log user creation attempt
-                error_log('MPAI DEBUG: SubscriptionTransformer creating MeprUser with ID: ' . $subscription->user_id);
+                // Log user creation attempt
+                LoggingUtility::debug('SubscriptionTransformer creating MeprUser with ID: ' . $subscription->user_id);
                 
                 $user = new \MeprUser($subscription->user_id);
                 
-                // MPAI DEBUG: Check if user object has valid properties
+                // Check if user object has valid properties
                 if ($user) {
-                    error_log('MPAI DEBUG: MeprUser created - ID: ' . ($user->ID ?? 'NULL') .
+                    LoggingUtility::debug('MeprUser created - ID: ' . ($user->ID ?? 'NULL') .
                              ', first_name: ' . ($user->first_name ?? 'NULL') .
                              ', last_name: ' . ($user->last_name ?? 'NULL') .
                              ', user_login: ' . ($user->user_login ?? 'NULL'));
@@ -431,7 +433,7 @@ class SubscriptionTransformer {
                     
                     return $user->user_login ?? '';
                 } else {
-                    error_log('MPAI DEBUG: MeprUser creation failed for user_id: ' . $subscription->user_id);
+                    LoggingUtility::debug('MeprUser creation failed for user_id: ' . $subscription->user_id);
                 }
             }
             
@@ -459,21 +461,21 @@ class SubscriptionTransformer {
             
             // Fallback to getting the user directly
             if (class_exists('\MeprUser') && $subscription->user_id) {
-                // MPAI DEBUG: Log user creation attempt for email
-                error_log('MPAI DEBUG: SubscriptionTransformer creating MeprUser for email with ID: ' . $subscription->user_id);
+                // Log user creation attempt for email
+                LoggingUtility::debug('SubscriptionTransformer creating MeprUser for email with ID: ' . $subscription->user_id);
                 
                 $user = new \MeprUser($subscription->user_id);
                 
-                // MPAI DEBUG: Check if user object has valid email
+                // Check if user object has valid email
                 if ($user) {
-                    error_log('MPAI DEBUG: MeprUser email check - ID: ' . ($user->ID ?? 'NULL') .
+                    LoggingUtility::debug('MeprUser email check - ID: ' . ($user->ID ?? 'NULL') .
                              ', user_email: ' . ($user->user_email ?? 'NULL'));
                     
                     if (isset($user->user_email)) {
                         return $user->user_email;
                     }
                 } else {
-                    error_log('MPAI DEBUG: MeprUser creation failed for email lookup, user_id: ' . $subscription->user_id);
+                    LoggingUtility::debug('MeprUser creation failed for email lookup, user_id: ' . $subscription->user_id);
                 }
             }
             
