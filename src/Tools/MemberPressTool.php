@@ -1094,4 +1094,20 @@ class MemberPressTool extends AbstractTool {
         $batchResult = $this->batchProcessor->processBatch('get_user_permissions', $parameters['batch_params']);
         return $batchResult->toArray();
     }
+
+    /**
+     * List memberships (camelCase alias for list_memberships)
+     *
+     * @param array $parameters The parameters for the operation
+     * @return array The result of the operation
+     */
+    public function listMemberships(array $parameters = []): array {
+        // Add operation parameter if not present
+        if (!isset($parameters['operation'])) {
+            $parameters['operation'] = 'list_memberships';
+        }
+        
+        // Call the existing list_memberships method through execute
+        return $this->execute($parameters);
+    }
 }

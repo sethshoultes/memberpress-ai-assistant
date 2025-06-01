@@ -612,8 +612,21 @@ class ChatInterface {
                     $chatAdapter = $mpai_service_locator->get('llm.chat_adapter');
                     
                     // Process the request with the LLM chat adapter
-                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processing request with LLM chat adapter');
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Processing request with LLM chat adapter', [
+                        'message' => $message,
+                        'processing_path' => 'LLM_CHAT_ADAPTER'
+                    ]);
                     $response = $chatAdapter->processRequest($message, $conversation_id);
+                    
+                    // Log raw LLM response before any formatting
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Raw LLM response received', [
+                        'response_structure' => array_keys($response),
+                        'has_data' => isset($response['data']),
+                        'has_message' => isset($response['message']),
+                        'message_preview' => isset($response['message']) ? substr($response['message'], 0, 200) : 'NO_MESSAGE',
+                        'contains_json_wrapper' => isset($response['message']) ? (strpos($response['message'], '```json') !== false || strpos($response['message'], '```') !== false) : false,
+                        'starts_with_json_brace' => isset($response['message']) ? (trim($response['message'])[0] === '{') : false
+                    ]);
                     
                     // Check if the response contains an error message
                     if (isset($response['status']) && $response['status'] === 'error') {
@@ -678,6 +691,10 @@ class ChatInterface {
                     }
                     // Format membership list as a table if this is a membership list response
                     else if (isset($response['data']) && isset($response['data']['memberships']) && is_array($response['data']['memberships'])) {
+                        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Applying membership table formatting (LLM path)', [
+                            'membership_count' => count($response['data']['memberships']),
+                            'original_message_preview' => isset($response['message']) ? substr($response['message'], 0, 100) : 'NO_MESSAGE'
+                        ]);
                         $response['message'] = $this->formatMembershipListAsTable($response['data']['memberships'], $response['data']);
                     }
                     // Format membership level list as a table if this is a membership level list response
@@ -716,8 +733,19 @@ class ChatInterface {
                 ];
                 
                 // Use the orchestrator to process the request
-                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('Processing request with orchestrator');
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Processing request with orchestrator', [
+                    'message' => $message,
+                    'processing_path' => 'AGENT_ORCHESTRATOR'
+                ]);
                 $response = $orchestrator->processUserRequest($request_data, $conversation_id);
+                
+                // Log raw orchestrator response before any formatting
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Raw orchestrator response received', [
+                    'response_structure' => array_keys($response),
+                    'has_data' => isset($response['data']),
+                    'has_message' => isset($response['message']),
+                    'message_preview' => isset($response['message']) ? substr($response['message'], 0, 200) : 'NO_MESSAGE'
+                ]);
                 \MemberpressAiAssistant\Utilities\LoggingUtility::trace('Orchestrator response: ' . json_encode($response));
                 
                 // Get the conversation ID from the response or use the existing one
@@ -776,6 +804,10 @@ class ChatInterface {
                 }
                 // Format membership list as a table if this is a membership list response
                 else if (isset($response['data']) && isset($response['data']['memberships']) && is_array($response['data']['memberships'])) {
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MEMBERSHIP DEBUG] Applying membership table formatting (orchestrator path)', [
+                        'membership_count' => count($response['data']['memberships']),
+                        'original_message_preview' => substr($message, 0, 100)
+                    ]);
                     $message = $this->formatMembershipListAsTable($response['data']['memberships'], $response['data']);
                 }
                 // Format membership level list as a table if this is a membership level list response

@@ -418,17 +418,22 @@ class TableFormatter {
             else if (isset($first_item['author']) && isset($first_item['content']) && isset($first_item['date'])) {
                 $entity_type = 'comments';
             }
-            // Check for memberships
+            // Check for membership levels FIRST (before user subscriptions)
+            // This handles data from list_memberships tool which returns membership level data
+            else if (isset($first_item['title']) && isset($first_item['price']) && isset($first_item['id']) && isset($first_item['status'])) {
+                $entity_type = 'membership_levels';
+            }
+            // Check for membership levels (alternative structure with name instead of title)
+            else if (isset($first_item['name']) && isset($first_item['price']) && isset($first_item['period'])) {
+                $entity_type = 'membership_levels';
+            }
+            // Check for user subscriptions (actual membership data with user info)
             else if (isset($first_item['user']) && isset($first_item['status']) && isset($first_item['subscription'])) {
                 $entity_type = 'memberships';
             }
             // Check for users
             else if (isset($first_item['login']) && isset($first_item['email']) && (isset($first_item['roles']) || isset($first_item['display_name']))) {
                 $entity_type = 'users';
-            }
-            // Check for membership levels
-            else if (isset($first_item['name']) && isset($first_item['price']) && isset($first_item['period'])) {
-                $entity_type = 'membership_levels';
             }
         }
         
@@ -500,7 +505,7 @@ class TableFormatter {
                 break;
                 
             case 'memberships':
-                // Create simplified table for memberships
+                // Create simplified table for user subscriptions (actual membership data with user info)
                 $output .= '<thead><tr>';
                 $output .= '<th>User</th>';
                 $output .= '<th>Subscription</th>';
@@ -510,9 +515,9 @@ class TableFormatter {
                 $output .= '<tbody>';
                 foreach ($data as $item) {
                     $output .= '<tr>';
-                    $output .= '<td>' . esc_html($item['user']) . '</td>';
-                    $output .= '<td>' . esc_html($item['subscription'] ?? '') . '</td>';
-                    $output .= '<td>' . esc_html($item['status'] ?? '') . '</td>';
+                    $output .= '<td>' . esc_html($item['user'] ?? 'N/A') . '</td>';
+                    $output .= '<td>' . esc_html($item['subscription'] ?? 'N/A') . '</td>';
+                    $output .= '<td>' . esc_html($item['status'] ?? 'N/A') . '</td>';
                     $output .= '</tr>';
                 }
                 $output .= '</tbody>';
@@ -556,10 +561,28 @@ class TableFormatter {
                 $output .= '<tbody>';
                 foreach ($data as $item) {
                     $output .= '<tr>';
-                    $output .= '<td>' . esc_html($item['name']) . '</td>';
-                    $output .= '<td>' . esc_html($item['price'] ?? '') . '</td>';
-                    $output .= '<td>' . esc_html($item['period'] ?? '') . '</td>';
-                    $output .= '<td>' . esc_html(isset($item['active']) && $item['active'] ? 'Active' : 'Inactive') . '</td>';
+                    // Use 'title' if 'name' is not available (from list_memberships tool)
+                    $name = $item['name'] ?? $item['title'] ?? 'N/A';
+                    $output .= '<td>' . esc_html($name) . '</td>';
+                    $output .= '<td>$' . esc_html($item['price'] ?? '0') . '</td>';
+                    
+                    // Format period from terms array if available
+                    $period = 'N/A';
+                    if (isset($item['terms']['period_formatted'])) {
+                        $period = $item['terms']['period_formatted'];
+                    } elseif (isset($item['period'])) {
+                        $period = $item['period'];
+                    }
+                    $output .= '<td>' . esc_html($period) . '</td>';
+                    
+                    // Handle status - could be 'active', 'publish', etc.
+                    $status = 'Inactive';
+                    if (isset($item['active']) && $item['active']) {
+                        $status = 'Active';
+                    } elseif (isset($item['status'])) {
+                        $status = ucfirst($item['status']);
+                    }
+                    $output .= '<td>' . esc_html($status) . '</td>';
                     $output .= '</tr>';
                 }
                 $output .= '</tbody>';
