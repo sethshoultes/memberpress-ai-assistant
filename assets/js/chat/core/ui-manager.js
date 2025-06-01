@@ -1,18 +1,22 @@
 /**
  * UIManager - Manages all UI-related functionality for the chat interface
- * 
+ *
  * This module is responsible for all UI-related functionality, including
  * message rendering, UI controls, and input handling. It provides a clean
  * separation between the UI and the underlying application logic.
- * 
+ *
  * @module UIManager
  * @author MemberPress
  * @since 1.0.0
  */
 
+// Import message system components
+import MessageFactory from '../messages/message-factory.js';
+import MessageRenderer from '../messages/message-renderer.js';
+
 /**
  * UIManager class - Manages UI interactions and rendering
- * 
+ *
  * @class
  */
 class UIManager {
@@ -64,6 +68,10 @@ class UIManager {
       commandButton: null,
       commandPanel: null
     };
+    
+    // Message system components
+    this._messageFactory = null;
+    this._messageRenderer = null;
   }
 
   /**
@@ -133,6 +141,9 @@ class UIManager {
     console.log('[MPAI Debug] Download button found:', !!this._elements.downloadButton);
     console.log('[MPAI Debug] Command button found:', !!this._elements.commandButton);
     console.log('[MPAI Debug] Command panel found:', !!this._elements.commandPanel);
+    
+    // Initialize message system
+    this._initializeMessageSystem();
     
     // Set up event listeners
     this._setupEventListeners();
@@ -320,8 +331,44 @@ class UIManager {
   }
 
   /**
+   * Initialize the message system.
+   * @private
+   */
+  _initializeMessageSystem() {
+    try {
+      console.log('[MPAI Debug] Initializing message system');
+      
+      // Create message factory
+      this._messageFactory = new MessageFactory({
+        handlerRegistry: {},
+        eventBus: this._eventBus
+      });
+
+      // Create message renderer
+      this._messageRenderer = new MessageRenderer({
+        messageFactory: this._messageFactory,
+        eventBus: this._eventBus,
+        stateManager: this._stateManager
+      });
+
+      // Initialize message factory
+      this._messageFactory.initialize();
+
+      // Initialize message renderer with messages container
+      if (this._elements.messageList) {
+        this._messageRenderer.initialize(this._elements.messageList);
+      }
+
+      console.log('[MPAI Debug] Message system initialized successfully');
+    } catch (error) {
+      console.error('[MPAI Debug] Error initializing message system:', error);
+      // Continue without message system - fallback to basic rendering
+    }
+  }
+
+  /**
    * Renders the chat interface
-   * 
+   *
    * @public
    * @returns {void}
    */
@@ -342,6 +389,29 @@ class UIManager {
       return null;
     }
     
+    // Check if this is a blog post message and we have the message system available
+    const content = message.content || '';
+    const isBlogPost = content.includes('<wp-post>') || content.includes('<post-title>') || content.includes('<post-content>');
+    
+    if (isBlogPost && this._messageRenderer) {
+      console.log('[MPAI Debug] Rendering blog post message with message system');
+      try {
+        // Use the message renderer for blog posts
+        const renderedElement = this._messageRenderer.renderMessage(message);
+        if (renderedElement) {
+          // Scroll to the bottom
+          this.scrollToBottom(false);
+          return renderedElement;
+        }
+      } catch (error) {
+        console.error('[MPAI Debug] Error rendering blog post with message system:', error);
+        // Fall back to basic rendering
+      }
+    }
+    
+    // Basic rendering for non-blog posts or when message system is not available
+    console.log('[MPAI Debug] Using basic message rendering');
+    
     // Create message element
     const messageElement = document.createElement('div');
     messageElement.className = `mpai-chat-message mpai-chat-message-${message.role || 'assistant'}`;
@@ -361,7 +431,6 @@ class UIManager {
     contentElement.className = 'mpai-chat-message-content';
     
     // Check if content contains HTML and handle appropriately
-    const content = message.content || '';
     const containsHtml = /<[^>]+>/.test(content);
     
     if (containsHtml && message.role === 'assistant') {
@@ -1319,7 +1388,10 @@ class UIManager {
       'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
       'ul', 'ol', 'li',
       'table', 'thead', 'tbody', 'tr', 'th', 'td',
-      'a', 'code', 'pre', 'blockquote'
+      'a', 'code', 'pre', 'blockquote',
+      // Blog post XML tags
+      'wp-post', 'post-title', 'post-content', 'post-excerpt',
+      'post-status', 'post-type', 'block'
     ];
     
     const allowedAttributes = {
@@ -1344,7 +1416,15 @@ class UIManager {
       'li': ['class'],
       'code': ['class'],
       'pre': ['class'],
-      'blockquote': ['class']
+      'blockquote': ['class'],
+      // Blog post XML tag attributes
+      'wp-post': ['class'],
+      'post-title': ['class'],
+      'post-content': ['class'],
+      'post-excerpt': ['class'],
+      'post-status': ['class'],
+      'post-type': ['class'],
+      'block': ['type', 'level', 'class']
     };
     
     // Recursively sanitize elements
