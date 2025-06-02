@@ -4,161 +4,153 @@
 
 ## Description
 
-MemberPress AI Assistant integrates powerful AI language models (OpenAI and Anthropic) with your MemberPress WordPress plugin, providing intelligent insights, content analysis, and WP-CLI command assistance. This plugin helps site administrators better understand their membership data and streamline site management tasks with features like best-selling membership analysis, tiered support routing, and comprehensive diagnostic capabilities.
+MemberPress AI Assistant integrates powerful AI capabilities with your MemberPress WordPress plugin, providing intelligent insights, content analysis, and membership management assistance. This plugin helps site administrators better understand their membership data and streamline site management tasks with features like membership analysis, user management, and comprehensive diagnostic capabilities.
 
 ## Features
 
 - **AI-Powered Chat Interface**: Ask questions about your MemberPress data and receive intelligent answers
+- **Membership Management**: Create, update, and manage memberships through natural language
+- **User Integration**: Manage user-membership relationships and permissions
+- **Data Analysis**: Get insights about memberships, transactions, subscriptions, and more
+- **Content Generation**: Create membership-related content with AI assistance
 - **Agent System**: Specialized AI agents that perform specific tasks through natural language commands
-- **Multi-Agent Data Processing**: Two-stage data processing to optimize the display and formatting of results
-- **MemberPress Data Analysis**: Get insights about memberships, transactions, subscriptions, and more
-- **Best-Selling Membership Analysis**: Identify your top-performing membership products with sales data
-- **Multi-Tier Support Routing**: Integrated support system using Docsbot for documentation before human escalation
-- **WP-CLI Integration**: Run WordPress CLI commands with AI assistance
-- **Command Recommendations**: Get AI-suggested commands based on your goals
-- **Secure Command Execution**: Only pre-approved commands from a whitelist can be executed
-- **Conversation History**: Save and retrieve previous conversations
-- **Enhanced Command Output**: Automatic formatting of command results as beautiful HTML tables
-- **Intelligent Table Formatting**: Automatic detection and formatting of tabular data with appropriate headers
-- **Command-Specific Styling**: Specialized formatting for different types of commands (users, posts, plugins, etc.)
-- **Direct Command Execution**: Click commands to run them directly from the chat interface
-- **Content Marker System**: Automatic tagging and identification of blog posts and pages for reliable publishing
-- **Smart Content Extraction**: Multi-tiered content retrieval system with fallbacks for blog post publishing
-- **Improved User Experience**: Streamlined interface with real-time feedback during command execution
-- **Site Health Integration**: Comprehensive system diagnostics with WordPress Site Health integration
+- **Tool-Based Architecture**: Modular, extensible system for implementing functionality
+- **Dependency Injection**: Clean, maintainable code with proper separation of concerns
+- **Comprehensive Documentation**: Detailed documentation for users and developers
 
 ## Requirements
 
 - WordPress 5.8 or higher
 - PHP 7.4 or higher (8.0+ recommended)
 - MemberPress 1.9.0+ plugin installed and activated
-- OpenAI API key (primary integration)
-- Anthropic API key (optional)
-- WP-CLI (optional, for command-line features)
 
 ## Installation
 
 1. Upload the `memberpress-ai-assistant` folder to the `/wp-content/plugins/` directory
 2. Activate the plugin through the WordPress admin interface
-3. Navigate to AI Assistant > Settings to configure your OpenAI API key and other settings
-4. Start using the AI assistant from the AI Assistant menu in WordPress admin
+3. Start using the AI assistant from the AI Assistant menu in WordPress admin
 
-## Configuration
+For detailed installation instructions, see the [Installation and Configuration Guide](docs/installation-configuration.md).
 
-### API Settings
+## Quick Start
 
-1. Obtain an API key from OpenAI (https://platform.openai.com/api-keys)
-2. Optionally obtain an API key from Anthropic (https://console.anthropic.com/)
-3. Enter your API keys in the plugin settings
-4. Select your preferred models for each API
-5. Configure temperature and token settings as needed
-6. Choose your primary API provider (OpenAI or Anthropic)
+### For Site Administrators
 
-### CLI Command Settings
+1. **Start Using the AI Assistant**
+   - Navigate to AI Assistant > Chat in your WordPress admin
+   - Type a question or command in the chat interface
+   - Receive AI-generated insights and assistance
+   - No API key configuration required - the system works out of the box!
 
-If you want to use the WP-CLI integration:
+3. **Try These Examples**
+   - "What are my top-selling memberships this month?"
+   - "Create a new monthly membership called 'Premium Plan' for $29.99"
+   - "Show me users who joined in the last 30 days"
+   - "Draft a welcome email for new members"
 
-1. Enable CLI commands in the settings
-2. Add allowed commands to the whitelist
-3. Only commands in the whitelist can be executed
+For more examples and tips, see the [Getting Started Guide](docs/getting-started.md).
 
-## Usage
+### For Developers
 
-### Admin Chat Interface
+1. **Understand the Architecture**
+   - Review the [System Architecture](docs/system-architecture.md) documentation
+   - Explore the [Agent Architecture](docs/agent-architecture.md) and [Tool System](docs/available-tools.md)
+   - Learn about the [Dependency Injection](docs/dependency-injection.md) system
 
-1. Navigate to AI Assistant in the WordPress admin menu
-2. Type your question in the chat interface
-3. Receive AI-generated insights about your MemberPress site
+2. **Extend the Plugin**
+   - Create custom agents for specialized functionality
+   - Implement custom tools for specific operations
+   - Use the dependency injection container for clean integration
 
-### WP-CLI Commands
-
-This plugin adds several WP-CLI commands:
-
-```bash
-# Generate insights from MemberPress data
-wp mpai insights [--prompt=<prompt>] [--format=<format>]
-
-# Get command recommendations
-wp mpai recommend <prompt>
-
-# Chat with the AI assistant
-wp mpai chat <message>
-
-# Run a command with AI analysis
-wp mpai run <command> [--context=<context>]
-```
+For development guidelines and examples, see the [Getting Started Guide for Developers](docs/getting-started.md#for-developers).
 
 ## Documentation
 
-For detailed information, please check these documentation files:
+### User Documentation
 
-- [Primary Entry Point](_0_START_HERE_.md) - Comprehensive entry point with development pathways
-- [Project Specification](docs/current/core/project-specification.md) - Complete project overview and technical specifications
-- [User Guide](docs/current/core/user-guide.md) - Complete guide for users
-- [Developer Guide](docs/current/core/developer-guide.md) - Information for developers who want to extend the plugin
-- [Unified Agent System](docs/current/agent-system/unified-agent-system.md) - Comprehensive agent system documentation
-- [Agent System Reference](docs/current/agent-system/agent-system-reference.md) - Quick reference for the agent system
-- [Content Marker System](docs/current/content-system/CONTENT_MARKER_SYSTEM.md) - Comprehensive documentation of the content marker system
-- [Tool Implementation Map](docs/current/tool-system/tool-implementation-map.md) - Guide for implementing tools
-- [Testing Procedures](test/test-procedures.md) - Procedures for testing the plugin
+- [Getting Started Guide](docs/getting-started.md)
+- [Installation and Configuration](docs/installation-configuration.md)
+- [Chat Interface Guide](docs/chat-interface.md)
+- [Admin Interface Guide](docs/admin-interface.md)
+
+### Technical Documentation
+
+- [System Architecture](docs/system-architecture.md)
+- [Agent Architecture](docs/agent-architecture.md)
+- [Available Tools](docs/available-tools.md)
+- [Dependency Injection](docs/dependency-injection.md)
+- [Membership Operations](docs/membership-operations.md)
+- [User Integration](docs/user-integration.md)
+
+## System Architecture
+
+The MemberPress AI Assistant is built on a modular, extensible architecture that combines several architectural patterns:
+
+1. **Layered Architecture**: The system is organized into layers with clear responsibilities
+2. **Dependency Injection**: Components receive their dependencies rather than creating them
+3. **Service-Oriented Architecture**: Functionality is provided through discrete services
+4. **Agent-Based Architecture**: Specialized agents handle different types of requests
+5. **Tool-Based Architecture**: Operations are implemented as tools with standardized interfaces
+
+For a comprehensive overview of the system architecture, see the [System Architecture](docs/system-architecture.md) documentation.
 
 ## Agent System
 
 The MemberPress AI Assistant includes an advanced agent system with specialized AI assistants:
 
-1. **Content Agent**: Create and manage website content
-2. **System Agent**: Manage WordPress updates, plugins, and settings
-3. **Security Agent**: Monitor and enhance site security 
-4. **Analytics Agent**: Generate insights about your membership site
-5. **MemberPress Agent**: Handle MemberPress-specific tasks and configurations
+1. **Agent Interface**: Defines the contract for all agents
+2. **Abstract Agent**: Base implementation with common functionality
+3. **Agent Orchestrator**: Selects the appropriate agent for each request
+4. **Agent Factory**: Creates agent instances with dependencies
+5. **Agent Registry**: Maintains a registry of available agents
 
-The plugin also implements a multi-agent data processing approach:
+For more information on the agent system, see the [Agent Architecture](docs/agent-architecture.md) documentation.
 
-1. **Backend Agent (PHP)**: Detects, formats, and structures tabular data from commands
-2. **Frontend Agent (JavaScript)**: Processes and displays the structured data with appropriate formatting
+## Tool System
 
-This two-stage processing ensures optimal display of information with context-aware formatting based on the command type.
+The MemberPress AI Assistant implements a tool-based architecture for operations:
 
-For more information, see the [Unified Agent System](docs/current/agent-system/unified-agent-system.md) documentation.
+1. **Tool Interface**: Defines the contract for all tools
+2. **Abstract Tool**: Base implementation with common functionality
+3. **Tool Registry**: Maintains a registry of available tools
+4. **Cached Tool Wrapper**: Provides caching for tool operations
+
+For more information on the tool system, see the [Available Tools](docs/available-tools.md) documentation.
+
+## Membership Operations
+
+The MemberPress AI Assistant provides comprehensive functionality for managing MemberPress memberships:
+
+1. **Create Memberships**: Create new memberships with pricing and terms
+2. **Update Memberships**: Modify existing memberships
+3. **Delete Memberships**: Remove memberships
+4. **List Memberships**: View all memberships
+5. **Manage Access Rules**: Control content access for memberships
+6. **Manage Pricing**: Update pricing settings for memberships
+
+For more information on membership operations, see the [Membership Operations](docs/membership-operations.md) documentation.
+
+## User Integration
+
+The MemberPress AI Assistant provides functionality for managing the relationship between WordPress users and MemberPress memberships:
+
+1. **Associate Users**: Associate users with memberships
+2. **Disassociate Users**: Remove users from memberships
+3. **Get User Memberships**: View a user's memberships
+4. **Update User Roles**: Manage user roles and permissions
+5. **Get User Permissions**: View a user's roles and capabilities
+
+For more information on user integration, see the [User Integration](docs/user-integration.md) documentation.
 
 ## Security
 
 This plugin takes security seriously:
 
 - Only administrators can access the plugin features
-- OpenAI API keys are stored securely
-- WP-CLI commands can only be executed if they're on a pre-approved whitelist
+- Built-in AI integration with no API key configuration required
 - All user inputs are properly sanitized and validated
-
-## Project Organization
-
-The plugin is organized into the following structure:
-
-- `/assets/` - CSS and JavaScript files
-- `/docs/` - Documentation files
-  - `/docs/current/` - Current feature documentation organized by system:
-    - `/docs/current/core/` - Core system documentation
-    - `/docs/current/agent-system/` - Agent system documentation
-    - `/docs/current/tool-system/` - Tool system documentation
-    - `/docs/current/content-system/` - Content system documentation
-    - `/docs/current/js-system/` - JavaScript system documentation
-    - `/docs/current/feature-plans/` - Feature planning documentation
-  - `/docs/archive/_snacks/` - Archived investigation results and solutions ("Scooby Snacks")
-  - `/docs/roadmap/` - Planned feature documentation
-  - `/docs/archive/` - Archived and deprecated files
-- `/includes/` - PHP class files
-  - `/includes/agents/` - Agent system files
-  - `/includes/cli/` - WP-CLI command files
-  - `/includes/tools/` - Tool implementation files
-- `/test/` - Testing procedures and test files
-
-For a detailed description of all files and their purpose, see the [System Map](docs/current/core/system-map.md).
-
-For an overview of the documentation structure, see the [Documentation Map](docs/current/core/documentation-map.md).
-
-## Development Resources
-
-Refer to the [CLAUDE.md](./CLAUDE.md) file for development guidelines and coding standards.
+- Comprehensive error handling and logging
+- User consent management for data privacy
 
 ## Support
 
@@ -171,7 +163,7 @@ This plugin is licensed under the GPL v2 or later.
 ## Credits
 
 - Developed by MemberPress
-- OpenAI and Anthropic integrations for language model capabilities
+- Advanced AI capabilities for intelligent assistance
 - Built to enhance the MemberPress plugin experience
 
 ---

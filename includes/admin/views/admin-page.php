@@ -1,229 +1,87 @@
 <?php
 /**
- * Admin Page
- * 
- * Simple admin page without tabs
+ * Admin page template for MemberPress AI Assistant settings
  *
- * @package MemberPress AI Assistant
+ * @package MemberpressAiAssistant
  */
 
-// If this file is called directly, abort.
-if (!defined('WPINC')) {
-    die;
+// Prevent direct access
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+// Get current tab and tabs from the controller
+$current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general';
+$tabs = $this->get_tabs();
+
+// Ensure the tab is valid
+if (!isset($tabs[$current_tab])) {
+    $current_tab = 'general';
 }
 ?>
-
-<div class="wrap mpai-admin-page">
-    <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+<div class="wrap">
+    <h1><?php esc_html_e('MemberPress AI Assistant Settings', 'memberpress-ai-assistant'); ?></h1>
     
     <?php
-    // Show success message if consent was just given
-    if (isset($_GET['consent']) && $_GET['consent'] == 'given'): ?>
-    <div class="notice notice-success is-dismissible">
-        <p><strong><?php _e('Success!', 'memberpress-ai-assistant'); ?></strong> <?php _e('Thank you for agreeing to the terms. You can now use the MemberPress AI Assistant.', 'memberpress-ai-assistant'); ?></p>
-    </div>
-    <?php endif; ?>
+    // Display settings updated message if needed
+    if (isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true') {
+        echo '<div class="notice notice-success is-dismissible"><p>' . 
+            esc_html__('Settings saved successfully.', 'memberpress-ai-assistant') . 
+            '</p></div>';
+    }
+    ?>
     
-    <?php
-    // Show settings saved message
-    if (isset($_GET['settings-updated']) && $_GET['settings-updated'] == true): ?>
-    <div class="notice notice-success is-dismissible">
-        <p><strong><?php _e('Settings saved successfully!', 'memberpress-ai-assistant'); ?></strong></p>
-    </div>
-    <?php endif; ?>
+    <!-- Tabs navigation -->
+    <h2 class="nav-tab-wrapper">
+        <?php foreach ($tabs as $tab_id => $tab_name) : 
+            $active = ($current_tab === $tab_id) ? 'nav-tab-active' : '';
+            $url = add_query_arg([
+                'page' => 'mpai-settings',
+                'tab' => $tab_id,
+            ], admin_url('admin.php'));
+        ?>
+            <a href="<?php echo esc_url($url); ?>" class="nav-tab <?php echo esc_attr($active); ?>">
+                <?php echo esc_html($tab_name); ?>
+            </a>
+        <?php endforeach; ?>
+    </h2>
     
-    <div class="mpai-dashboard-grid">
-        <div class="mpai-dashboard-card mpai-card-primary">
-            <h2><?php _e('Quick Actions', 'memberpress-ai-assistant'); ?></h2>
-            <ul class="mpai-action-buttons">
-                <li>
-                    <a href="#" id="mpai-open-chat-button" class="button button-primary">
-                        <span class="dashicons dashicons-format-chat"></span>
-                        <?php _e('Open AI Chat', 'memberpress-ai-assistant'); ?>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" id="mpai-clear-chat-history" class="button">
-                        <span class="dashicons dashicons-trash"></span>
-                        <?php _e('Clear Chat History', 'memberpress-ai-assistant'); ?>
-                    </a>
-                </li>
-            </ul>
-        </div>
+    <!-- Settings form -->
+    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+        <input type="hidden" name="action" value="mpai_update_settings" />
+        <input type="hidden" name="tab" value="<?php echo esc_attr($current_tab); ?>" />
         
-        <div class="mpai-dashboard-card">
-            <h2><?php _e('Status', 'memberpress-ai-assistant'); ?></h2>
-            <div class="mpai-status-grid">
-                <div class="mpai-status-item">
-                    <span class="mpai-status-label"><?php _e('API Connection:', 'memberpress-ai-assistant'); ?></span>
-                    <span class="mpai-status-value" id="mpai-api-connection-status">
-                        <?php 
-                        $primary_api = get_option('mpai_primary_api', 'openai');
-                        $api_key = ($primary_api == 'openai') ? 
-                            get_option('mpai_api_key', '') : 
-                            get_option('mpai_anthropic_api_key', '');
-                        
-                        if (!empty($api_key)) {
-                            echo '<span class="dashicons dashicons-yes-alt"></span> ' . esc_html__('Connected', 'memberpress-ai-assistant');
-                            echo ' (' . esc_html(ucfirst($primary_api)) . ')';
-                        } else {
-                            echo '<span class="dashicons dashicons-warning"></span> ' . esc_html__('Not Configured', 'memberpress-ai-assistant');
-                        }
-                        ?>
-                    </span>
-                </div>
-                <div class="mpai-status-item">
-                    <span class="mpai-status-label"><?php _e('MemberPress:', 'memberpress-ai-assistant'); ?></span>
-                    <span class="mpai-status-value mpai-status-<?php echo mpai_is_memberpress_active() ? 'good' : 'warning'; ?>">
-                        <?php 
-                        if (mpai_is_memberpress_active()) {
-                            echo '<span class="dashicons dashicons-yes-alt"></span> ' . esc_html__('Detected', 'memberpress-ai-assistant');
-                        } else {
-                            echo '<span class="dashicons dashicons-warning"></span> ' . esc_html__('Not Detected', 'memberpress-ai-assistant');
-                        }
-                        ?>
-                    </span>
-                </div>
-                <div class="mpai-status-item">
-                    <span class="mpai-status-label"><?php _e('Current Model:', 'memberpress-ai-assistant'); ?></span>
-                    <span class="mpai-status-value">
-                        <?php 
-                        $primary_api = get_option('mpai_primary_api', 'openai');
-                        $model = ($primary_api == 'openai') ? 
-                            get_option('mpai_model', 'gpt-4o') : 
-                            get_option('mpai_anthropic_model', 'claude-3-opus-20240229');
-                            
-                        echo '<span class="dashicons dashicons-admin-generic"></span> ' . esc_html($model);
-                        ?>
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Settings Form -->
-    <div class="mpai-settings-section">
-        <h2><?php _e('Settings', 'memberpress-ai-assistant'); ?></h2>
-        <form method="post" action="options.php">
-            <?php
-            settings_fields('mpai_settings');
-            do_settings_sections('mpai_settings');
-            submit_button();
-            ?>
-        </form>
-    </div>
-</div>
-
-<script>
-jQuery(document).ready(function($) {
-    // Handle "Open AI Chat" button click
-    $('#mpai-open-chat-button').on('click', function(e) {
-        e.preventDefault();
-        // Trigger the floating chat interface toggle button if it exists
-        if ($('#mpai-chat-toggle').length) {
-            $('#mpai-chat-toggle').click();
-        } else {
-            alert('Chat interface is not available. Please check your settings.');
+        <?php
+        // Add nonce for security
+        wp_nonce_field($this->get_page_slug() . '-options');
+        
+        // Output settings fields based on current tab
+        echo '<table class="form-table" role="presentation">';
+        
+        switch ($current_tab) {
+            case 'general':
+                do_settings_sections($this->get_page_slug());
+                break;
+                
+            case 'chat':
+                // Only show the chat section
+                $this->render_section('mpai_chat_section');
+                break;
+                
+            case 'access':
+                // Only show the access section
+                $this->render_section('mpai_access_section');
+                break;
+                
+            default:
+                do_settings_sections($this->get_page_slug());
+                break;
         }
-    });
-    
-    // Note: Clear Chat History button is now handled in assets/js/admin.js
-    // Removing duplicate handler here to prevent double alerts
-});
-</script>
-
-<style>
-/* Admin Page Styles */
-.mpai-dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.mpai-dashboard-card {
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-    padding: 20px;
-}
-
-.mpai-card-primary {
-    border-top: 4px solid #2271b1;
-}
-
-.mpai-action-buttons {
-    list-style: none;
-    padding: 0;
-    margin: 15px 0 5px;
-}
-
-.mpai-action-buttons li {
-    margin-bottom: 12px;
-}
-
-.mpai-action-buttons .button {
-    display: inline-flex;
-    align-items: center;
-    min-width: 180px;
-}
-
-.mpai-action-buttons .dashicons {
-    margin-right: 8px;
-}
-
-.mpai-status-grid {
-    display: grid;
-    gap: 15px;
-}
-
-.mpai-status-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.mpai-status-item:last-child {
-    border-bottom: none;
-}
-
-.mpai-status-label {
-    font-weight: 500;
-}
-
-.mpai-status-value {
-    display: flex;
-    align-items: center;
-}
-
-.mpai-status-value .dashicons {
-    margin-right: 5px;
-}
-
-.mpai-status-value .dashicons-yes-alt {
-    color: #46b450;
-}
-
-.mpai-status-value .dashicons-warning {
-    color: #f56e28;
-}
-
-.mpai-settings-section {
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-    padding: 20px 25px;
-}
-
-.mpai-settings-section h2 {
-    margin-top: 0;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.form-table th {
-    padding: 20px 10px 20px 0;
-}
-</style>
+        
+        echo '</table>';
+        
+        // Submit button
+        submit_button();
+        ?>
+    </form>
+</div>

@@ -1,25 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit
-    bootstrap="test/bootstrap.php"
-    backupGlobals="false"
-    colors="true"
-    convertErrorsToExceptions="true"
-    convertNoticesToExceptions="true"
-    convertWarningsToExceptions="true"
-    verbose="true"
->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.5/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         stopOnFailure="false">
     <testsuites>
-        <testsuite name="MemberPress AI Assistant Tests">
-            <directory prefix="test-" suffix=".php">./test</directory>
-            <directory suffix="Test.php">./test/unit</directory>
+        <testsuite name="Unit">
+            <directory suffix="Test.php">./tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory suffix="Test.php">./tests/Integration</directory>
         </testsuite>
     </testsuites>
-    <filter>
-        <whitelist processUncoveredFilesFromWhitelist="true">
-            <directory suffix=".php">./includes</directory>
-            <exclude>
-                <directory suffix=".php">./vendor</directory>
-            </exclude>
-        </whitelist>
-    </filter>
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">./src</directory>
+        </include>
+        <exclude>
+            <directory>./vendor</directory>
+            <directory>./tests</directory>
+        </exclude>
+        <report>
+            <html outputDirectory="./tests/coverage/html"/>
+            <clover outputFile="./tests/coverage/clover.xml"/>
+        </report>
+    </coverage>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="WP_DEBUG" value="true"/>
+    </php>
 </phpunit>

@@ -1,0 +1,87 @@
+/* MemberPress AI Table Styles */
+
+/* HTML Table Rendering Styles for WordPress Tool Outputs */
+.mpai-chat-message-content .mpai-table-container {
+    margin: 1em 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.mpai-chat-message-content .mpai-table-container h2 {
+    margin: 0;
+    padding: 12px 16px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.mpai-chat-message-content .mpai-table-summary {
+    padding: 12px 16px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.mpai-chat-message-content .mpai-table-summary > div {
+    font-size: 14px;
+}
+
+.mpai-chat-message-content .mpai-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.mpai-chat-message-content .mpai-table th,
+.mpai-chat-message-content .mpai-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.mpai-chat-message-content .mpai-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    border-bottom: 2px solid #ddd;
+}
+
+.mpai-chat-message-content .mpai-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.mpai-chat-message-content .mpai-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .mpai-chat-message-content .mpai-table-container {
+        border-color: #4a5568;
+    }
+    
+    .mpai-chat-message-content .mpai-table-container h2,
+    .mpai-chat-message-content .mpai-table-summary {
+        background-color: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+    
+    .mpai-chat-message-content .mpai-table th {
+        background-color: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+    
+    .mpai-chat-message-content .mpai-table td {
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+    
+    .mpai-chat-message-content .mpai-table tr:hover {
+        background-color: #2d3748;
+    }
+}

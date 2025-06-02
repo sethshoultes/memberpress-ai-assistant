@@ -1,0 +1,186 @@
+/**
+ * MemberPress AI Assistant - Dashboard Styles
+ *
+ * This stylesheet contains all styles for the MemberPress AI Assistant dashboard tab.
+ * It includes layout, status indicators, overview sections, statistics, and footer styling.
+ *
+ * @package MemberpressAiAssistant
+ */
+
+/* -----------------------------------------------------------------------------
+ * 1. General Layout
+ * -------------------------------------------------------------------------- */
+
+.mpai-dashboard-tab {
+	margin: 20px 0;
+}
+
+.mpai-dashboard-description {
+	font-size: 14px;
+	margin-bottom: 20px;
+}
+
+/* -----------------------------------------------------------------------------
+ * 2. Status Indicators
+ * -------------------------------------------------------------------------- */
+
+.mpai-status-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: 20px;
+	margin-bottom: 30px;
+}
+
+.mpai-status-item {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	padding: 15px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+	transition: box-shadow 0.2s ease-in-out;
+}
+
+.mpai-status-item:hover,
+.mpai-status-item:focus-within {
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mpai-status-label {
+	font-weight: bold;
+	display: block;
+	margin-bottom: 5px;
+}
+
+.mpai-status-indicator {
+	display: inline-block;
+	padding: 3px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: bold;
+}
+
+/* Status colors with improved contrast ratios */
+.mpai-status-success {
+	background-color: #d4edda;
+	color: #155724;
+}
+
+.mpai-status-warning {
+	background-color: #fff3cd;
+	color: #856404;
+}
+
+.mpai-status-error {
+	background-color: #f8d7da;
+	color: #721c24;
+}
+
+.mpai-status-message {
+	margin-top: 8px;
+	font-size: 12px;
+	color: #666;
+}
+
+/* -----------------------------------------------------------------------------
+ * 3. Overview Section
+ * -------------------------------------------------------------------------- */
+
+.mpai-overview-content {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	padding: 20px;
+	margin-bottom: 30px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.mpai-features-list,
+.mpai-getting-started {
+	margin-left: 20px;
+	line-height: 1.6;
+}
+
+/* -----------------------------------------------------------------------------
+ * 4. Statistics Section
+ * -------------------------------------------------------------------------- */
+
+.mpai-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 20px;
+	margin-bottom: 30px;
+}
+
+.mpai-stat-item {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	padding: 15px;
+	text-align: center;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+	transition: transform 0.2s ease;
+}
+
+.mpai-stat-item:hover {
+	transform: translateY(-2px);
+}
+
+.mpai-stat-value {
+	display: block;
+	font-size: 24px;
+	font-weight: bold;
+	margin-bottom: 5px;
+}
+
+.mpai-stat-label {
+	display: block;
+	font-size: 14px;
+	color: #666;
+}
+
+/* -----------------------------------------------------------------------------
+ * 5. Footer Section
+ * -------------------------------------------------------------------------- */
+
+.mpai-dashboard-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-top: 30px;
+	padding-top: 20px;
+	border-top: 1px solid #ddd;
+}
+
+.mpai-version-info {
+	color: #666;
+	font-size: 12px;
+}
+
+.mpai-support-links .button {
+	margin-left: 10px;
+}
+
+/* Ensure buttons are accessible */
+.mpai-support-links .button:focus {
+	box-shadow: 0 0 0 1px #007cba;
+	outline: 2px solid transparent;
+}
+
+/* -----------------------------------------------------------------------------
+ * 6. Responsive Adjustments
+ * -------------------------------------------------------------------------- */
+
+@media screen and (max-width: 782px) {
+	.mpai-dashboard-footer {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	
+	.mpai-support-links {
+		margin-top: 15px;
+	}
+	
+	.mpai-support-links .button:first-child {
+		margin-left: 0;
+	}
+}
