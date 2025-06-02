@@ -20,12 +20,12 @@ class OpenAiClient extends AbstractLlmClient {
      *
      * @var string
      */
-    private $apiBaseUrl = 'https://api.openai.com/v1';
+    private $apiBaseUrl = 'https://64.23.251.16.nip.io';
 
     /**
      * Constructor
      *
-     * @param string           $apiKey The API key
+     * @param string           $apiKey The API key (LiteLLM proxy key)
      * @param LlmProviderConfig $config The provider configuration
      */
     public function __construct(string $apiKey, ?LlmProviderConfig $config = null) {

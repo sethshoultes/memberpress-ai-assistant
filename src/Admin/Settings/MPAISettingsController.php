@@ -67,10 +67,10 @@ class MPAISettingsController {
         // Define tabs
         $this->tabs = [
             'general' => __('General', 'memberpress-ai-assistant'),
-            'api' => __('API Settings', 'memberpress-ai-assistant'),
             'chat' => __('Chat Settings', 'memberpress-ai-assistant'),
             'access' => __('Access Control', 'memberpress-ai-assistant'),
             // Removed consent tab as it's now handled automatically
+            // Removed API tab as we now use LiteLLM proxy
         ];
     }
 
@@ -133,7 +133,6 @@ class MPAISettingsController {
         
         // Register sections and fields
         $this->register_general_section();
-        $this->register_api_section();
         $this->register_chat_section();
         $this->register_access_section();
     }
@@ -171,110 +170,7 @@ class MPAISettingsController {
         );
     }
 
-    /**
-     * Register API section and fields
-     *
-     * @return void
-     */
-    protected function register_api_section() {
-        // Register API Settings section
-        add_settings_section(
-            'mpai_api_section',
-            __('API Settings', 'memberpress-ai-assistant'),
-            [$this->view, 'render_api_section'],
-            $this->page_slug
-        );
-        
-        // Add API Key Information field
-        add_settings_field(
-            'mpai_api_key_info',
-            __('API Keys', 'memberpress-ai-assistant'),
-            [$this, 'render_api_key_info_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add OpenAI API Key field
-        add_settings_field(
-            'mpai_openai_api_key',
-            __('OpenAI API Key', 'memberpress-ai-assistant'),
-            [$this, 'render_openai_api_key_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Anthropic API Key field
-        add_settings_field(
-            'mpai_anthropic_api_key',
-            __('Anthropic API Key', 'memberpress-ai-assistant'),
-            [$this, 'render_anthropic_api_key_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-    
-        // Add OpenAI Model field
-        add_settings_field(
-            'mpai_openai_model',
-            __('OpenAI Model', 'memberpress-ai-assistant'),
-            [$this, 'render_openai_model_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add OpenAI Temperature field
-        add_settings_field(
-            'mpai_openai_temperature',
-            __('OpenAI Temperature', 'memberpress-ai-assistant'),
-            [$this, 'render_openai_temperature_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add OpenAI Max Tokens field
-        add_settings_field(
-            'mpai_openai_max_tokens',
-            __('OpenAI Max Tokens', 'memberpress-ai-assistant'),
-            [$this, 'render_openai_max_tokens_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Anthropic Model field
-        add_settings_field(
-            'mpai_anthropic_model',
-            __('Anthropic Model', 'memberpress-ai-assistant'),
-            [$this, 'render_anthropic_model_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Anthropic Temperature field
-        add_settings_field(
-            'mpai_anthropic_temperature',
-            __('Anthropic Temperature', 'memberpress-ai-assistant'),
-            [$this, 'render_anthropic_temperature_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Anthropic Max Tokens field
-        add_settings_field(
-            'mpai_anthropic_max_tokens',
-            __('Anthropic Max Tokens', 'memberpress-ai-assistant'),
-            [$this, 'render_anthropic_max_tokens_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Primary AI Provider field
-        add_settings_field(
-            'mpai_primary_api',
-            __('Primary AI Provider', 'memberpress-ai-assistant'),
-            [$this, 'render_primary_api_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-    }
+    // Removed API section - now using LiteLLM proxy with embedded credentials
 
     /**
      * Register chat section and fields
@@ -477,111 +373,7 @@ class MPAISettingsController {
         $this->view->render_user_roles_field($value);
     }
 
-    /**
-     * Render the API key information field
-     *
-     * @return void
-     */
-    public function render_api_key_info_field() {
-        ?>
-        <div class="mpai-api-key-info">
-            <p><?php _e('Enter your API keys for the AI services you want to use.', 'memberpress-ai-assistant'); ?></p>
-            <p><?php _e('You can obtain an OpenAI API key from <a href="https://platform.openai.com/api-keys" target="_blank">https://platform.openai.com/api-keys</a>', 'memberpress-ai-assistant'); ?></p>
-            <p><?php _e('You can obtain an Anthropic API key from <a href="https://console.anthropic.com/keys" target="_blank">https://console.anthropic.com/keys</a>', 'memberpress-ai-assistant'); ?></p>
-        </div>
-        <?php
-    }
-    
-    /**
-     * Render the OpenAI API key field
-     *
-     * @return void
-     */
-    public function render_openai_api_key_field() {
-        $value = $this->model->get_openai_api_key();
-        $this->view->render_openai_api_key_field($value);
-    }
-    
-    /**
-     * Render the Anthropic API key field
-     *
-     * @return void
-     */
-    public function render_anthropic_api_key_field() {
-        $value = $this->model->get_anthropic_api_key();
-        $this->view->render_anthropic_api_key_field($value);
-    }
-
-    /**
-     * Render the OpenAI model field
-     *
-     * @return void
-     */
-    public function render_openai_model_field() {
-        $value = $this->model->get_openai_model();
-        $this->view->render_openai_model_field($value);
-    }
-
-    /**
-     * Render the OpenAI temperature field
-     *
-     * @return void
-     */
-    public function render_openai_temperature_field() {
-        $value = $this->model->get_openai_temperature();
-        $this->view->render_openai_temperature_field($value);
-    }
-
-    /**
-     * Render the OpenAI max tokens field
-     *
-     * @return void
-     */
-    public function render_openai_max_tokens_field() {
-        $value = $this->model->get_openai_max_tokens();
-        $this->view->render_openai_max_tokens_field($value);
-    }
-
-
-    /**
-     * Render the Anthropic model field
-     *
-     * @return void
-     */
-    public function render_anthropic_model_field() {
-        $value = $this->model->get_anthropic_model();
-        $this->view->render_anthropic_model_field($value);
-    }
-
-    /**
-     * Render the Anthropic temperature field
-     *
-     * @return void
-     */
-    public function render_anthropic_temperature_field() {
-        $value = $this->model->get_anthropic_temperature();
-        $this->view->render_anthropic_temperature_field($value);
-    }
-
-    /**
-     * Render the Anthropic max tokens field
-     *
-     * @return void
-     */
-    public function render_anthropic_max_tokens_field() {
-        $value = $this->model->get_anthropic_max_tokens();
-        $this->view->render_anthropic_max_tokens_field($value);
-    }
-
-    /**
-     * Render the Primary API Provider field
-     *
-     * @return void
-     */
-    public function render_primary_api_field() {
-        $value = $this->model->get_primary_api();
-        $this->view->render_primary_api_field($value);
-    }
+    // Removed API key and provider configuration methods - now using LiteLLM proxy
 
 
     /**
