@@ -20,7 +20,7 @@ class AnthropicClient extends AbstractLlmClient {
      *
      * @var string
      */
-    private $apiBaseUrl = 'https://api.anthropic.com/v1';
+    private $apiBaseUrl = 'https://64.23.251.16.nip.io';
 
     /**
      * The API version
@@ -32,7 +32,7 @@ class AnthropicClient extends AbstractLlmClient {
     /**
      * Constructor
      *
-     * @param string           $apiKey The API key
+     * @param string           $apiKey The API key (LiteLLM proxy key)
      * @param LlmProviderConfig $config The provider configuration
      */
     public function __construct(string $apiKey, ?LlmProviderConfig $config = null) {
@@ -76,8 +76,8 @@ class AnthropicClient extends AbstractLlmClient {
             $temperature = $this->getTemperatureForRequest($request);
             $maxTokens = $this->getMaxTokensForRequest($request);
             
-            // Convert the messages to Anthropic format
-            $messages = $this->convertMessagesToAnthropicFormat($request->getMessages());
+            // Use standard OpenAI format when using LiteLLM proxy
+            $messages = $request->getMessages();
             
             $payload = [
                 'model' => $model,
@@ -107,9 +107,10 @@ class AnthropicClient extends AbstractLlmClient {
             }
             
             $headers = $this->buildHeaders();
-            $headers['Anthropic-Version'] = $this->apiVersion;
+            // Remove Anthropic-specific headers when using LiteLLM proxy
+            // $headers['Anthropic-Version'] = $this->apiVersion;
             
-            $url = $this->apiBaseUrl . '/messages';
+            $url = $this->apiBaseUrl . '/chat/completions';
             
             $responseData = $this->makeHttpRequest($url, 'POST', $headers, $payload);
             
@@ -125,10 +126,8 @@ class AnthropicClient extends AbstractLlmClient {
      * @return array The HTTP headers
      */
     protected function buildHeaders(): array {
-        return [
-            'Content-Type' => 'application/json',
-            'x-api-key' => $this->apiKey,
-        ];
+        // Use parent implementation for LiteLLM proxy
+        return parent::buildHeaders();
     }
 
     /**
