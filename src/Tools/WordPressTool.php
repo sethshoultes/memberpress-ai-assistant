@@ -19,7 +19,7 @@ class WordPressTool extends AbstractTool {
     public function __construct() {
         parent::__construct(
             'wordpress',
-            'Tool for handling WordPress operations',
+            'Tool for handling WordPress operations. For create_post: MUST include post_title and post_type parameters.',
             null
         );
     }
@@ -80,7 +80,7 @@ class WordPressTool extends AbstractTool {
                 ],
                 'post_type' => [
                     'type' => 'string',
-                    'description' => 'The type of post (post, page, or custom post type)',
+                    'description' => 'The type of post (REQUIRED for create_post operation) - usually "post" for blog posts',
                     'enum' => ['post', 'page', 'attachment', 'revision', 'nav_menu_item', 'custom'],
                 ],
                 'post_status' => [
@@ -90,7 +90,7 @@ class WordPressTool extends AbstractTool {
                 ],
                 'post_title' => [
                     'type' => 'string',
-                    'description' => 'The title of the post',
+                    'description' => 'The title of the post (REQUIRED for create_post operation)',
                 ],
                 'post_content' => [
                     'type' => 'string',
@@ -248,6 +248,18 @@ class WordPressTool extends AbstractTool {
             ],
             'required' => ['operation'],
         ];
+    }
+
+    /**
+     * Override getToolDefinition to provide better guidance for LLMs
+     */
+    public function getToolDefinition(): array {
+        $definition = parent::getToolDefinition();
+        
+        // Enhance the description to be more explicit about requirements
+        $definition['description'] = 'Tool for WordPress operations. IMPORTANT: For create_post operation, you MUST provide both post_title and post_type parameters. For blog posts, use post_type="post".';
+        
+        return $definition;
     }
 
     /**
