@@ -4,9 +4,17 @@
  *
  * This file enables debug mode for the MemberPress AI Assistant plugin.
  * Include this file in wp-config.php to enable debug mode.
- * 
+ *
+ * RELOCATED: This file was moved from plugin root to dev-tools/ directory
+ * as part of Phase 3 cleanup (June 2025) for better organization.
+ *
  * Example usage in wp-config.php:
- * require_once(ABSPATH . 'wp-content/plugins/memberpress-ai-assistant/debug.php');
+ * require_once(ABSPATH . 'wp-content/plugins/memberpress-ai-assistant/dev-tools/debug.php');
+ *
+ * @package MemberpressAiAssistant
+ * @subpackage DevTools
+ * @since 1.0.0
+ * @relocated 1.0.0 (June 2025)
  */
 
 // Enable debug mode

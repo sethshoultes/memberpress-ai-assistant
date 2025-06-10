@@ -3,9 +3,15 @@
  * MemberPress AI Assistant Diagnostics
  *
  * This file contains diagnostic tools to help troubleshoot memory issues
- * in the MemberPress AI Assistant plugin.
+ * and system problems in the MemberPress AI Assistant plugin.
+ *
+ * RELOCATED: This file was moved from plugin root to dev-tools/ directory
+ * as part of Phase 3 cleanup (June 2025) for better organization.
  *
  * @package MemberpressAiAssistant
+ * @subpackage DevTools
+ * @since 1.0.0
+ * @relocated 1.0.0 (June 2025)
  */
 
 // Exit if accessed directly
