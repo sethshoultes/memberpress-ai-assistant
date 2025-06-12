@@ -9,9 +9,6 @@ namespace MemberpressAiAssistant\Services;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
 use MemberpressAiAssistant\Admin\MPAIAdminMenu;
-use MemberpressAiAssistant\Admin\Settings\MPAISettingsController;
-use MemberpressAiAssistant\Admin\Settings\MPAISettingsModel;
-use MemberpressAiAssistant\Admin\Settings\MPAISettingsView;
 
 /**
  * Service for registering Admin services
@@ -69,25 +66,9 @@ class AdminServicesRegistrar extends AbstractService {
         // Get the logger
         $logger = $serviceLocator->has('logger') ? $serviceLocator->get('logger') : null;
         
-        // Register settings components
-        $settings_model = new MPAISettingsModel($logger);
-        $settings_view = new MPAISettingsView();
-        $settings_controller = new MPAISettingsController($settings_model, $settings_view, $logger);
-        
-        // Register settings model with the service locator
-        $serviceLocator->register('settings.model', function() use ($settings_model) {
-            return $settings_model;
-        });
-        
-        // Register settings model with the service locator
-        $serviceLocator->register('settings.model', function() use ($settings_model) {
-            return $settings_model;
-        });
-        
-        // Register settings controller with the service locator
-        $serviceLocator->register('settings_controller', function() use ($settings_controller) {
-            return $settings_controller;
-        });
+        // Settings services are now registered via SettingsServiceProvider
+        // Get the settings controller from the service locator
+        $settings_controller = $serviceLocator->get('settings.controller');
         
         // Initialize settings controller
         $settings_controller->init();
@@ -105,9 +86,10 @@ class AdminServicesRegistrar extends AbstractService {
         // Log registration
         $this->log('Admin services registered', [
             'services' => [
-                'admin_menu',
-                'settings.model',
-                'settings_controller'
+                'admin_menu'
+            ],
+            'dependencies' => [
+                'settings.controller' // Retrieved from SettingsServiceProvider
             ]
         ]);
     }

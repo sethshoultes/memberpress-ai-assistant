@@ -30,12 +30,6 @@ class MPAIKeyManager extends AbstractService {
     const SERVICE_OPENAI = 'openai';
     const SERVICE_ANTHROPIC = 'anthropic';
     
-    /**
-     * Settings model instance
-     *
-     * @var \MemberpressAiAssistant\Admin\Settings\MPAISettingsModel
-     */
-    private $settings;
     
     /**
      * Rate limiting tracking
@@ -83,7 +77,7 @@ class MPAIKeyManager extends AbstractService {
      * @param string $name Service name
      * @param mixed $logger Logger instance
      */
-    public function __construct(string $name = 'key_manager', $logger = null, $settings = null) {
+    public function __construct(string $name = 'key_manager', $logger = null) {
         parent::__construct($name, $logger);
         
         // Initialize request counts for rate limiting
@@ -91,29 +85,8 @@ class MPAIKeyManager extends AbstractService {
             self::SERVICE_OPENAI => [],
             self::SERVICE_ANTHROPIC => []
         ];
-        
-        // Store settings model
-        $this->settings = $settings;
     }
     
-    /**
-     * Get the settings model
-     *
-     * @return \MemberpressAiAssistant\Admin\Settings\MPAISettingsModel|null
-     */
-    public function get_settings() {
-        return $this->settings;
-    }
-    
-    /**
-     * Set the settings model
-     *
-     * @param \MemberpressAiAssistant\Admin\Settings\MPAISettingsModel $settings
-     * @return void
-     */
-    public function set_settings($settings) {
-        $this->settings = $settings;
-    }
     
     /**
      * Get API key for specified service
@@ -140,38 +113,7 @@ class MPAIKeyManager extends AbstractService {
             return false;
         }
         
-        // Get the API key from settings
-        if ($this->settings !== null) {
-            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Settings model is available");
-            
-            if ($service_type === self::SERVICE_OPENAI) {
-                $key = $this->settings->get_openai_api_key();
-                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Got OpenAI key from settings: " . (empty($key) ? "empty" : "not empty"));
-            } elseif ($service_type === self::SERVICE_ANTHROPIC) {
-                $key = $this->settings->get_anthropic_api_key();
-                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Got Anthropic key from settings: " . (empty($key) ? "empty" : "not empty"));
-            } else {
-                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Unknown service type: {$service_type}");
-                return false;
-            }
-            
-            // Validate the key format
-            if (!empty($key)) {
-                if ($this->validate_key_format($service_type, $key)) {
-                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Key format is valid for service: {$service_type}");
-                    return $key;
-                } else {
-                    \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Invalid key format for service: {$service_type}");
-                    return false;
-                }
-            } else {
-                \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Empty key for service: {$service_type}");
-            }
-        } else {
-            \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Settings model is not available");
-        }
-        
-        // If settings model is not available or key is empty, try to get the key from WordPress options
+        // Get the key from WordPress options
         $all_settings = get_option('mpai_settings', []);
         \MemberpressAiAssistant\Utilities\debug_log("MPAI Debug - Trying to get key from WordPress options directly");
         

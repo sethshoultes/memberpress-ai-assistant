@@ -66,6 +66,9 @@ class MPAIAjaxHandler extends AbstractService {
         
         // Add AJAX handler for saving consent
         add_action('wp_ajax_mpai_save_consent', [$this, 'handle_save_consent']);
+        
+        // Add AJAX handler for getting chat interface HTML
+        add_action('wp_ajax_mpai_get_chat_interface', [$this, 'handle_get_chat_interface']);
     }
     
     /**
@@ -76,15 +79,36 @@ class MPAIAjaxHandler extends AbstractService {
     public function handle_save_consent(): void {
         $this->log('Processing consent form AJAX submission');
         
-        // Check nonce
-        if (!isset($_POST['mpai_consent_nonce']) || !wp_verify_nonce($_POST['mpai_consent_nonce'], 'mpai_consent_nonce')) {
+        // Check nonce - support both nonce formats for compatibility
+        $nonce_valid = false;
+        if (isset($_POST['mpai_consent_nonce']) && wp_verify_nonce($_POST['mpai_consent_nonce'], 'mpai_consent_nonce')) {
+            $nonce_valid = true;
+        } elseif (isset($_POST['nonce']) && wp_verify_nonce($_POST['nonce'], 'mpai_nonce')) {
+            $nonce_valid = true;
+        }
+        
+        if (!$nonce_valid) {
             $this->log('Consent form nonce verification failed', ['error' => true]);
             wp_send_json_error(['message' => __('Security check failed.', 'memberpress-ai-assistant')]);
             return;
         }
         
-        // Check if consent was given
-        if (!isset($_POST['mpai_consent']) || $_POST['mpai_consent'] != '1') {
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            $this->log('Cannot save consent - user not logged in', ['error' => true]);
+            wp_send_json_error(['message' => __('User not logged in.', 'memberpress-ai-assistant')]);
+            return;
+        }
+        
+        // Get consent value - support both formats
+        $consent = false;
+        if (isset($_POST['consent'])) {
+            $consent = (bool) $_POST['consent'];
+        } elseif (isset($_POST['mpai_consent'])) {
+            $consent = $_POST['mpai_consent'] == '1';
+        }
+        
+        if (!$consent) {
             $this->log('Consent not provided', ['error' => true]);
             wp_send_json_error(['message' => __('You must agree to the terms to continue.', 'memberpress-ai-assistant')]);
             return;
@@ -93,25 +117,87 @@ class MPAIAjaxHandler extends AbstractService {
         // Get current user ID
         $user_id = get_current_user_id();
         
-        if (empty($user_id)) {
-            $this->log('Cannot save consent - no user ID available', ['error' => true]);
-            wp_send_json_error(['message' => __('User not logged in.', 'memberpress-ai-assistant')]);
-            return;
-        }
-        
         // Get consent manager
         $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
         
         // Save consent
-        $consent_manager->saveUserConsent($user_id, true);
+        $result = $consent_manager->saveUserConsent($user_id, true);
         
-        $this->log('User consent saved successfully via AJAX');
+        if ($result) {
+            $this->log('User consent saved successfully via AJAX');
+            
+            // Return success response
+            wp_send_json_success([
+                'message' => __('Thank you for agreeing to the terms. You can now use the MemberPress AI Assistant.', 'memberpress-ai-assistant'),
+                'consent' => true
+            ]);
+        } else {
+            $this->log('Failed to save user consent', ['error' => true]);
+            wp_send_json_error(['message' => __('Failed to save consent. Please try again.', 'memberpress-ai-assistant')]);
+        }
+    }
+    
+    /**
+     * Handle AJAX request to get chat interface HTML
+     *
+     * @return void
+     */
+    public function handle_get_chat_interface(): void {
+        $this->log('Processing request for chat interface HTML');
         
-        // Return success response
-        wp_send_json_success([
-            'message' => __('Thank you for agreeing to the terms. You can now use the MemberPress AI Assistant.', 'memberpress-ai-assistant'),
-            'redirect' => admin_url('admin.php?page=mpai-settings')
-        ]);
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_consent_nonce')) {
+            $this->log('Chat interface request nonce verification failed', ['error' => true]);
+            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-ai-assistant')]);
+            return;
+        }
+        
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            $this->log('Chat interface request from non-logged-in user', ['error' => true]);
+            wp_send_json_error(['message' => __('You must be logged in to access the chat interface.', 'memberpress-ai-assistant')]);
+            return;
+        }
+        
+        // Check if user has consented
+        $consent_manager = MPAIConsentManager::getInstance();
+        if (!$consent_manager->hasUserConsented()) {
+            $this->log('Chat interface request from user who has not consented', ['error' => true]);
+            wp_send_json_error(['message' => __('You must agree to the terms before accessing the AI Assistant.', 'memberpress-ai-assistant')]);
+            return;
+        }
+        
+        try {
+            // Start output buffering to capture the template output
+            ob_start();
+            
+            // Include the chat interface template
+            $chat_template_path = MPAI_PLUGIN_DIR . 'templates/chat-interface.php';
+            if (file_exists($chat_template_path)) {
+                include $chat_template_path;
+                $html = ob_get_clean();
+                
+                $this->log('Chat interface HTML generated successfully');
+                
+                // Return the HTML
+                wp_send_json_success([
+                    'html' => $html,
+                    'message' => __('Chat interface loaded successfully.', 'memberpress-ai-assistant')
+                ]);
+            } else {
+                ob_end_clean();
+                $this->log('Chat interface template not found: ' . $chat_template_path, ['error' => true]);
+                wp_send_json_error(['message' => __('Chat interface template not found.', 'memberpress-ai-assistant')]);
+            }
+        } catch (\Exception $e) {
+            // Clean up output buffer in case of error
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+            
+            $this->log('Exception while generating chat interface HTML: ' . $e->getMessage(), ['error' => true]);
+            wp_send_json_error(['message' => __('An error occurred while loading the chat interface.', 'memberpress-ai-assistant')]);
+        }
     }
     
     /**

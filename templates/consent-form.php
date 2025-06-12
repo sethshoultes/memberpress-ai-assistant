@@ -69,16 +69,17 @@ $nonce = wp_create_nonce('mpai_consent_nonce');
             </div>
         </div>
         
-        <form method="post" id="mpai-consent-form" class="mpai-consent-form">
+        <form method="post" action="<?php echo esc_url(admin_url('admin.php?page=mpai-settings')); ?>" id="mpai-consent-form" class="mpai-consent-form">
+            <?php wp_nonce_field('mpai_consent_nonce', 'mpai_consent_nonce'); ?>
+            
             <div class="mpai-consent-checkbox">
-                <label for="mpai-consent">
+                <label for="mpai-consent" id="mpai-consent-label">
                     <input type="checkbox" name="mpai_consent" id="mpai-consent" value="1" />
-                    <span><?php _e('I have read and agree to the terms of use for the MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></span>
+                    <span class="mpai-checkbox-text"><?php _e('I have read and agree to the terms of use for the MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></span>
                 </label>
             </div>
             
             <div class="mpai-consent-actions">
-                <input type="hidden" name="mpai_consent_nonce" value="<?php echo esc_attr($nonce); ?>" />
                 <input type="hidden" name="mpai_save_consent" value="1" />
                 <button type="submit" id="mpai-submit-consent" class="button button-primary" disabled>
                     <?php _e('Agree and Continue', 'memberpress-ai-assistant'); ?>
@@ -138,35 +139,69 @@ $nonce = wp_create_nonce('mpai_consent_nonce');
     .mpai-consent-actions {
         margin-top: 20px;
     }
+    
+    .consent-required .button-primary {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+    
+    .mpai-checkbox-text {
+        flex: 1;
+    }
+    
+    #mpai-consent-label {
+        display: flex;
+        align-items: center;
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    
+    #mpai-consent {
+        margin-right: 10px;
+        transform: scale(1.2);
+    }
 </style>
 
 <script type="text/javascript">
-    (function() {
-        // Get DOM elements
-        const consentCheckbox = document.getElementById('mpai-consent');
-        const submitButton = document.getElementById('mpai-submit-consent');
-        
-        // Function to toggle submit button state
-        function toggleSubmitButton() {
-            if (consentCheckbox.checked) {
-                submitButton.removeAttribute('disabled');
-            } else {
-                submitButton.setAttribute('disabled', 'disabled');
-            }
+jQuery(document).ready(function($) {
+    console.log('Consent form script loaded');
+    
+    // Function to update button state
+    function updateButtonState(isChecked) {
+        console.log('Updating button state. Checked:', isChecked);
+        if (isChecked) {
+            $('#mpai-submit-consent').prop('disabled', false).removeClass('disabled');
+            $('.mpai-consent-actions').removeClass('consent-required');
+        } else {
+            $('#mpai-submit-consent').prop('disabled', true).addClass('disabled');
+            $('.mpai-consent-actions').addClass('consent-required');
         }
-        
-        // Add event listener to checkbox
-        consentCheckbox.addEventListener('change', toggleSubmitButton);
-        
-        // Initialize button state
-        toggleSubmitButton();
-        
-        // Form submission handling
-        document.getElementById('mpai-consent-form').addEventListener('submit', function(event) {
-            if (!consentCheckbox.checked) {
-                event.preventDefault();
-                alert('<?php echo esc_js(__('Please agree to the terms to continue.', 'memberpress-ai-assistant')); ?>');
-            }
-        });
-    })();
+    }
+    
+    // Handle consent checkbox changes
+    $('#mpai-consent').on('change', function() {
+        updateButtonState($(this).is(':checked'));
+    });
+    
+    // Also handle clicks on the label
+    $('#mpai-consent-label').on('click', function(e) {
+        // Don't handle if the click was directly on the checkbox (it will trigger the change event)
+        if (e.target.id !== 'mpai-consent') {
+            e.preventDefault();
+            var checkbox = $('#mpai-consent');
+            checkbox.prop('checked', !checkbox.is(':checked')).trigger('change');
+        }
+    });
+    
+    // Handle form submission
+    $('form').on('submit', function(e) {
+        if (!$('#mpai-consent').is(':checked')) {
+            e.preventDefault();
+            alert('<?php echo esc_js(__('Please agree to the terms and conditions before proceeding.', 'memberpress-ai-assistant')); ?>');
+            return false;
+        }
+        return true;
+    });
+});
 </script>

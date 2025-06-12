@@ -9,6 +9,7 @@ namespace MemberpressAiAssistant\Services\Settings;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
 use MemberpressAiAssistant\Interfaces\ServiceInterface;
+use MemberpressAiAssistant\Interfaces\SettingsModelInterface;
 use MemberpressAiAssistant\DI\ServiceLocator;
 
 /**
@@ -19,7 +20,7 @@ use MemberpressAiAssistant\DI\ServiceLocator;
  * It handles reading/writing settings to a single serialized option,
  * validates all settings values, and provides methods for getting and setting values.
  */
-class SettingsModelService extends AbstractService implements ServiceInterface {
+class SettingsModelService extends AbstractService implements ServiceInterface, SettingsModelInterface {
     /**
      * Option name for storing settings
      *
@@ -35,6 +36,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
     private $defaults = [
         // General settings
         'chat_enabled' => true,
+        'log_level' => 'info', // Options: none, error, warning, info, debug, trace, minimal
         
         // Chat settings
         'chat_location' => 'admin_only',
@@ -42,20 +44,6 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
         
         // Access settings
         'user_roles' => ['administrator'],
-        
-        // API settings
-        'openai_api_key' => '',
-        'openai_model' => 'gpt-4o',
-        'openai_temperature' => 0.7,
-        'openai_max_tokens' => 1000,
-        'anthropic_api_key' => '',
-        'anthropic_model' => 'claude-3-opus-20240229',
-        'anthropic_temperature' => 0.7,
-        'anthropic_max_tokens' => 1000,
-        'primary_api' => 'openai',
-        
-        // Consent settings
-        'consent_required' => true,
     ];
 
     /**
@@ -64,6 +52,13 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      * @var array
      */
     private $settings = [];
+
+    /**
+     * Whether service is in degraded mode
+     *
+     * @var bool
+     */
+    protected $degradedMode = false;
 
     /**
      * Constructor
@@ -104,6 +99,12 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
     public function boot(): void {
         parent::boot();
         
+        // Validate dependencies before proceeding
+        if (!$this->validateDependencies()) {
+            $this->log('Service booted in degraded mode due to missing dependencies');
+            return;
+        }
+        
         // Add any hooks or filters needed
         $this->addHooks();
     }
@@ -136,7 +137,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      * @param mixed $default Default value if setting not found
      * @return mixed Setting value
      */
-    public function get($key, $default = null) {
+    public function get(string $key, $default = null) {
         if (isset($this->settings[$key])) {
             return $this->settings[$key];
         }
@@ -156,7 +157,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      * @param bool $save Whether to save settings to database
      * @return bool Whether the setting was set successfully
      */
-    public function set($key, $value, $save = true) {
+    public function set(string $key, $value, bool $save = true): bool {
         $this->settings[$key] = $value;
         
         if ($save) {
@@ -171,7 +172,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      *
      * @return bool Whether the settings were saved successfully
      */
-    public function save() {
+    public function save(): bool {
         $result = update_option($this->option_name, $this->settings);
         
         if ($this->logger) {
@@ -190,7 +191,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      *
      * @return array All settings
      */
-    public function get_all() {
+    public function get_all(): array {
         return $this->settings;
     }
 
@@ -201,7 +202,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      * @param bool $save Whether to save settings to database
      * @return bool Whether the settings were updated successfully
      */
-    public function update($settings, $save = true) {
+    public function update(array $settings, bool $save = true): bool {
         $validated = $this->validate($settings);
         
         foreach ($validated as $key => $value) {
@@ -221,7 +222,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      * @param bool $save Whether to save settings to database
      * @return bool Whether the settings were reset successfully
      */
-    public function reset($save = true) {
+    public function reset(bool $save = true): bool {
         $this->settings = $this->defaults;
         
         if ($save) {
@@ -237,15 +238,18 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      * @param array $settings Settings to validate
      * @return array Validated settings
      */
-    public function validate($settings) {
+    public function validate(array $settings): array {
         $validated = [];
         
         // Validate each setting
         foreach ($settings as $key => $value) {
             switch ($key) {
                 case 'chat_enabled':
-                case 'consent_required':
                     $validated[$key] = $this->validate_boolean($value);
+                    break;
+                    
+                case 'log_level':
+                    $validated[$key] = $this->validate_log_level($value);
                     break;
                     
                 case 'chat_location':
@@ -258,33 +262,6 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
                     
                 case 'user_roles':
                     $validated[$key] = $this->validate_user_roles($value);
-                    break;
-                    
-                case 'openai_api_key':
-                case 'anthropic_api_key':
-                    $validated[$key] = $this->validate_api_key($value);
-                    break;
-                    
-                case 'openai_model':
-                    $validated[$key] = $this->validate_openai_model($value);
-                    break;
-                    
-                case 'anthropic_model':
-                    $validated[$key] = $this->validate_anthropic_model($value);
-                    break;
-                    
-                case 'openai_temperature':
-                case 'anthropic_temperature':
-                    $validated[$key] = $this->validate_temperature($value);
-                    break;
-                    
-                case 'openai_max_tokens':
-                case 'anthropic_max_tokens':
-                    $validated[$key] = $this->validate_max_tokens($value);
-                    break;
-                    
-                case 'primary_api':
-                    $validated[$key] = $this->validate_primary_api($value);
                     break;
                     
                 default:
@@ -415,114 +392,33 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
         return array_values($validated);
     }
 
-    /**
-     * Validate an API key
-     *
-     * @param mixed $value Value to validate
-     * @return string Validated API key
-     */
-    private function validate_api_key($value) {
-        // Just ensure it's a string and trim it, handling null values
-        return trim((string) ($value ?? ''));
-    }
+
+
+
+
+
 
     /**
-     * Validate OpenAI model
+     * Validate log level setting
      *
      * @param mixed $value Value to validate
-     * @return string Validated OpenAI model
+     * @return string Validated log level
      */
-    private function validate_openai_model($value) {
-        $valid_models = ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'];
+    private function validate_log_level($value) {
+        $valid_levels = ['none', 'error', 'warning', 'info', 'debug', 'trace', 'minimal'];
         
-        if (in_array($value, $valid_models, true)) {
+        if (in_array($value, $valid_levels, true)) {
             return $value;
         }
         
         if ($this->logger) {
-            $this->logger->warning('Invalid OpenAI model', [
+            $this->logger->warning('Invalid log level', [
                 'value' => $value,
-                'valid_models' => $valid_models
+                'valid_levels' => $valid_levels
             ]);
         }
         
-        return 'gpt-4o';
-    }
-
-    /**
-     * Validate Anthropic model
-     *
-     * @param mixed $value Value to validate
-     * @return string Validated Anthropic model
-     */
-    private function validate_anthropic_model($value) {
-        $valid_models = ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'];
-        
-        if (in_array($value, $valid_models, true)) {
-            return $value;
-        }
-        
-        if ($this->logger) {
-            $this->logger->warning('Invalid Anthropic model', [
-                'value' => $value,
-                'valid_models' => $valid_models
-            ]);
-        }
-        
-        return 'claude-3-opus-20240229';
-    }
-
-    /**
-     * Validate temperature setting
-     *
-     * @param mixed $value Value to validate
-     * @return float Validated temperature
-     */
-    private function validate_temperature($value) {
-        $value = (float) $value;
-        
-        // Ensure temperature is between 0.0 and 1.0
-        $value = max(0.0, min(1.0, $value));
-        
-        return $value;
-    }
-
-    /**
-     * Validate max tokens setting
-     *
-     * @param mixed $value Value to validate
-     * @return int Validated max tokens
-     */
-    private function validate_max_tokens($value) {
-        $value = (int) $value;
-        
-        // Ensure max tokens is positive
-        $value = max(1, $value);
-        
-        return $value;
-    }
-
-    /**
-     * Validate primary API setting
-     *
-     * @param mixed $value Value to validate
-     * @return string Validated primary API
-     */
-    private function validate_primary_api($value) {
-        $valid_providers = ['openai', 'anthropic'];
-        
-        if (in_array($value, $valid_providers, true)) {
-            return $value;
-        }
-        
-        if ($this->logger) {
-            $this->logger->warning('Invalid primary API provider', [
-                'value' => $value,
-                'valid_providers' => $valid_providers
-            ]);
-        }
-        
-        return 'openai';
+        return 'info';
     }
 
     /**
@@ -530,7 +426,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      *
      * @return bool Whether chat is enabled
      */
-    public function is_chat_enabled() {
+    public function is_chat_enabled(): bool {
         return (bool) $this->get('chat_enabled', true);
     }
 
@@ -539,7 +435,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      *
      * @return string Chat location
      */
-    public function get_chat_location() {
+    public function get_chat_location(): string {
         return $this->get('chat_location', 'admin_only');
     }
 
@@ -548,7 +444,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      *
      * @return string Chat position
      */
-    public function get_chat_position() {
+    public function get_chat_position(): string {
         return $this->get('chat_position', 'bottom_right');
     }
 
@@ -557,7 +453,7 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      *
      * @return array User roles
      */
-    public function get_user_roles() {
+    public function get_user_roles(): array {
         return $this->get('user_roles', ['administrator']);
     }
 
@@ -567,98 +463,129 @@ class SettingsModelService extends AbstractService implements ServiceInterface {
      * @param string $role User role to check
      * @return bool Whether the role can access the chat
      */
-    public function can_role_access_chat($role) {
+    public function can_role_access_chat(string $role): bool {
         $roles = $this->get_user_roles();
         return in_array($role, $roles);
     }
 
-    /**
-     * Get the OpenAI API key
+
+
+
+
+/**
+     * Validate service dependencies
      *
-     * @return string OpenAI API key
+     * @return bool True if all dependencies are available
      */
-    public function get_openai_api_key() {
-        return $this->get('openai_api_key', '');
+    protected function validateDependencies(): bool {
+        foreach ($this->dependencies as $dependency) {
+            if (!$this->serviceLocator || !$this->serviceLocator->has($dependency)) {
+                $this->handleMissingDependency($dependency);
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
-     * Get the OpenAI model
+     * Handle missing dependency with graceful degradation
      *
-     * @return string OpenAI model
+     * @param string $dependency Missing dependency name
+     * @return void
      */
-    public function get_openai_model() {
-        return $this->get('openai_model', 'gpt-4o');
+    protected function handleMissingDependency(string $dependency): void {
+        $message = sprintf(
+            'Missing required dependency: %s for service: %s', 
+            $dependency, 
+            $this->getServiceName()
+        );
+        
+        if ($this->logger) {
+            $this->logger->error($message, [
+                'service' => $this->getServiceName(),
+                'missing_dependency' => $dependency,
+                'available_dependencies' => $this->serviceLocator ? 
+                    array_keys($this->serviceLocator->getServices()) : []
+            ]);
+        }
+        
+        // Set degraded mode flag for graceful degradation
+        $this->setDegradedMode(true);
     }
 
     /**
-     * Get the OpenAI temperature
+     * Execute operation with error handling
      *
-     * @return float OpenAI temperature
+     * @param callable $operation Operation to execute
+     * @param string $context Context description for error logging
+     * @param mixed $default Default value to return on error
+     * @return mixed Operation result or default value
      */
-    public function get_openai_temperature() {
-        return (float) $this->get('openai_temperature', 0.7);
+    protected function executeWithErrorHandling(callable $operation, string $context, $default = null) {
+        try {
+            return $operation();
+        } catch (\Exception $e) {
+            $this->handleError($e, $context);
+            return $default;
+        }
     }
 
     /**
-     * Get the OpenAI max tokens
+     * Handle errors with comprehensive logging
      *
-     * @return int OpenAI max tokens
+     * @param \Exception $e Exception to handle
+     * @param string $context Context description
+     * @return void
      */
-    public function get_openai_max_tokens() {
-        return (int) $this->get('openai_max_tokens', 1000);
+    protected function handleError(\Exception $e, string $context): void {
+        $message = sprintf('Error in %s: %s', $context, $e->getMessage());
+        
+        if ($this->logger) {
+            $this->logger->error($message, [
+                'exception' => $e,
+                'context' => $context,
+                'service' => $this->getServiceName(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 
     /**
-     * Get the Anthropic API key
+     * Set degraded mode flag
      *
-     * @return string Anthropic API key
+     * @param bool $degraded Whether service is in degraded mode
+     * @return void
      */
-    public function get_anthropic_api_key() {
-        return $this->get('anthropic_api_key', '');
+    protected function setDegradedMode(bool $degraded): void {
+        $this->degradedMode = $degraded;
+        
+        if ($this->logger && $degraded) {
+            $this->logger->warning('Service entering degraded mode', [
+                'service' => $this->getServiceName()
+            ]);
+        }
     }
 
     /**
-     * Get the Anthropic model
+     * Check if service is in degraded mode
      *
-     * @return string Anthropic model
+     * @return bool True if in degraded mode
      */
-    public function get_anthropic_model() {
-        return $this->get('anthropic_model', 'claude-3-opus-20240229');
+    protected function isDegradedMode(): bool {
+        return $this->degradedMode ?? false;
     }
 
-    /**
-     * Get the Anthropic temperature
-     *
-     * @return float Anthropic temperature
-     */
-    public function get_anthropic_temperature() {
-        return (float) $this->get('anthropic_temperature', 0.7);
-    }
+
+
+
+
 
     /**
-     * Get the Anthropic max tokens
+     * Get the log level
      *
-     * @return int Anthropic max tokens
+     * @return string Log level
      */
-    public function get_anthropic_max_tokens() {
-        return (int) $this->get('anthropic_max_tokens', 1000);
-    }
-
-    /**
-     * Get the primary API provider
-     *
-     * @return string Primary API provider
-     */
-    public function get_primary_api() {
-        return $this->get('primary_api', 'openai');
-    }
-
-    /**
-     * Check if consent is required
-     *
-     * @return bool Whether consent is required
-     */
-    public function is_consent_required() {
-        return (bool) $this->get('consent_required', true);
+    public function get_log_level(): string {
+        return $this->get('log_level', 'info');
     }
 }

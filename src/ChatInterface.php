@@ -366,16 +366,12 @@ class ChatInterface {
             return;
         }
         
-        // TEMPORARILY BYPASS CONSENT CHECK FOR TESTING
-        // TODO: Re-enable consent check once chat interface is working
-        /*
         // Check if user has consented
         $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
         if (!$consent_manager->hasUserConsented()) {
             // Don't render the chat interface if user hasn't consented
             return;
         }
-        */
 
         // Include the chat interface template
         $this->includeChatTemplate();
@@ -385,28 +381,63 @@ class ChatInterface {
      * Render the chat interface on admin pages
      */
     public function renderAdminChatInterface() {
-        // Only render on appropriate admin pages
-        if (!$this->shouldLoadAdminChatInterface(get_current_screen()->id)) {
+        // Add logging for monitoring
+        $current_screen = get_current_screen();
+        $screen_id = $current_screen ? $current_screen->id : 'unknown';
+        $current_page = isset($_GET['page']) ? $_GET['page'] : 'none';
+        
+        LoggingUtility::debug('ChatInterface: renderAdminChatInterface() called for screen: ' . $screen_id . ', page: ' . $current_page);
+        
+        // Check for duplicate rendering flag - PREVENT DUPLICATE RENDERING
+        if (defined('MPAI_CHAT_INTERFACE_RENDERED')) {
+            LoggingUtility::debug('ChatInterface: Chat interface already rendered, preventing duplicate');
             return;
         }
         
-        // TEMPORARILY BYPASS CONSENT CHECK FOR TESTING
-        // TODO: Re-enable consent check once chat interface is working
-        /*
-        // Check if user has consented
-        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-        if (!$consent_manager->hasUserConsented()) {
-            // Redirect to the welcome page if not on it already
-            if (!isset($_GET['page']) || $_GET['page'] !== 'mpai-welcome') {
-                wp_redirect(admin_url('admin.php?page=mpai-welcome'));
-                exit;
-            }
+        // Only render on appropriate admin pages
+        if (!$this->shouldLoadAdminChatInterface($screen_id)) {
+            LoggingUtility::debug('ChatInterface: Not loading chat interface for screen: ' . $screen_id);
             return;
         }
-        */
+        
+        // Check if user has consented
+        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
+        $has_consented = $consent_manager->hasUserConsented();
+        
+        LoggingUtility::debug('ChatInterface: User consent status: ' . ($has_consented ? 'consented' : 'not consented'));
+        
+        if (!$has_consented) {
+            // FIXED: Don't redirect if we're on settings page - let it handle consent form
+            if ($this->isSettingsPageWithConsentForm()) {
+                LoggingUtility::debug('ChatInterface: On settings page - letting settings page handle consent form, not redirecting');
+                return;
+            }
+            
+            // FIXED: Only redirect if not on welcome page and safe to redirect
+            if (!isset($_GET['page']) || $_GET['page'] !== 'mpai-welcome') {
+                // Check if it's safe to redirect (headers not sent)
+                if (!headers_sent()) {
+                    LoggingUtility::debug('ChatInterface: Redirecting to welcome page for consent');
+                    wp_redirect(admin_url('admin.php?page=mpai-welcome'));
+                    exit;
+                } else {
+                    LoggingUtility::warning('ChatInterface: Cannot redirect - headers already sent');
+                    return;
+                }
+            }
+            LoggingUtility::debug('ChatInterface: On welcome page, not rendering chat interface');
+            return;
+        }
 
+        LoggingUtility::debug('ChatInterface: User has consented, rendering chat interface');
+        
+        // Set flag to prevent duplicate rendering
+        define('MPAI_CHAT_INTERFACE_RENDERED', true);
+        
         // Include the chat interface template
         $this->includeChatTemplate();
+        
+        LoggingUtility::debug('ChatInterface: Chat interface rendered successfully');
     }
 
     /**
@@ -415,8 +446,13 @@ class ChatInterface {
     private function includeChatTemplate() {
         $template_path = MPAI_PLUGIN_DIR . 'templates/chat-interface.php';
         
+        LoggingUtility::debug('ChatInterface: Including chat template from: ' . $template_path);
+        
         if (file_exists($template_path)) {
             include $template_path;
+            LoggingUtility::debug('ChatInterface: Chat template included successfully');
+        } else {
+            LoggingUtility::error('ChatInterface: Chat template not found at: ' . $template_path);
         }
     }
 
@@ -881,9 +917,6 @@ class ChatInterface {
             );
         }
         
-        // TEMPORARILY BYPASS CONSENT CHECK FOR TESTING
-        // TODO: Re-enable consent check once chat interface is working
-        /*
         // Check if user has consented
         $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
         if (!$consent_manager->hasUserConsented()) {
@@ -893,7 +926,6 @@ class ChatInterface {
                 ['status' => 403]
             );
         }
-        */
 
         return true;
     }
@@ -930,8 +962,39 @@ class ChatInterface {
      * @return bool True if the chat interface should be loaded
      */
     private function shouldLoadAdminChatInterface($hook_suffix) {
-        // For testing purposes, always return true
-        return true;
+        // Define pages where chat interface should be loaded
+        $allowed_pages = [
+            'memberpress_page_mpai-settings',  // Settings page under MemberPress menu
+            'toplevel_page_mpai-settings',     // Settings page as top-level menu
+            'admin_page_mpai-welcome',         // Welcome page (hidden)
+            'memberpress_page_mpai-welcome',   // Welcome page under MemberPress menu
+        ];
+        
+        // Also check current page parameter
+        $current_page = isset($_GET['page']) ? $_GET['page'] : '';
+        $allowed_page_params = ['mpai-settings', 'mpai-welcome'];
+        
+        $should_load = in_array($hook_suffix, $allowed_pages) || in_array($current_page, $allowed_page_params);
+        
+        LoggingUtility::debug('ChatInterface: shouldLoadAdminChatInterface() - Hook: ' . $hook_suffix . ', Page: ' . $current_page . ', Should load: ' . ($should_load ? 'YES' : 'NO'));
+        
+        return $should_load;
+    }
+
+    /**
+     * Check if we're on the settings page that should handle consent form
+     *
+     * @return bool True if on settings page with consent form capability
+     */
+    private function isSettingsPageWithConsentForm() {
+        $current_page = isset($_GET['page']) ? $_GET['page'] : '';
+        $settings_pages = ['mpai-settings'];
+        
+        $is_settings_page = in_array($current_page, $settings_pages);
+        
+        LoggingUtility::debug('ChatInterface: isSettingsPageWithConsentForm() - Page: ' . $current_page . ', Is settings page: ' . ($is_settings_page ? 'YES' : 'NO'));
+        
+        return $is_settings_page;
     }
 
     /**

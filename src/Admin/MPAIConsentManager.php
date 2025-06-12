@@ -31,6 +31,13 @@ class MPAIConsentManager extends AbstractService {
     private static $instance = null;
 
     /**
+     * Flag to prevent multiple form renders
+     *
+     * @var bool
+     */
+    private static $form_rendered = false;
+
+    /**
      * User meta key for storing consent
      */
     const CONSENT_META_KEY = 'mpai_has_consented';
@@ -212,8 +219,8 @@ class MPAIConsentManager extends AbstractService {
                 'updated'
             );
             
-            // Get redirect URL
-            $redirect_url = \admin_url('admin.php?page=mpai-settings');
+            // Get redirect URL - match the old working version
+            $redirect_url = \admin_url('admin.php?page=mpai-settings&consent=given');
             
             // Allow extensions to filter the redirect URL
             $redirect_url = \apply_filters('mpai_consent_redirect_url', $redirect_url, $user_id);
@@ -274,16 +281,35 @@ class MPAIConsentManager extends AbstractService {
      * Render consent form
      */
     public function renderConsentForm() {
+        // Prevent multiple renders of the same form
+        if (self::$form_rendered) {
+            error_log('[MPAI Debug] ConsentManager: Form already rendered, skipping duplicate render');
+            return;
+        }
+        
+        // Mark form as rendered
+        self::$form_rendered = true;
+        
+        // Add comprehensive logging
+        error_log('[MPAI Debug] ConsentManager: renderConsentForm() called');
+        
         // Get template path
         $template_path = \plugin_dir_path(dirname(__DIR__)) . 'templates/consent-form.php';
+        
+        error_log('[MPAI Debug] ConsentManager: Template path: ' . $template_path);
         
         // Allow extensions to filter the template path
         $template_path = \apply_filters('mpai_consent_form_template', $template_path);
         
+        error_log('[MPAI Debug] ConsentManager: Filtered template path: ' . $template_path);
+        
         // Check if template exists
         if (file_exists($template_path)) {
+            error_log('[MPAI Debug] ConsentManager: Template file exists, including...');
             include $template_path;
+            error_log('[MPAI Debug] ConsentManager: Template included successfully');
         } else {
+            error_log('[MPAI Debug] ConsentManager: Template file NOT found: ' . $template_path);
             $this->log('Consent form template not found: ' . $template_path, ['error' => true]);
             echo '<div class="notice notice-error"><p>' . \__('Error: Consent form template not found.', 'memberpress-ai-assistant') . '</p></div>';
         }

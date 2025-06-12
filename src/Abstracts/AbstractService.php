@@ -28,6 +28,13 @@ abstract class AbstractService implements ServiceInterface {
     protected $dependencies = [];
 
     /**
+     * Service locator instance
+     *
+     * @var \MemberpressAiAssistant\DI\ServiceLocator|null
+     */
+    protected $serviceLocator;
+
+    /**
      * Logger instance
      *
      * @var mixed
@@ -92,5 +99,24 @@ abstract class AbstractService implements ServiceInterface {
         if ($this->logger) {
             $this->logger->info($message, array_merge(['service' => $this->getServiceName()], $context));
         }
+    }
+
+    /**
+     * Set the service locator
+     *
+     * @param \MemberpressAiAssistant\DI\ServiceLocator $serviceLocator The service locator
+     * @return void
+     */
+    public function setServiceLocator($serviceLocator): void {
+        $this->serviceLocator = $serviceLocator;
+    }
+
+    /**
+     * Get the service locator
+     *
+     * @return \MemberpressAiAssistant\DI\ServiceLocator|null The service locator
+     */
+    public function getServiceLocator() {
+        return $this->serviceLocator;
     }
 }

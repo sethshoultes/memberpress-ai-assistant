@@ -8,6 +8,7 @@
 namespace MemberpressAiAssistant\Admin;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
+use MemberpressAiAssistant\Services\Settings\SettingsControllerService;
 
 /**
  * Class for handling MemberPress AI Assistant admin menu
@@ -33,9 +34,9 @@ class MPAIAdminMenu extends AbstractService {
     /**
      * Settings controller instance (for new MVC architecture)
      *
-     * @var \MemberpressAiAssistant\Admin\Settings\MPAISettingsController
+     * @var SettingsControllerService|null
      */
-    protected $settings_controller;
+    protected ?SettingsControllerService $settings_controller = null;
 
     /**
      * Constructor
@@ -50,10 +51,10 @@ class MPAIAdminMenu extends AbstractService {
     /**
      * Set the settings controller (for new MVC architecture)
      *
-     * @param \MemberpressAiAssistant\Admin\Settings\MPAISettingsController $settings_controller Settings controller instance
+     * @param SettingsControllerService $settings_controller Settings controller instance
      * @return void
      */
-    public function set_settings_controller(\MemberpressAiAssistant\Admin\Settings\MPAISettingsController $settings_controller): void {
+    public function set_settings_controller(SettingsControllerService $settings_controller): void {
         $this->settings_controller = $settings_controller;
         $this->logWithLevel('New MVC settings controller set in admin menu', 'info');
     }
@@ -186,6 +187,9 @@ class MPAIAdminMenu extends AbstractService {
      */
     public function render_settings_page(): void {
         try {
+            // Ensure chat interface assets are enqueued if user has consented
+            $this->ensure_chat_assets_enqueued();
+            
             // Use the MVC controller if available
             if ($this->settings_controller) {
                 $this->logWithLevel('Using MVC settings controller for rendering', 'info');
@@ -233,6 +237,75 @@ class MPAIAdminMenu extends AbstractService {
         echo '</div>';
         
         $this->logWithLevel('Fallback settings page rendered due to initialization error', 'warning');
+    }
+    
+    /**
+     * Ensure chat interface assets are properly enqueued
+     *
+     * Assets are now always enqueued on settings pages to support both:
+     * - Inline consent form AJAX functionality (requires assets before consent)
+     * - Chat interface functionality (requires assets after consent)
+     *
+     * @return void
+     */
+    protected function ensure_chat_assets_enqueued(): void {
+        try {
+            // Get current screen information for page detection
+            $current_screen = get_current_screen();
+            $hook_suffix = $current_screen ? $current_screen->id : 'unknown';
+            
+            $this->logWithLevel('Checking if chat assets should be enqueued for hook: ' . $hook_suffix, 'debug');
+            
+            // Get the chat interface instance to check if we should load assets
+            $chat_interface = \MemberpressAiAssistant\ChatInterface::getInstance();
+            
+            // Use the existing shouldLoadAdminChatInterface logic to determine if we're on the right page
+            $reflection = new \ReflectionClass($chat_interface);
+            $shouldLoadMethod = $reflection->getMethod('shouldLoadAdminChatInterface');
+            $shouldLoadMethod->setAccessible(true);
+            $should_load_on_page = $shouldLoadMethod->invoke($chat_interface, $hook_suffix);
+            
+            if (!$should_load_on_page) {
+                $this->logWithLevel('Not on a page that requires chat assets, skipping enqueuing', 'debug');
+                return;
+            }
+            
+            $this->logWithLevel('On settings page - enqueuing chat assets for universal functionality', 'info');
+            
+            // Check consent status for logging purposes
+            $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
+            $has_consented = $consent_manager->hasUserConsented();
+            
+            $this->logWithLevel('User consent status: ' . ($has_consented ? 'consented' : 'not consented'), 'debug');
+            $this->logWithLevel('Assets needed for: ' . ($has_consented ? 'chat interface' : 'consent form AJAX + future chat interface'), 'debug');
+            
+            // Always enqueue assets on settings page (needed for both consent form and chat interface)
+            $this->logWithLevel('Triggering chat asset registration for hook: ' . $hook_suffix, 'debug');
+            
+            // Manually trigger admin asset registration
+            $chat_interface->registerAdminAssets($hook_suffix);
+            
+            $this->logWithLevel('Chat assets enqueued successfully for universal functionality', 'info');
+            
+        } catch (\ReflectionException $e) {
+            $this->logWithLevel('Error accessing shouldLoadAdminChatInterface method: ' . $e->getMessage(), 'error');
+            $this->logWithLevel('Falling back to basic asset enqueuing', 'warning');
+            
+            // Fallback: enqueue assets if we can't determine page status
+            try {
+                $chat_interface = \MemberpressAiAssistant\ChatInterface::getInstance();
+                $current_screen = get_current_screen();
+                $hook_suffix = $current_screen ? $current_screen->id : 'unknown';
+                $chat_interface->registerAdminAssets($hook_suffix);
+                $this->logWithLevel('Fallback asset enqueuing completed', 'info');
+            } catch (\Exception $fallback_error) {
+                $this->logWithLevel('Fallback asset enqueuing failed: ' . $fallback_error->getMessage(), 'error');
+            }
+            
+        } catch (\Exception $e) {
+            $this->logWithLevel('Unexpected error in ensure_chat_assets_enqueued: ' . $e->getMessage(), 'error');
+            $this->logWithLevel('Error trace: ' . $e->getTraceAsString(), 'debug');
+        }
     }
 
     /**

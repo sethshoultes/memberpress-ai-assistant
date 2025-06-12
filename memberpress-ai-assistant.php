@@ -604,6 +604,11 @@ class MemberpressAiAssistant {
         $config_service->register($this->serviceLocator);
         $config_service->boot();
         
+        // Register Settings service provider
+        $settings_provider = new \MemberpressAiAssistant\DI\Providers\SettingsServiceProvider();
+        $settings_provider->register($this->serviceLocator);
+        $settings_provider->boot($this->serviceLocator);
+        
         // Register LLM service provider
         $llm_provider = new \MemberpressAiAssistant\DI\Providers\LlmServiceProvider();
         $llm_provider->register($this->serviceLocator);
