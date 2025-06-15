@@ -276,9 +276,69 @@ jQuery(document).ready(function($) {
         }
     }
     
+    // Function to load required assets
+    function loadAssets(assets, callback) {
+        var loadedCount = 0;
+        var totalAssets = 0;
+        
+        // Count total assets
+        if (assets.css) {
+            totalAssets += Object.keys(assets.css).length;
+        }
+        if (assets.js) {
+            totalAssets += Object.keys(assets.js).length;
+        }
+        
+        function assetLoaded() {
+            loadedCount++;
+            if (loadedCount >= totalAssets) {
+                callback();
+            }
+        }
+        
+        // Load CSS files
+        if (assets.css) {
+            Object.keys(assets.css).forEach(function(key) {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = assets.css[key];
+                link.onload = assetLoaded;
+                link.onerror = assetLoaded; // Continue even if CSS fails to load
+                document.head.appendChild(link);
+            });
+        }
+        
+        // Load JS files
+        if (assets.js) {
+            Object.keys(assets.js).forEach(function(key) {
+                var script = document.createElement('script');
+                script.src = assets.js[key];
+                script.onload = assetLoaded;
+                script.onerror = assetLoaded; // Continue even if JS fails to load
+                document.head.appendChild(script);
+            });
+        }
+        
+        // If no assets to load, call callback immediately
+        if (totalAssets === 0) {
+            callback();
+        }
+    }
+    
     // Function to load chat interface
-    function loadChatInterface() {
-        console.log('Loading chat interface...');
+    // DIAGNOSTIC: Log consent validation process
+
+    LoggingUtility::debug('[CHAT RENDER DIAGNOSIS] Starting consent validation', [
+
+        'user_id' => $user_id,
+
+        'consent_manager_available' => class_exists('\MemberpressAiAssistant\Admin\MPAIConsentManager')
+
+    ]);
+
+    
+
+    // CRITICAL FIX: Check consent status BEFORE rendering
         
         // Make AJAX request to get chat interface HTML
         $.ajax({
@@ -289,32 +349,39 @@ jQuery(document).ready(function($) {
                 nonce: '<?php echo esc_js($nonce); ?>'
             },
             success: function(response) {
+
+                // DIAGNOSTIC: Log AJAX response for chat interface
+
+                console.log('[CHAT RENDER DIAGNOSIS] AJAX response received for chat interface', {
+
+                    response: response,
+
+                    hasHtml: !!(response.data && response.data.html),
+
+                    htmlLength: response.data && response.data.html ? response.data.html.length : 0,
+
+                    hasAssets: !!(response.data && response.data.assets),
+
+                    timestamp: new Date().toISOString()
+
+                });
+
+                
+
                 if (response.success && response.data.html) {
                     console.log('Chat interface loaded successfully');
                     
-                    // Fade out consent form and replace with chat interface
-                    $container.addClass('fade-out');
-                    
-                    setTimeout(function() {
-                        $container.replaceWith(response.data.html);
-                        
-                        // Trigger chat interface initialization if needed
-                        if (typeof window.MPAI_Chat !== 'undefined') {
-                            window.MPAI_Chat.init();
-                        }
-                        
-                        // Load chat scripts if not already loaded
-                        if (!window.MPAI_Chat) {
-                            var chatScript = document.createElement('script');
-                            chatScript.src = '<?php echo esc_url(MPAI_PLUGIN_URL . 'assets/js/chat.js'); ?>';
-                            chatScript.onload = function() {
-                                if (window.MPAI_Chat) {
-                                    window.MPAI_Chat.init();
-                                }
-                            };
-                            document.head.appendChild(chatScript);
-                        }
-                    }, 300);
+                    // Load required assets first
+                    if (response.data.assets) {
+                        console.log('Loading chat interface assets...');
+                        loadAssets(response.data.assets, function() {
+                            console.log('Assets loaded, initializing chat interface...');
+                            initializeChatInterface(response.data);
+                        });
+                    } else {
+                        // No assets to load, initialize directly
+                        initializeChatInterface(response.data);
+                    }
                 } else {
                     console.error('Failed to load chat interface:', response);
                     showMessage('<?php echo esc_js(__('Failed to load chat interface. Please refresh the page.', 'memberpress-ai-assistant')); ?>', 'error');
@@ -327,6 +394,71 @@ jQuery(document).ready(function($) {
                 setLoadingState(false);
             }
         });
+    }
+    
+    // Function to initialize chat interface after assets are loaded
+    function initializeChatInterface(data) {
+        // CRITICAL FIX: Instead of replacing, just show the existing chat container
+        console.log('[CHAT RENDER DIAGNOSIS] Showing existing chat container after consent');
+        
+        // Find the existing chat container that was rendered server-side
+        var $chatContainer = $('#mpai-chat-container');
+        
+        if ($chatContainer.length > 0) {
+            console.log('[CHAT RENDER DIAGNOSIS] Found existing chat container, making it visible');
+            
+            // Fade out consent form
+            $container.addClass('fade-out');
+            
+            setTimeout(function() {
+                // Hide consent form and show chat container
+                $container.hide();
+                $chatContainer.show();
+                
+                console.log('[CHAT RENDER DIAGNOSIS] Chat container is now visible');
+                
+                // Set up chat configuration if provided
+                if (data && data.config) {
+                    window.mpai_chat_config = data.config;
+                }
+                
+                // Wait a bit for DOM to settle, then initialize chat
+                setTimeout(function() {
+                    // Try to initialize chat interface
+                    if (typeof window.MPAI_Chat !== 'undefined' && window.MPAI_Chat.init) {
+                        console.log('Initializing MPAI_Chat...');
+                        window.MPAI_Chat.init();
+                    } else {
+                        console.log('MPAI_Chat not available, will be initialized by template script');
+                    }
+                    
+                    console.log('Chat interface initialization complete');
+                }, 500);
+            }, 300);
+        } else {
+            console.error('[CHAT RENDER DIAGNOSIS] Chat container not found in DOM - falling back to AJAX replacement');
+            
+            // Fallback to the original replacement method if container not found
+            $container.addClass('fade-out');
+            
+            setTimeout(function() {
+                if (data && data.html) {
+                    $container.replaceWith(data.html);
+                    
+                    if (data.config) {
+                        window.mpai_chat_config = data.config;
+                    }
+                    
+                    setTimeout(function() {
+                        if (typeof window.MPAI_Chat !== 'undefined' && window.MPAI_Chat.init) {
+                            console.log('Initializing MPAI_Chat...');
+                            window.MPAI_Chat.init();
+                        }
+                        console.log('Chat interface initialization complete');
+                    }, 500);
+                }
+            }, 300);
+        }
     }
     
     // Handle form submission
@@ -357,6 +489,26 @@ jQuery(document).ready(function($) {
                 console.log('Consent submission response:', response);
                 
                 if (response.success) {
+
+                
+                    // DIAGNOSTIC: Log successful consent submission
+
+                
+                    console.log('[CHAT RENDER DIAGNOSIS] Consent saved successfully, preparing to load chat interface', {
+
+                
+                        response: response,
+
+                
+                        timestamp: new Date().toISOString()
+
+                
+                    });
+
+                
+                    
+
+                
                     showMessage('<?php echo esc_js(__('Thank you! Loading AI Assistant...', 'memberpress-ai-assistant')); ?>', 'success');
                     
                     // Load chat interface after short delay

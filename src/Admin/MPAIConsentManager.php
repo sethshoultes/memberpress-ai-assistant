@@ -327,10 +327,30 @@ class MPAIConsentManager extends AbstractService {
         }
         
         if (empty($user_id)) {
+            $this->log('Cannot reset consent - invalid user ID', ['error' => true]);
             return false;
         }
         
-        return \delete_user_meta($user_id, self::CONSENT_META_KEY);
+        // Clear from cache first
+        \wp_cache_delete($user_id, 'user_meta');
+        
+        // Delete from database
+        $result = \delete_user_meta($user_id, self::CONSENT_META_KEY);
+        
+        if ($result) {
+            $this->log('User consent reset successfully for user: ' . $user_id);
+            
+            // Verify it was actually deleted
+            $check = \get_user_meta($user_id, self::CONSENT_META_KEY, true);
+            if (!empty($check)) {
+                $this->log('Warning: Consent still exists after delete for user: ' . $user_id, ['error' => true]);
+                return false;
+            }
+        } else {
+            $this->log('Failed to reset consent for user: ' . $user_id, ['error' => true]);
+        }
+        
+        return $result;
     }
 
     /**
@@ -340,14 +360,28 @@ class MPAIConsentManager extends AbstractService {
     public static function resetAllConsents() {
         global $wpdb;
         
-        // Delete consent meta for all users
-        $wpdb->delete(
-            $wpdb->usermeta,
-            array('meta_key' => self::CONSENT_META_KEY)
-        );
-        
-        // We can't use $this->log here since this is a static method
-        // In a real implementation, we would use a static logger
+        try {
+            // Clear any cached consent data
+            \wp_cache_flush();
+            
+            // Delete consent meta for all users
+            $result = $wpdb->delete(
+                $wpdb->usermeta,
+                array('meta_key' => self::CONSENT_META_KEY)
+            );
+            
+            // Log the result
+            if ($result !== false) {
+                error_log('MPAI ConsentManager: Reset ' . $result . ' consent entries');
+            } else {
+                error_log('MPAI ConsentManager: Failed to reset consents - database error');
+            }
+            
+            return $result !== false;
+        } catch (\Exception $e) {
+            error_log('MPAI ConsentManager: Exception during resetAllConsents - ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**

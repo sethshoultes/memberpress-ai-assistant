@@ -578,11 +578,40 @@ class MemberpressAiAssistant {
     public function deactivate() {
         // Clean up if necessary
         
-        // Reset all user consents
-        \MemberpressAiAssistant\Admin\MPAIConsentManager::resetAllConsents();
+        // Reset all user consents with logging
+        try {
+            \MemberpressAiAssistant\Admin\MPAIConsentManager::resetAllConsents();
+            
+            // Verify consent clearing worked
+            global $wpdb;
+            $remaining_consents = $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$wpdb->usermeta} WHERE meta_key = 'mpai_has_consented'"
+            );
+            
+            if ($remaining_consents > 0) {
+                error_log('MPAI Deactivation: Warning - ' . $remaining_consents . ' consent entries remain after reset');
+                
+                // Force clear any remaining consents
+                $wpdb->delete(
+                    $wpdb->usermeta,
+                    array('meta_key' => 'mpai_has_consented')
+                );
+                
+                error_log('MPAI Deactivation: Forced clearing of remaining consent entries');
+            } else {
+                error_log('MPAI Deactivation: All user consents cleared successfully');
+            }
+        } catch (\Exception $e) {
+            error_log('MPAI Deactivation Error: Failed to clear consents - ' . $e->getMessage());
+        }
+        
+        // Clear any cached consent data
+        wp_cache_flush();
         
         // Flush rewrite rules
         flush_rewrite_rules();
+        
+        error_log('MPAI Deactivation: Plugin deactivation complete');
     }
     
     /**

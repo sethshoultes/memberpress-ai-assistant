@@ -135,7 +135,26 @@ $using_legacy_renderer = isset($renderer) && isset($provider);
     // Include chat interface or consent form based on user consent
     $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
     $has_consented = $consent_manager->hasUserConsented();
+
     $already_rendered = defined('MPAI_CHAT_INTERFACE_RENDERED');
+
+    
+
+    // DIAGNOSTIC: Log settings page consent check
+
+    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[CHAT RENDER DIAGNOSIS] Settings page consent check', [
+
+        'user_id' => get_current_user_id(),
+
+        'has_consented' => $has_consented,
+
+        'consent_meta_raw' => get_user_meta(get_current_user_id(), 'mpai_has_consented', true),
+
+        'already_rendered' => $already_rendered,
+
+        'request_uri' => $_SERVER['REQUEST_URI'] ?? 'unknown'
+
+    ]);
     
     // Use proper logging utility
     \MemberpressAiAssistant\Utilities\LoggingUtility::debug('SettingsTemplate: Chat interface rendering check - Consented: ' . ($has_consented ? 'YES' : 'NO') . ', Already rendered: ' . ($already_rendered ? 'YES' : 'NO'));
