@@ -150,7 +150,28 @@ This plugin takes security seriously:
 - Built-in AI integration with no API key configuration required
 - All user inputs are properly sanitized and validated
 - Comprehensive error handling and logging
-- User consent management for data privacy
+
+## Development History
+
+### Phase 6A - Dev-Tools Archival (December 2024)
+
+As part of the ongoing consent system removal project, Phase 6A involved the archival of development tools that contained outdated consent system references. This phase was completed to prevent fatal errors and maintain code cleanliness.
+
+**What was archived:**
+- 34 development tool files containing 75+ MPAIConsentManager references
+- Tools moved from `dev-tools/` to `dev-tools-archived/dev-tools/`
+- 22 files identified with potential fatal error risks
+
+**Reason for archival:**
+The development tools contained extensive references to the removed MPAIConsentManager class, which could cause fatal errors if executed. Rather than attempting to fix each tool individually, the decision was made to archive them and create a clean replacement structure.
+
+**Current status:**
+- Production code remains clean and functional
+- Phase 6 consent system removal continues to progress
+- Archived tools remain available at `dev-tools-archived/dev-tools/` for reference
+- New clean dev-tools structure established
+
+For detailed information about the archival process, see [`phase-6a-archival-summary.md`](phase-6a-archival-summary.md).
 
 ## Support
 

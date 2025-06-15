@@ -151,10 +151,7 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
             error_log('[MPAI Debug] SettingsController: Current page: ' . (isset($_GET['page']) ? $_GET['page'] : 'none'));
             error_log('[MPAI Debug] SettingsController: Current screen: ' . (get_current_screen() ? get_current_screen()->id : 'unknown'));
             
-            // Check user consent status
-            $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-            $has_consented = $consent_manager->hasUserConsented();
-            error_log('[MPAI Debug] SettingsController: User consent status: ' . ($has_consented ? 'true' : 'false'));
+            error_log('[MPAI Debug] SettingsController: Authenticated admin user accessing settings');
             
             // Get current tab
             $current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general';

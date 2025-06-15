@@ -10,7 +10,6 @@ namespace MemberpressAiAssistant\DI\Providers;
 use MemberpressAiAssistant\DI\ServiceProvider;
 use MemberpressAiAssistant\DI\ServiceLocator;
 use MemberpressAiAssistant\Admin\MPAIAdminMenu;
-use MemberpressAiAssistant\Admin\MPAIConsentManager;
 use MemberpressAiAssistant\Admin\MPAIAjaxHandler;
 use MemberpressAiAssistant\Admin\MPAIKeyManager;
 
@@ -35,12 +34,6 @@ class AdminServiceProvider extends ServiceProvider {
             return $adminMenu;
         });
 
-        // Register consent manager
-        $this->registerSingleton($locator, 'consent_manager', function() use ($locator) {
-            $logger = $locator->has('logger') ? $locator->get('logger') : null;
-            return new MPAIConsentManager('consent_manager', $logger);
-        });
-
         // Register AJAX handler
         $this->registerSingleton($locator, 'ajax_handler', function() use ($locator) {
             $logger = $locator->has('logger') ? $locator->get('logger') : null;
@@ -62,7 +55,6 @@ class AdminServiceProvider extends ServiceProvider {
     public function provides(): array {
         return [
             'admin_menu',
-            'consent_manager',
             'ajax_handler',
             'key_manager'
         ];

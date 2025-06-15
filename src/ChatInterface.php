@@ -367,7 +367,6 @@ class ChatInterface {
             return;
         }
         
-        // Always render container - consent handled in JavaScript
         $this->renderChatContainerHTML();
     }
 
@@ -405,9 +404,7 @@ class ChatInterface {
             return;
         }
         
-        // CRITICAL FIX: Always render chat container, but handle consent in JavaScript
-        // This ensures the DOM elements are always present for the AJAX consent flow
-        LoggingUtility::debug('ChatInterface: Rendering chat interface container (consent handled in JavaScript)');
+        LoggingUtility::debug('ChatInterface: Rendering chat interface container');
         
         // Set flag to prevent duplicate rendering
         define('MPAI_CHAT_INTERFACE_RENDERED', true);
@@ -421,7 +418,6 @@ class ChatInterface {
             'headers_sent' => headers_sent()
         ]);
         
-        // Always render container - consent will be handled in JavaScript
         $this->renderChatContainerHTML();
         
         // DIAGNOSTIC: Log after rendering chat container HTML
@@ -436,17 +432,8 @@ class ChatInterface {
     private function renderChatContainerHTML() {
         LoggingUtility::debug('ChatInterface: Rendering chat container HTML directly');
         
-        // Check consent status for JavaScript configuration
-        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-        $has_consented = $consent_manager->hasUserConsented();
-        
-        // CRITICAL FIX: Always render container but hide it if no consent
-        $container_style = $has_consented ? '' : 'style="display: none;"';
-        
-        LoggingUtility::debug('ChatInterface: Rendering chat container with consent status: ' . ($has_consented ? 'visible' : 'hidden'));
-        
         ?>
-        <div class="mpai-chat-container" id="mpai-chat-container" <?php echo $container_style; ?>>
+        <div class="mpai-chat-container" id="mpai-chat-container">
             <div class="mpai-chat-header">
                 <h3><?php esc_html_e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h3>
                 <button class="mpai-chat-expand" id="mpai-chat-expand" aria-label="<?php esc_attr_e('Expand chat', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Expand chat', 'memberpress-ai-assistant'); ?>">
@@ -1083,23 +1070,7 @@ class ChatInterface {
             );
         }
         
-        // Check if user has consented - CRITICAL: This prevents API access without consent
-        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-        $user_id = get_current_user_id();
-        $has_consented = $consent_manager->hasUserConsented();
-        
-        LoggingUtility::debug('ChatInterface: REST API consent check - User ID: ' . $user_id . ', Has consented: ' . ($has_consented ? 'YES' : 'NO'));
-        
-        if (!$has_consented) {
-            LoggingUtility::debug('ChatInterface: REST API access denied - user has not consented');
-            return new \WP_Error(
-                'mpai_consent_required',
-                __('You must agree to the terms before using the AI Assistant.', 'memberpress-ai-assistant'),
-                ['status' => 403]
-            );
-        }
-
-        LoggingUtility::debug('ChatInterface: REST API access granted - user has consented');
+        LoggingUtility::debug('ChatInterface: REST API access granted - basic authentication passed');
         return true;
     }
 
@@ -1240,21 +1211,6 @@ class ChatInterface {
         return $should_load;
     }
 
-    /**
-     * Check if we're on the settings page that should handle consent form
-     *
-     * @return bool True if on settings page with consent form capability
-     */
-    private function isSettingsPageWithConsentForm() {
-        $current_page = isset($_GET['page']) ? $_GET['page'] : '';
-        $settings_pages = ['mpai-settings'];
-        
-        $is_settings_page = in_array($current_page, $settings_pages);
-        
-        LoggingUtility::debug('ChatInterface: isSettingsPageWithConsentForm() - Page: ' . $current_page . ', Is settings page: ' . ($is_settings_page ? 'YES' : 'NO'));
-        
-        return $is_settings_page;
-    }
 
     /**
      * Get the chat configuration
@@ -1263,16 +1219,11 @@ class ChatInterface {
      * @return array The chat configuration
      */
     private function getChatConfig($is_admin = false) {
-        // Check consent status for JavaScript configuration
-        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-        $has_consented = $consent_manager->hasUserConsented();
-        
         $config = [
             'apiEndpoint' => rest_url('memberpress-ai/v1/chat'),
             'debug' => defined('WP_DEBUG') && WP_DEBUG,
             'maxMessages' => 50,
             'autoOpen' => false,
-            'hasConsented' => $has_consented, // Add consent status to config
             'welcomePageUrl' => admin_url('admin.php?page=mpai-welcome'), // Add welcome page URL
         ];
         

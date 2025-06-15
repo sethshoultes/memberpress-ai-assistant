@@ -2,7 +2,7 @@
 /**
  * MemberPress AI Assistant Welcome Page Template
  *
- * This template displays the welcome and consent form for users when the plugin is activated.
+ * This template displays a simple welcome message and directs users to the settings page.
  *
  * @package MemberpressAiAssistant
  */
@@ -11,37 +11,27 @@
 if (!defined('ABSPATH')) {
     exit;
 }
-
-// Get current user ID
-$user_id = get_current_user_id();
-
-// Create nonce for form submission
-$nonce = wp_create_nonce('mpai_consent_nonce');
 ?>
 
 <div class="mpai-welcome-container wrap">
+    <h1><?php _e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h1>
+    
     <?php
     // Display any admin notices
     settings_errors('mpai_messages');
     ?>
     
     <div class="mpai-welcome-content">
-        <?php
-        // Add comprehensive logging for consent form rendering
-        error_log('[MPAI Debug] Welcome page: About to render consent form via consent manager');
-        
-        // Use the consent manager to render the consent form
-        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-        
-        // Log consent manager state
-        error_log('[MPAI Debug] Welcome page: Consent manager instance created');
-        error_log('[MPAI Debug] Welcome page: User consent status: ' . ($consent_manager->hasUserConsented() ? 'true' : 'false'));
-        
-        $consent_manager->renderConsentForm();
-        
-        error_log('[MPAI Debug] Welcome page: Consent form rendering completed');
-        ?>
-        
+        <div class="mpai-welcome-message">
+            <h2><?php _e('Welcome to MemberPress AI Assistant!', 'memberpress-ai-assistant'); ?></h2>
+            <p><?php _e('Your AI Assistant is ready to help you manage your MemberPress site. You can access the chat interface from the settings page.', 'memberpress-ai-assistant'); ?></p>
+            
+            <div class="mpai-welcome-actions">
+                <a href="<?php echo esc_url(admin_url('admin.php?page=mpai-settings')); ?>" class="button button-primary button-large">
+                    <?php _e('Go to AI Assistant', 'memberpress-ai-assistant'); ?>
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -55,11 +45,42 @@ $nonce = wp_create_nonce('mpai_consent_nonce');
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     
+    .mpai-welcome-container h1 {
+        margin-top: 0;
+        color: #1d2327;
+        font-size: 24px;
+    }
+    
     .mpai-welcome-content {
         margin-top: 20px;
     }
+    
+    .mpai-welcome-message {
+        text-align: center;
+        padding: 20px 0;
+    }
+    
+    .mpai-welcome-message h2 {
+        color: #1d2327;
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+    
+    .mpai-welcome-message p {
+        color: #646970;
+        font-size: 16px;
+        line-height: 1.5;
+        margin-bottom: 25px;
+    }
+    
+    .mpai-welcome-actions {
+        margin-top: 20px;
+    }
+    
+    .mpai-welcome-actions .button-large {
+        padding: 12px 24px;
+        font-size: 16px;
+        height: auto;
+        line-height: 1.4;
+    }
 </style>
-
-<script type="text/javascript">
-    console.log('[MPAI Debug] Welcome page loaded - consent form will be rendered by consent manager');
-</script>

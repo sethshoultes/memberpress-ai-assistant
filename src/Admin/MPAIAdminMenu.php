@@ -187,7 +187,7 @@ class MPAIAdminMenu extends AbstractService {
      */
     public function render_settings_page(): void {
         try {
-            // Ensure chat interface assets are enqueued if user has consented
+            // Ensure chat interface assets are enqueued
             $this->ensure_chat_assets_enqueued();
             
             // Use the MVC controller if available
@@ -242,10 +242,6 @@ class MPAIAdminMenu extends AbstractService {
     /**
      * Ensure chat interface assets are properly enqueued
      *
-     * Assets are now always enqueued on settings pages to support both:
-     * - Inline consent form AJAX functionality (requires assets before consent)
-     * - Chat interface functionality (requires assets after consent)
-     *
      * @return void
      */
     protected function ensure_chat_assets_enqueued(): void {
@@ -270,22 +266,17 @@ class MPAIAdminMenu extends AbstractService {
                 return;
             }
             
-            $this->logWithLevel('On settings page - enqueuing chat assets for universal functionality', 'info');
+            $this->logWithLevel('On settings page - enqueuing chat assets', 'info');
             
-            // Check consent status for logging purposes
-            $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-            $has_consented = $consent_manager->hasUserConsented();
+            $this->logWithLevel('Enqueuing chat assets for authenticated admin user', 'debug');
             
-            $this->logWithLevel('User consent status: ' . ($has_consented ? 'consented' : 'not consented'), 'debug');
-            $this->logWithLevel('Assets needed for: ' . ($has_consented ? 'chat interface' : 'consent form AJAX + future chat interface'), 'debug');
-            
-            // Always enqueue assets on settings page (needed for both consent form and chat interface)
+            // Always enqueue assets on settings page
             $this->logWithLevel('Triggering chat asset registration for hook: ' . $hook_suffix, 'debug');
             
             // Manually trigger admin asset registration
             $chat_interface->registerAdminAssets($hook_suffix);
             
-            $this->logWithLevel('Chat assets enqueued successfully for universal functionality', 'info');
+            $this->logWithLevel('Chat assets enqueued successfully', 'info');
             
         } catch (\ReflectionException $e) {
             $this->logWithLevel('Error accessing shouldLoadAdminChatInterface method: ' . $e->getMessage(), 'error');
@@ -309,32 +300,14 @@ class MPAIAdminMenu extends AbstractService {
     }
 
     /**
-     * Render the welcome page with consent form
+     * Render the welcome page
      *
      * @return void
      */
     public function render_welcome_page(): void {
-        // Check if user has already consented
-        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-        if ($consent_manager->hasUserConsented()) {
-            // User has already consented, redirect to settings
-            wp_redirect(admin_url('admin.php?page=mpai-settings'));
-            exit;
-        }
-        
-        // Include the welcome page template
-        $template_path = MPAI_PLUGIN_DIR . 'templates/welcome-page.php';
-        
-        if (file_exists($template_path)) {
-            include $template_path;
-        } else {
-            echo '<div class="wrap">';
-            echo '<h1>' . esc_html__('MemberPress AI Assistant Welcome', 'memberpress-ai-assistant') . '</h1>';
-            echo '<div class="notice notice-error">';
-            echo '<p>' . esc_html__('Welcome page template not found.', 'memberpress-ai-assistant') . '</p>';
-            echo '</div>';
-            echo '</div>';
-        }
+        // Always redirect authenticated users to settings
+        wp_redirect(admin_url('admin.php?page=mpai-settings'));
+        exit;
     }
 
     /**

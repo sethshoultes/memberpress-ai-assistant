@@ -129,95 +129,39 @@ $using_legacy_renderer = isset($renderer) && isset($provider);
     </form>
     
     <?php
-    // Ensure jQuery and admin AJAX are available for inline consent form
+    // Ensure jQuery is available for the chat interface
     wp_enqueue_script('jquery');
     
-    // Include chat interface or consent form based on user consent
-    $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-    $has_consented = $consent_manager->hasUserConsented();
-
+    // Always render the chat interface (consent system removed)
     $already_rendered = defined('MPAI_CHAT_INTERFACE_RENDERED');
-
-    
-
-    // DIAGNOSTIC: Log settings page consent check
-
-    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[CHAT RENDER DIAGNOSIS] Settings page consent check', [
-
-        'user_id' => get_current_user_id(),
-
-        'has_consented' => $has_consented,
-
-        'consent_meta_raw' => get_user_meta(get_current_user_id(), 'mpai_has_consented', true),
-
-        'already_rendered' => $already_rendered,
-
-        'request_uri' => $_SERVER['REQUEST_URI'] ?? 'unknown'
-
-    ]);
-    
-    // Use proper logging utility
-    \MemberpressAiAssistant\Utilities\LoggingUtility::debug('SettingsTemplate: Chat interface rendering check - Consented: ' . ($has_consented ? 'YES' : 'NO') . ', Already rendered: ' . ($already_rendered ? 'YES' : 'NO'));
     ?>
     
-    <!-- AI Assistant Container for dynamic content replacement -->
+    <!-- AI Assistant Container -->
     <div id="mpai-assistant-container">
-        <?php if ($has_consented): ?>
-            <?php if ($already_rendered): ?>
-                <?php
-                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('SettingsTemplate: Duplicate rendering prevented - chat interface already rendered');
-                echo '<!-- Chat Interface: Already rendered, skipping duplicate -->';
-                ?>
-            <?php else: ?>
-                <?php
-                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('SettingsTemplate: Rendering chat interface from settings template');
-                echo '<!-- Chat Interface: User has consented, including chat interface -->';
-                
-                // Set flag to prevent duplicate rendering
-                define('MPAI_CHAT_INTERFACE_RENDERED', true);
-                
-                // Include the chat interface template
-                $chat_template_path = MPAI_PLUGIN_DIR . 'templates/chat-interface.php';
-                if (file_exists($chat_template_path)) {
-                    include $chat_template_path;
-                    echo '<!-- Chat Interface: Template included successfully -->';
-                } else {
-                    echo '<!-- Chat Interface: Template not found at ' . esc_html($chat_template_path) . ' -->';
-                }
-                ?>
-            <?php endif; ?>
+        <?php if ($already_rendered): ?>
+            <?php
+            echo '<!-- Chat Interface: Already rendered, skipping duplicate -->';
+            ?>
         <?php else: ?>
             <?php
-            \MemberpressAiAssistant\Utilities\LoggingUtility::debug('SettingsTemplate: User has not consented, showing inline consent form');
-            echo '<!-- Consent Form: User has not consented, showing inline consent form -->';
+            echo '<!-- Chat Interface: Always displayed (consent system removed) -->';
             
-            // Include the inline consent form template
-            $consent_template_path = MPAI_PLUGIN_DIR . 'templates/consent-form-inline.php';
-            if (file_exists($consent_template_path)) {
-                include $consent_template_path;
-                echo '<!-- Consent Form: Inline template included successfully -->';
+            // Set flag to prevent duplicate rendering
+            define('MPAI_CHAT_INTERFACE_RENDERED', true);
+            
+            // Include the chat interface template
+            $chat_template_path = MPAI_PLUGIN_DIR . 'templates/chat-interface.php';
+            if (file_exists($chat_template_path)) {
+                include $chat_template_path;
+                echo '<!-- Chat Interface: Template included successfully -->';
             } else {
-                echo '<!-- Consent Form: Inline template not found at ' . esc_html($consent_template_path) . ' -->';
+                echo '<!-- Chat Interface: Template not found at ' . esc_html($chat_template_path) . ' -->';
                 // Fallback message
                 echo '<div class="notice notice-info"><p>' .
-                     esc_html__('Please agree to the terms of use to enable the AI Assistant.', 'memberpress-ai-assistant') .
+                     esc_html__('Chat interface template not found. Please check the plugin installation.', 'memberpress-ai-assistant') .
                      '</p></div>';
             }
             ?>
         <?php endif; ?>
     </div>
-    
-    <?php
-    // Add JavaScript to ensure ajaxurl is available for the inline consent form
-    if (!$has_consented) {
-        ?>
-        <script type="text/javascript">
-            // Ensure ajaxurl is available for AJAX requests
-            if (typeof ajaxurl === 'undefined') {
-                var ajaxurl = '<?php echo esc_js(admin_url('admin-ajax.php')); ?>';
-            }
-        </script>
-        <?php
-    }
-    ?>
 </div>

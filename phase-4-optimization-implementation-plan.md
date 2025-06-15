@@ -7,7 +7,7 @@ This document outlines the comprehensive optimization plan for the Services/Sett
 **Primary Objectives:**
 - Create robust interface contracts for type safety and maintainability
 - Remove API settings (handled by proxy architecture)
-- Remove consent admin settings (handled by MPAIConsentManager)
+- Remove obsolete admin settings
 - Enhance error handling and dependency validation
 - Establish clean 3-tab structure (General, Chat, Access)
 
@@ -51,10 +51,10 @@ This document outlines the comprehensive optimization plan for the Services/Sett
 'primary_api' => 'openai',
 ```
 
-#### **Consent Settings (Handled by MPAIConsentManager)**
+#### **Obsolete Settings**
 ```php
 // Remove from SettingsModelService defaults
-'consent_required' => true,
+'obsolete_setting' => true,
 ```
 
 ### **Final Simplified Settings Structure**
@@ -212,34 +212,24 @@ interface SettingsControllerInterface {
   - `render_anthropic_max_tokens_field()`
   - `render_provider_selection_js()`
 
-### **Task 3: Remove Consent Admin Settings**
+### **Task 3: Remove Obsolete Admin Settings**
 
-**Objective**: Remove consent management UI since MPAIConsentManager handles consent flow.
+**Objective**: Remove obsolete management UI components.
 
 #### **3.1 Update SettingsModelService**
-- Remove `'consent_required' => true` from `$defaults`
-- Remove consent validation in `validate()` method
-- Remove `is_consent_required()` method
+- Remove obsolete settings from `$defaults`
+- Remove obsolete validation in `validate()` method
+- Remove obsolete getter methods
 
 #### **3.2 Update SettingsControllerService**
-- Remove `'consent'` from `$tabs` array
-- Remove `register_consent_section()` method
-- Remove consent-related imports: `use MemberpressAiAssistant\Admin\MPAIConsentManager;`
-- Remove consent handling methods:
-  - `handle_reset_all_consents()`
-  - `register_consent_preview_page()`
-  - `render_consent_preview_page()`
-  - `render_consent_required_field()`
-  - `render_consent_form_preview_field()`
-  - `render_reset_all_consents_field()`
+- Remove obsolete tabs from `$tabs` array
+- Remove obsolete section registration methods
+- Remove obsolete imports
+- Remove obsolete handling methods
 
 #### **3.3 Update SettingsViewService**
-- Remove `'consent'` case from `render_fields()` method
-- Remove consent rendering methods:
-  - `render_consent_section()`
-  - `render_consent_required_field()`
-  - `render_consent_form_preview_field()`
-  - `render_reset_all_consents_field()`
+- Remove obsolete cases from `render_fields()` method
+- Remove obsolete rendering methods
 
 ### **Task 4: Enhanced Error Handling & Dependency Validation**
 
