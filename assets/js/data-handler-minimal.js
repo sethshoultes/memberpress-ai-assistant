@@ -5,49 +5,12 @@
  * to fix the "detectVisualizationType is not defined" error.
  */
 
-// Add a visible notification to the page
-function addDebugNotification(message) {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.style.position = 'fixed';
-    notification.style.bottom = '10px';
-    notification.style.right = '10px';
-    notification.style.backgroundColor = '#4CAF50';
-    notification.style.color = 'white';
-    notification.style.padding = '10px';
-    notification.style.borderRadius = '5px';
-    notification.style.zIndex = '9999';
-    notification.style.maxWidth = '300px';
-    notification.textContent = message;
-    
-    // Add to document
-    document.body.appendChild(notification);
-    
-    // Remove after 5 seconds
-    setTimeout(() => {
-        notification.remove();
-    }, 5000);
-    
-    // Also log to console
-    console.log(message);
-}
+// Debug notification function removed - was causing admin interface notifications
 
 (function() {
     'use strict';
     
-    // Try different console logging methods
-    console.log('Loading minimal data handler...');
-    console.info('INFO: Data handler initializing');
-    console.warn('WARNING: This is a test warning to check if console is working');
-    
-    // Add visible notification
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            addDebugNotification('Data handler loaded successfully!');
-        });
-    } else {
-        addDebugNotification('Data handler loaded successfully!');
-    }
+    // Debug messages removed - were appearing in admin interface
 
     /**
      * Data visualization types
@@ -67,7 +30,6 @@ function addDebugNotification(message) {
      * @returns {string} The detected visualization type
      */
     function detectVisualizationType(data) {
-        console.log('detectVisualizationType called with:', typeof data);
         
         if (Array.isArray(data)) {
             // Check if array contains objects with consistent keys (table)
@@ -113,8 +75,6 @@ function addDebugNotification(message) {
      * @returns {HTMLElement} The visualization element
      */
     function processData(data, options = {}) {
-        console.log('processData called');
-        
         const {
             type = detectVisualizationType(data),
             title = '',
@@ -124,8 +84,6 @@ function addDebugNotification(message) {
             maxItems = 20,
             maxDepth = 3
         } = options;
-
-        console.log('Visualization type:', type);
         
         // Create a simple div as placeholder
         const container = document.createElement('div');
@@ -140,12 +98,10 @@ function addDebugNotification(message) {
             const arrayType = detectVisualizationType([1, 2, 3]);
             const objectType = detectVisualizationType({a: 1, b: 2});
             
-            // Show visible notification with results
-            addDebugNotification(`Function test: detectVisualizationType works! Array: ${arrayType}, Object: ${objectType}`);
+            // Debug notification removed - was appearing in admin interface
             return true;
         } catch (error) {
-            addDebugNotification(`ERROR: ${error.message}`);
-            console.error('Error testing detectVisualizationType:', error);
+            // Debug notification removed - was appearing in admin interface
             return false;
         }
     }
@@ -158,9 +114,7 @@ function addDebugNotification(message) {
         testDetectVisualizationType // Add test function to public API
     };
     
-    console.log('MPAIDataHandler initialized with functions:',
-        Object.keys(window.MPAIDataHandler).join(', '));
-    console.log('detectVisualizationType defined:', typeof detectVisualizationType);
+    // Debug messages removed - were appearing in admin interface
     
     // Run test after a short delay to ensure DOM is ready
     setTimeout(() => {

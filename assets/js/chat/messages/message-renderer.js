@@ -44,7 +44,7 @@ class MessageRenderer {
      */
     _bindEvents() {
         if (!this._eventBus) {
-            console.warn('[MessageRenderer] No event bus available for binding events');
+            // Debug message removed - was appearing in admin interface
             return;
         }
 
@@ -61,7 +61,7 @@ class MessageRenderer {
             console.log('[MessageRenderer] Message removed:', data);
         });
 
-        console.log('[MessageRenderer] Event listeners bound');
+        // Debug message removed - was appearing in admin interface
     }
 
     /**
@@ -71,12 +71,12 @@ class MessageRenderer {
      */
     renderMessage(message) {
         if (!message) {
-            console.warn('[MessageRenderer] No message provided for rendering');
+            // Debug message removed - was appearing in admin interface
             return null;
         }
 
         if (!this._messageContainer) {
-            console.error('[MessageRenderer] No message container available');
+            // Debug message removed - was appearing in admin interface
             return null;
         }
 
@@ -88,7 +88,7 @@ class MessageRenderer {
             const messageComponent = this._messageFactory.createMessageComponent(message);
             
             if (!messageComponent) {
-                console.warn('[MessageRenderer] Factory returned null component');
+                // Debug message removed - was appearing in admin interface
                 return null;
             }
 
@@ -197,7 +197,7 @@ class MessageRenderer {
      */
     updateMessage(messageId, updatedData) {
         if (!messageId) {
-            console.warn('[MessageRenderer] No message ID provided for update');
+            // Debug message removed - was appearing in admin interface
             return null;
         }
 
@@ -212,7 +212,7 @@ class MessageRenderer {
             const newComponent = this._messageFactory.createMessageComponent(updatedData);
             
             if (!newComponent) {
-                console.warn('[MessageRenderer] Factory returned null component for update');
+                // Debug message removed - was appearing in admin interface
                 return existingElement;
             }
 
@@ -246,7 +246,7 @@ class MessageRenderer {
      */
     removeMessage(messageId) {
         if (!messageId) {
-            console.warn('[MessageRenderer] No message ID provided for removal');
+            // Debug message removed - was appearing in admin interface
             return;
         }
 
@@ -278,7 +278,7 @@ class MessageRenderer {
      */
     clearMessages() {
         if (!this._messageContainer) {
-            console.warn('[MessageRenderer] No message container available for clearing');
+            // Debug message removed - was appearing in admin interface
             return;
         }
 
@@ -292,7 +292,7 @@ class MessageRenderer {
             // Emit event
             this._eventBus?.emit('messages-cleared');
 
-            console.log('[MessageRenderer] All messages cleared');
+            // Debug message removed - was appearing in admin interface
 
         } catch (error) {
             console.error('[MessageRenderer] Error clearing messages:', error);

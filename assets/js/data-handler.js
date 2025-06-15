@@ -7,14 +7,14 @@
  */
 
 // Immediately log when the file loads
-console.log('data-handler.js loading...');
+// Debug message removed - was appearing in admin interface
 
 // Use a named IIFE to avoid scope issues
 (function MPAIDataHandlerModule() {
     'use strict';
     
     // Log when the module initializes
-    console.log('MPAIDataHandlerModule initializing...');
+    // Debug message removed - was appearing in admin interface
 
     /**
      * Data visualization types
@@ -295,12 +295,6 @@ console.log('data-handler.js loading...');
         rowCountElement.textContent = `Showing ${Math.min(initialData.length, data.length)} of ${data.length} rows`;
         container.appendChild(rowCountElement);
 
-        return container;
-    }
-                break;
-        }
-
-        container.appendChild(visualizationElement);
         return container;
     }
 
@@ -1188,8 +1182,6 @@ console.log('data-handler.js loading...');
     };
     
     // Add debugging to help identify the issue
-    console.log('MPAIDataHandler initialized with functions:',
-        Object.keys(window.MPAIDataHandler).join(', '));
-    console.log('detectVisualizationType defined:', typeof detectVisualizationType);
+    // Debug messages removed - were appearing in admin interface
 
 })();

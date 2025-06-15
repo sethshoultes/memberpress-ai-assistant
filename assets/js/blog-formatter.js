@@ -3,29 +3,25 @@
  * 
  * Handles formatting and processing of blog post XML content
  */
-// Add diagnostic logging before IIFE
-console.log('[MPAI Debug] blog-formatter.js loading');
-console.log('[MPAI Debug] jQuery available before IIFE:', typeof jQuery !== 'undefined');
-console.log('[MPAI Debug] $ available before IIFE:', typeof $ !== 'undefined');
+// Debug messages removed - were appearing in admin interface
 
 // Make jQuery available as $ in the global scope if it's not already
 if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
     window.$ = jQuery;
-    console.log('[MPAI Debug] Set $ to jQuery in global scope');
+    // Debug message removed - was appearing in admin interface
 }
 
 (function($) {
     'use strict';
 
-    // Log jQuery parameter
-    console.log('[MPAI Debug] jQuery parameter in IIFE:', $ !== undefined && typeof $ === 'function');
+    // Debug message removed - was appearing in admin interface
 
     // Create a global reference to this module
     window.MPAI_BlogFormatter = {};
     
     // Initialize the module
     function init() {
-        console.log('[MPAI Debug] Blog Formatter module initializing');
+        // Debug message removed - was appearing in admin interface
         
         // Process any existing messages that might contain blog post XML
         processExistingMessages();
@@ -33,7 +29,7 @@ if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
         // Set up a mutation observer to watch for new messages
         setupMutationObserver();
         
-        console.log('[MPAI Debug] Blog Formatter module initialized');
+        // Debug message removed - was appearing in admin interface
     }
     
     /**
@@ -64,9 +60,9 @@ if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
         const chatContainer = document.querySelector('.mpai-chat-messages');
         if (chatContainer) {
             observer.observe(chatContainer, { childList: true, subtree: true });
-            console.log('[MPAI Debug] Mutation observer set up for chat container');
+            // Debug message removed - was appearing in admin interface
         } else {
-            console.log('[MPAI Debug] Chat container not found, will try again later');
+            // Debug message removed - was appearing in admin interface
             // Try again later
             setTimeout(setupMutationObserver, 1000);
         }
@@ -100,7 +96,7 @@ if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
                 content.includes('<post-content>') ||
                 content.includes('</post-content>')
             )) {
-                console.log('[MPAI Debug] Found blog post XML in message');
+                // Debug message removed - was appearing in admin interface
                 processAssistantMessage($message, content);
             }
         });
@@ -113,13 +109,13 @@ if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
      * @param {string} content - The message content
      */
     function processAssistantMessage($message, content) {
-        console.log('[MPAI Debug] Processing assistant message with blog post XML');
+        // Debug message removed - was appearing in admin interface
         
         // Extract the XML content
         const xmlContent = extractXmlContent(content);
         
         if (!xmlContent) {
-            console.error('[MPAI Debug] Failed to extract XML content from message');
+            // Debug error message removed - was appearing in admin interface
             return;
         }
         
@@ -129,7 +125,7 @@ if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
         const postData = parsePostXml(xmlContent);
         
         if (!postData) {
-            console.error('[MPAI Debug] Failed to parse XML content');
+            // Debug error message removed - was appearing in admin interface
             return;
         }
         
@@ -187,7 +183,7 @@ if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
             // Extract post data
             const postElement = xmlDoc.querySelector('wp-post');
             if (!postElement) {
-                console.error('[MPAI Debug] No wp-post element found in XML');
+                // Debug error message removed - was appearing in admin interface
                 return null;
             }
             
@@ -244,7 +240,7 @@ if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
      * @param {string} xmlContent - The original XML content
      */
     function createPostPreviewCard($message, postData, xmlContent) {
-        console.log('[MPAI Debug] Creating post preview card');
+        // Debug message removed - was appearing in admin interface
         
         // Create the card element
         const $card = $('<div class="mpai-post-preview-card"></div>');
@@ -295,7 +291,7 @@ if (typeof jQuery !== 'undefined' && typeof $ === 'undefined') {
             toggleXml($message);
         });
         
-        console.log('[MPAI Debug] Post preview card created');
+        // Debug message removed - was appearing in admin interface
     }
     
     /**

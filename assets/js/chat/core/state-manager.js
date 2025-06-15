@@ -140,7 +140,7 @@ class StateManager {
         });
       });
     } else {
-      console.warn('[MPAI Debug] Event bus not available for state updates');
+      // Debug message removed - was appearing in admin interface
     }
     
     return this._state;
@@ -235,9 +235,9 @@ class StateManager {
     
     // DEBUG: Check if conversation ID changed (key diagnostic)
     if (stateBefore?.conversation?.id === stateAfter?.conversation?.id) {
-      console.warn('[MPAI Debug] StateManager.clearConversation - WARNING: Conversation ID did not change!');
-      console.warn('[MPAI Debug] StateManager.clearConversation - This means old messages may reload on page refresh');
-      console.warn('[MPAI Debug] StateManager.clearConversation - The old system generated a new conversation ID to prevent this');
+      // Debug message removed - was appearing in admin interface
+      // Debug message removed - was appearing in admin interface
+      // Debug message removed - was appearing in admin interface
     } else {
       console.log('[MPAI Debug] StateManager.clearConversation - Good: Conversation ID changed from',
         stateBefore?.conversation?.id, 'to', stateAfter?.conversation?.id);
@@ -253,7 +253,7 @@ class StateManager {
     }
     
     // CRITICAL: Immediately persist the cleared state to prevent old messages from reloading
-    console.log('[MPAI Debug] StateManager.clearConversation - Persisting cleared state immediately');
+    // Debug message removed - was appearing in admin interface
     this.persistState().then(success => {
       console.log('[MPAI Debug] StateManager.clearConversation - State persistence result:', success);
     }).catch(error => {
@@ -383,7 +383,7 @@ class StateManager {
    */
   async persistState() {
     try {
-      console.log('[MPAI Debug] Persisting state to storage');
+      // Debug message removed - was appearing in admin interface
       
       // Create a new instance of StorageManager
       const storageManager = new StorageManager({
@@ -416,7 +416,7 @@ class StateManager {
    */
   async loadState() {
     try {
-      console.log('[MPAI Debug] Loading state from storage');
+      // Debug message removed - was appearing in admin interface
       
       // Create a new instance of StorageManager
       const storageManager = new StorageManager({
@@ -442,7 +442,7 @@ class StateManager {
           });
         }
         
-        console.log('[MPAI Debug] State updated from storage');
+        // Debug message removed - was appearing in admin interface
       }
       
       return this._state;
@@ -474,7 +474,7 @@ class StateManager {
       // SURGICAL FIX: Only handle conversation.messages specifically
       // This prevents old messages from being merged back in after clearing
       if (key === 'conversation' && source[key] && source[key].messages !== undefined) {
-        console.log('[MPAI Debug] _deepMerge - Handling conversation with messages, using replacement strategy');
+        // Debug message removed - was appearing in admin interface
         output[key] = {
           ...target[key],
           ...source[key],
