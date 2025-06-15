@@ -1135,21 +1135,107 @@ class ChatInterface {
      * @return bool True if the chat interface should be loaded
      */
     private function shouldLoadAdminChatInterface($hook_suffix) {
-        // Define pages where chat interface should be loaded
-        $allowed_pages = [
-            'memberpress_page_mpai-settings',  // Settings page under MemberPress menu
-            'toplevel_page_mpai-settings',     // Settings page as top-level menu
-            'admin_page_mpai-welcome',         // Welcome page (hidden)
-            'memberpress_page_mpai-welcome',   // Welcome page under MemberPress menu
-        ];
+        // First, check the chat location setting
+        global $mpai_service_locator;
         
-        // Also check current page parameter
+        $chat_location = 'admin_only'; // Default fallback
+        $settings_available = false;
+        
+        // Try to get the chat location setting from the settings model
+        if (isset($mpai_service_locator) && $mpai_service_locator->has('settings.model')) {
+            try {
+                $settings_model = $mpai_service_locator->get('settings.model');
+                $chat_location = $settings_model->get_chat_location();
+                $settings_available = true;
+                
+                LoggingUtility::debug('ChatInterface: Retrieved chat_location setting: ' . $chat_location);
+            } catch (\Exception $e) {
+                LoggingUtility::warning('ChatInterface: Failed to get settings model: ' . $e->getMessage());
+            }
+        }
+        
+        // If settings not available, try direct option access as fallback
+        if (!$settings_available) {
+            $raw_settings = get_option('mpai_settings', []);
+            if (isset($raw_settings['chat_location'])) {
+                $chat_location = $raw_settings['chat_location'];
+                LoggingUtility::debug('ChatInterface: Retrieved chat_location from raw settings: ' . $chat_location);
+            } else {
+                LoggingUtility::debug('ChatInterface: No chat_location setting found, using default: ' . $chat_location);
+            }
+        }
+        
+        // Apply logic based on chat location setting
+        switch ($chat_location) {
+            case 'admin_only':
+                // Show on all admin pages when "Admin area only" is selected
+                $should_load = is_admin() && !wp_doing_ajax() && !defined('DOING_CRON');
+                $reason = 'admin_only setting - allowed on all admin pages';
+                break;
+                
+            case 'frontend':
+                // Don't show on admin pages when "Frontend only" is selected
+                $should_load = false;
+                $reason = 'frontend setting - not allowed on admin pages';
+                break;
+                
+            case 'both':
+                // Show on admin pages when "Both" is selected
+                $should_load = is_admin() && !wp_doing_ajax() && !defined('DOING_CRON');
+                $reason = 'both setting - allowed on admin pages';
+                break;
+                
+            default:
+                // Fallback to hardcoded page restrictions for unknown settings
+                $allowed_pages = [
+                    'memberpress_page_mpai-settings',  // Settings page under MemberPress menu
+                    'toplevel_page_mpai-settings',     // Settings page as top-level menu
+                    'admin_page_mpai-welcome',         // Welcome page (hidden)
+                    'memberpress_page_mpai-welcome',   // Welcome page under MemberPress menu
+                ];
+                
+                // Also check current page parameter
+                $current_page = isset($_GET['page']) ? $_GET['page'] : '';
+                $allowed_page_params = ['mpai-settings', 'mpai-welcome'];
+                
+                $should_load = in_array($hook_suffix, $allowed_pages) || in_array($current_page, $allowed_page_params);
+                $reason = 'unknown setting - using hardcoded page restrictions';
+                break;
+        }
+        
+        // Additional safety checks for admin context
+        if ($should_load) {
+            // Don't load during AJAX requests (except our own)
+            if (wp_doing_ajax() && (!isset($_REQUEST['action']) || strpos($_REQUEST['action'], 'mpai_') !== 0)) {
+                $should_load = false;
+                $reason = 'blocked - AJAX request';
+            }
+            
+            // Don't load during cron jobs
+            if (defined('DOING_CRON') && DOING_CRON) {
+                $should_load = false;
+                $reason = 'blocked - cron job';
+            }
+            
+            // Don't load during REST API requests
+            if (defined('REST_REQUEST') && REST_REQUEST) {
+                $should_load = false;
+                $reason = 'blocked - REST API request';
+            }
+        }
+        
         $current_page = isset($_GET['page']) ? $_GET['page'] : '';
-        $allowed_page_params = ['mpai-settings', 'mpai-welcome'];
         
-        $should_load = in_array($hook_suffix, $allowed_pages) || in_array($current_page, $allowed_page_params);
-        
-        LoggingUtility::debug('ChatInterface: shouldLoadAdminChatInterface() - Hook: ' . $hook_suffix . ', Page: ' . $current_page . ', Should load: ' . ($should_load ? 'YES' : 'NO'));
+        LoggingUtility::debug('ChatInterface: shouldLoadAdminChatInterface() decision', [
+            'hook_suffix' => $hook_suffix,
+            'current_page' => $current_page,
+            'chat_location_setting' => $chat_location,
+            'should_load' => $should_load ? 'YES' : 'NO',
+            'reason' => $reason,
+            'is_admin' => is_admin(),
+            'wp_doing_ajax' => wp_doing_ajax(),
+            'settings_available' => $settings_available
+        ]);
         
         return $should_load;
     }
