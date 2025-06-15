@@ -9,8 +9,8 @@ namespace MemberpressAiAssistant\Services\Settings;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
 use MemberpressAiAssistant\Interfaces\ServiceInterface;
+use MemberpressAiAssistant\Interfaces\SettingsControllerInterface;
 use MemberpressAiAssistant\DI\ServiceLocator;
-use MemberpressAiAssistant\Admin\MPAIConsentManager;
 
 /**
  * Service for handling MemberPress AI Assistant settings page and tabs
@@ -21,7 +21,7 @@ use MemberpressAiAssistant\Admin\MPAIConsentManager;
  * 
  * It adapts the original MPAISettingsController to work with the DI system.
  */
-class SettingsControllerService extends AbstractService implements ServiceInterface {
+class SettingsControllerService extends AbstractService implements ServiceInterface, SettingsControllerInterface {
     /**
      * Settings model instance
      *
@@ -51,11 +51,11 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
     private $tabs = [];
 
     /**
-     * Service locator instance
+     * Whether service is in degraded mode
      *
-     * @var ServiceLocator
+     * @var bool
      */
-    private $serviceLocator;
+    protected $degradedMode = false;
 
     /**
      * Constructor
@@ -72,10 +72,8 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
         // Define tabs
         $this->tabs = [
             'general' => __('General', 'memberpress-ai-assistant'),
-            'api' => __('API Settings', 'memberpress-ai-assistant'),
             'chat' => __('Chat Settings', 'memberpress-ai-assistant'),
             'access' => __('Access Control', 'memberpress-ai-assistant'),
-            'consent' => __('Consent', 'memberpress-ai-assistant'),
         ];
     }
 
@@ -87,9 +85,6 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
      */
     public function register($serviceLocator): void {
         $this->log('Registering settings controller service');
-        
-        // Store the service locator for later use
-        $this->serviceLocator = $serviceLocator;
         
         // Register this service with the service locator
         $serviceLocator->register($this->getServiceName(), function() {
@@ -104,6 +99,12 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
      */
     public function boot(): void {
         parent::boot();
+        
+        // Validate dependencies before proceeding
+        if (!$this->validateDependencies()) {
+            $this->log('Service booted in degraded mode due to missing dependencies');
+            return;
+        }
         
         // Get dependencies from service locator
         $this->model = $this->serviceLocator->get('settings.model');
@@ -132,12 +133,6 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
         // Handle form submissions
         add_action('admin_post_mpai_update_settings', [$this, 'handle_form_submission']);
         
-        // Handle reset all consents action
-        add_action('admin_init', [$this, 'handle_reset_all_consents']);
-        
-        // Register consent preview page
-        add_action('admin_menu', [$this, 'register_consent_preview_page'], 30);
-        
         // Enqueue scripts and styles
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
         
@@ -149,14 +144,26 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
      *
      * @return void
      */
-    public function render_page() {
+    public function render_page(): void {
         try {
+            // Add comprehensive logging
+            error_log('[MPAI Debug] SettingsController: render_page() called');
+            error_log('[MPAI Debug] SettingsController: Current page: ' . (isset($_GET['page']) ? $_GET['page'] : 'none'));
+            error_log('[MPAI Debug] SettingsController: Current screen: ' . (get_current_screen() ? get_current_screen()->id : 'unknown'));
+            
+            error_log('[MPAI Debug] SettingsController: Authenticated admin user accessing settings');
+            
             // Get current tab
             $current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general';
+            error_log('[MPAI Debug] SettingsController: Current tab: ' . $current_tab);
             
             // Render the page
+            error_log('[MPAI Debug] SettingsController: About to render settings page view...');
             $this->view->render_page($current_tab, $this->tabs, $this->page_slug, $this->model);
+            error_log('[MPAI Debug] SettingsController: Settings page view rendered successfully');
+            
         } catch (\Exception $e) {
+            error_log('[MPAI Debug] SettingsController: Exception in render_page: ' . $e->getMessage());
             $this->log_error('Error rendering settings page: ' . $e->getMessage());
             $this->view->render_error(__('An error occurred while rendering the settings page. Please try again later or contact support.', 'memberpress-ai-assistant'));
         }
@@ -167,7 +174,7 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
      *
      * @return void
      */
-    public function register_settings() {
+    public function register_settings(): void {
         // Register setting
         register_setting(
             $this->page_slug,
@@ -180,10 +187,8 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
         
         // Register sections and fields
         $this->register_general_section();
-        $this->register_api_section();
         $this->register_chat_section();
         $this->register_access_section();
-        $this->register_consent_section();
     }
 
     /**
@@ -208,103 +213,16 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
             $this->page_slug,
             'mpai_general_section'
         );
+
+        add_settings_field(
+            'mpai_log_level',
+            __('Log Level', 'memberpress-ai-assistant'),
+            [$this, 'render_log_level_field'],
+            $this->page_slug,
+            'mpai_general_section'
+        );
     }
 
-    /**
-     * Register API section and fields
-     *
-     * @return void
-     */
-    protected function register_api_section() {
-        // Register API Settings section
-        add_settings_section(
-            'mpai_api_section',
-            __('API Settings', 'memberpress-ai-assistant'),
-            [$this->view, 'render_api_section'],
-            $this->page_slug
-        );
-        
-        // Add OpenAI API Key field
-        add_settings_field(
-            'mpai_openai_api_key',
-            __('OpenAI API Key', 'memberpress-ai-assistant'),
-            [$this, 'render_openai_api_key_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-    
-        // Add OpenAI Model field
-        add_settings_field(
-            'mpai_openai_model',
-            __('OpenAI Model', 'memberpress-ai-assistant'),
-            [$this, 'render_openai_model_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add OpenAI Temperature field
-        add_settings_field(
-            'mpai_openai_temperature',
-            __('OpenAI Temperature', 'memberpress-ai-assistant'),
-            [$this, 'render_openai_temperature_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add OpenAI Max Tokens field
-        add_settings_field(
-            'mpai_openai_max_tokens',
-            __('OpenAI Max Tokens', 'memberpress-ai-assistant'),
-            [$this, 'render_openai_max_tokens_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Anthropic API Key field
-        add_settings_field(
-            'mpai_anthropic_api_key',
-            __('Anthropic API Key', 'memberpress-ai-assistant'),
-            [$this, 'render_anthropic_api_key_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Anthropic Model field
-        add_settings_field(
-            'mpai_anthropic_model',
-            __('Anthropic Model', 'memberpress-ai-assistant'),
-            [$this, 'render_anthropic_model_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Anthropic Temperature field
-        add_settings_field(
-            'mpai_anthropic_temperature',
-            __('Anthropic Temperature', 'memberpress-ai-assistant'),
-            [$this, 'render_anthropic_temperature_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Anthropic Max Tokens field
-        add_settings_field(
-            'mpai_anthropic_max_tokens',
-            __('Anthropic Max Tokens', 'memberpress-ai-assistant'),
-            [$this, 'render_anthropic_max_tokens_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-        
-        // Add Primary AI Provider field
-        add_settings_field(
-            'mpai_primary_api',
-            __('Primary AI Provider', 'memberpress-ai-assistant'),
-            [$this, 'render_primary_api_field'],
-            $this->page_slug,
-            'mpai_api_section'
-        );
-    }
 
     /**
      * Register chat section and fields
@@ -362,54 +280,13 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
         );
     }
 
-    /**
-     * Register consent section and fields
-     *
-     * @return void
-     */
-    protected function register_consent_section() {
-        // Register Consent Settings section
-        add_settings_section(
-            'mpai_consent_section',
-            __('Consent Settings', 'memberpress-ai-assistant'),
-            [$this->view, 'render_consent_section'],
-            $this->page_slug
-        );
-        
-        // Add Consent Required field
-        add_settings_field(
-            'mpai_consent_required',
-            __('Require User Consent', 'memberpress-ai-assistant'),
-            [$this, 'render_consent_required_field'],
-            $this->page_slug,
-            'mpai_consent_section'
-        );
-        
-        // Add Consent Form Preview field
-        add_settings_field(
-            'mpai_consent_form_preview',
-            __('Consent Form Preview', 'memberpress-ai-assistant'),
-            [$this, 'render_consent_form_preview_field'],
-            $this->page_slug,
-            'mpai_consent_section'
-        );
-        
-        // Add Reset All Consents field
-        add_settings_field(
-            'mpai_reset_all_consents',
-            __('Reset All User Consents', 'memberpress-ai-assistant'),
-            [$this, 'render_reset_all_consents_field'],
-            $this->page_slug,
-            'mpai_consent_section'
-        );
-    }
 
     /**
      * Handle form submission
      *
      * @return void
      */
-    public function handle_form_submission() {
+    public function handle_form_submission(): void {
         // Check nonce
         if (!isset($_POST['_wpnonce']) || !wp_verify_nonce($_POST['_wpnonce'], $this->page_slug . '-options')) {
             wp_die(__('Security check failed. Please try again.', 'memberpress-ai-assistant'));
@@ -440,123 +317,32 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
      * @param array $input The settings input
      * @return array The sanitized settings
      */
-    public function sanitize_settings($input) {
+    public function sanitize_settings(array $input): array {
         // The model handles validation and sanitization
         return $input;
     }
 
-    /**
-     * Handle reset all consents action
-     *
-     * @return void
-     */
-    public function handle_reset_all_consents() {
-        // Check if we're on the settings page and the reset action is requested
-        if (!isset($_GET['page']) || $_GET['page'] !== 'mpai-settings' ||
-            !isset($_GET['action']) || $_GET['action'] !== 'mpai_reset_all_consents' ||
-            !isset($_GET['tab']) || $_GET['tab'] !== 'consent') {
-            return;
-        }
-        
-        // Verify nonce
-        if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'mpai_reset_all_consents_nonce')) {
-            add_settings_error(
-                'mpai_messages',
-                'mpai_reset_consents_error',
-                __('Security check failed. Please try again.', 'memberpress-ai-assistant'),
-                'error'
-            );
-            return;
-        }
-        
-        // Check permissions
-        if (!current_user_can('manage_options')) {
-            add_settings_error(
-                'mpai_messages',
-                'mpai_reset_consents_error',
-                __('You do not have sufficient permissions to perform this action.', 'memberpress-ai-assistant'),
-                'error'
-            );
-            return;
-        }
-        
-        // Reset all consents
-        MPAIConsentManager::resetAllConsents();
-        
-        // Add success message
-        add_settings_error(
-            'mpai_messages',
-            'mpai_reset_consents_success',
-            __('All user consents have been reset successfully.', 'memberpress-ai-assistant'),
-            'updated'
-        );
-        
-        // Redirect to remove the action from the URL
-        wp_redirect(add_query_arg([
-            'page' => 'mpai-settings',
-            'tab' => 'consent',
-            'settings-updated' => 'true'
-        ], admin_url('admin.php')));
-        exit;
-    }
 
-    /**
-     * Register consent preview page
-     *
-     * This adds a hidden admin page that displays the consent form for preview purposes
-     *
-     * @return void
-     */
-    public function register_consent_preview_page() {
-        // Add a hidden submenu page for the consent form preview
-        add_submenu_page(
-            null, // No parent menu
-            __('Consent Form Preview', 'memberpress-ai-assistant'),
-            __('Consent Form Preview', 'memberpress-ai-assistant'),
-            'manage_options',
-            'mpai-consent-preview',
-            [$this, 'render_consent_preview_page']
-        );
-    }
 
-    /**
-     * Render the consent preview page
-     *
-     * @return void
-     */
-    public function render_consent_preview_page() {
-        // Get the consent manager instance
-        $consent_manager = MPAIConsentManager::getInstance();
-        
-        // Output minimal header
-        echo '<!DOCTYPE html>';
-        echo '<html>';
-        echo '<head>';
-        echo '<meta charset="utf-8">';
-        echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
-        echo '<title>' . esc_html__('Consent Form Preview', 'memberpress-ai-assistant') . '</title>';
-        wp_head();
-        echo '</head>';
-        echo '<body class="mpai-consent-preview-body">';
-        
-        // Render the consent form
-        $consent_manager->renderConsentForm();
-        
-        // Output minimal footer
-        wp_footer();
-        echo '</body>';
-        echo '</html>';
-        exit;
-    }
 
     /**
      * Render the chat enabled field
      *
      * @return void
      */
-    public function render_chat_enabled_field() {
+    public function render_chat_enabled_field(): void {
         $value = $this->model->is_chat_enabled();
         $this->view->render_chat_enabled_field($value);
+    }
+
+    /**
+     * Render the log level field
+     *
+     * @return void
+     */
+    public function render_log_level_field(): void {
+        $value = $this->model->get_log_level();
+        $this->view->render_log_level_field($value);
     }
 
     /**
@@ -564,7 +350,7 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
      *
      * @return void
      */
-    public function render_chat_location_field() {
+    public function render_chat_location_field(): void {
         $value = $this->model->get_chat_location();
         $this->view->render_chat_location_field($value);
     }
@@ -574,7 +360,7 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
      *
      * @return void
      */
-    public function render_chat_position_field() {
+    public function render_chat_position_field(): void {
         $value = $this->model->get_chat_position();
         $this->view->render_chat_position_field($value);
     }
@@ -584,135 +370,19 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
      *
      * @return void
      */
-    public function render_user_roles_field() {
+    public function render_user_roles_field(): void {
         $value = $this->model->get_user_roles();
         $this->view->render_user_roles_field($value);
     }
 
-    /**
-     * Render the OpenAI API Key field
-     *
-     * @return void
-     */
-    public function render_openai_api_key_field() {
-        $value = $this->model->get_openai_api_key();
-        $this->view->render_openai_api_key_field($value);
-    }
 
-    /**
-     * Render the OpenAI model field
-     *
-     * @return void
-     */
-    public function render_openai_model_field() {
-        $value = $this->model->get_openai_model();
-        $this->view->render_openai_model_field($value);
-    }
-
-    /**
-     * Render the OpenAI temperature field
-     *
-     * @return void
-     */
-    public function render_openai_temperature_field() {
-        $value = $this->model->get_openai_temperature();
-        $this->view->render_openai_temperature_field($value);
-    }
-
-    /**
-     * Render the OpenAI max tokens field
-     *
-     * @return void
-     */
-    public function render_openai_max_tokens_field() {
-        $value = $this->model->get_openai_max_tokens();
-        $this->view->render_openai_max_tokens_field($value);
-    }
-
-    /**
-     * Render the Anthropic API Key field
-     *
-     * @return void
-     */
-    public function render_anthropic_api_key_field() {
-        $value = $this->model->get_anthropic_api_key();
-        $this->view->render_anthropic_api_key_field($value);
-    }
-
-    /**
-     * Render the Anthropic model field
-     *
-     * @return void
-     */
-    public function render_anthropic_model_field() {
-        $value = $this->model->get_anthropic_model();
-        $this->view->render_anthropic_model_field($value);
-    }
-
-    /**
-     * Render the Anthropic temperature field
-     *
-     * @return void
-     */
-    public function render_anthropic_temperature_field() {
-        $value = $this->model->get_anthropic_temperature();
-        $this->view->render_anthropic_temperature_field($value);
-    }
-
-    /**
-     * Render the Anthropic max tokens field
-     *
-     * @return void
-     */
-    public function render_anthropic_max_tokens_field() {
-        $value = $this->model->get_anthropic_max_tokens();
-        $this->view->render_anthropic_max_tokens_field($value);
-    }
-
-    /**
-     * Render the Primary API Provider field
-     *
-     * @return void
-     */
-    public function render_primary_api_field() {
-        $value = $this->model->get_primary_api();
-        $this->view->render_primary_api_field($value);
-    }
-
-    /**
-     * Render the consent required field
-     *
-     * @return void
-     */
-    public function render_consent_required_field() {
-        $value = $this->model->is_consent_required();
-        $this->view->render_consent_required_field($value);
-    }
-
-    /**
-     * Render the consent form preview field
-     *
-     * @return void
-     */
-    public function render_consent_form_preview_field() {
-        $this->view->render_consent_form_preview_field();
-    }
-
-    /**
-     * Render the reset all consents field
-     *
-     * @return void
-     */
-    public function render_reset_all_consents_field() {
-        $this->view->render_reset_all_consents_field();
-    }
 
     /**
      * Get the settings tabs
      *
      * @return array
      */
-    public function get_tabs() {
+    public function get_tabs(): array {
         return $this->tabs;
     }
 
@@ -721,7 +391,7 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
      *
      * @return string
      */
-    public function get_page_slug() {
+    public function get_page_slug(): string {
         return $this->page_slug;
     }
 
@@ -771,5 +441,108 @@ class SettingsControllerService extends AbstractService implements ServiceInterf
             'nonce' => wp_create_nonce('mpai_settings_nonce'),
             'ajaxurl' => admin_url('admin-ajax.php')
         ]);
+    }
+
+    /**
+     * Validate service dependencies
+     *
+     * @return bool True if all dependencies are available
+     */
+    protected function validateDependencies(): bool {
+        foreach ($this->dependencies as $dependency) {
+            if (!$this->serviceLocator || !$this->serviceLocator->has($dependency)) {
+                $this->handleMissingDependency($dependency);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Handle missing dependency with graceful degradation
+     *
+     * @param string $dependency Missing dependency name
+     * @return void
+     */
+    protected function handleMissingDependency(string $dependency): void {
+        $message = sprintf(
+            'Missing required dependency: %s for service: %s', 
+            $dependency, 
+            $this->getServiceName()
+        );
+        
+        if ($this->logger) {
+            $this->logger->error($message, [
+                'service' => $this->getServiceName(),
+                'missing_dependency' => $dependency,
+                'available_dependencies' => $this->serviceLocator ? 
+                    array_keys($this->serviceLocator->getServices()) : []
+            ]);
+        }
+        
+        // Set degraded mode flag for graceful degradation
+        $this->setDegradedMode(true);
+    }
+
+    /**
+     * Execute operation with error handling
+     *
+     * @param callable $operation Operation to execute
+     * @param string $context Context description for error logging
+     * @param mixed $default Default value to return on error
+     * @return mixed Operation result or default value
+     */
+    protected function executeWithErrorHandling(callable $operation, string $context, $default = null) {
+        try {
+            return $operation();
+        } catch (\Exception $e) {
+            $this->handleError($e, $context);
+            return $default;
+        }
+    }
+
+    /**
+     * Handle errors with comprehensive logging
+     *
+     * @param \Exception $e Exception to handle
+     * @param string $context Context description
+     * @return void
+     */
+    protected function handleError(\Exception $e, string $context): void {
+        $message = sprintf('Error in %s: %s', $context, $e->getMessage());
+        
+        if ($this->logger) {
+            $this->logger->error($message, [
+                'exception' => $e,
+                'context' => $context,
+                'service' => $this->getServiceName(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Set degraded mode flag
+     *
+     * @param bool $degraded Whether service is in degraded mode
+     * @return void
+     */
+    protected function setDegradedMode(bool $degraded): void {
+        $this->degradedMode = $degraded;
+        
+        if ($this->logger && $degraded) {
+            $this->logger->warning('Service entering degraded mode', [
+                'service' => $this->getServiceName()
+            ]);
+        }
+    }
+
+    /**
+     * Check if service is in degraded mode
+     *
+     * @return bool True if in degraded mode
+     */
+    protected function isDegradedMode(): bool {
+        return $this->degradedMode ?? false;
     }
 }

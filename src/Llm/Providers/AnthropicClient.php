@@ -40,15 +40,8 @@ class AnthropicClient extends AbstractLlmClient {
         if ($config === null) {
             $config = new LlmProviderConfig(
                 'anthropic',
-                'claude-3-opus-20240229',
-                [
-                    'claude-3-opus-20240229',
-                    'claude-3-sonnet-20240229',
-                    'claude-3-haiku-20240307',
-                    'claude-2.1',
-                    'claude-2.0',
-                    'claude-instant-1.2'
-                ],
+                'claude-3-5-sonnet-20241022',
+                ['claude-3-5-sonnet-20241022'],
                 0.7,
                 4096
             );

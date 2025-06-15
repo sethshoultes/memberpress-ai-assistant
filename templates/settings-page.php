@@ -127,4 +127,41 @@ $using_legacy_renderer = isset($renderer) && isset($provider);
         }
         ?>
     </form>
+    
+    <?php
+    // Ensure jQuery is available for the chat interface
+    wp_enqueue_script('jquery');
+    
+    // Always render the chat interface (consent system removed)
+    $already_rendered = defined('MPAI_CHAT_INTERFACE_RENDERED');
+    ?>
+    
+    <!-- AI Assistant Container -->
+    <div id="mpai-assistant-container">
+        <?php if ($already_rendered): ?>
+            <?php
+            echo '<!-- Chat Interface: Already rendered, skipping duplicate -->';
+            ?>
+        <?php else: ?>
+            <?php
+            echo '<!-- Chat Interface: Always displayed (consent system removed) -->';
+            
+            // Set flag to prevent duplicate rendering
+            define('MPAI_CHAT_INTERFACE_RENDERED', true);
+            
+            // Include the chat interface template
+            $chat_template_path = MPAI_PLUGIN_DIR . 'templates/chat-interface.php';
+            if (file_exists($chat_template_path)) {
+                include $chat_template_path;
+                echo '<!-- Chat Interface: Template included successfully -->';
+            } else {
+                echo '<!-- Chat Interface: Template not found at ' . esc_html($chat_template_path) . ' -->';
+                // Fallback message
+                echo '<div class="notice notice-info"><p>' .
+                     esc_html__('Chat interface template not found. Please check the plugin installation.', 'memberpress-ai-assistant') .
+                     '</p></div>';
+            }
+            ?>
+        <?php endif; ?>
+    </div>
 </div>

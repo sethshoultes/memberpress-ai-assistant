@@ -9,8 +9,9 @@ namespace MemberpressAiAssistant\Services\Settings;
 
 use MemberpressAiAssistant\Abstracts\AbstractService;
 use MemberpressAiAssistant\Interfaces\ServiceInterface;
+use MemberpressAiAssistant\Interfaces\SettingsViewInterface;
+use MemberpressAiAssistant\Interfaces\SettingsModelInterface;
 use MemberpressAiAssistant\DI\ServiceLocator;
-use MemberpressAiAssistant\Admin\Settings\MPAISettingsModel;
 
 /**
  * Service for rendering MemberPress AI Assistant settings UI components
@@ -21,7 +22,7 @@ use MemberpressAiAssistant\Admin\Settings\MPAISettingsModel;
  * 
  * It adapts the original MPAISettingsView to work with the DI system.
  */
-class SettingsViewService extends AbstractService implements ServiceInterface {
+class SettingsViewService extends AbstractService implements ServiceInterface, SettingsViewInterface {
     /**
      * Constructor
      *
@@ -34,6 +35,13 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
         // Set dependencies
         $this->dependencies = ['logger'];
     }
+
+    /**
+     * Whether service is in degraded mode
+     *
+     * @var bool
+     */
+    protected $degradedMode = false;
 
     /**
      * Register the service with the service locator
@@ -58,6 +66,12 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
     public function boot(): void {
         parent::boot();
         
+        // Validate dependencies before proceeding
+        if (!$this->validateDependencies()) {
+            $this->log('Service booted in degraded mode due to missing dependencies');
+            return;
+        }
+        
         // The view service is mostly passive, so minimal boot implementation
         // Add any hooks or filters needed
         $this->addHooks();
@@ -79,10 +93,10 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      * @param string $current_tab Current tab
      * @param array $tabs Available tabs
      * @param string $page_slug Page slug
-     * @param MPAISettingsModel|SettingsModelService $model Settings model
+     * @param SettingsModelService $model Settings model
      * @return void
      */
-    public function render_page($current_tab, $tabs, $page_slug, $model) {
+    public function render_page(string $current_tab, array $tabs, string $page_slug, SettingsModelInterface $model): void {
         try {
             // Check for required variables
             if (empty($tabs)) {
@@ -126,7 +140,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      * @param array $tabs Available tabs
      * @return void
      */
-    public function render_tabs($current_tab, $tabs) {
+    public function render_tabs(string $current_tab, array $tabs): void {
         echo '<h2 class="nav-tab-wrapper">';
         
         foreach ($tabs as $tab_id => $tab_name) {
@@ -148,10 +162,10 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      *
      * @param string $current_tab Current tab
      * @param string $page_slug Page slug
-     * @param MPAISettingsModel|SettingsModelService $model Settings model
+     * @param SettingsModelService $model Settings model
      * @return void
      */
-    public function render_form($current_tab, $page_slug, $model) {
+    public function render_form(string $current_tab, string $page_slug, SettingsModelInterface $model): void {
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         
         // Add hidden fields
@@ -175,7 +189,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      *
      * @param string $current_tab Current tab
      * @param string $page_slug Page slug
-     * @param MPAISettingsModel|SettingsModelService $model Settings model
+     * @param SettingsModelService $model Settings model
      * @return void
      */
     public function render_fields($current_tab, $page_slug, $model) {
@@ -187,20 +201,12 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
                 do_settings_sections($page_slug);
                 break;
                 
-            case 'api':
-                $this->render_section('mpai_api_section', $page_slug);
-                break;
-                
             case 'chat':
                 $this->render_section('mpai_chat_section', $page_slug);
                 break;
                 
             case 'access':
                 $this->render_section('mpai_access_section', $page_slug);
-                break;
-                
-            case 'consent':
-                $this->render_section('mpai_consent_section', $page_slug);
                 break;
                 
             default:
@@ -261,7 +267,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      * @param string $message Error message
      * @return void
      */
-    public function render_error($message) {
+    public function render_error(string $message): void {
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('MemberPress AI Assistant Settings', 'memberpress-ai-assistant') . '</h1>';
         echo '<div class="notice notice-error"><p>' . esc_html($message) . '</p></div>';
@@ -273,7 +279,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      *
      * @return void
      */
-    public function render_general_section() {
+    public function render_general_section(): void {
         echo '<p>' . esc_html__('Configure general settings for the MemberPress AI Assistant.', 'memberpress-ai-assistant') . '</p>';
     }
     
@@ -282,7 +288,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      *
      * @return void
      */
-    public function render_chat_section() {
+    public function render_chat_section(): void {
         echo '<p>' . esc_html__('Configure how the chat interface appears and behaves.', 'memberpress-ai-assistant') . '</p>';
     }
     
@@ -291,27 +297,10 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      *
      * @return void
      */
-    public function render_access_section() {
+    public function render_access_section(): void {
         echo '<p>' . esc_html__('Control which user roles can access the AI Assistant chat interface.', 'memberpress-ai-assistant') . '</p>';
     }
     
-    /**
-     * Render the API section description
-     *
-     * @return void
-     */
-    public function render_api_section() {
-        echo '<p>' . esc_html__('Configure API settings for AI providers. API keys are stored securely using Split Key Storage.', 'memberpress-ai-assistant') . '</p>';
-    }
-    
-    /**
-     * Render the consent section description
-     *
-     * @return void
-     */
-    public function render_consent_section() {
-        echo '<p>' . esc_html__('Configure consent settings for the MemberPress AI Assistant. These settings control how user consent is managed.', 'memberpress-ai-assistant') . '</p>';
-    }
     
     /**
      * Render the chat enabled field
@@ -319,7 +308,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      * @param bool $value Field value
      * @return void
      */
-    public function render_chat_enabled_field($value) {
+    public function render_chat_enabled_field(bool $value): void {
         ?>
         <label for="mpai_chat_enabled">
             <input type="checkbox" id="mpai_chat_enabled" name="mpai_settings[chat_enabled]" value="1" <?php checked($value, true); ?> />
@@ -330,6 +319,45 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
         </p>
         <?php
     }
+
+    /**
+     * Render the log level field
+     *
+     * @param string $value Field value
+     * @return void
+     */
+    public function render_log_level_field(string $value): void {
+        $log_levels = [
+            'none' => __('None (Disable All Logging)', 'memberpress-ai-assistant'),
+            'error' => __('Error (Minimal)', 'memberpress-ai-assistant'),
+            'warning' => __('Warning', 'memberpress-ai-assistant'),
+            'info' => __('Info (Recommended)', 'memberpress-ai-assistant'),
+            'debug' => __('Debug', 'memberpress-ai-assistant'),
+            'trace' => __('Trace (Verbose)', 'memberpress-ai-assistant'),
+            'minimal' => __('Minimal', 'memberpress-ai-assistant'),
+        ];
+        ?>
+        <select id="mpai_log_level" name="mpai_settings[log_level]">
+            <?php foreach ($log_levels as $level => $label) : ?>
+                <option value="<?php echo esc_attr($level); ?>" <?php selected($value, $level); ?>>
+                    <?php echo esc_html($label); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description">
+            <?php esc_html_e('Select the logging level. Higher levels include more detailed logs but may impact performance.', 'memberpress-ai-assistant'); ?>
+            <ul>
+                <li><?php esc_html_e('None: Completely disable all logging', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Error: Only critical errors', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Warning: Errors and warnings', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Info: Normal operational information', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Debug: Detailed information for troubleshooting', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Trace: Very verbose debugging information', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('Minimal: Basic logging information', 'memberpress-ai-assistant'); ?></li>
+            </ul>
+        </p>
+        <?php
+    }
     
     /**
      * Render the chat location field
@@ -337,7 +365,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      * @param string $value Field value
      * @return void
      */
-    public function render_chat_location_field($value) {
+    public function render_chat_location_field(string $value): void {
         ?>
         <select id="mpai_chat_location" name="mpai_settings[chat_location]">
             <option value="admin_only" <?php selected($value, 'admin_only'); ?>>
@@ -362,7 +390,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      * @param string $value Field value
      * @return void
      */
-    public function render_chat_position_field($value) {
+    public function render_chat_position_field(string $value): void {
         ?>
         <select id="mpai_chat_position" name="mpai_settings[chat_position]">
             <option value="bottom_right" <?php selected($value, 'bottom_right'); ?>>
@@ -390,7 +418,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
      * @param array $value Field value
      * @return void
      */
-    public function render_user_roles_field($value) {
+    public function render_user_roles_field(array $value): void {
         $wp_roles = wp_roles();
         $roles = $wp_roles->get_names();
         ?>
@@ -415,308 +443,6 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
         <?php
     }
     
-    /**
-     * Render the OpenAI API Key field
-     *
-     * @param string $value Field value
-     * @return void
-     */
-    public function render_openai_api_key_field($value) {
-        ?>
-        <input type="password" id="mpai_openai_api_key" name="mpai_settings[openai_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text">
-        <p class="description"><?php esc_html_e('Enter your OpenAI API key. This will be stored securely using Split Key Storage.', 'memberpress-ai-assistant'); ?></p>
-        
-        <div id="openai-api-status" class="mpai-api-status">
-            <span class="mpai-api-status-icon"></span>
-            <span class="mpai-api-status-text"><?php esc_html_e('Not Checked', 'memberpress-ai-assistant'); ?></span>
-            <button type="button" id="mpai-test-openai-api" class="button button-secondary"><?php esc_html_e('Test Connection', 'memberpress-ai-assistant'); ?></button>
-            <div id="mpai-openai-test-result" class="mpai-test-result" style="display:none;"></div>
-        </div>
-        <?php
-    }
-    
-    /**
-     * Render the Anthropic API Key field
-     *
-     * @param string $value Field value
-     * @return void
-     */
-    public function render_anthropic_api_key_field($value) {
-        ?>
-        <input type="password" id="mpai_anthropic_api_key" name="mpai_settings[anthropic_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text">
-        <p class="description"><?php esc_html_e('Enter your Anthropic API key. This will be stored securely using Split Key Storage.', 'memberpress-ai-assistant'); ?></p>
-        
-        <div id="anthropic-api-status" class="mpai-api-status">
-            <span class="mpai-api-status-icon"></span>
-            <span class="mpai-api-status-text"><?php esc_html_e('Not Checked', 'memberpress-ai-assistant'); ?></span>
-            <button type="button" id="mpai-test-anthropic-api" class="button button-secondary"><?php esc_html_e('Test Connection', 'memberpress-ai-assistant'); ?></button>
-            <div id="mpai-anthropic-test-result" class="mpai-test-result" style="display:none;"></div>
-        </div>
-        <?php
-    }
-    
-    /**
-     * Render the Primary API Provider field
-     *
-     * @param string $value Field value
-     * @return void
-     */
-    public function render_primary_api_field($value) {
-        $providers = [
-            'openai' => __('OpenAI', 'memberpress-ai-assistant'),
-            'anthropic' => __('Anthropic (Claude)', 'memberpress-ai-assistant'),
-        ];
-        ?>
-        <div class="mpai-provider-selection">
-            <?php foreach ($providers as $provider_value => $label) : ?>
-                <label class="mpai-provider-option">
-                    <input type="radio" name="mpai_settings[primary_api]" value="<?php echo esc_attr($provider_value); ?>" <?php checked($value, $provider_value); ?>>
-                    <?php echo esc_html($label); ?>
-                </label>
-            <?php endforeach; ?>
-        </div>
-        <p class="description"><?php esc_html_e('Select which AI provider to use as the primary source.', 'memberpress-ai-assistant'); ?></p>
-        <?php
-        
-        // Add JavaScript for conditional display logic
-        $this->render_provider_selection_js();
-    }
-    
-    /**
-     * Render JavaScript for provider selection conditional display logic
-     *
-     * @return void
-     */
-    public function render_provider_selection_js() {
-        ?>
-        <script>
-        jQuery(document).ready(function($) {
-            // Function to toggle provider-specific settings
-            function toggleProviderSettings() {
-                var selectedProvider = $('input[name="mpai_settings[primary_api]"]:checked').val();
-                
-                // Hide all provider-specific settings first
-                $('.openai-specific-setting, .anthropic-specific-setting').closest('tr').hide();
-                
-                // Show settings for the selected provider
-                if (selectedProvider === 'openai') {
-                    $('.openai-specific-setting').closest('tr').show();
-                } else if (selectedProvider === 'anthropic') {
-                    $('.anthropic-specific-setting').closest('tr').show();
-                }
-            }
-            
-            // Add classes to provider-specific settings
-            $('#mpai_openai_api_key').closest('tr').addClass('openai-specific-setting');
-            $('#mpai_openai_model').closest('tr').addClass('openai-specific-setting');
-            $('#mpai_openai_temperature').closest('tr').addClass('openai-specific-setting');
-            $('#mpai_openai_max_tokens').closest('tr').addClass('openai-specific-setting');
-            
-            $('#mpai_anthropic_api_key').closest('tr').addClass('anthropic-specific-setting');
-            $('#mpai_anthropic_model').closest('tr').addClass('anthropic-specific-setting');
-            $('#mpai_anthropic_temperature').closest('tr').addClass('anthropic-specific-setting');
-            $('#mpai_anthropic_max_tokens').closest('tr').addClass('anthropic-specific-setting');
-            
-            // Run once on page load
-            toggleProviderSettings();
-            
-            // Run when provider selection changes
-            $('input[name="mpai_settings[primary_api]"]').on('change', function() {
-                toggleProviderSettings();
-            });
-        });
-        </script>
-        <?php
-    }
-    
-    /**
-     * Render the OpenAI model field
-     *
-     * @param string $value Field value
-     * @return void
-     */
-    public function render_openai_model_field($value) {
-        $models = [
-            'gpt-4o' => __('GPT-4o', 'memberpress-ai-assistant'),
-            'gpt-4-turbo' => __('GPT-4 Turbo', 'memberpress-ai-assistant'),
-            'gpt-4' => __('GPT-4', 'memberpress-ai-assistant'),
-            'gpt-3.5-turbo' => __('GPT-3.5 Turbo', 'memberpress-ai-assistant'),
-        ];
-        
-        ?>
-        <select id="mpai_openai_model" name="mpai_settings[openai_model]">
-            <?php foreach ($models as $model_value => $label) : ?>
-                <option value="<?php echo esc_attr($model_value); ?>" <?php selected($value, $model_value); ?>>
-                    <?php echo esc_html($label); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-        <p class="description">
-            <?php esc_html_e('Select the OpenAI model to use for AI operations.', 'memberpress-ai-assistant'); ?>
-        </p>
-        <?php
-    }
-    
-    /**
-     * Render the Anthropic model field
-     *
-     * @param string $value Field value
-     * @return void
-     */
-    public function render_anthropic_model_field($value) {
-        $models = [
-            'claude-3-opus-20240229' => __('Claude 3 Opus', 'memberpress-ai-assistant'),
-            'claude-3-sonnet-20240229' => __('Claude 3 Sonnet', 'memberpress-ai-assistant'),
-            'claude-3-haiku-20240307' => __('Claude 3 Haiku', 'memberpress-ai-assistant'),
-            'claude-2.1' => __('Claude 2.1', 'memberpress-ai-assistant'),
-            'claude-2.0' => __('Claude 2.0', 'memberpress-ai-assistant'),
-        ];
-        
-        ?>
-        <select id="mpai_anthropic_model" name="mpai_settings[anthropic_model]">
-            <?php foreach ($models as $model_value => $label) : ?>
-                <option value="<?php echo esc_attr($model_value); ?>" <?php selected($value, $model_value); ?>>
-                    <?php echo esc_html($label); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-        <p class="description">
-            <?php esc_html_e('Select the Anthropic model to use for AI operations.', 'memberpress-ai-assistant'); ?>
-        </p>
-        <?php
-    }
-    
-    /**
-     * Render the OpenAI temperature field
-     *
-     * @param float $value Field value
-     * @return void
-     */
-    public function render_openai_temperature_field($value) {
-        ?>
-        <input type="range" id="mpai_openai_temperature" name="mpai_settings[openai_temperature]"
-               min="0" max="1" step="0.1" value="<?php echo esc_attr($value); ?>"
-               oninput="document.getElementById('mpai_openai_temperature_value').textContent = this.value;">
-        <span id="mpai_openai_temperature_value"><?php echo esc_html($value); ?></span>
-        <p class="description">
-            <?php esc_html_e('Adjust the temperature for OpenAI responses. Lower values (closer to 0) make responses more focused and deterministic, while higher values (closer to 1) make responses more creative and diverse.', 'memberpress-ai-assistant'); ?>
-        </p>
-        <?php
-    }
-    
-    /**
-     * Render the OpenAI max tokens field
-     *
-     * @param int $value Field value
-     * @return void
-     */
-    public function render_openai_max_tokens_field($value) {
-        ?>
-        <input type="number" id="mpai_openai_max_tokens" name="mpai_settings[openai_max_tokens]"
-               min="1" max="8192" step="1" value="<?php echo esc_attr($value); ?>" class="small-text">
-        <p class="description">
-            <?php esc_html_e('Set the maximum number of tokens for OpenAI responses. This limits the length of the generated text.', 'memberpress-ai-assistant'); ?>
-        </p>
-        <?php
-    }
-    
-    /**
-     * Render the Anthropic temperature field
-     *
-     * @param float $value Field value
-     * @return void
-     */
-    public function render_anthropic_temperature_field($value) {
-        ?>
-        <input type="range" id="mpai_anthropic_temperature" name="mpai_settings[anthropic_temperature]"
-               min="0" max="1" step="0.1" value="<?php echo esc_attr($value); ?>"
-               oninput="document.getElementById('mpai_anthropic_temperature_value').textContent = this.value;">
-        <span id="mpai_anthropic_temperature_value"><?php echo esc_html($value); ?></span>
-        <p class="description">
-            <?php esc_html_e('Adjust the temperature for Anthropic responses. Lower values (closer to 0) make responses more focused and deterministic, while higher values (closer to 1) make responses more creative and diverse.', 'memberpress-ai-assistant'); ?>
-        </p>
-        <?php
-    }
-    
-    /**
-     * Render the Anthropic max tokens field
-     *
-     * @param int $value Field value
-     * @return void
-     */
-    public function render_anthropic_max_tokens_field($value) {
-        ?>
-        <input type="number" id="mpai_anthropic_max_tokens" name="mpai_settings[anthropic_max_tokens]"
-               min="1" max="100000" step="1" value="<?php echo esc_attr($value); ?>" class="small-text">
-        <p class="description">
-            <?php esc_html_e('Set the maximum number of tokens for Anthropic responses. This limits the length of the generated text.', 'memberpress-ai-assistant'); ?>
-        </p>
-        <?php
-    }
-    
-    /**
-     * Render the consent required field
-     *
-     * @param bool $value Field value
-     * @return void
-     */
-    public function render_consent_required_field($value) {
-        ?>
-        <label for="mpai_consent_required">
-            <input type="checkbox" id="mpai_consent_required" name="mpai_settings[consent_required]" value="1" <?php checked($value, true); ?> />
-            <?php esc_html_e('Require users to consent before using the AI Assistant', 'memberpress-ai-assistant'); ?>
-        </label>
-        <p class="description">
-            <?php esc_html_e('When enabled, users will be required to agree to the terms before using the AI Assistant.', 'memberpress-ai-assistant'); ?>
-        </p>
-        <?php
-    }
-    
-    /**
-     * Render the consent form preview field
-     *
-     * @return void
-     */
-    public function render_consent_form_preview_field() {
-        ?>
-        <div class="mpai-consent-preview">
-            <p><?php esc_html_e('This is a preview of the consent form that users will see:', 'memberpress-ai-assistant'); ?></p>
-            <div class="mpai-consent-preview-frame">
-                <iframe src="<?php echo esc_url(admin_url('admin.php?page=mpai-consent-preview')); ?>" width="100%" height="400" style="border: 1px solid #ddd; background: #fff;"></iframe>
-            </div>
-            <p class="description">
-                <?php esc_html_e('The consent form template can be customized by adding a filter to the "mpai_consent_form_template" hook.', 'memberpress-ai-assistant'); ?>
-            </p>
-        </div>
-        <?php
-    }
-    
-    /**
-     * Render the reset all consents field
-     *
-     * @return void
-     */
-    public function render_reset_all_consents_field() {
-        $reset_url = wp_nonce_url(
-            add_query_arg(
-                [
-                    'page' => 'mpai-settings',
-                    'tab' => 'consent',
-                    'action' => 'mpai_reset_all_consents',
-                ],
-                admin_url('admin.php')
-            ),
-            'mpai_reset_all_consents_nonce'
-        );
-        ?>
-        <div class="mpai-reset-consents">
-            <p><?php esc_html_e('This will reset consent status for all users. They will need to agree to the terms again before using the AI Assistant.', 'memberpress-ai-assistant'); ?></p>
-            <a href="<?php echo esc_url($reset_url); ?>" class="button button-secondary mpai-reset-consents-button" onclick="return confirm('<?php esc_attr_e('Are you sure you want to reset consent for all users? This action cannot be undone.', 'memberpress-ai-assistant'); ?>');">
-                <?php esc_html_e('Reset All User Consents', 'memberpress-ai-assistant'); ?>
-            </a>
-        </div>
-        <?php
-    }
     
     /**
      * Log an error message
@@ -728,5 +454,107 @@ class SettingsViewService extends AbstractService implements ServiceInterface {
         if ($this->logger) {
             $this->logger->error($message);
         }
+    }
+/**
+     * Validate service dependencies
+     *
+     * @return bool True if all dependencies are available
+     */
+    protected function validateDependencies(): bool {
+        foreach ($this->dependencies as $dependency) {
+            if (!$this->serviceLocator || !$this->serviceLocator->has($dependency)) {
+                $this->handleMissingDependency($dependency);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Handle missing dependency with graceful degradation
+     *
+     * @param string $dependency Missing dependency name
+     * @return void
+     */
+    protected function handleMissingDependency(string $dependency): void {
+        $message = sprintf(
+            'Missing required dependency: %s for service: %s', 
+            $dependency, 
+            $this->getServiceName()
+        );
+        
+        if ($this->logger) {
+            $this->logger->error($message, [
+                'service' => $this->getServiceName(),
+                'missing_dependency' => $dependency,
+                'available_dependencies' => $this->serviceLocator ? 
+                    array_keys($this->serviceLocator->getServices()) : []
+            ]);
+        }
+        
+        // Set degraded mode flag for graceful degradation
+        $this->setDegradedMode(true);
+    }
+
+    /**
+     * Execute operation with error handling
+     *
+     * @param callable $operation Operation to execute
+     * @param string $context Context description for error logging
+     * @param mixed $default Default value to return on error
+     * @return mixed Operation result or default value
+     */
+    protected function executeWithErrorHandling(callable $operation, string $context, $default = null) {
+        try {
+            return $operation();
+        } catch (\Exception $e) {
+            $this->handleError($e, $context);
+            return $default;
+        }
+    }
+
+    /**
+     * Handle errors with comprehensive logging
+     *
+     * @param \Exception $e Exception to handle
+     * @param string $context Context description
+     * @return void
+     */
+    protected function handleError(\Exception $e, string $context): void {
+        $message = sprintf('Error in %s: %s', $context, $e->getMessage());
+        
+        if ($this->logger) {
+            $this->logger->error($message, [
+                'exception' => $e,
+                'context' => $context,
+                'service' => $this->getServiceName(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Set degraded mode flag
+     *
+     * @param bool $degraded Whether service is in degraded mode
+     * @return void
+     */
+    protected function setDegradedMode(bool $degraded): void {
+        $this->degradedMode = $degraded;
+        
+        if ($this->logger && $degraded) {
+            $this->logger->warning('Service entering degraded mode', [
+                'service' => $this->getServiceName()
+            ]);
+        }
+    }
+
+    /**
+     * Check if service is in degraded mode
+     *
+     * @return bool True if in degraded mode
+     */
+    protected function isDegradedMode(): bool {
+        return $this->degradedMode ?? false;
     }
 }

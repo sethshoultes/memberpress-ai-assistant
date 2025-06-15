@@ -33,8 +33,8 @@ class OpenAiClient extends AbstractLlmClient {
         if ($config === null) {
             $config = new LlmProviderConfig(
                 'openai',
-                'gpt-4o',
-                ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+                'gpt-3.5-turbo',
+                ['gpt-3.5-turbo'],
                 0.7,
                 4096
             );

@@ -53,13 +53,55 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('[MPAI Debug] DOMContentLoaded event fired in chat.js');
   console.log('[MPAI Debug] jQuery available in DOMContentLoaded:', typeof jQuery !== 'undefined');
   console.log('[MPAI Debug] $ available in DOMContentLoaded:', typeof $ !== 'undefined');
+  console.log('[MPAI Debug] Current page URL:', window.location.href);
+  console.log('[MPAI Debug] Current page pathname:', window.location.pathname);
+  console.log('[MPAI Debug] Current page search:', window.location.search);
   
-  // Check if chat container exists
+  // Enhanced chat container detection
+  console.log('[MPAI Debug] Searching for chat container...');
   const chatContainer = document.getElementById('mpai-chat-container');
+  
+  // Additional container searches
+  const containerByClass = document.querySelector('.mpai-chat-container');
+  const allContainers = document.querySelectorAll('[id*="mpai"], [class*="mpai"]');
+  
+  console.log('[MPAI Debug] Chat container by ID:', chatContainer ? 'FOUND' : 'NOT FOUND');
+  console.log('[MPAI Debug] Chat container by class:', containerByClass ? 'FOUND' : 'NOT FOUND');
+  console.log('[MPAI Debug] All MPAI elements found:', allContainers.length);
+  
+  if (allContainers.length > 0) {
+    console.log('[MPAI Debug] MPAI elements in DOM:');
+    allContainers.forEach((el, index) => {
+      console.log(`[MPAI Debug] Element ${index + 1}: ${el.tagName} id="${el.id}" class="${el.className}"`);
+    });
+  }
+  
+  // Check if we're on an admin page
+  const isAdminPage = window.location.pathname.includes('/wp-admin/');
+  const currentPage = new URLSearchParams(window.location.search).get('page');
+  console.log('[MPAI Debug] Is admin page:', isAdminPage);
+  console.log('[MPAI Debug] Current admin page:', currentPage);
+  
   if (!chatContainer) {
-    console.warn('[MPAI Chat] Chat container not found');
+    console.warn('[MPAI Chat] Chat container not found, will try again later');
+    
+    // Try again after a delay in case the container is loaded dynamically
+    setTimeout(() => {
+      const delayedContainer = document.getElementById('mpai-chat-container');
+      if (delayedContainer) {
+        console.log('[MPAI Debug] Chat container found on retry, initializing...');
+        initializeChat().catch(error => {
+          console.error('[MPAI Chat] Delayed initialization error:', error);
+        });
+      } else {
+        console.error('[MPAI Debug] Chat container still not found after delay');
+      }
+    }, 2000);
+    
     return;
   }
+
+  console.log('[MPAI Debug] Chat container found, proceeding with initialization...');
 
   try {
     // Initialize the chat system

@@ -14,7 +14,6 @@ The Admin Interface follows a Model-View-Controller (MVC) pattern:
    - `MPAIAdminMenu`: Manages the admin menu structure
    - `MPAISettingsController`: Handles settings operations
    - `MPAIAjaxHandler`: Processes AJAX requests
-   - `MPAIConsentManager`: Manages user consent
 
 2. **Models**: Manage data and business logic
    - `MPAISettingsModel`: Handles settings data storage and retrieval
@@ -30,7 +29,6 @@ The Admin Interface follows a Model-View-Controller (MVC) pattern:
 src/Admin/
 ├── MPAIAdminMenu.php           # Admin menu registration
 ├── MPAIAjaxHandler.php         # AJAX request handling
-├── MPAIConsentManager.php      # User consent management
 └── Settings/
     ├── MPAISettingsController.php  # Settings controller
     ├── MPAISettingsModel.php       # Settings data model
@@ -39,7 +37,6 @@ src/Admin/
 templates/
 ├── admin-page.php              # Main admin page template
 ├── chat-interface.php          # Chat interface template
-├── consent-form.php            # User consent form
 ├── dashboard-tab.php           # Dashboard tab template
 └── settings-page.php           # Settings page template
 ```
@@ -174,7 +171,6 @@ The Settings page allows administrators to configure the plugin.
    - Content generation
 
 3. **Security Settings**: Configure security options
-   - User consent
    - Data retention
    - Command whitelist
 
@@ -202,30 +198,6 @@ The Settings page is implemented using the following components:
 - `MPAISettingsView`: Renders settings forms
 - `templates/settings-page.php`: Template for the settings page
 
-## User Consent Management
-
-The Admin Interface includes a system for managing user consent.
-
-### Features
-
-1. **Consent Settings**: Configure consent requirements
-   - Enable/disable consent
-   - Customize consent message
-   - Set consent expiration
-
-2. **Consent Tracking**: Track user consent status
-   - Record consent grants
-   - Track consent revocation
-   - Manage consent history
-
-### Implementation
-
-User consent management is implemented in `MPAIConsentManager.php`, which provides methods for:
-
-- Checking if consent is required
-- Displaying consent forms
-- Recording consent decisions
-- Enforcing consent requirements
 
 ## AJAX Handling
 

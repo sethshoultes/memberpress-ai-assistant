@@ -27,19 +27,25 @@ class SettingsServiceProvider extends ServiceProvider {
         // Register settings model service
         $this->registerSingleton($locator, 'settings.model', function() use ($locator) {
             $logger = $locator->get('logger');
-            return new SettingsModelService('settings.model', $logger);
+            $service = new SettingsModelService('settings.model', $logger);
+            $service->setServiceLocator($locator);
+            return $service;
         });
 
         // Register settings view service
         $this->registerSingleton($locator, 'settings.view', function() use ($locator) {
             $logger = $locator->get('logger');
-            return new SettingsViewService('settings.view', $logger);
+            $service = new SettingsViewService('settings.view', $logger);
+            $service->setServiceLocator($locator);
+            return $service;
         });
 
         // Register settings controller service
         $this->registerSingleton($locator, 'settings.controller', function() use ($locator) {
             $logger = $locator->get('logger');
-            return new SettingsControllerService('settings.controller', $logger);
+            $service = new SettingsControllerService('settings.controller', $logger);
+            $service->setServiceLocator($locator);
+            return $service;
         });
     }
 

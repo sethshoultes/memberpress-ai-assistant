@@ -151,7 +151,7 @@ abstract class AbstractLlmClient implements LlmClientInterface {
                 \MemberpressAiAssistant\Utilities\debug_log('MPAI Debug - HTTP Request WP_Error: ' . $error_message . ' (Code: ' . $error_code . ')');
             }
             
-            throw new \Exception('HTTP Request Error: ' . $error_message, $error_code);
+            throw new \Exception('HTTP Request Error: ' . $error_message . ' (Code: ' . $error_code . ')', 0);
         }
 
         // Get response details

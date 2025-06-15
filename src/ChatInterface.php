@@ -232,7 +232,8 @@ class ChatInterface {
      * @param string $hook_suffix The current admin page
      */
     public function registerAdminAssets($hook_suffix) {
-        // Only load on appropriate admin pages
+        // Simplified loading - always load on admin pages where chat interface might be needed
+        // This ensures assets are available when the container is rendered
         if (!$this->shouldLoadAdminChatInterface($hook_suffix)) {
             return;
         }
@@ -366,58 +367,246 @@ class ChatInterface {
             return;
         }
         
-        // TEMPORARILY BYPASS CONSENT CHECK FOR TESTING
-        // TODO: Re-enable consent check once chat interface is working
-        /*
-        // Check if user has consented
-        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-        if (!$consent_manager->hasUserConsented()) {
-            // Don't render the chat interface if user hasn't consented
-            return;
-        }
-        */
-
-        // Include the chat interface template
-        $this->includeChatTemplate();
+        $this->renderChatContainerHTML();
     }
 
     /**
      * Render the chat interface on admin pages
      */
     public function renderAdminChatInterface() {
-        // Only render on appropriate admin pages
-        if (!$this->shouldLoadAdminChatInterface(get_current_screen()->id)) {
+        // DIAGNOSTIC: Add comprehensive logging for chat container rendering
+        $current_screen = get_current_screen();
+        $screen_id = $current_screen ? $current_screen->id : 'unknown';
+        $current_page = isset($_GET['page']) ? $_GET['page'] : 'none';
+        $request_uri = $_SERVER['REQUEST_URI'] ?? 'unknown';
+        $is_ajax = wp_doing_ajax();
+        $user_id = get_current_user_id();
+        
+        LoggingUtility::debug('[CHAT RENDER DIAGNOSIS] renderAdminChatInterface() called', [
+            'screen_id' => $screen_id,
+            'page' => $current_page,
+            'request_uri' => $request_uri,
+            'is_ajax' => $is_ajax,
+            'user_id' => $user_id,
+            'already_rendered_flag' => defined('MPAI_CHAT_INTERFACE_RENDERED'),
+            'call_stack' => wp_debug_backtrace_summary()
+        ]);
+        
+        // Check for duplicate rendering flag - PREVENT DUPLICATE RENDERING
+        if (defined('MPAI_CHAT_INTERFACE_RENDERED')) {
+            LoggingUtility::debug('ChatInterface: Chat interface already rendered, preventing duplicate');
             return;
         }
         
-        // TEMPORARILY BYPASS CONSENT CHECK FOR TESTING
-        // TODO: Re-enable consent check once chat interface is working
-        /*
-        // Check if user has consented
-        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-        if (!$consent_manager->hasUserConsented()) {
-            // Redirect to the welcome page if not on it already
-            if (!isset($_GET['page']) || $_GET['page'] !== 'mpai-welcome') {
-                wp_redirect(admin_url('admin.php?page=mpai-welcome'));
-                exit;
-            }
+        // Only render on appropriate admin pages
+        if (!$this->shouldLoadAdminChatInterface($screen_id)) {
+            LoggingUtility::debug('ChatInterface: Not loading chat interface for screen: ' . $screen_id);
             return;
         }
-        */
-
-        // Include the chat interface template
-        $this->includeChatTemplate();
+        
+        LoggingUtility::debug('ChatInterface: Rendering chat interface container');
+        
+        // Set flag to prevent duplicate rendering
+        define('MPAI_CHAT_INTERFACE_RENDERED', true);
+        
+        // DIAGNOSTIC: Log before rendering chat container HTML
+        LoggingUtility::debug('[CHAT RENDER DIAGNOSIS] About to render chat container HTML', [
+            'user_id' => $user_id,
+            'screen_id' => $screen_id,
+            'page' => $current_page,
+            'output_buffer_level' => ob_get_level(),
+            'headers_sent' => headers_sent()
+        ]);
+        
+        $this->renderChatContainerHTML();
+        
+        // DIAGNOSTIC: Log after rendering chat container HTML
+        LoggingUtility::debug('[CHAT RENDER DIAGNOSIS] Chat container HTML rendering completed');
+        
+        LoggingUtility::debug('ChatInterface: Chat interface rendered successfully');
     }
 
     /**
-     * Include the chat interface template
+     * Render the chat container HTML directly
      */
-    private function includeChatTemplate() {
-        $template_path = MPAI_PLUGIN_DIR . 'templates/chat-interface.php';
+    private function renderChatContainerHTML() {
+        LoggingUtility::debug('ChatInterface: Rendering chat container HTML directly');
         
-        if (file_exists($template_path)) {
-            include $template_path;
-        }
+        ?>
+        <div class="mpai-chat-container" id="mpai-chat-container">
+            <div class="mpai-chat-header">
+                <h3><?php esc_html_e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h3>
+                <button class="mpai-chat-expand" id="mpai-chat-expand" aria-label="<?php esc_attr_e('Expand chat', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Expand chat', 'memberpress-ai-assistant'); ?>">
+                    <span class="dashicons dashicons-editor-expand"></span>
+                </button>
+                <button class="mpai-chat-close" id="mpai-chat-close" aria-label="<?php esc_attr_e('Close chat', 'memberpress-ai-assistant'); ?>">
+                    <span class="dashicons dashicons-no-alt"></span>
+                </button>
+            </div>
+            
+            <div class="mpai-chat-messages" id="mpai-chat-messages">
+                <div class="mpai-chat-welcome">
+                    <div class="mpai-chat-message mpai-chat-message-assistant">
+                        <div class="mpai-chat-message-content">
+                            <?php esc_html_e('Hello! I\'m your MemberPress AI Assistant. How can I help you today?', 'memberpress-ai-assistant'); ?>
+                        </div>
+                    </div>
+                </div>
+                <!-- Chat messages will be dynamically inserted here -->
+            </div>
+            
+            <div class="mpai-chat-input-container">
+                <div class="mpai-chat-input-wrapper">
+                    <textarea
+                        id="mpai-chat-input"
+                        class="mpai-chat-input"
+                        placeholder="<?php esc_attr_e('Type your message here...', 'memberpress-ai-assistant'); ?>"
+                        rows="1"
+                        aria-label="<?php esc_attr_e('Message input', 'memberpress-ai-assistant'); ?>"
+                    ></textarea>
+                    <button
+                        id="mpai-chat-submit"
+                        class="mpai-chat-submit"
+                        aria-label="<?php esc_attr_e('Send message', 'memberpress-ai-assistant'); ?>"
+                    >
+                        <span class="dashicons dashicons-arrow-right-alt2"></span>
+                    </button>
+                </div>
+                <div class="mpai-chat-footer">
+                    <span class="mpai-chat-powered-by">
+                        <?php esc_html_e('Powered by MemberPress AI', 'memberpress-ai-assistant'); ?>
+                    </span>
+                    <div class="mpai-chat-footer-actions">
+                        <a href="#" id="mpai-clear-conversation" class="mpai-clear-conversation">
+                            <?php esc_html_e('Clear Conversation', 'memberpress-ai-assistant'); ?>
+                        </a>
+                        <button id="mpai-download-conversation" class="mpai-download-conversation" aria-label="<?php esc_attr_e('Download conversation', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Download conversation', 'memberpress-ai-assistant'); ?>">
+                            <span class="dashicons dashicons-download"></span>
+                        </button>
+                        <button id="mpai-run-command" class="mpai-run-command" aria-label="<?php esc_attr_e('Show common commands', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Show common commands', 'memberpress-ai-assistant'); ?>">
+                            <span class="dashicons dashicons-admin-tools"></span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Add this after the chat-footer div -->
+                <div id="mpai-export-format-menu" class="mpai-export-format-menu" style="display: none;">
+                    <div class="mpai-export-format-title"><?php esc_html_e('Export Format', 'memberpress-ai-assistant'); ?></div>
+                    <div class="mpai-export-format-options">
+                        <button class="mpai-export-format-btn" data-format="html"><?php esc_html_e('HTML', 'memberpress-ai-assistant'); ?></button>
+                        <button class="mpai-export-format-btn" data-format="markdown"><?php esc_html_e('Markdown', 'memberpress-ai-assistant'); ?></button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Command runner panel (initially hidden) -->
+            <div id="mpai-command-runner" class="mpai-command-runner" style="display: none;">
+                <div class="mpai-command-header">
+                    <h4><?php esc_html_e('Common Commands', 'memberpress-ai-assistant'); ?></h4>
+                    <button id="mpai-command-close" class="mpai-command-close" aria-label="<?php esc_attr_e('Close command panel', 'memberpress-ai-assistant'); ?>">
+                        <span class="dashicons dashicons-no-alt"></span>
+                    </button>
+                </div>
+                <div class="mpai-command-body">
+                    <div class="mpai-command-list">
+                        <h5><?php esc_html_e('MemberPress', 'memberpress-ai-assistant'); ?></h5>
+                        <ul>
+                            <li><a href="#" class="mpai-command-item" data-command="List all active memberships">List all active memberships</a></li>
+                            <li><a href="#" class="mpai-command-item" data-command="Show recent transactions">Show recent transactions</a></li>
+                            <li><a href="#" class="mpai-command-item" data-command="Summarize membership data">Summarize membership data</a></li>
+                        </ul>
+                    </div>
+                    <div class="mpai-command-list">
+                        <h5><?php esc_html_e('WordPress', 'memberpress-ai-assistant'); ?></h5>
+                        <ul>
+                            <li><a href="#" class="mpai-command-item" data-command="wp plugin list">wp plugin list</a></li>
+                            <li><a href="#" class="mpai-command-item" data-command="wp user list">wp user list</a></li>
+                            <li><a href="#" class="mpai-command-item" data-command="wp post list">wp post list</a></li>
+                        </ul>
+                    </div>
+                    <div class="mpai-command-list">
+                        <h5><?php esc_html_e('Content Creation', 'memberpress-ai-assistant'); ?></h5>
+                        <ul>
+                            <li><a href="#" class="mpai-command-item" data-command="Create a blog post about">Create a blog post</a></li>
+                            <li><a href="#" class="mpai-command-item" data-command="Create a page about">Create a page</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat toggle button (fixed position) -->
+        <button id="mpai-chat-toggle" class="mpai-chat-toggle" aria-label="<?php esc_attr_e('Toggle chat', 'memberpress-ai-assistant'); ?>">
+            <span class="dashicons dashicons-format-chat"></span>
+        </button>
+
+        <!-- Add direct script loading for blog formatter -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Function to process existing messages (reduced logging)
+                function processExistingMessages() {
+                    $('.mpai-chat-message-assistant').each(function() {
+                        const $message = $(this);
+                        const content = $message.find('.mpai-chat-message-content').text();
+                        
+                        if (content && (
+                            content.includes('<wp-post>') ||
+                            content.includes('</wp-post>') ||
+                            content.includes('<post-title>') ||
+                            content.includes('</post-title>') ||
+                            content.includes('<post-content>') ||
+                            content.includes('</post-content>')
+                        )) {
+                            if (window.MPAI_BlogFormatter) {
+                                window.MPAI_BlogFormatter.processAssistantMessage($message, content);
+                            }
+                        }
+                    });
+                }
+                
+                // Check if blog formatter is available
+                if (window.MPAI_BlogFormatter) {
+                    window.MPAI_BlogFormatter.init();
+                    setTimeout(processExistingMessages, 1000);
+                } else {
+                    // Create script element
+                    var script = document.createElement('script');
+                    script.src = '<?php echo esc_url(MPAI_PLUGIN_URL . 'assets/js/blog-formatter.js'); ?>';
+                    script.onload = function() {
+                        if (window.MPAI_BlogFormatter) {
+                            window.MPAI_BlogFormatter.init();
+                            setTimeout(processExistingMessages, 1000);
+                        }
+                    };
+                    document.head.appendChild(script);
+                }
+                
+                // Set up a mutation observer to watch for new messages (reduced logging)
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                            mutation.addedNodes.forEach(function(node) {
+                                if (node.nodeType === 1) {
+                                    const $node = $(node);
+                                    if ($node.hasClass('mpai-chat-message-assistant') || $node.find('.mpai-chat-message-assistant').length > 0) {
+                                        setTimeout(processExistingMessages, 500);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                // Start observing the chat container
+                const chatContainer = document.querySelector('.mpai-chat-messages');
+                if (chatContainer) {
+                    observer.observe(chatContainer, { childList: true, subtree: true });
+                }
+            });
+        </script>
+        <?php
+        
+        LoggingUtility::debug('ChatInterface: Chat container HTML rendered directly');
     }
 
     /**
@@ -881,20 +1070,7 @@ class ChatInterface {
             );
         }
         
-        // TEMPORARILY BYPASS CONSENT CHECK FOR TESTING
-        // TODO: Re-enable consent check once chat interface is working
-        /*
-        // Check if user has consented
-        $consent_manager = \MemberpressAiAssistant\Admin\MPAIConsentManager::getInstance();
-        if (!$consent_manager->hasUserConsented()) {
-            return new \WP_Error(
-                'mpai_consent_required',
-                __('You must agree to the terms before using the AI Assistant.', 'memberpress-ai-assistant'),
-                ['status' => 403]
-            );
-        }
-        */
-
+        LoggingUtility::debug('ChatInterface: REST API access granted - basic authentication passed');
         return true;
     }
 
@@ -930,9 +1106,111 @@ class ChatInterface {
      * @return bool True if the chat interface should be loaded
      */
     private function shouldLoadAdminChatInterface($hook_suffix) {
-        // For testing purposes, always return true
-        return true;
+        // First, check the chat location setting
+        global $mpai_service_locator;
+        
+        $chat_location = 'admin_only'; // Default fallback
+        $settings_available = false;
+        
+        // Try to get the chat location setting from the settings model
+        if (isset($mpai_service_locator) && $mpai_service_locator->has('settings.model')) {
+            try {
+                $settings_model = $mpai_service_locator->get('settings.model');
+                $chat_location = $settings_model->get_chat_location();
+                $settings_available = true;
+                
+                LoggingUtility::debug('ChatInterface: Retrieved chat_location setting: ' . $chat_location);
+            } catch (\Exception $e) {
+                LoggingUtility::warning('ChatInterface: Failed to get settings model: ' . $e->getMessage());
+            }
+        }
+        
+        // If settings not available, try direct option access as fallback
+        if (!$settings_available) {
+            $raw_settings = get_option('mpai_settings', []);
+            if (isset($raw_settings['chat_location'])) {
+                $chat_location = $raw_settings['chat_location'];
+                LoggingUtility::debug('ChatInterface: Retrieved chat_location from raw settings: ' . $chat_location);
+            } else {
+                LoggingUtility::debug('ChatInterface: No chat_location setting found, using default: ' . $chat_location);
+            }
+        }
+        
+        // Apply logic based on chat location setting
+        switch ($chat_location) {
+            case 'admin_only':
+                // Show on all admin pages when "Admin area only" is selected
+                $should_load = is_admin() && !wp_doing_ajax() && !defined('DOING_CRON');
+                $reason = 'admin_only setting - allowed on all admin pages';
+                break;
+                
+            case 'frontend':
+                // Don't show on admin pages when "Frontend only" is selected
+                $should_load = false;
+                $reason = 'frontend setting - not allowed on admin pages';
+                break;
+                
+            case 'both':
+                // Show on admin pages when "Both" is selected
+                $should_load = is_admin() && !wp_doing_ajax() && !defined('DOING_CRON');
+                $reason = 'both setting - allowed on admin pages';
+                break;
+                
+            default:
+                // Fallback to hardcoded page restrictions for unknown settings
+                $allowed_pages = [
+                    'memberpress_page_mpai-settings',  // Settings page under MemberPress menu
+                    'toplevel_page_mpai-settings',     // Settings page as top-level menu
+                    'admin_page_mpai-welcome',         // Welcome page (hidden)
+                    'memberpress_page_mpai-welcome',   // Welcome page under MemberPress menu
+                ];
+                
+                // Also check current page parameter
+                $current_page = isset($_GET['page']) ? $_GET['page'] : '';
+                $allowed_page_params = ['mpai-settings', 'mpai-welcome'];
+                
+                $should_load = in_array($hook_suffix, $allowed_pages) || in_array($current_page, $allowed_page_params);
+                $reason = 'unknown setting - using hardcoded page restrictions';
+                break;
+        }
+        
+        // Additional safety checks for admin context
+        if ($should_load) {
+            // Don't load during AJAX requests (except our own)
+            if (wp_doing_ajax() && (!isset($_REQUEST['action']) || strpos($_REQUEST['action'], 'mpai_') !== 0)) {
+                $should_load = false;
+                $reason = 'blocked - AJAX request';
+            }
+            
+            // Don't load during cron jobs
+            if (defined('DOING_CRON') && DOING_CRON) {
+                $should_load = false;
+                $reason = 'blocked - cron job';
+            }
+            
+            // Don't load during REST API requests
+            if (defined('REST_REQUEST') && REST_REQUEST) {
+                $should_load = false;
+                $reason = 'blocked - REST API request';
+            }
+        }
+        
+        $current_page = isset($_GET['page']) ? $_GET['page'] : '';
+        
+        LoggingUtility::debug('ChatInterface: shouldLoadAdminChatInterface() decision', [
+            'hook_suffix' => $hook_suffix,
+            'current_page' => $current_page,
+            'chat_location_setting' => $chat_location,
+            'should_load' => $should_load ? 'YES' : 'NO',
+            'reason' => $reason,
+            'is_admin' => is_admin(),
+            'wp_doing_ajax' => wp_doing_ajax(),
+            'settings_available' => $settings_available
+        ]);
+        
+        return $should_load;
     }
+
 
     /**
      * Get the chat configuration
@@ -946,6 +1224,7 @@ class ChatInterface {
             'debug' => defined('WP_DEBUG') && WP_DEBUG,
             'maxMessages' => 50,
             'autoOpen' => false,
+            'welcomePageUrl' => admin_url('admin.php?page=mpai-welcome'), // Add welcome page URL
         ];
         
         // Add user login status to the config
