@@ -10,26 +10,23 @@
  * @since 1.0.0
  */
 
-// Add diagnostic logging
-console.log('[MPAI Debug] Starting chat.js module loading');
-console.log('[MPAI Debug] jQuery available in global scope:', typeof jQuery !== 'undefined');
+// Debug messages removed - were appearing in admin interface
 
 // Import jQuery as a module if it's not available in global scope
 // This creates a module-scoped $ variable
 let $;
 if (typeof jQuery !== 'undefined') {
   $ = jQuery;
-  console.log('[MPAI Debug] Using global jQuery in module');
-  console.log('[MPAI Debug] $ available in global scope after initialization:', typeof $ !== 'undefined');
+  // Debug messages removed - were appearing in admin interface
 } else {
-  console.error('[MPAI Debug] jQuery not found in global scope');
+  // Debug messages removed - were appearing in admin interface
 }
 
 // Get the plugin URL dynamically
 const scriptElement = document.querySelector('script[src*="memberpress-ai-assistant"]');
 const pluginUrl = scriptElement ? scriptElement.src.split('/assets/')[0] : '/wp-content/plugins/memberpress-ai-assistant';
 
-console.log('[MPAI Debug] Detected plugin URL:', pluginUrl);
+// Debug message removed - was appearing in admin interface
 
 // Import core modules - using relative paths
 // We can't use dynamic imports with template literals in the import statement
@@ -44,37 +41,22 @@ import EventBus from './chat/core/event-bus.js';
 import { Logger, LogLevel } from './chat/utils/logger.js';
 import StorageManager from './chat/utils/storage-manager.js';
 
-console.log('[MPAI Debug] Modules imported successfully');
+// Debug message removed - was appearing in admin interface
 
 /**
  * Initialize the chat system when the DOM is ready
  */
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[MPAI Debug] DOMContentLoaded event fired in chat.js');
-  console.log('[MPAI Debug] jQuery available in DOMContentLoaded:', typeof jQuery !== 'undefined');
-  console.log('[MPAI Debug] $ available in DOMContentLoaded:', typeof $ !== 'undefined');
-  console.log('[MPAI Debug] Current page URL:', window.location.href);
-  console.log('[MPAI Debug] Current page pathname:', window.location.pathname);
-  console.log('[MPAI Debug] Current page search:', window.location.search);
-  
+  // Debug messages removed - were appearing in admin interface
+
   // Enhanced chat container detection
-  console.log('[MPAI Debug] Searching for chat container...');
   const chatContainer = document.getElementById('mpai-chat-container');
   
   // Additional container searches
   const containerByClass = document.querySelector('.mpai-chat-container');
   const allContainers = document.querySelectorAll('[id*="mpai"], [class*="mpai"]');
   
-  console.log('[MPAI Debug] Chat container by ID:', chatContainer ? 'FOUND' : 'NOT FOUND');
-  console.log('[MPAI Debug] Chat container by class:', containerByClass ? 'FOUND' : 'NOT FOUND');
-  console.log('[MPAI Debug] All MPAI elements found:', allContainers.length);
-  
-  if (allContainers.length > 0) {
-    console.log('[MPAI Debug] MPAI elements in DOM:');
-    allContainers.forEach((el, index) => {
-      console.log(`[MPAI Debug] Element ${index + 1}: ${el.tagName} id="${el.id}" class="${el.className}"`);
-    });
-  }
+  // Debug messages removed - were appearing in admin interface
   
   // Check if we're on an admin page
   const isAdminPage = window.location.pathname.includes('/wp-admin/');
@@ -89,19 +71,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => {
       const delayedContainer = document.getElementById('mpai-chat-container');
       if (delayedContainer) {
-        console.log('[MPAI Debug] Chat container found on retry, initializing...');
+        // Debug message removed - was appearing in admin interface
         initializeChat().catch(error => {
           console.error('[MPAI Chat] Delayed initialization error:', error);
         });
       } else {
-        console.error('[MPAI Debug] Chat container still not found after delay');
+        // Debug message removed - was appearing in admin interface
       }
     }, 2000);
     
     return;
   }
 
-  console.log('[MPAI Debug] Chat container found, proceeding with initialization...');
+  // Debug message removed - was appearing in admin interface
 
   try {
     // Initialize the chat system
@@ -121,9 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  * @returns {Promise<void>} A promise that resolves when initialization is complete
  */
 async function initializeChat() {
-  console.log('[MPAI Debug] initializeChat function called');
-  console.log('[MPAI Debug] jQuery available in initializeChat:', typeof jQuery !== 'undefined');
-  console.log('[MPAI Debug] $ available in initializeChat:', typeof $ !== 'undefined');
+  // Debug messages removed - were appearing in admin interface
   
   // Get configuration from global variable or use defaults
   const config = window.mpai_chat_config || {};
@@ -150,9 +130,7 @@ async function initializeChat() {
   const chatOpenFromStorage = localStorage.getItem('mpai_chat_open') === 'true';
   const chatExpandedFromStorage = localStorage.getItem('mpai_chat_expanded') === 'true';
   
-  console.log('[MPAI Debug] chat.js - Loading initial state from localStorage:');
-  console.log('[MPAI Debug] chat.js - mpai_chat_open:', localStorage.getItem('mpai_chat_open'), '-> parsed as:', chatOpenFromStorage);
-  console.log('[MPAI Debug] chat.js - mpai_chat_expanded:', localStorage.getItem('mpai_chat_expanded'), '-> parsed as:', chatExpandedFromStorage);
+  // Debug messages removed - were appearing in admin interface
   
   const stateManager = new StateManager({
     // Initial state can be loaded from storage
@@ -242,11 +220,7 @@ async function initializeChat() {
   window.LogLevel = LogLevel;
   window.StorageManager = StorageManager;
   
-  console.log('[MPAI Debug] Exposed all module classes to global scope:');
-  console.log('- EventBus available:', typeof window.EventBus !== 'undefined');
-  console.log('- StateManager available:', typeof window.StateManager !== 'undefined');
-  console.log('- UIManager available:', typeof window.UIManager !== 'undefined');
-  console.log('- APIClient available:', typeof window.APIClient !== 'undefined');
+  // Debug messages removed - were appearing in admin interface
   
   // Also store module instances in the global scope
   window.eventBus = eventBus;
@@ -254,11 +228,7 @@ async function initializeChat() {
   window.uiManager = uiManager;
   window.apiClient = apiClient;
   
-  console.log('[MPAI Debug] Stored module instances in global scope:');
-  console.log('- eventBus available:', typeof window.eventBus !== 'undefined');
-  console.log('- stateManager available:', typeof window.stateManager !== 'undefined');
-  console.log('- uiManager available:', typeof window.uiManager !== 'undefined');
-  console.log('- apiClient available:', typeof window.apiClient !== 'undefined');
+  // Debug messages removed - were appearing in admin interface
   
   logger.info('Chat system initialization complete');
   
@@ -266,9 +236,9 @@ async function initializeChat() {
   // Just log that we found the button for debugging
   const chatButton = document.querySelector('.mpai-chat-toggle, #mpai-chat-toggle');
   if (chatButton) {
-    console.log('[MPAI Debug] Found chat button with selector: .mpai-chat-toggle');
+    // Debug message removed - was appearing in admin interface
   } else {
-    console.warn('[MPAI Debug] Chat button not found');
+    // Debug message removed - was appearing in admin interface
   }
   
   return chatCore;

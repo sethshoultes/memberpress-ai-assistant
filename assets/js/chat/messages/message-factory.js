@@ -69,7 +69,7 @@ class MessageFactory {
             this.registerHandler('system', systemHandler);
             this.registerHandler('interactive', interactiveHandler);
 
-            console.log('[MessageFactory] Default handlers registered');
+            // Debug message removed - was appearing in admin interface
         } catch (error) {
             console.error('[MessageFactory] Error loading default handlers:', error);
         }
@@ -106,7 +106,7 @@ class MessageFactory {
      */
     createMessageComponent(message) {
         if (!message) {
-            console.warn('[MessageFactory] No message provided');
+            // Debug message removed - was appearing in admin interface
             return this._createFallbackComponent('No message content');
         }
 

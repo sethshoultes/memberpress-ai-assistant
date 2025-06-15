@@ -79,14 +79,14 @@
             content.includes('<post-content>') ||
             content.includes('</post-content>')
         )) {
-            console.log('[MPAI Debug] Blog post XML detected in content');
+            // Debug message removed - was appearing in admin interface
             console.log('[MPAI Debug] XML content preview:', content.substring(0, 150) + '...');
             
             // Check if blog formatter is available
             if (window.MPAI_BlogFormatter) {
-                console.log('[MPAI Debug] Blog formatter is available, will process this content');
+                // Debug message removed - was appearing in admin interface
             } else {
-                console.log('[MPAI Debug] Blog formatter is NOT available');
+                // Debug message removed - was appearing in admin interface
             }
         }
         
@@ -417,11 +417,11 @@
             content.includes('<post-content>') ||
             content.includes('</post-content>')
         )) {
-            console.log('[MPAI Debug] Blog post XML detected in processMessage');
+            // Debug message removed - was appearing in admin interface
             
             // If blog formatter is available, let it process this content
             if (window.MPAI_BlogFormatter) {
-                console.log('[MPAI Debug] Delegating to blog formatter for processing');
+                // Debug message removed - was appearing in admin interface
                 
                 // Process with blog formatter
                 setTimeout(function() {
@@ -436,7 +436,7 @@
                 // Return the content as is, the blog formatter will add the UI elements
                 return content;
             } else {
-                console.log('[MPAI Debug] No blog formatter module available to handle this content');
+                // Debug message removed - was appearing in admin interface
             }
         }
 

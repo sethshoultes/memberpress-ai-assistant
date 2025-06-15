@@ -46,7 +46,7 @@ class StorageManager {
     try {
       // Check if localStorage is available
       if (typeof localStorage === 'undefined') {
-        console.error('StorageManager: localStorage is not available');
+        // Debug error message removed - was appearing in admin interface
         return false;
       }
 

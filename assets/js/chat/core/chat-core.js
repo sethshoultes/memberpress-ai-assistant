@@ -66,55 +66,55 @@ class ChatCore {
    * @returns {Promise<void>} A promise that resolves when initialization is complete
    */
   async initialize() {
-    console.log('[MPAI Debug] ChatCore.initialize called');
+    // Debug message removed - was appearing in admin interface
     
     try {
       // Check if instances are already provided (from chat.js)
       if (this._stateManager && this._uiManager && this._apiClient && this._eventBus) {
-        console.log('[MPAI Debug] Using pre-initialized instances from chat.js');
+        // Debug message removed - was appearing in admin interface
         console.log('[MPAI Debug] StateManager available:', !!this._stateManager);
         console.log('[MPAI Debug] UIManager available:', !!this._uiManager);
         console.log('[MPAI Debug] APIClient available:', !!this._apiClient);
         console.log('[MPAI Debug] EventBus available:', !!this._eventBus);
       } else {
-        console.log('[MPAI Debug] Creating new instances (fallback mode)');
+        // Debug message removed - was appearing in admin interface
         
         // Create new instances of the required modules if they're not already provided
         // Create EventBus first since other modules depend on it
         if (!this._eventBus) {
-          console.log('[MPAI Debug] Creating new EventBus instance');
+          // Debug message removed - was appearing in admin interface
           // Import EventBus dynamically if needed
           const EventBus = (await import('../core/event-bus.js')).default;
           this._eventBus = new EventBus();
         } else {
-          console.log('[MPAI Debug] Using existing EventBus instance');
+          // Debug message removed - was appearing in admin interface
         }
         
         // Now create StateManager with the EventBus
         if (!this._stateManager) {
-          console.log('[MPAI Debug] Creating new StateManager instance');
+          // Debug message removed - was appearing in admin interface
           // Import StateManager dynamically if needed
           const StateManager = (await import('../core/state-manager.js')).default;
           this._stateManager = new StateManager({}, this._eventBus);
           
           // Initialize the StateManager to load state from localStorage
           await this._stateManager.initialize();
-          console.log('[MPAI Debug] StateManager initialized and state loaded from localStorage');
+          // Debug message removed - was appearing in admin interface
         } else {
-          console.log('[MPAI Debug] Using existing StateManager instance');
+          // Debug message removed - was appearing in admin interface
         }
         
         if (!this._apiClient) {
-          console.log('[MPAI Debug] Creating new APIClient instance');
+          // Debug message removed - was appearing in admin interface
           // Import APIClient dynamically if needed
           const APIClient = (await import('../core/api-client.js')).default;
           this._apiClient = new APIClient({}, this._eventBus);
         } else {
-          console.log('[MPAI Debug] Using existing APIClient instance');
+          // Debug message removed - was appearing in admin interface
         }
         
         if (!this._uiManager) {
-          console.log('[MPAI Debug] Creating new UIManager instance');
+          // Debug message removed - was appearing in admin interface
           // Import UIManager dynamically if needed
           const UIManager = (await import('../core/ui-manager.js')).default;
           this._uiManager = new UIManager({}, this._stateManager, this._eventBus);
@@ -122,13 +122,13 @@ class ChatCore {
           // Initialize the UI manager with the chat container
           await this._uiManager.initialize('#mpai-chat-container');
         } else {
-          console.log('[MPAI Debug] Using existing UIManager instance');
+          // Debug message removed - was appearing in admin interface
         }
       }
       
       // Initialize the modules in the correct order
       if (this._eventBus) {
-        console.log('[MPAI Debug] Setting up event listeners');
+        // Debug message removed - was appearing in admin interface
         
         // Chat button handling is now managed by UIManager to avoid conflicts
         // Removed ui.button.click subscription to prevent duplicate event handling
@@ -160,7 +160,7 @@ class ChatCore {
       window.apiClient = this._apiClient;
       window.eventBus = this._eventBus;
       
-      console.log('[MPAI Debug] ChatCore initialized with all dependencies');
+      // Debug message removed - was appearing in admin interface
       return true;
     } catch (error) {
       console.error('[MPAI Debug] Error initializing ChatCore:', error);
@@ -175,27 +175,27 @@ class ChatCore {
    * @returns {Promise<void>} A promise that resolves when the chat interface is ready
    */
   async start() {
-    console.log('[MPAI Debug] ChatCore.start called');
+    // Debug message removed - was appearing in admin interface
     
     // Chat button click handling is now managed by UIManager to avoid conflicts
     // Just check if the button exists for debugging
     const chatButton = document.querySelector('.mpai-chat-toggle, #mpai-chat-toggle');
     if (chatButton) {
-      console.log('[MPAI Debug] Found chat button - click handling managed by UIManager');
+      // Debug message removed - was appearing in admin interface
     } else {
-      console.warn('[MPAI Debug] Chat button not found');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Set initial visibility based on state
     if (this._stateManager) {
       const uiState = this._stateManager.getState('ui');
       if (uiState && uiState.isChatOpen) {
-        console.log('[MPAI Debug] Setting initial chat visibility to open based on state');
+        // Debug message removed - was appearing in admin interface
         this.toggleChat(true);
       }
     }
     
-    console.log('[MPAI Debug] ChatCore started');
+    // Debug message removed - was appearing in admin interface
     return true;
   }
 
@@ -206,18 +206,18 @@ class ChatCore {
    * @returns {Promise<void>} A promise that resolves when the chat interface is stopped
    */
   async stop() {
-    console.log('[MPAI Debug] ChatCore.stop called');
+    // Debug message removed - was appearing in admin interface
     
     // Cancel any ongoing API requests
     if (this._apiClient && typeof this._apiClient.cancelAllRequests === 'function') {
       this._apiClient.cancelAllRequests();
-      console.log('[MPAI Debug] Cancelled all API requests');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Persist state before stopping
     if (this._stateManager && typeof this._stateManager.persistState === 'function') {
       await this._stateManager.persistState();
-      console.log('[MPAI Debug] Persisted state');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Publish a stop event
@@ -225,10 +225,10 @@ class ChatCore {
       this._eventBus.publish('chat.stopped', {
         timestamp: new Date().toISOString()
       });
-      console.log('[MPAI Debug] Published chat.stopped event');
+      // Debug message removed - was appearing in admin interface
     }
     
-    console.log('[MPAI Debug] ChatCore stopped');
+    // Debug message removed - was appearing in admin interface
     return true;
   }
 
@@ -243,7 +243,7 @@ class ChatCore {
     console.log('[MPAI Debug] ChatCore.sendMessage called with:', message);
     
     if (!this._apiClient) {
-      console.error('[MPAI Debug] APIClient not initialized');
+      // Debug message removed - was appearing in admin interface
       throw new Error('Chat system not properly initialized');
     }
     
@@ -258,7 +258,7 @@ class ChatCore {
           content: message,
           timestamp: new Date().toISOString()
         });
-        console.log('[MPAI Debug] Added user message to state in ChatCore');
+        // Debug message removed - was appearing in admin interface
       }
       
       // Send the message to the API
@@ -295,7 +295,7 @@ class ChatCore {
       }
       
       if (messageContent) {
-        console.log('[MPAI Debug] About to add assistant message to state manager');
+        // Debug message removed - was appearing in admin interface
         const messageObj = {
           role: 'assistant',
           content: messageContent,
@@ -332,10 +332,10 @@ class ChatCore {
    * @returns {Promise<void>} A promise that resolves when the history is cleared
    */
   async clearHistory() {
-    console.log('[MPAI Debug] ChatCore.clearHistory called');
+    // Debug message removed - was appearing in admin interface
     
     if (!this._stateManager) {
-      console.error('[MPAI Debug] StateManager not initialized');
+      // Debug message removed - was appearing in admin interface
       return false;
     }
     
@@ -350,9 +350,9 @@ class ChatCore {
         'No messages found');
       
       // Clear conversation history in state manager
-      console.log('[MPAI Debug] ChatCore.clearHistory - Calling stateManager.clearConversation()');
+      // Debug message removed - was appearing in admin interface
       this._stateManager.clearConversation();
-      console.log('[MPAI Debug] Cleared conversation history in state manager');
+      // Debug message removed - was appearing in admin interface
       
       // DEBUG: Log state after state manager clear
       const stateAfterStateManagerClear = this._stateManager.getState();
@@ -361,11 +361,11 @@ class ChatCore {
       
       // Clear conversation on the server if API client is available
       if (this._apiClient && typeof this._apiClient.clearConversation === 'function') {
-        console.log('[MPAI Debug] ChatCore.clearHistory - Calling apiClient.clearConversation()');
+        // Debug message removed - was appearing in admin interface
         await this._apiClient.clearConversation();
-        console.log('[MPAI Debug] Cleared conversation history on server');
+        // Debug message removed - was appearing in admin interface
       } else {
-        console.log('[MPAI Debug] ChatCore.clearHistory - No API client clearConversation method available');
+        // Debug message removed - was appearing in admin interface
       }
       
       // DEBUG: Log final state after server clear
@@ -375,9 +375,9 @@ class ChatCore {
       
       // DEBUG: Check if conversation ID changed (key diagnostic)
       if (stateBefore?.conversation?.id === stateFinal?.conversation?.id) {
-        console.warn('[MPAI Debug] ChatCore.clearHistory - WARNING: Conversation ID did not change!');
-        console.warn('[MPAI Debug] ChatCore.clearHistory - This means old messages may reload on page refresh');
-        console.warn('[MPAI Debug] ChatCore.clearHistory - Old system created new conversation ID to prevent this');
+        // Debug message removed - was appearing in admin interface
+        // Debug message removed - was appearing in admin interface
+        // Debug message removed - was appearing in admin interface
       } else {
         console.log('[MPAI Debug] ChatCore.clearHistory - Good: Conversation ID changed from',
           stateBefore?.conversation?.id, 'to', stateFinal?.conversation?.id);
@@ -390,7 +390,7 @@ class ChatCore {
           oldConversationId: stateBefore?.conversation?.id,
           newConversationId: stateFinal?.conversation?.id
         });
-        console.log('[MPAI Debug] Published chat.history.cleared event');
+        // Debug message removed - was appearing in admin interface
       }
       
       return true;
@@ -431,7 +431,7 @@ class ChatCore {
     console.log('[MPAI Debug] toggleChat method called with forceState:', forceState);
     
     if (!this._stateManager || !this._uiManager) {
-      console.error('[MPAI Debug] StateManager or UIManager not initialized');
+      // Debug message removed - was appearing in admin interface
       return false;
     }
     
@@ -453,7 +453,7 @@ class ChatCore {
       this._uiManager.toggleChatVisibility(newState);
       console.log('[MPAI Debug] Called UIManager.toggleChatVisibility with', newState);
     } else {
-      console.error('[MPAI Debug] UIManager or toggleChatVisibility not available');
+      // Debug message removed - was appearing in admin interface
     }
     
     return newState;

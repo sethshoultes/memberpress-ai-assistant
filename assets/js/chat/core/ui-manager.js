@@ -97,7 +97,7 @@ class UIManager {
       return false;
     }
     
-    console.log('[MPAI Debug] Chat container found');
+    // Debug message removed - was appearing in admin interface
     
     // Store references to DOM elements
     this._elements.container = container;
@@ -113,7 +113,7 @@ class UIManager {
     this._elements.commandPanel = container.querySelector('#mpai-command-runner');
     
     // Debug: Log the actual elements found
-    console.log('[MPAI Debug] Element search results:');
+    // Debug message removed - was appearing in admin interface
     console.log('[MPAI Debug] clearButton element:', this._elements.clearButton);
     console.log('[MPAI Debug] downloadButton element:', this._elements.downloadButton);
     console.log('[MPAI Debug] commandButton element:', this._elements.commandButton);
@@ -180,7 +180,7 @@ class UIManager {
       
       // Render messages from state
       this.renderMessages();
-      console.log('[MPAI Debug] Rendered messages from state');
+      // Debug message removed - was appearing in admin interface
     } else {
       // No state manager state, use localStorage values
       this.toggleChatVisibility(chatOpenFromStorage);
@@ -188,7 +188,7 @@ class UIManager {
       console.log('[MPAI Debug] Applied localStorage fallback - chatOpen:', chatOpenFromStorage, 'chatExpanded:', chatExpandedFromStorage);
     }
     
-    console.log('[MPAI Debug] UIManager initialized');
+    // Debug message removed - was appearing in admin interface
     return true;
   }
 
@@ -199,7 +199,7 @@ class UIManager {
    * @returns {void}
    */
   _setupEventListeners() {
-    console.log('[MPAI Debug] UIManager._setupEventListeners called');
+    // Debug message removed - was appearing in admin interface
     
     // Set up form submission handler
     if (this._elements.inputForm) {
@@ -220,7 +220,7 @@ class UIManager {
       // Add click handler to send button
       if (this._elements.sendButton) {
         this._elements.sendButton.addEventListener('click', handleSubmit);
-        console.log('[MPAI Debug] Added click event listener to send button');
+        // Debug message removed - was appearing in admin interface
       }
       
       // Add keydown handler to input field
@@ -231,10 +231,10 @@ class UIManager {
             handleSubmit(event);
           }
         });
-        console.log('[MPAI Debug] Added keydown event listener to input field');
+        // Debug message removed - was appearing in admin interface
       }
       
-      console.log('[MPAI Debug] Set up submit handlers for input');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Set up clear button handler
@@ -242,7 +242,7 @@ class UIManager {
       this._elements.clearButton.addEventListener('click', (event) => {
         this._handleClear(event);
       });
-      console.log('[MPAI Debug] Added click event listener to clear button');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Set up expand button handler
@@ -250,7 +250,7 @@ class UIManager {
       this._elements.expandButton.addEventListener('click', (event) => {
         this._handleExpand(event);
       });
-      console.log('[MPAI Debug] Added click event listener to expand button');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Set up close button handler
@@ -258,7 +258,7 @@ class UIManager {
       this._elements.closeButton.addEventListener('click', (event) => {
         this._handleClose(event);
       });
-      console.log('[MPAI Debug] Added click event listener to close button');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Set up download button handler
@@ -266,7 +266,7 @@ class UIManager {
       this._elements.downloadButton.addEventListener('click', (event) => {
         this._handleDownload(event);
       });
-      console.log('[MPAI Debug] Added click event listener to download button');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Set up command button handler
@@ -274,7 +274,7 @@ class UIManager {
       this._elements.commandButton.addEventListener('click', (event) => {
         this._handleCommand(event);
       });
-      console.log('[MPAI Debug] Added click event listener to command button');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Set up chat button handler with multiple selectors
@@ -315,7 +315,7 @@ class UIManager {
     }
     
     if (!chatButtonFound) {
-      console.warn('[MPAI Debug] Chat button not found with any selector');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Subscribe to state changes
@@ -324,10 +324,10 @@ class UIManager {
         console.log('[MPAI Debug] State UI changed event received:', data);
         this.updateFromState(data.state, data.previousState);
       });
-      console.log('[MPAI Debug] Subscribed to state.ui.changed event');
+      // Debug message removed - was appearing in admin interface
     }
     
-    console.log('[MPAI Debug] Event listeners set up');
+    // Debug message removed - was appearing in admin interface
   }
 
   /**
@@ -336,7 +336,7 @@ class UIManager {
    */
   _initializeMessageSystem() {
     try {
-      console.log('[MPAI Debug] Initializing message system');
+      // Debug message removed - was appearing in admin interface
       
       // Create message factory
       this._messageFactory = new MessageFactory({
@@ -359,7 +359,7 @@ class UIManager {
         this._messageRenderer.initialize(this._elements.messageList);
       }
 
-      console.log('[MPAI Debug] Message system initialized successfully');
+      // Debug message removed - was appearing in admin interface
     } catch (error) {
       console.error('[MPAI Debug] Error initializing message system:', error);
       // Continue without message system - fallback to basic rendering
@@ -385,7 +385,7 @@ class UIManager {
    */
   renderMessage(message) {
     if (!this._elements.messageList) {
-      console.error('[MPAI Debug] Message list element not found');
+      // Debug message removed - was appearing in admin interface
       return null;
     }
     
@@ -394,7 +394,7 @@ class UIManager {
     const isBlogPost = content.includes('<wp-post>') || content.includes('<post-title>') || content.includes('<post-content>');
     
     if (isBlogPost && this._messageRenderer) {
-      console.log('[MPAI Debug] Rendering blog post message with message system');
+      // Debug message removed - was appearing in admin interface
       try {
         // Use the message renderer for blog posts
         const renderedElement = this._messageRenderer.renderMessage(message);
@@ -410,7 +410,7 @@ class UIManager {
     }
     
     // Basic rendering for non-blog posts or when message system is not available
-    console.log('[MPAI Debug] Using basic message rendering');
+    // Debug message removed - was appearing in admin interface
     
     // Create message element
     const messageElement = document.createElement('div');
@@ -435,12 +435,12 @@ class UIManager {
     
     if (containsHtml && message.role === 'assistant') {
       // For assistant messages with HTML, sanitize and render as HTML
-      console.log('[MPAI Debug] Rendering HTML content for assistant message');
+      // Debug message removed - was appearing in admin interface
       const sanitizedHtml = this._sanitizeHtml(content);
       contentElement.innerHTML = sanitizedHtml;
     } else {
       // For user messages or plain text, use textContent for security
-      console.log('[MPAI Debug] Rendering plain text content');
+      // Debug message removed - was appearing in admin interface
       contentElement.textContent = content;
     }
     
@@ -463,12 +463,12 @@ class UIManager {
    */
   renderMessages() {
     if (!this._elements.messageList) {
-      console.error('[MPAI Debug] Message list element not found');
+      // Debug message removed - was appearing in admin interface
       return;
     }
     
     if (!this._stateManager) {
-      console.error('[MPAI Debug] State manager not found');
+      // Debug message removed - was appearing in admin interface
       return;
     }
     
@@ -500,7 +500,7 @@ class UIManager {
     
     // Restore loading indicator if it existed
     if (existingLoading) {
-      console.log('[MPAI Debug] renderMessages - Restoring loading indicator');
+      // Debug message removed - was appearing in admin interface
       this._elements.messageList.appendChild(existingLoading);
     }
   }
@@ -512,18 +512,18 @@ class UIManager {
    * @returns {void}
    */
   showLoading() {
-    console.log('[MPAI Debug] showLoading() called');
+    // Debug message removed - was appearing in admin interface
     console.log('[MPAI Debug] messageList element:', this._elements.messageList);
     
     if (!this._elements.messageList) {
-      console.error('[MPAI Debug] messageList element not found - cannot show loading indicator');
+      // Debug message removed - was appearing in admin interface
       return;
     }
     
     // Remove any existing loading indicator
     const existing = this._elements.messageList.querySelector('.mpai-chat-loading');
     if (existing) {
-      console.log('[MPAI Debug] Removing existing loading indicator');
+      // Debug message removed - was appearing in admin interface
       existing.remove();
     }
     
@@ -558,7 +558,7 @@ class UIManager {
     // Scroll to bottom to show the loading indicator
     setTimeout(() => {
       this.scrollToBottom(true);
-      console.log('[MPAI Debug] Scrolled to show loading indicator');
+      // Debug message removed - was appearing in admin interface
     }, 50);
   }
 
@@ -569,11 +569,11 @@ class UIManager {
    * @returns {void}
    */
   hideLoading() {
-    console.log('[MPAI Debug] hideLoading() called');
+    // Debug message removed - was appearing in admin interface
     console.log('[MPAI Debug] messageList element:', this._elements.messageList);
     
     if (!this._elements.messageList) {
-      console.error('[MPAI Debug] messageList element not found - cannot hide loading indicator');
+      // Debug message removed - was appearing in admin interface
       return;
     }
     
@@ -595,16 +595,16 @@ class UIManager {
           if (stillExists) {
             console.log('[MPAI Debug] Removing loading indicator after delay:', stillExists);
             stillExists.remove();
-            console.log('[MPAI Debug] Loading indicator removed successfully after delay');
+            // Debug message removed - was appearing in admin interface
           }
         }, remainingTime);
       } else {
         console.log('[MPAI Debug] Removing loading indicator immediately:', loading);
         loading.remove();
-        console.log('[MPAI Debug] Loading indicator removed successfully');
+        // Debug message removed - was appearing in admin interface
       }
     } else {
-      console.log('[MPAI Debug] No loading indicator found to remove');
+      // Debug message removed - was appearing in admin interface
     }
   }
 
@@ -626,7 +626,7 @@ class UIManager {
     // Add it to the message list
     if (this._elements.messageList) {
       this._elements.messageList.appendChild(errorElement);
-      console.log('[MPAI Debug] Error message added to message list');
+      // Debug message removed - was appearing in admin interface
       
       // Scroll to the bottom
       this.scrollToBottom();
@@ -635,11 +635,11 @@ class UIManager {
       setTimeout(() => {
         if (errorElement.parentNode) {
           errorElement.parentNode.removeChild(errorElement);
-          console.log('[MPAI Debug] Error message removed after timeout');
+          // Debug message removed - was appearing in admin interface
         }
       }, 5000);
     } else {
-      console.warn('[MPAI Debug] Message list element not found');
+      // Debug message removed - was appearing in admin interface
       // Fallback to console error
       console.error('[MPAI Chat Error]', message);
     }
@@ -662,11 +662,11 @@ class UIManager {
    * @returns {void}
    */
   clearMessages() {
-    console.log('[MPAI Debug] clearMessages called');
+    // Debug message removed - was appearing in admin interface
     if (this._elements.messageList) {
       // Clear all messages from the UI
       this._elements.messageList.innerHTML = '';
-      console.log('[MPAI Debug] Message list cleared from UI');
+      // Debug message removed - was appearing in admin interface
       
       
       // Add back the welcome message
@@ -680,9 +680,9 @@ class UIManager {
         </div>
       `;
       this._elements.messageList.appendChild(welcomeMessage);
-      console.log('[MPAI Debug] Welcome message restored');
+      // Debug message removed - was appearing in admin interface
     } else {
-      console.warn('[MPAI Debug] Message list element not found');
+      // Debug message removed - was appearing in admin interface
     }
   }
 
@@ -790,19 +790,19 @@ class UIManager {
     // Prevent default form submission
     event.preventDefault();
     
-    console.log('[MPAI Debug] Form submitted');
+    // Debug message removed - was appearing in admin interface
     
     // Get the input field
     const inputField = this._elements.inputField;
     if (!inputField) {
-      console.error('[MPAI Debug] Input field not found');
+      // Debug message removed - was appearing in admin interface
       return;
     }
     
     // Get the message text
     const message = inputField.value.trim();
     if (!message) {
-      console.log('[MPAI Debug] Empty message, not submitting');
+      // Debug message removed - was appearing in admin interface
       return;
     }
     
@@ -817,9 +817,9 @@ class UIManager {
     }
     
     // Show loading indicator
-    console.log('[MPAI Debug] About to call showLoading()');
+    // Debug message removed - was appearing in admin interface
     this.showLoading();
-    console.log('[MPAI Debug] showLoading() call completed');
+    // Debug message removed - was appearing in admin interface
     
     // Disable the input field while processing
     this.disableInput();
@@ -857,7 +857,7 @@ class UIManager {
           this.showError('Error sending message: ' + (error.message || 'Unknown error'));
         });
     } else {
-      console.error('[MPAI Debug] mpaiChat or sendMessage function not available');
+      // Debug message removed - was appearing in admin interface
       
       // Hide loading indicator
       this.hideLoading();
@@ -888,7 +888,7 @@ class UIManager {
    */
   _handleClear(event) {
     event.preventDefault();
-    console.log('[MPAI Debug] Clear button clicked');
+    // Debug message removed - was appearing in admin interface
     
     // DEBUG: Log current state before clearing
     const currentState = this._stateManager.getState();
@@ -900,14 +900,14 @@ class UIManager {
     
     // Confirm with user before clearing
     if (confirm('Are you sure you want to clear the conversation? This action cannot be undone.')) {
-      console.log('[MPAI Debug] Clear - User confirmed, proceeding with clear');
+      // Debug message removed - was appearing in admin interface
       
       // Clear conversation through ChatCore
       if (window.mpaiChat && typeof window.mpaiChat.clearHistory === 'function') {
-        console.log('[MPAI Debug] Clear - Calling window.mpaiChat.clearHistory()');
+        // Debug message removed - was appearing in admin interface
         window.mpaiChat.clearHistory()
           .then(() => {
-            console.log('[MPAI Debug] Clear - Conversation cleared successfully');
+            // Debug message removed - was appearing in admin interface
             
             // DEBUG: Log state after clearing
             const stateAfterClear = this._stateManager.getState();
@@ -921,9 +921,9 @@ class UIManager {
             console.log('[MPAI Debug] Clear - Conversation ID after:', stateAfterClear?.conversation?.id);
             
             if (currentState?.conversation?.id === stateAfterClear?.conversation?.id) {
-              console.warn('[MPAI Debug] Clear - WARNING: Conversation ID did not change! This may cause messages to reload.');
+              // Debug message removed - was appearing in admin interface
             } else {
-              console.log('[MPAI Debug] Clear - Good: Conversation ID changed, old messages should not reload.');
+              // Debug message removed - was appearing in admin interface
             }
           })
           .catch(error => {
@@ -931,11 +931,11 @@ class UIManager {
             this.showError('Error clearing conversation: ' + (error.message || 'Unknown error'));
           });
       } else {
-        console.error('[MPAI Debug] mpaiChat or clearHistory function not available');
+        // Debug message removed - was appearing in admin interface
         this.showError('Chat system not properly initialized');
       }
     } else {
-      console.log('[MPAI Debug] Clear - User cancelled clear operation');
+      // Debug message removed - was appearing in admin interface
     }
   }
   
@@ -948,12 +948,12 @@ class UIManager {
    */
   _handleExpand(event) {
     event.preventDefault();
-    console.log('[MPAI Debug] Expand button clicked');
+    // Debug message removed - was appearing in admin interface
     
     // Get the container element
     const container = this._elements.container;
     if (!container) {
-      console.error('[MPAI Debug] Chat container not found');
+      // Debug message removed - was appearing in admin interface
       return;
     }
     
@@ -966,11 +966,11 @@ class UIManager {
     if (newExpandedState) {
       // Expand the chat
       container.classList.add('mpai-chat-expanded');
-      console.log('[MPAI Debug] Chat expanded');
+      // Debug message removed - was appearing in admin interface
     } else {
       // Collapse the chat
       container.classList.remove('mpai-chat-expanded');
-      console.log('[MPAI Debug] Chat collapsed');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Store expanded state in localStorage for persistence
@@ -998,7 +998,7 @@ class UIManager {
    */
   _handleClose(event) {
     event.preventDefault();
-    console.log('[MPAI Debug] Close button clicked');
+    // Debug message removed - was appearing in admin interface
     
     // Close the chat interface
     this.toggleChatVisibility(false);
@@ -1013,7 +1013,7 @@ class UIManager {
    */
   _handleDownload(event) {
     event.preventDefault();
-    console.log('[MPAI Debug] Download button clicked');
+    // Debug message removed - was appearing in admin interface
     
     // Get all messages from the state
     const messages = this._stateManager.getState('conversation.messages') || [];
@@ -1034,11 +1034,11 @@ class UIManager {
     let messagesArray = [];
     if (Array.isArray(messages)) {
       messagesArray = messages;
-      console.log('[MPAI Debug] Download - Messages are in array format');
+      // Debug message removed - was appearing in admin interface
     } else if (messages && typeof messages === 'object') {
       // Handle object format (could be indexed object)
       messagesArray = Object.values(messages);
-      console.log('[MPAI Debug] Download - Messages converted from object to array');
+      // Debug message removed - was appearing in admin interface
     } else {
       console.log('[MPAI Debug] Download - Messages are not in expected format:', typeof messages);
     }
@@ -1056,7 +1056,7 @@ class UIManager {
     console.log('[MPAI Debug] Download - Final messagesArray length after filtering:', messagesArray.length);
     
     if (messagesArray.length === 0) {
-      console.log('[MPAI Debug] Download - No valid messages found, checking DOM fallback...');
+      // Debug message removed - was appearing in admin interface
       
       // Enhanced DOM fallback check - exclude welcome messages
       const validDomMessages = Array.from(domMessages).filter(el =>
@@ -1068,7 +1068,7 @@ class UIManager {
       console.log('[MPAI Debug] Download - Valid DOM messages found:', validDomMessages.length);
       
       if (validDomMessages.length > 0) {
-        console.log('[MPAI Debug] Download - Using DOM fallback method');
+        // Debug message removed - was appearing in admin interface
         this._downloadFromDOM();
         return;
       }
@@ -1098,7 +1098,7 @@ class UIManager {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    console.log('[MPAI Debug] Conversation downloaded');
+    // Debug message removed - was appearing in admin interface
   }
   
   /**
@@ -1108,7 +1108,7 @@ class UIManager {
    * @returns {void}
    */
   _downloadFromDOM() {
-    console.log('[MPAI Debug] Using DOM fallback for download');
+    // Debug message removed - was appearing in admin interface
     
     const domMessages = document.querySelectorAll('.mpai-chat-message');
     let conversationText = 'MemberPress AI Assistant Conversation\n';
@@ -1119,7 +1119,7 @@ class UIManager {
     domMessages.forEach((messageEl, index) => {
       // Skip welcome messages and empty messages
       if (messageEl.classList.contains('mpai-chat-welcome')) {
-        console.log('[MPAI Debug] DOM Download - Skipping welcome message');
+        // Debug message removed - was appearing in admin interface
         return;
       }
       
@@ -1130,7 +1130,7 @@ class UIManager {
       
       // Skip empty messages
       if (!content || content.length === 0) {
-        console.log('[MPAI Debug] DOM Download - Skipping empty message');
+        // Debug message removed - was appearing in admin interface
         return;
       }
       
@@ -1146,7 +1146,7 @@ class UIManager {
     console.log('[MPAI Debug] DOM Download - Valid messages processed:', validMessageCount);
     
     if (validMessageCount === 0) {
-      console.log('[MPAI Debug] DOM Download - No valid messages found in DOM');
+      // Debug message removed - was appearing in admin interface
       this.showError('No valid conversation messages found to download');
       return;
     }
@@ -1174,7 +1174,7 @@ class UIManager {
    */
   _handleCommand(event) {
     event.preventDefault();
-    console.log('[MPAI Debug] Command button clicked');
+    // Debug message removed - was appearing in admin interface
     
     // Toggle command panel visibility
     if (this._elements.commandPanel) {
@@ -1187,7 +1187,7 @@ class UIManager {
         this._setupCommandHandlers();
       }
     } else {
-      console.warn('[MPAI Debug] Command panel not found');
+      // Debug message removed - was appearing in admin interface
     }
   }
   
@@ -1226,7 +1226,7 @@ class UIManager {
       commandClose.addEventListener('click', (event) => {
         event.preventDefault();
         this._elements.commandPanel.style.display = 'none';
-        console.log('[MPAI Debug] Command panel closed');
+        // Debug message removed - was appearing in admin interface
       });
     }
   }
@@ -1244,7 +1244,7 @@ class UIManager {
     // Get the container element
     const container = this._elements.container;
     if (!container) {
-      console.error('[MPAI Debug] Chat container not found');
+      // Debug message removed - was appearing in admin interface
       return false;
     }
     
@@ -1270,7 +1270,7 @@ class UIManager {
       container.style.display = 'flex';
       container.style.visibility = 'visible';
       container.style.opacity = '1';
-      console.log('[MPAI Debug] Chat made visible');
+      // Debug message removed - was appearing in admin interface
       
       // Also update the toggle button if it exists
       const toggleButton = document.querySelector('#mpai-chat-toggle, .mpai-chat-toggle');
@@ -1283,7 +1283,7 @@ class UIManager {
       container.classList.remove('mpai-chat-visible');
       container.classList.add('mpai-chat-hidden');
       container.style.display = 'none';
-      console.log('[MPAI Debug] Chat hidden');
+      // Debug message removed - was appearing in admin interface
       
       // Also update the toggle button if it exists
       const toggleButton = document.querySelector('#mpai-chat-toggle, .mpai-chat-toggle');
@@ -1329,7 +1329,7 @@ class UIManager {
     // Get the container element
     const container = this._elements.container;
     if (!container) {
-      console.error('[MPAI Debug] Chat container not found');
+      // Debug message removed - was appearing in admin interface
       return false;
     }
     
@@ -1345,11 +1345,11 @@ class UIManager {
     if (newExpandedState) {
       // Expand the chat
       container.classList.add('mpai-chat-expanded');
-      console.log('[MPAI Debug] Chat expanded');
+      // Debug message removed - was appearing in admin interface
     } else {
       // Collapse the chat
       container.classList.remove('mpai-chat-expanded');
-      console.log('[MPAI Debug] Chat collapsed');
+      // Debug message removed - was appearing in admin interface
     }
     
     // Store expanded state in localStorage for persistence

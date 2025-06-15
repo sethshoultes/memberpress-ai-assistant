@@ -171,7 +171,7 @@ class APIClient {
    */
   async clearConversation() {
     try {
-      console.log('[MPAI Debug] APIClient.clearConversation - Sending clear request to server');
+      // Debug message removed - was appearing in admin interface
       
       // Generate a unique request ID
       const requestId = this._generateRequestId();
@@ -210,7 +210,7 @@ class APIClient {
       
       // Even if server clear fails, we should continue with local clear
       // This ensures the frontend is cleared even if backend has issues
-      console.log('[MPAI Debug] APIClient.clearConversation - Continuing with local clear despite server error');
+      // Debug message removed - was appearing in admin interface
       
       // Publish an event with the error
       if (this._eventBus) {
@@ -293,7 +293,7 @@ class APIClient {
       
       return responseData;
     } catch (error) {
-      console.error('[MPAI Debug] Request failed, falling back to mock response');
+      // Debug error message removed - was appearing in admin interface
       console.error('[MPAI Debug] Error details:', error);
       console.error('[MPAI Debug] Error type:', error.constructor.name);
       console.error('[MPAI Debug] Error message:', error.message);
