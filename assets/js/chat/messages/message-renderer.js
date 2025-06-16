@@ -35,7 +35,7 @@ class MessageRenderer {
         this._messageElements = new Map(); // Track rendered messages by ID
         this._bindEvents();
         
-        console.log('[MessageRenderer] Initialized with container:', container);
+        // Initialization logging removed - creates excessive console noise
     }
 
     /**
@@ -50,15 +50,15 @@ class MessageRenderer {
 
         // Listen for message events
         this._eventBus.on('message-rendered', (data) => {
-            console.log('[MessageRenderer] Message rendered:', data);
+            // Message rendered logging removed - creates excessive console noise
         });
 
         this._eventBus.on('message-updated', (data) => {
-            console.log('[MessageRenderer] Message updated:', data);
+            // Message updated logging removed - creates excessive console noise
         });
 
         this._eventBus.on('message-removed', (data) => {
-            console.log('[MessageRenderer] Message removed:', data);
+            // Message removed logging removed - creates excessive console noise
         });
 
         // Debug message removed - was appearing in admin interface
@@ -114,7 +114,7 @@ class MessageRenderer {
             // Scroll to bottom
             this._scrollToBottom();
 
-            console.log('[MessageRenderer] Message rendered successfully:', message.id || 'no-id');
+            // Message render success logging removed - creates excessive console noise
             return messageWrapper;
 
         } catch (error) {
@@ -203,7 +203,7 @@ class MessageRenderer {
 
         const existingElement = this._messageElements.get(messageId);
         if (!existingElement) {
-            console.warn(`[MessageRenderer] Message with ID ${messageId} not found for update`);
+            // Message not found logging removed - creates excessive console noise
             return null;
         }
 
@@ -231,7 +231,7 @@ class MessageRenderer {
             // Emit event
             this._eventBus?.emit('message-updated', { messageId, updatedData, element: existingElement });
 
-            console.log(`[MessageRenderer] Message ${messageId} updated successfully`);
+            // Message update success logging removed - creates excessive console noise
             return existingElement;
 
         } catch (error) {
@@ -252,7 +252,7 @@ class MessageRenderer {
 
         const element = this._messageElements.get(messageId);
         if (!element) {
-            console.warn(`[MessageRenderer] Message with ID ${messageId} not found for removal`);
+            // Message removal not found logging removed - creates excessive console noise
             return;
         }
 
@@ -266,7 +266,7 @@ class MessageRenderer {
             // Emit event
             this._eventBus?.emit('message-removed', { messageId });
 
-            console.log(`[MessageRenderer] Message ${messageId} removed successfully`);
+            // Message removal success logging removed - creates excessive console noise
 
         } catch (error) {
             console.error(`[MessageRenderer] Error removing message ${messageId}:`, error);

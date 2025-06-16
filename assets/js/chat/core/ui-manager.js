@@ -82,7 +82,7 @@ class UIManager {
    * @returns {Promise<void>} A promise that resolves when initialization is complete
    */
   async initialize(containerSelector) {
-    console.log('[MPAI Debug] UIManager.initialize called with:', containerSelector);
+    // Initialization logging only for critical errors
     
     // Get the container element
     let container;
@@ -114,10 +114,7 @@ class UIManager {
     
     // Debug: Log the actual elements found
     // Debug message removed - was appearing in admin interface
-    console.log('[MPAI Debug] clearButton element:', this._elements.clearButton);
-    console.log('[MPAI Debug] downloadButton element:', this._elements.downloadButton);
-    console.log('[MPAI Debug] commandButton element:', this._elements.commandButton);
-    console.log('[MPAI Debug] commandPanel element:', this._elements.commandPanel);
+    // Element detection logging removed - creates excessive console noise
     
     // Continue with the rest of initialization
     this._continueInitialization();
@@ -131,16 +128,7 @@ class UIManager {
    */
   _continueInitialization() {
     // Log which elements were found
-    console.log('[MPAI Debug] Message list found:', !!this._elements.messageList);
-    console.log('[MPAI Debug] Input form found:', !!this._elements.inputForm);
-    console.log('[MPAI Debug] Input field found:', !!this._elements.inputField);
-    console.log('[MPAI Debug] Send button found:', !!this._elements.sendButton);
-    console.log('[MPAI Debug] Clear button found:', !!this._elements.clearButton);
-    console.log('[MPAI Debug] Expand button found:', !!this._elements.expandButton);
-    console.log('[MPAI Debug] Close button found:', !!this._elements.closeButton);
-    console.log('[MPAI Debug] Download button found:', !!this._elements.downloadButton);
-    console.log('[MPAI Debug] Command button found:', !!this._elements.commandButton);
-    console.log('[MPAI Debug] Command panel found:', !!this._elements.commandPanel);
+    // Element detection logging removed - creates excessive console noise
     
     // Initialize message system
     this._initializeMessageSystem();
@@ -162,7 +150,7 @@ class UIManager {
       chatOpenFromStorage = storedChatOpen === 'true';
       chatExpandedFromStorage = storedChatExpanded === 'true';
       
-      console.log('[MPAI Debug] Loaded from localStorage - chatOpen:', chatOpenFromStorage, 'chatExpanded:', chatExpandedFromStorage);
+      // Storage state logging removed - creates excessive console noise
     } catch (e) {
       console.warn('[MPAI Debug] Could not read from localStorage:', e);
     }
@@ -171,12 +159,12 @@ class UIManager {
       // Apply chat open state (prefer state manager, fallback to localStorage)
       const shouldBeOpen = typeof uiState.isChatOpen === 'boolean' ? uiState.isChatOpen : chatOpenFromStorage;
       this.toggleChatVisibility(shouldBeOpen);
-      console.log('[MPAI Debug] Applied initial chat visibility:', shouldBeOpen);
+      // Initial state logging removed - creates excessive console noise
       
       // Apply chat expanded state (prefer state manager, fallback to localStorage)
       const shouldBeExpanded = typeof uiState.isExpanded === 'boolean' ? uiState.isExpanded : chatExpandedFromStorage;
       this.toggleChatExpanded(shouldBeExpanded);
-      console.log('[MPAI Debug] Applied initial chat expanded state:', shouldBeExpanded);
+      // Initial state logging removed - creates excessive console noise
       
       // Render messages from state
       this.renderMessages();
@@ -185,7 +173,7 @@ class UIManager {
       // No state manager state, use localStorage values
       this.toggleChatVisibility(chatOpenFromStorage);
       this.toggleChatExpanded(chatExpandedFromStorage);
-      console.log('[MPAI Debug] Applied localStorage fallback - chatOpen:', chatOpenFromStorage, 'chatExpanded:', chatExpandedFromStorage);
+      // Fallback state logging removed - creates excessive console noise
     }
     
     // Debug message removed - was appearing in admin interface
@@ -297,7 +285,7 @@ class UIManager {
         this._chatButtonClickHandler = (event) => {
           event.preventDefault();
           event.stopPropagation();
-          console.log(`[MPAI Debug] Chat button clicked (found with selector: ${selector})`);
+          // Chat button click logging removed - creates excessive console noise
           
           // Get current visibility state
           const container = this._elements.container;
@@ -308,7 +296,7 @@ class UIManager {
         };
         
         chatButton.addEventListener('click', this._chatButtonClickHandler);
-        console.log(`[MPAI Debug] Added click event listener to chat button with selector: ${selector}`);
+        // Event listener setup logging removed - creates excessive console noise
         chatButtonFound = true;
         break;
       }
@@ -321,7 +309,7 @@ class UIManager {
     // Subscribe to state changes
     if (this._eventBus) {
       this._eventBus.subscribe('state.ui.changed', (data) => {
-        console.log('[MPAI Debug] State UI changed event received:', data);
+        // State change event logging removed - creates excessive console noise
         this.updateFromState(data.state, data.previousState);
       });
       // Debug message removed - was appearing in admin interface
@@ -474,7 +462,7 @@ class UIManager {
     
     // Preserve loading indicator if it exists
     const existingLoading = this._elements.messageList.querySelector('.mpai-chat-loading');
-    console.log('[MPAI Debug] renderMessages - Found existing loading indicator:', !!existingLoading);
+    // Loading indicator detection logging removed - creates excessive console noise
     
     // Clear the message list
     this._elements.messageList.innerHTML = '';
@@ -513,7 +501,7 @@ class UIManager {
    */
   showLoading() {
     // Debug message removed - was appearing in admin interface
-    console.log('[MPAI Debug] messageList element:', this._elements.messageList);
+    // Element availability logging removed - creates excessive console noise
     
     if (!this._elements.messageList) {
       // Debug message removed - was appearing in admin interface
@@ -532,9 +520,7 @@ class UIManager {
     loading.className = 'mpai-chat-loading';
     loading.innerHTML = '<span class="mpai-chat-loading-dot"></span><span class="mpai-chat-loading-dot"></span><span class="mpai-chat-loading-dot"></span>';
     
-    console.log('[MPAI Debug] Created STATIC loading element:', loading);
-    console.log('[MPAI Debug] Loading element HTML:', loading.outerHTML);
-    console.log('[MPAI Debug] Loading element computed styles:', window.getComputedStyle(loading));
+    // Loading element creation logging removed - creates excessive console noise
     
     // Add to DOM
     this._elements.messageList.appendChild(loading);
@@ -544,11 +530,7 @@ class UIManager {
     
     // Verify it was added and is visible
     const addedElement = this._elements.messageList.querySelector('.mpai-chat-loading');
-    console.log('[MPAI Debug] Loading indicator added to DOM:', !!addedElement);
-    console.log('[MPAI Debug] Added element:', addedElement);
-    console.log('[MPAI Debug] Element offsetHeight:', addedElement?.offsetHeight);
-    console.log('[MPAI Debug] Element offsetWidth:', addedElement?.offsetWidth);
-    console.log('[MPAI Debug] Element getBoundingClientRect:', addedElement?.getBoundingClientRect());
+    // Loading indicator DOM verification logging removed - creates excessive console noise
     
     // Force a reflow to ensure visibility
     if (addedElement) {
@@ -570,7 +552,7 @@ class UIManager {
    */
   hideLoading() {
     // Debug message removed - was appearing in admin interface
-    console.log('[MPAI Debug] messageList element:', this._elements.messageList);
+    // Element availability logging removed - creates excessive console noise
     
     if (!this._elements.messageList) {
       // Debug message removed - was appearing in admin interface
@@ -578,7 +560,7 @@ class UIManager {
     }
     
     const loading = this._elements.messageList.querySelector('.mpai-chat-loading');
-    console.log('[MPAI Debug] Found loading indicator to remove:', !!loading);
+    // Loading indicator removal logging removed - creates excessive console noise
     
     if (loading) {
       // Ensure minimum display time of 800ms for better UX
@@ -586,20 +568,20 @@ class UIManager {
       const elapsedTime = this._loadingStartTime ? Date.now() - this._loadingStartTime : minDisplayTime;
       const remainingTime = Math.max(0, minDisplayTime - elapsedTime);
       
-      console.log('[MPAI Debug] Loading elapsed time:', elapsedTime, 'ms, remaining time:', remainingTime, 'ms');
+      // Loading timing logging removed - creates excessive console noise
       
       if (remainingTime > 0) {
-        console.log('[MPAI Debug] Delaying loading indicator removal by', remainingTime, 'ms');
+        // Loading delay logging removed - creates excessive console noise
         setTimeout(() => {
           const stillExists = this._elements.messageList.querySelector('.mpai-chat-loading');
           if (stillExists) {
-            console.log('[MPAI Debug] Removing loading indicator after delay:', stillExists);
+            // Loading removal logging removed - creates excessive console noise
             stillExists.remove();
             // Debug message removed - was appearing in admin interface
           }
         }, remainingTime);
       } else {
-        console.log('[MPAI Debug] Removing loading indicator immediately:', loading);
+        // Loading removal logging removed - creates excessive console noise
         loading.remove();
         // Debug message removed - was appearing in admin interface
       }
@@ -806,7 +788,7 @@ class UIManager {
       return;
     }
     
-    console.log('[MPAI Debug] Submitting message:', message);
+    // Message submission logging removed - creates excessive console noise
     
     // Clear the input field
     inputField.value = '';
@@ -830,7 +812,7 @@ class UIManager {
     if (window.mpaiChat && typeof window.mpaiChat.sendMessage === 'function') {
       window.mpaiChat.sendMessage(message)
         .then(response => {
-          console.log('[MPAI Debug] Message sent successfully:', response);
+          // Message success logging removed - creates excessive console noise
           
           // Hide loading indicator
           this.hideLoading();
@@ -892,11 +874,13 @@ class UIManager {
     
     // DEBUG: Log current state before clearing
     const currentState = this._stateManager.getState();
-    console.log('[MPAI Debug] Clear - Current state before clearing:', currentState);
-    console.log('[MPAI Debug] Clear - Current messages count:',
-      currentState?.conversation?.messages ?
-      (Array.isArray(currentState.conversation.messages) ? currentState.conversation.messages.length : Object.keys(currentState.conversation.messages).length) :
-      'No messages found');
+    // State debugging for clear operation - keep for troubleshooting
+    if (window.mpai_chat_config?.debug) {
+      console.log('[MPAI Debug] Clear - Current messages count:',
+        currentState?.conversation?.messages ?
+        (Array.isArray(currentState.conversation.messages) ? currentState.conversation.messages.length : Object.keys(currentState.conversation.messages).length) :
+        'No messages found');
+    }
     
     // Confirm with user before clearing
     if (confirm('Are you sure you want to clear the conversation? This action cannot be undone.')) {
@@ -911,14 +895,16 @@ class UIManager {
             
             // DEBUG: Log state after clearing
             const stateAfterClear = this._stateManager.getState();
-            console.log('[MPAI Debug] Clear - State after clearing:', stateAfterClear);
+            // State after clear logging removed - creates excessive console noise
             
             // Clear the UI messages immediately
             this.clearMessages();
             
             // DEBUG: Check if conversation ID changed (this is key for the diagnosis)
-            console.log('[MPAI Debug] Clear - Conversation ID before:', currentState?.conversation?.id);
-            console.log('[MPAI Debug] Clear - Conversation ID after:', stateAfterClear?.conversation?.id);
+            // Conversation ID change logging - keep for troubleshooting
+            if (window.mpai_chat_config?.debug && currentState?.conversation?.id !== stateAfterClear?.conversation?.id) {
+              console.log('[MPAI Debug] Clear - Conversation ID changed successfully');
+            }
             
             if (currentState?.conversation?.id === stateAfterClear?.conversation?.id) {
               // Debug message removed - was appearing in admin interface
@@ -961,7 +947,7 @@ class UIManager {
     const isCurrentlyExpanded = container.classList.contains('mpai-chat-expanded');
     const newExpandedState = !isCurrentlyExpanded;
     
-    console.log('[MPAI Debug] Toggling expand state from', isCurrentlyExpanded, 'to', newExpandedState);
+    // Expand state toggle logging removed - creates excessive console noise
     
     if (newExpandedState) {
       // Expand the chat
@@ -985,7 +971,7 @@ class UIManager {
       this._stateManager.updateUI({
         isExpanded: newExpandedState
       });
-      console.log('[MPAI Debug] Updated state with isExpanded:', newExpandedState);
+      // State update logging removed - creates excessive console noise
     }
   }
   
@@ -1018,17 +1004,11 @@ class UIManager {
     // Get all messages from the state
     const messages = this._stateManager.getState('conversation.messages') || [];
     
-    console.log('[MPAI Debug] Download - messages from state:', messages);
-    console.log('[MPAI Debug] Download - messages type:', typeof messages);
-    console.log('[MPAI Debug] Download - messages length:', Array.isArray(messages) ? messages.length : 'not array');
-    
-    // DEBUG: Log the entire state for comparison
-    const fullState = this._stateManager.getState();
-    console.log('[MPAI Debug] Download - Full state manager state:', fullState);
-    
-    // DEBUG: Also check if we can get messages from DOM as fallback
+    // Download operation logging - keep minimal info for troubleshooting
     const domMessages = document.querySelectorAll('.mpai-chat-message');
-    console.log('[MPAI Debug] Download - DOM messages found:', domMessages.length);
+    if (window.mpai_chat_config?.debug) {
+      console.log('[MPAI Debug] Download - Messages available:', Array.isArray(messages) ? messages.length : 'not array', 'DOM messages:', domMessages.length);
+    }
     
     // Handle both array and object formats with improved robustness
     let messagesArray = [];
@@ -1039,7 +1019,7 @@ class UIManager {
       // Handle object format (could be indexed object)
       messagesArray = Object.values(messages);
       // Debug message removed - was appearing in admin interface
-    } else {
+    } else if (window.mpai_chat_config?.debug) {
       console.log('[MPAI Debug] Download - Messages are not in expected format:', typeof messages);
     }
     
@@ -1052,8 +1032,7 @@ class UIManager {
       msg.content.trim().length > 0
     );
     
-    console.log('[MPAI Debug] Download - Final messagesArray:', messagesArray);
-    console.log('[MPAI Debug] Download - Final messagesArray length after filtering:', messagesArray.length);
+    // Final message count logging removed - creates excessive console noise
     
     if (messagesArray.length === 0) {
       // Debug message removed - was appearing in admin interface
@@ -1065,7 +1044,7 @@ class UIManager {
         el.querySelector('.mpai-chat-message-content').textContent.trim().length > 0
       );
       
-      console.log('[MPAI Debug] Download - Valid DOM messages found:', validDomMessages.length);
+      // DOM message validation logging removed - creates excessive console noise
       
       if (validDomMessages.length > 0) {
         // Debug message removed - was appearing in admin interface
@@ -1143,7 +1122,7 @@ class UIManager {
       validMessageCount++;
     });
     
-    console.log('[MPAI Debug] DOM Download - Valid messages processed:', validMessageCount);
+    // DOM download processing logging removed - creates excessive console noise
     
     if (validMessageCount === 0) {
       // Debug message removed - was appearing in admin interface
@@ -1162,7 +1141,7 @@ class UIManager {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    console.log('[MPAI Debug] Conversation downloaded from DOM with', validMessageCount, 'messages');
+    // DOM download completion logging removed - creates excessive console noise
   }
   
   /**
@@ -1180,7 +1159,7 @@ class UIManager {
     if (this._elements.commandPanel) {
       const isVisible = this._elements.commandPanel.style.display !== 'none';
       this._elements.commandPanel.style.display = isVisible ? 'none' : 'block';
-      console.log('[MPAI Debug] Command panel toggled to:', !isVisible ? 'visible' : 'hidden');
+      // Command panel toggle logging removed - creates excessive console noise
       
       // Set up command item handlers if panel is now visible
       if (!isVisible) {
@@ -1207,7 +1186,7 @@ class UIManager {
         event.preventDefault();
         const command = item.dataset.command;
         if (command) {
-          console.log('[MPAI Debug] Command selected:', command);
+          // Command selection logging removed - creates excessive console noise
           
           // Insert command into input field
           if (this._elements.inputField) {
@@ -1239,7 +1218,7 @@ class UIManager {
    * @returns {boolean} The new visibility state
    */
   toggleChatVisibility(isVisible) {
-    console.log('[MPAI Debug] toggleChatVisibility called with:', isVisible);
+    // Chat visibility toggle logging removed - creates excessive console noise
     
     // Get the container element
     const container = this._elements.container;
@@ -1259,7 +1238,7 @@ class UIManager {
         container.style.opacity === '0';
       
       newVisibility = isCurrentlyHidden;
-      console.log('[MPAI Debug] Toggling visibility from hidden:', isCurrentlyHidden, 'to visible:', newVisibility);
+      // Visibility state change logging removed - creates excessive console noise
     }
     
     // Update the container style and classes
@@ -1305,7 +1284,7 @@ class UIManager {
       this._stateManager.updateUI({
         isChatOpen: newVisibility
       });
-      console.log('[MPAI Debug] Updated state with isChatOpen:', newVisibility);
+      // State update logging removed - creates excessive console noise
     }
     
     // Focus the input field if the chat is now visible
@@ -1324,7 +1303,7 @@ class UIManager {
    * @returns {boolean} The new expanded state
    */
   toggleChatExpanded(isExpanded) {
-    console.log('[MPAI Debug] toggleChatExpanded called with:', isExpanded);
+    // Chat expanded toggle logging removed - creates excessive console noise
     
     // Get the container element
     const container = this._elements.container;
@@ -1338,7 +1317,7 @@ class UIManager {
     if (typeof newExpandedState !== 'boolean') {
       const isCurrentlyExpanded = container.classList.contains('mpai-chat-expanded');
       newExpandedState = !isCurrentlyExpanded;
-      console.log('[MPAI Debug] Toggling expanded state from', isCurrentlyExpanded, 'to', newExpandedState);
+      // Expanded state change logging removed - creates excessive console noise
     }
     
     // Update the container classes
@@ -1364,7 +1343,7 @@ class UIManager {
       this._stateManager.updateUI({
         isExpanded: newExpandedState
       });
-      console.log('[MPAI Debug] Updated state with isExpanded:', newExpandedState);
+      // State update logging removed - creates excessive console noise
     }
     
     return newExpandedState;
@@ -1450,7 +1429,7 @@ class UIManager {
       
       // Remove disallowed tags
       if (!allowedTags.includes(tagName)) {
-        console.log('[MPAI Debug] Removing disallowed tag:', tagName);
+        // HTML sanitization logging removed - creates excessive console noise
         child.remove();
         return;
       }
@@ -1461,7 +1440,7 @@ class UIManager {
       
       attributes.forEach(attr => {
         if (!allowedAttrs.includes(attr.name)) {
-          console.log('[MPAI Debug] Removing disallowed attribute:', attr.name, 'from', tagName);
+          // Attribute sanitization logging removed - creates excessive console noise
           child.removeAttribute(attr.name);
         }
       });
@@ -1471,7 +1450,7 @@ class UIManager {
         const href = child.getAttribute('href');
         // Only allow http, https, and mailto links
         if (!href.match(/^(https?:\/\/|mailto:)/i)) {
-          console.log('[MPAI Debug] Removing unsafe href:', href);
+          // Unsafe href logging removed - creates excessive console noise
           child.removeAttribute('href');
         }
       }
