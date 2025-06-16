@@ -174,7 +174,7 @@ class StateManager {
       messagesArray = Object.values(currentMessages);
     }
     
-    console.log('[MPAI Debug] Current messages:', messagesArray);
+    // Current messages logging removed - creates excessive console noise
     
     const updates = {
       conversation: {
@@ -204,17 +204,18 @@ class StateManager {
   clearConversation() {
     // DEBUG: Log current state before clearing
     const stateBefore = this.getState();
-    console.log('[MPAI Debug] StateManager.clearConversation - State before clearing:', stateBefore);
-    console.log('[MPAI Debug] StateManager.clearConversation - Conversation ID before:', stateBefore?.conversation?.id);
-    console.log('[MPAI Debug] StateManager.clearConversation - Messages count before:',
-      stateBefore?.conversation?.messages ?
-      (Array.isArray(stateBefore.conversation.messages) ? stateBefore.conversation.messages.length : Object.keys(stateBefore.conversation.messages).length) :
-      'No messages found');
+    // Clear conversation state logging - keep minimal info for troubleshooting
+    if (window.mpai_chat_config?.debug) {
+      console.log('[MPAI Debug] StateManager.clearConversation - Messages count before:',
+        stateBefore?.conversation?.messages ?
+        (Array.isArray(stateBefore.conversation.messages) ? stateBefore.conversation.messages.length : Object.keys(stateBefore.conversation.messages).length) :
+        'No messages found');
+    }
     
     // Reset the conversation.messages array to empty AND generate a new conversation ID
     // This prevents old messages from reloading on page refresh
     const newConversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log('[MPAI Debug] StateManager.clearConversation - Generating new conversation ID:', newConversationId);
+    // New conversation ID logging removed - creates excessive console noise
     
     const updates = {
       conversation: {
@@ -223,24 +224,16 @@ class StateManager {
       }
     };
     
-    console.log('[MPAI Debug] StateManager.clearConversation - Updates to apply:', updates);
+    // Updates logging removed - creates excessive console noise
     
     // Use setState to update the state and trigger events
     this.setState(updates, 'conversation.cleared');
     
     // DEBUG: Log state after clearing
     const stateAfter = this.getState();
-    console.log('[MPAI Debug] StateManager.clearConversation - State after clearing:', stateAfter);
-    console.log('[MPAI Debug] StateManager.clearConversation - Conversation ID after:', stateAfter?.conversation?.id);
-    
-    // DEBUG: Check if conversation ID changed (key diagnostic)
-    if (stateBefore?.conversation?.id === stateAfter?.conversation?.id) {
-      // Debug message removed - was appearing in admin interface
-      // Debug message removed - was appearing in admin interface
-      // Debug message removed - was appearing in admin interface
-    } else {
-      console.log('[MPAI Debug] StateManager.clearConversation - Good: Conversation ID changed from',
-        stateBefore?.conversation?.id, 'to', stateAfter?.conversation?.id);
+    // Conversation ID change verification - keep for troubleshooting
+    if (window.mpai_chat_config?.debug && stateBefore?.conversation?.id !== stateAfter?.conversation?.id) {
+      console.log('[MPAI Debug] StateManager.clearConversation - Conversation ID changed successfully');
     }
     
     // Publish a specific event for clearing the conversation if event bus exists
@@ -255,7 +248,7 @@ class StateManager {
     // CRITICAL: Immediately persist the cleared state to prevent old messages from reloading
     // Debug message removed - was appearing in admin interface
     this.persistState().then(success => {
-      console.log('[MPAI Debug] StateManager.clearConversation - State persistence result:', success);
+      // State persistence logging removed - creates excessive console noise
     }).catch(error => {
       console.error('[MPAI Debug] StateManager.clearConversation - Failed to persist cleared state:', error);
     });
@@ -400,7 +393,7 @@ class StateManager {
         expiration: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
       });
       
-      console.log('[MPAI Debug] State persisted successfully:', success);
+      // State persistence logging removed - creates excessive console noise
       return success;
     } catch (error) {
       console.error('[MPAI Debug] Failed to persist state:', error);
@@ -429,7 +422,7 @@ class StateManager {
       
       // Load state from storage
       const savedState = storageManager.get('chatState');
-      console.log('[MPAI Debug] Loaded state from storage:', savedState ? 'Found' : 'Not found');
+      // State loading logging removed - creates excessive console noise
       
       // If there's saved state, update the current state
       if (savedState) {

@@ -72,10 +72,7 @@ class ChatCore {
       // Check if instances are already provided (from chat.js)
       if (this._stateManager && this._uiManager && this._apiClient && this._eventBus) {
         // Debug message removed - was appearing in admin interface
-        console.log('[MPAI Debug] StateManager available:', !!this._stateManager);
-        console.log('[MPAI Debug] UIManager available:', !!this._uiManager);
-        console.log('[MPAI Debug] APIClient available:', !!this._apiClient);
-        console.log('[MPAI Debug] EventBus available:', !!this._eventBus);
+        // Module availability logging removed - creates excessive console noise
       } else {
         // Debug message removed - was appearing in admin interface
         
@@ -135,7 +132,7 @@ class ChatCore {
         
         // Subscribe to message events
         this._eventBus.subscribe('message.user', (data) => {
-          console.log('[MPAI Debug] User message event received:', data);
+          // User message event logging removed - creates excessive console noise
           if (this._stateManager && data.content) {
             this._stateManager.addMessage({
               role: 'user',
@@ -147,7 +144,7 @@ class ChatCore {
         
         // Subscribe to conversation state changes
         this._eventBus.subscribe('state.conversation.changed', (data) => {
-          console.log('[MPAI Debug] Conversation state changed:', data);
+          // Conversation state change logging removed - creates excessive console noise
           if (this._uiManager) {
             this._uiManager.renderMessages();
           }
@@ -240,7 +237,7 @@ class ChatCore {
    * @returns {Promise<Object>} A promise that resolves with the response
    */
   async sendMessage(message) {
-    console.log('[MPAI Debug] ChatCore.sendMessage called with:', message);
+    // Message sending logging removed - creates excessive console noise
     
     if (!this._apiClient) {
       // Debug message removed - was appearing in admin interface
@@ -267,7 +264,7 @@ class ChatCore {
         userLoggedIn: state?.user?.isAuthenticated || false
       });
       
-      console.log('[MPAI Debug] Message sent successfully:', response);
+      // Message success logging removed - creates excessive console noise
       
       // Update the state with the response
       // Handle both direct response.conversation_id and response.data.conversation_id formats
@@ -278,20 +275,20 @@ class ChatCore {
             id: conversationId
           }
         });
-        console.log('[MPAI Debug] Updated conversation ID:', conversationId);
+        // Conversation ID update logging removed - creates excessive console noise
       }
       
       // Add the assistant message to the UI
       // Handle both direct response.message and response.data.message formats
-      console.log('[MPAI Debug] Processing response for assistant message:', response);
+      // Response processing logging removed - creates excessive console noise
       
       let messageContent = null;
       if (response.message) {
         messageContent = response.message;
-        console.log('[MPAI Debug] Found message in response.message:', messageContent);
+        // Message content detection logging removed - creates excessive console noise
       } else if (response.data && response.data.message) {
         messageContent = response.data.message;
-        console.log('[MPAI Debug] Found message in response.data.message:', messageContent);
+        // Message content detection logging removed - creates excessive console noise
       }
       
       if (messageContent) {
@@ -301,11 +298,8 @@ class ChatCore {
           content: messageContent,
           timestamp: response.timestamp || response.data?.timestamp || new Date().toISOString()
         };
-        console.log('[MPAI Debug] Message object to add:', messageObj);
-        
         const result = this._stateManager.addMessage(messageObj);
-        console.log('[MPAI Debug] StateManager.addMessage result:', result);
-        console.log('[MPAI Debug] Current state after adding message:', this._stateManager.getState());
+        // Message addition logging removed - creates excessive console noise
       } else {
         console.warn('[MPAI Debug] No message content found in response:', response);
         console.warn('[MPAI Debug] Response structure:', JSON.stringify(response, null, 2));
@@ -342,12 +336,13 @@ class ChatCore {
     try {
       // DEBUG: Log current state before clearing
       const stateBefore = this._stateManager.getState();
-      console.log('[MPAI Debug] ChatCore.clearHistory - State before clearing:', stateBefore);
-      console.log('[MPAI Debug] ChatCore.clearHistory - Conversation ID before:', stateBefore?.conversation?.id);
-      console.log('[MPAI Debug] ChatCore.clearHistory - Messages count before:',
-        stateBefore?.conversation?.messages ?
-        (Array.isArray(stateBefore.conversation.messages) ? stateBefore.conversation.messages.length : Object.keys(stateBefore.conversation.messages).length) :
-        'No messages found');
+      // Clear history state logging - keep minimal info for troubleshooting
+      if (window.mpai_chat_config?.debug) {
+        console.log('[MPAI Debug] ChatCore.clearHistory - Messages count before:',
+          stateBefore?.conversation?.messages ?
+          (Array.isArray(stateBefore.conversation.messages) ? stateBefore.conversation.messages.length : Object.keys(stateBefore.conversation.messages).length) :
+          'No messages found');
+      }
       
       // Clear conversation history in state manager
       // Debug message removed - was appearing in admin interface
@@ -355,9 +350,7 @@ class ChatCore {
       // Debug message removed - was appearing in admin interface
       
       // DEBUG: Log state after state manager clear
-      const stateAfterStateManagerClear = this._stateManager.getState();
-      console.log('[MPAI Debug] ChatCore.clearHistory - State after state manager clear:', stateAfterStateManagerClear);
-      console.log('[MPAI Debug] ChatCore.clearHistory - Conversation ID after state manager clear:', stateAfterStateManagerClear?.conversation?.id);
+      // State after clear logging removed - creates excessive console noise
       
       // Clear conversation on the server if API client is available
       if (this._apiClient && typeof this._apiClient.clearConversation === 'function') {
@@ -370,17 +363,9 @@ class ChatCore {
       
       // DEBUG: Log final state after server clear
       const stateFinal = this._stateManager.getState();
-      console.log('[MPAI Debug] ChatCore.clearHistory - Final state after server clear:', stateFinal);
-      console.log('[MPAI Debug] ChatCore.clearHistory - Final conversation ID:', stateFinal?.conversation?.id);
-      
-      // DEBUG: Check if conversation ID changed (key diagnostic)
-      if (stateBefore?.conversation?.id === stateFinal?.conversation?.id) {
-        // Debug message removed - was appearing in admin interface
-        // Debug message removed - was appearing in admin interface
-        // Debug message removed - was appearing in admin interface
-      } else {
-        console.log('[MPAI Debug] ChatCore.clearHistory - Good: Conversation ID changed from',
-          stateBefore?.conversation?.id, 'to', stateFinal?.conversation?.id);
+      // Conversation ID change verification - keep for troubleshooting
+      if (window.mpai_chat_config?.debug && stateBefore?.conversation?.id !== stateFinal?.conversation?.id) {
+        console.log('[MPAI Debug] ChatCore.clearHistory - Conversation ID changed successfully');
       }
       
       // Publish a history cleared event
@@ -428,7 +413,7 @@ class ChatCore {
    * @returns {boolean} The new open state
    */
   toggleChat(forceState) {
-    console.log('[MPAI Debug] toggleChat method called with forceState:', forceState);
+    // Toggle chat logging removed - creates excessive console noise
     
     if (!this._stateManager || !this._uiManager) {
       // Debug message removed - was appearing in admin interface
@@ -441,7 +426,7 @@ class ChatCore {
     
     // Set the chat state - use forceState if provided, otherwise toggle
     const newState = typeof forceState === 'boolean' ? forceState : !isChatOpen;
-    console.log('[MPAI Debug] Setting chat state from', isChatOpen, 'to', newState, '(forced:', typeof forceState === 'boolean', ')');
+    // Chat state change logging removed - creates excessive console noise
     
     // Update the state
     this._stateManager.updateUI({
@@ -451,7 +436,7 @@ class ChatCore {
     // Also update the UI directly
     if (this._uiManager && typeof this._uiManager.toggleChatVisibility === 'function') {
       this._uiManager.toggleChatVisibility(newState);
-      console.log('[MPAI Debug] Called UIManager.toggleChatVisibility with', newState);
+      // UI manager call logging removed - creates excessive console noise
     } else {
       // Debug message removed - was appearing in admin interface
     }

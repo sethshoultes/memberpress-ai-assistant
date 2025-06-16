@@ -69,7 +69,7 @@ class MessageFactory {
             this.registerHandler('system', systemHandler);
             this.registerHandler('interactive', interactiveHandler);
 
-            // Debug message removed - was appearing in admin interface
+            // Handlers loaded successfully
         } catch (error) {
             console.error('[MessageFactory] Error loading default handlers:', error);
         }
@@ -87,7 +87,7 @@ class MessageFactory {
         }
 
         this._handlerRegistry[messageType] = handler;
-        console.log(`[MessageFactory] Registered handler for type: ${messageType}`);
+        // Handler registration logging removed - creates excessive console noise
     }
 
     /**
@@ -117,7 +117,7 @@ class MessageFactory {
         const handler = this.getHandler(messageType);
         
         if (!handler) {
-            console.warn(`[MessageFactory] No handler found for message type: ${messageType}`);
+            // Handler not found logging removed - creates excessive console noise
             return this._createFallbackComponent(message.content || 'Unknown message type');
         }
 
@@ -126,7 +126,7 @@ class MessageFactory {
             const component = handler.createComponent(message);
             
             if (!component) {
-                console.warn(`[MessageFactory] Handler returned null component for type: ${messageType}`);
+                // Null component logging removed - creates excessive console noise
                 return this._createFallbackComponent(message.content || 'Handler error');
             }
 

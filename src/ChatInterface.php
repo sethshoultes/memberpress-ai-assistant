@@ -1095,8 +1095,46 @@ class ChatInterface {
             return false;
         }
 
-        // For testing purposes, always return true
-        return true;
+        // Check the chat location setting to determine if frontend loading is allowed
+        global $mpai_service_locator;
+        
+        $chat_location = 'admin_only'; // Default fallback
+        
+        // Try to get the chat location setting from the settings model
+        if (isset($mpai_service_locator) && $mpai_service_locator->has('settings.model')) {
+            try {
+                $settings_model = $mpai_service_locator->get('settings.model');
+                $chat_location = $settings_model->get_chat_location();
+            } catch (\Exception $e) {
+                LoggingUtility::warning('ChatInterface: Failed to get settings model: ' . $e->getMessage());
+            }
+        } else {
+            // Fallback to direct option access
+            $raw_settings = get_option('mpai_settings', []);
+            if (isset($raw_settings['chat_location'])) {
+                $chat_location = $raw_settings['chat_location'];
+            }
+        }
+        
+        // Apply logic based on chat location setting
+        switch ($chat_location) {
+            case 'admin_only':
+                // Don't show on frontend when "Admin area only" is selected
+                return false;
+                
+            case 'frontend':
+                // Show on frontend when "Frontend only" is selected
+                return true;
+                
+            case 'both':
+                // Show on frontend when "Both" is selected
+                return true;
+                
+            default:
+                // Unknown setting - default to not showing on frontend for security
+                LoggingUtility::warning('ChatInterface: Unknown chat_location setting: ' . $chat_location);
+                return false;
+        }
     }
 
     /**

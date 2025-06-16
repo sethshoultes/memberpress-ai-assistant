@@ -61,8 +61,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Check if we're on an admin page
   const isAdminPage = window.location.pathname.includes('/wp-admin/');
   const currentPage = new URLSearchParams(window.location.search).get('page');
-  console.log('[MPAI Debug] Is admin page:', isAdminPage);
-  console.log('[MPAI Debug] Current admin page:', currentPage);
+  // Admin page detection - only log in debug mode
+  if (window.mpai_chat_config?.debug) {
+    console.log('[MPAI Debug] Admin page context:', { isAdminPage, currentPage });
+  }
   
   if (!chatContainer) {
     console.warn('[MPAI Chat] Chat container not found, will try again later');
@@ -205,11 +207,13 @@ async function initializeChat() {
   
   // Make chat interface available globally
   window.mpaiChat = chatCore;
-  console.log('[MPAI Debug] Set window.mpaiChat to chatCore instance:', window.mpaiChat !== undefined);
-  
-  // Also expose the ChatCore class for potential external use
-  window.MPAIChat = ChatCore;
-  console.log('[MPAI Debug] Set window.MPAIChat to ChatCore class:', window.MPAIChat !== undefined);
+  // Global exposure - only log in debug mode
+  if (config.debug) {
+    console.log('[MPAI Debug] Global chat interface exposed:', {
+      mpaiChat: window.mpaiChat !== undefined,
+      MPAIChat: window.MPAIChat !== undefined
+    });
+  }
   
   // Expose all module classes to the global scope
   window.EventBus = EventBus;
