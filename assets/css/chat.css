@@ -765,3 +765,73 @@
         border-color: #72aee6;
     }
 }
+
+/* Position-specific styles for chat container and toggle button */
+/* Bottom Right (default) */
+.mpai-chat-container.mpai-chat-position-bottom-right {
+    bottom: 80px;
+    right: 20px;
+}
+
+.mpai-chat-toggle.mpai-chat-toggle-bottom-right {
+    bottom: 20px;
+    right: 20px;
+}
+
+/* Bottom Left */
+.mpai-chat-container.mpai-chat-position-bottom-left {
+    bottom: 80px;
+    left: 20px;
+    right: auto;
+}
+
+.mpai-chat-toggle.mpai-chat-toggle-bottom-left {
+    bottom: 20px;
+    left: 20px;
+    right: auto;
+}
+
+/* Top Right */
+.mpai-chat-container.mpai-chat-position-top-right {
+    top: 20px;
+    right: 20px;
+    bottom: auto;
+}
+
+.mpai-chat-toggle.mpai-chat-toggle-top-right {
+    top: 20px;
+    right: 20px;
+    bottom: auto;
+}
+
+/* Top Left */
+.mpai-chat-container.mpai-chat-position-top-left {
+    top: 20px;
+    left: 20px;
+    right: auto;
+    bottom: auto;
+}
+
+.mpai-chat-toggle.mpai-chat-toggle-top-left {
+    top: 20px;
+    left: 20px;
+    right: auto;
+    bottom: auto;
+}
+
+/* Responsive adjustments for positioned containers */
+@media (max-width: 480px) {
+    .mpai-chat-container.mpai-chat-position-bottom-left,
+    .mpai-chat-container.mpai-chat-position-bottom-right,
+    .mpai-chat-container.mpai-chat-position-top-left,
+    .mpai-chat-container.mpai-chat-position-top-right {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        bottom: 0;
+        top: 0;
+        left: 0;
+        right: 0;
+        border-radius: 0;
+    }
+}

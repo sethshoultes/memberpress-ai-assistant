@@ -56,6 +56,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   const containerByClass = document.querySelector('.mpai-chat-container');
   const allContainers = document.querySelectorAll('[id*="mpai"], [class*="mpai"]');
   
+  // DIAGNOSTIC: Log position information for debugging positioning bug
+  if (chatContainer) {
+    const position = chatContainer.getAttribute('data-position');
+    const positionSource = chatContainer.getAttribute('data-position-source');
+    const classList = chatContainer.className;
+    const toggleButton = document.getElementById('mpai-chat-toggle');
+    const togglePosition = toggleButton ? toggleButton.getAttribute('data-position') : 'not found';
+    const toggleClasses = toggleButton ? toggleButton.className : 'not found';
+    
+    console.log('[POSITION DEBUG] Chat container position diagnosis:', {
+      position: position,
+      positionSource: positionSource,
+      containerClasses: classList,
+      togglePosition: togglePosition,
+      toggleClasses: toggleClasses,
+      expectedContainerClass: position ? `mpai-chat-position-${position.replace('_', '-')}` : 'unknown',
+      expectedToggleClass: position ? `mpai-chat-toggle-${position.replace('_', '-')}` : 'unknown'
+    });
+  }
+  
   // Debug messages removed - were appearing in admin interface
   
   // Check if we're on an admin page
