@@ -194,7 +194,7 @@ class APIClient {
       // Remove the abort controller
       this._abortControllers.delete(requestId);
       
-      console.log('[MPAI Debug] APIClient.clearConversation - Server response:', response);
+      // Server response logging removed - creates excessive console noise
       
       // Publish an event with the response
       if (this._eventBus) {
@@ -256,8 +256,7 @@ class APIClient {
    */
   async _makeRequest(endpoint, data, options = {}) {
     try {
-      console.log('[MPAI Debug] Making request to:', this._config.baseUrl);
-      console.log('[MPAI Debug] Request data:', data);
+      // Request logging removed - creates excessive console noise
       
       const response = await fetch(this._config.baseUrl, {
         method: 'POST',
@@ -269,8 +268,7 @@ class APIClient {
         signal: options.signal
       });
       
-      console.log('[MPAI Debug] Response status:', response.status);
-      console.log('[MPAI Debug] Response headers:', Object.fromEntries(response.headers.entries()));
+      // Response status and headers logging removed - creates excessive console noise
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -279,12 +277,12 @@ class APIClient {
       }
       
       const responseText = await response.text();
-      console.log('[MPAI Debug] Raw response text:', responseText);
+      // Raw response text logging removed - creates excessive console noise
       
       let responseData;
       try {
         responseData = JSON.parse(responseText);
-        console.log('[MPAI Debug] Parsed response data:', responseData);
+        // Parsed response data logging removed - creates excessive console noise
       } catch (parseError) {
         console.error('[MPAI Debug] JSON parsing error:', parseError);
         console.error('[MPAI Debug] Failed to parse response:', responseText);
@@ -308,7 +306,7 @@ class APIClient {
         timestamp: new Date().toISOString()
       };
       
-      console.log('[MPAI Debug] Returning mock response:', mockResponse);
+      // Mock response logging removed - creates excessive console noise
       return mockResponse;
     }
   }

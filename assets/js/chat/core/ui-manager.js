@@ -598,7 +598,7 @@ class UIManager {
    * @returns {void}
    */
   showError(message) {
-    console.log('[MPAI Debug] showError called with:', message);
+    // Error display logging removed - creates excessive console noise
     
     // Create an error message element
     const errorElement = document.createElement('div');
@@ -1004,7 +1004,7 @@ class UIManager {
     // Get all messages from the state
     const messages = this._stateManager.getState('conversation.messages') || [];
     
-    // Download operation logging - keep minimal info for troubleshooting
+    // Download operation logging - only log in debug mode
     const domMessages = document.querySelectorAll('.mpai-chat-message');
     if (window.mpai_chat_config?.debug) {
       console.log('[MPAI Debug] Download - Messages available:', Array.isArray(messages) ? messages.length : 'not array', 'DOM messages:', domMessages.length);
