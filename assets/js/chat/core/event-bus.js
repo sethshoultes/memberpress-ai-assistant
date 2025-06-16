@@ -170,8 +170,21 @@ class EventBus {
   }
 
   /**
+   * Alias for subscribe() method to maintain compatibility with Node.js EventEmitter API
+   *
+   * @public
+   * @param {string} event - Name of the event to subscribe to
+   * @param {Function} callback - Function to call when the event is published
+   * @param {Object} [context=null] - Context to bind the callback to
+   * @returns {string} Subscription ID that can be used to unsubscribe
+   */
+  on(event, callback, context = null) {
+    return this.subscribe(event, callback, context);
+  }
+
+  /**
    * Subscribes to an event and automatically unsubscribes after it's published once
-   * 
+   *
    * @public
    * @param {string} event - Name of the event to subscribe to
    * @param {Function} callback - Function to call when the event is published
