@@ -432,8 +432,48 @@ class ChatInterface {
     private function renderChatContainerHTML() {
         LoggingUtility::debug('ChatInterface: Rendering chat container HTML directly');
         
+        // DIAGNOSTIC: Get chat position setting for positioning bug diagnosis
+        global $mpai_service_locator;
+        $chat_position = 'bottom_right'; // Default fallback
+        $position_source = 'default_fallback';
+        
+        // Try to get the chat position setting from the settings model
+        if (isset($mpai_service_locator) && $mpai_service_locator->has('settings.model')) {
+            try {
+                $settings_model = $mpai_service_locator->get('settings.model');
+                $chat_position = $settings_model->get_chat_position();
+                $position_source = 'settings_model';
+                LoggingUtility::debug('[POSITION DEBUG] Retrieved chat position from settings model: ' . $chat_position);
+            } catch (\Exception $e) {
+                LoggingUtility::warning('[POSITION DEBUG] Failed to get settings model: ' . $e->getMessage());
+                $position_source = 'settings_model_error';
+            }
+        } else {
+            // Fallback to direct option access
+            $raw_settings = get_option('mpai_settings', []);
+            if (isset($raw_settings['chat_position'])) {
+                $chat_position = $raw_settings['chat_position'];
+                $position_source = 'direct_option';
+                LoggingUtility::debug('[POSITION DEBUG] Retrieved chat position from direct option: ' . $chat_position);
+            } else {
+                LoggingUtility::debug('[POSITION DEBUG] No chat position setting found, using default: ' . $chat_position);
+                $position_source = 'no_setting_found';
+            }
+        }
+        
+        // Generate position CSS class
+        $position_class = 'mpai-chat-position-' . str_replace('_', '-', $chat_position);
+        
+        LoggingUtility::debug('[POSITION DEBUG] Chat positioning diagnosis', [
+            'setting_value' => $chat_position,
+            'position_source' => $position_source,
+            'css_class' => $position_class,
+            'service_locator_available' => isset($mpai_service_locator),
+            'settings_model_available' => isset($mpai_service_locator) && $mpai_service_locator->has('settings.model')
+        ]);
+        
         ?>
-        <div class="mpai-chat-container" id="mpai-chat-container">
+        <div class="mpai-chat-container <?php echo esc_attr($position_class); ?>" id="mpai-chat-container" data-position="<?php echo esc_attr($chat_position); ?>" data-position-source="<?php echo esc_attr($position_source); ?>">
             <div class="mpai-chat-header">
                 <h3><?php esc_html_e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h3>
                 <button class="mpai-chat-expand" id="mpai-chat-expand" aria-label="<?php esc_attr_e('Expand chat', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Expand chat', 'memberpress-ai-assistant'); ?>">
@@ -536,7 +576,7 @@ class ChatInterface {
         </div>
 
         <!-- Chat toggle button (fixed position) -->
-        <button id="mpai-chat-toggle" class="mpai-chat-toggle" aria-label="<?php esc_attr_e('Toggle chat', 'memberpress-ai-assistant'); ?>">
+        <button id="mpai-chat-toggle" class="mpai-chat-toggle mpai-chat-toggle-<?php echo esc_attr(str_replace('_', '-', $chat_position)); ?>" data-position="<?php echo esc_attr($chat_position); ?>" aria-label="<?php esc_attr_e('Toggle chat', 'memberpress-ai-assistant'); ?>">
             <span class="dashicons dashicons-format-chat"></span>
         </button>
 
