@@ -679,12 +679,26 @@ class ChatInterface {
      * @return \WP_REST_Response The REST response
      */
     public function processChatRequest($request) {
+        // DEBUG: Log all incoming request parameters
+        $all_params = $request->get_params();
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MPAI Debug] processChatRequest - All request parameters:', $all_params);
+        
         // Get request parameters
         $message = $request->get_param('message');
         $conversation_id = $request->get_param('conversation_id');
         $load_history = (bool)$request->get_param('load_history');
         $clear_history = (bool)$request->get_param('clear_history');
         $user_logged_in = (bool)$request->get_param('user_logged_in');
+        $action = $request->get_param('action'); // DEBUG: Check for action parameter
+        
+        // DEBUG: Log specific parameter values
+        \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MPAI Debug] processChatRequest - Parameter analysis:', [
+            'message' => $message,
+            'clear_history' => $clear_history,
+            'action' => $action,
+            'has_message' => !empty($message),
+            'is_clear_request' => $action === 'clear_conversation' || $clear_history
+        ]);
         
         // Check if this is a blog post request
         $isBlogPostRequest = false;
@@ -753,6 +767,30 @@ class ChatInterface {
                     'conversation_id' => null,
                     'timestamp' => time()
                 ]);
+            }
+            
+            // DEBUG: Check if this is a clear conversation request via action parameter
+            if ($action === 'clear_conversation') {
+                \MemberpressAiAssistant\Utilities\LoggingUtility::debug('[MPAI Debug] Clear conversation request detected via action parameter', [
+                    'action' => $action,
+                    'user_id' => $user_id,
+                    'conversation_id' => $conversation_id,
+                    'clear_history_param' => $clear_history
+                ]);
+                
+                // Handle clear conversation request
+                if ($user_id > 0) {
+                    \MemberpressAiAssistant\Utilities\LoggingUtility::info('Clearing conversation via action parameter for user: ' . $user_id);
+                    $this->clearUserConversationHistory($user_id, $conversation_id);
+                    
+                    // Return success response
+                    return rest_ensure_response([
+                        'status' => 'success',
+                        'message' => 'Conversation cleared successfully',
+                        'conversation_id' => null,
+                        'timestamp' => time()
+                    ]);
+                }
             }
             
             // For logged-in users, try to get their conversation ID from user metadata

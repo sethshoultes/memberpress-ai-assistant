@@ -185,6 +185,9 @@ class APIClient {
         action: 'clear_conversation'
       };
       
+      // DEBUG: Log the data being sent for clear conversation
+      console.log('[MPAI Debug] clearConversation - Request data:', data);
+      
       // Make the API request to clear conversation
       const response = await this._makeRequest('clear', data, {
         signal: abortController.signal,
