@@ -79,7 +79,7 @@ This is a WordPress plugin that requires MemberPress to be installed and activat
 
 ## WordPress Plugin Structure
 
-**Main Plugin File**: `memberpress-ai-assistant.php`
+**Main Plugin File**: `memberpress-copilot.php`
 - Plugin initialization and dependency setup
 - Service registration and bootstrapping
 - WordPress hook integration

@@ -1,20 +1,20 @@
-# Getting Started with MemberPress AI Assistant
+# Getting Started with MemberPress Copilot
 
 ## Introduction
 
-This guide will help you quickly get started with the MemberPress AI Assistant plugin. Whether you're a site administrator looking to leverage AI for your membership site or a developer extending the plugin's functionality, this guide provides the essential information to get you up and running.
+This guide will help you quickly get started with the MemberPress Copilot plugin. Whether you're a site administrator looking to leverage AI for your membership site or a developer extending the plugin's functionality, this guide provides the essential information to get you up and running.
 
 ## For Site Administrators
 
 ### Quick Start
 
 1. **Install and Activate**
-   - Install the MemberPress AI Assistant plugin from the WordPress plugin repository or by uploading the zip file
+   - Install the MemberPress Copilot plugin from the WordPress plugin repository or by uploading the zip file
    - Activate the plugin through the WordPress admin interface
-   - Navigate to AI Assistant > Settings to begin configuration
+   - Navigate to Copilot > Settings to begin configuration
 
-2. **Start Using the AI Assistant**
-   - Navigate to AI Assistant > Chat in your WordPress admin
+2. **Start Using the Copilot**
+   - Navigate to Copilot > Chat in your WordPress admin
    - Type a question or command in the chat interface
    - Receive AI-generated insights and assistance
    - No API key configuration required - the system works out of the box!
@@ -55,7 +55,7 @@ Request help with:
 
 ### Tips for Effective Use
 
-1. **Be Specific**: The more specific your questions or commands, the better the AI can assist you.
+1. **Be Specific**: The more specific your questions or commands, the better the Copilot can assist you.
 2. **Use Natural Language**: You don't need special syntax; ask questions as you would to a human assistant.
 3. **Provide Context**: If your question relates to specific memberships or timeframes, include that information.
 4. **Review Suggestions**: Always review AI-generated content before publishing or implementing changes.
@@ -65,7 +65,7 @@ Request help with:
 
 ### System Overview
 
-The MemberPress AI Assistant is built on a modular architecture with several key components:
+The MemberPress Copilot is built on a modular architecture with several key components:
 
 1. **Agent System**: Specialized AI agents that handle different types of requests
 2. **Tool System**: Reusable operations with standardized interfaces
@@ -78,8 +78,8 @@ For a comprehensive overview, see the [System Architecture](system-architecture.
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/memberpress/memberpress-ai-assistant.git
-   cd memberpress-ai-assistant
+   git clone https://github.com/memberpress/memberpress-copilot.git
+   cd memberpress-copilot
    ```
 
 2. **Install Dependencies**
@@ -227,7 +227,7 @@ document.addEventListener('mpai:chat:message', function(event) {
 });
 
 // Send a message programmatically
-window.MPAI.chat.sendMessage('Hello, AI Assistant!');
+window.MPAI.chat.sendMessage('Hello, Copilot!');
 ```
 
 #### REST API
@@ -235,8 +235,8 @@ window.MPAI.chat.sendMessage('Hello, AI Assistant!');
 The plugin provides a REST API for programmatic access:
 
 ```
-GET /wp-json/memberpress-ai/v1/memberships
-POST /wp-json/memberpress-ai/v1/chat
+GET /wp-json/memberpress-copilot/v1/memberships
+POST /wp-json/memberpress-copilot/v1/chat
 ```
 
 For more details, see the API documentation (available to developers).
@@ -279,6 +279,6 @@ The system is designed to work without requiring users to provide their own API 
 
 ## Conclusion
 
-The MemberPress AI Assistant provides powerful AI capabilities to enhance your membership site. By following this guide, you can quickly get started with using or extending the plugin to meet your specific needs.
+The MemberPress Copilot provides powerful AI capabilities to enhance your membership site. By following this guide, you can quickly get started with using or extending the plugin to meet your specific needs.
 
-Whether you're analyzing membership data, managing users, or creating content, the AI assistant is designed to make your work easier and more efficient. As you become more familiar with the plugin, you'll discover even more ways to leverage its capabilities.
+Whether you're analyzing membership data, managing users, or creating content, the Copilot is designed to make your work easier and more efficient. As you become more familiar with the plugin, you'll discover even more ways to leverage its capabilities.

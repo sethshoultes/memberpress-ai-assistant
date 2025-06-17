@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Service API provides the business logic layer of the MemberPress AI Assistant. Services handle complex operations, integrate with external systems, manage data persistence, and coordinate between different components of the system.
+The Service API provides the business logic layer of the MemberPress Copilot. Services handle complex operations, integrate with external systems, manage data persistence, and coordinate between different components of the system.
 
 ## Core Concepts
 
@@ -763,4 +763,4 @@ class ServiceIntegrationTest extends TestCase {
 3. **Secure Configuration**: Store sensitive configuration securely
 4. **Log Security Events**: Log authentication and authorization events
 
-This Service API provides a robust foundation for building scalable business logic within the MemberPress AI Assistant system.
+This Service API provides a robust foundation for building scalable business logic within the MemberPress Copilot system.

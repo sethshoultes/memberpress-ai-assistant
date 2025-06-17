@@ -1,6 +1,6 @@
 {
-    "name": "memberpress/memberpress-ai-assistant",
-    "description": "AI-powered assistant for MemberPress that helps manage memberships through natural language",
+    "name": "memberpress/memberpress-copilot",
+    "description": "AI-powered copilot for MemberPress that helps manage memberships through natural language",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "authors": [

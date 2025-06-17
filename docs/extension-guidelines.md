@@ -1,8 +1,8 @@
-# MemberPress AI Assistant Extension Guidelines
+# MemberPress Copilot Extension Guidelines
 
 ## Overview
 
-This guide provides comprehensive instructions for extending the MemberPress AI Assistant plugin. Whether you're creating custom agents, tools, services, or integrations, this document will help you follow best practices and maintain compatibility with the core system.
+This guide provides comprehensive instructions for extending the MemberPress Copilot plugin. Whether you're creating custom agents, tools, services, or integrations, this document will help you follow best practices and maintain compatibility with the core system.
 
 ## Extension Architecture
 
@@ -27,7 +27,7 @@ Agents are the primary extension point for adding new AI capabilities.
 <?php
 namespace YourPlugin\Agents;
 
-use MemberpressAiAssistant\Abstracts\AbstractAgent;
+use MemberPressCopilot\Abstracts\AbstractAgent;
 
 class CustomIntegrationAgent extends AbstractAgent {
     
@@ -90,7 +90,7 @@ Tools provide reusable operations that agents can utilize.
 <?php
 namespace YourPlugin\Tools;
 
-use MemberpressAiAssistant\Abstracts\AbstractTool;
+use MemberPressCopilot\Abstracts\AbstractTool;
 
 class MailchimpTool extends AbstractTool {
     
@@ -206,7 +206,7 @@ Services handle business logic and integrations.
 <?php
 namespace YourPlugin\Services;
 
-use MemberpressAiAssistant\Abstracts\AbstractService;
+use MemberPressCopilot\Abstracts\AbstractService;
 
 class IntegrationService extends AbstractService {
     
@@ -529,14 +529,14 @@ your-extension-plugin/
 ```php
 <?php
 /**
- * Plugin Name: MemberPress AI Assistant - Custom Extensions
+ * Plugin Name: MemberPress Copilot - Custom Extensions
  * Plugin URI: https://yoursite.com/
- * Description: Custom extensions for MemberPress AI Assistant
+ * Description: Custom extensions for MemberPress Copilot
  * Version: 1.0.0
  * Author: Your Name
  * Requires at least: 5.8
  * Requires PHP: 7.4
- * Depends: memberpress-ai-assistant
+ * Depends: memberpress-copilot
  */
 
 // Prevent direct access
@@ -549,12 +549,12 @@ define('MPAI_EXTENSIONS_VERSION', '1.0.0');
 define('MPAI_EXTENSIONS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MPAI_EXTENSIONS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Check if MemberPress AI Assistant is active
+// Check if MemberPress Copilot is active
 add_action('plugins_loaded', function() {
-    if (!class_exists('MemberpressAiAssistant')) {
+    if (!class_exists('MemberPressCopilot')) {
         add_action('admin_notices', function() {
             echo '<div class="error"><p>';
-            echo __('MemberPress AI Assistant Extensions requires MemberPress AI Assistant to be installed and activated.', 'mpai-extensions');
+            echo __('MemberPress Copilot Extensions requires MemberPress Copilot to be installed and activated.', 'mpai-extensions');
             echo '</p></div>';
         });
         return;
@@ -689,7 +689,7 @@ class MailchimpToolTest extends TestCase {
 ### Integration Testing
 
 ```php
-public function testIntegrationWithMemberPressAI(): void {
+public function testIntegrationWithMemberPressCopilot(): void {
     // Test that your extension works with the main plugin
     global $mpai_service_locator;
     
@@ -836,10 +836,10 @@ Include in your extension:
 {
     "name": "yourname/memberpress-ai-extensions",
     "type": "wordpress-plugin",
-    "description": "Custom extensions for MemberPress AI Assistant",
+    "description": "Custom extensions for MemberPress Copilot",
     "require": {
         "php": ">=7.4",
-        "memberpress/memberpress-ai-assistant": "^1.0"
+        "memberpress/memberpress-copilot": "^1.0"
     },
     "autoload": {
         "psr-4": {

@@ -1,8 +1,8 @@
-# MemberPress AI Assistant API Documentation
+# MemberPress Copilot API Documentation
 
 ## Overview
 
-The MemberPress AI Assistant provides a comprehensive API system built on modern PHP architecture patterns. The API is designed around four main layers that work together to provide intelligent membership management capabilities.
+The MemberPress Copilot provides a comprehensive API system built on modern PHP architecture patterns. The API is designed around four main layers that work together to provide intelligent membership management capabilities.
 
 ## API Architecture
 
@@ -87,7 +87,7 @@ $result = $memberpress_tool->execute([
 
 ```php
 <?php
-// Check if MemberPress AI Assistant is active
+// Check if MemberPress Copilot is active
 if (class_exists('MemberpressAiAssistant\DI\ServiceLocator')) {
     global $mpai_service_locator;
     

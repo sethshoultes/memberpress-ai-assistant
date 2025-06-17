@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Tool API provides a standardized interface for creating reusable operations in the MemberPress AI Assistant. Tools are stateless, cacheable components that perform specific tasks and can be used by agents to fulfill user requests.
+The Tool API provides a standardized interface for creating reusable operations in the MemberPress Copilot. Tools are stateless, cacheable components that perform specific tasks and can be used by agents to fulfill user requests.
 
 ## Core Concepts
 
@@ -699,4 +699,4 @@ class ToolIntegrationTest extends TestCase {
 3. **Escape Output**: Properly escape output data
 4. **Secure Caching**: Don't cache sensitive information
 
-This Tool API provides a powerful and flexible foundation for creating reusable operations within the MemberPress AI Assistant system.
+This Tool API provides a powerful and flexible foundation for creating reusable operations within the MemberPress Copilot system.

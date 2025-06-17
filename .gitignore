@@ -1,7 +1,9 @@
 _error_log.md
 _STATUS.md
 CLEANUP.md
-_STATUS.md
-_error_log.md
 
+# Claude Code settings (local configuration)
+.claude/settings.local.json
+
+# Local Claude documentation
 **/CLAUDE.local.md
