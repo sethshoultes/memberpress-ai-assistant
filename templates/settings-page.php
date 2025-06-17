@@ -2,12 +2,12 @@
 /**
  * Settings Page Template
  *
- * Renders the MemberPress AI Assistant settings page.
+ * Renders the MemberPress Copilot settings page.
  * This template is used by the MPAISettingsView class to display
  * the settings page content. It focuses on presentation only,
  * with all logic handled by the Controller and View components.
  *
- * @package MemberpressAiAssistant
+ * @package MemberPressCopilot
  */
 
 // Exit if accessed directly
@@ -32,9 +32,9 @@ if (!defined('ABSPATH')) {
 if (empty($tabs) || empty($current_tab) || empty($page_slug)) {
     ?>
     <div class="wrap">
-        <h1><?php esc_html_e('MemberPress AI Assistant Settings', 'memberpress-ai-assistant'); ?></h1>
+        <h1><?php esc_html_e('MemberPress Copilot Settings', 'memberpress-copilot'); ?></h1>
         <div class="notice notice-error">
-            <p><?php esc_html_e('Error: Required template variables are missing. Please try again later or contact support.', 'memberpress-ai-assistant'); ?></p>
+            <p><?php esc_html_e('Error: Required template variables are missing. Please try again later or contact support.', 'memberpress-copilot'); ?></p>
         </div>
     </div>
     <?php
@@ -51,13 +51,13 @@ $using_legacy_renderer = isset($renderer) && isset($provider);
 ?>
 
 <div class="wrap">
-    <h1><?php esc_html_e('MemberPress AI Assistant Settings', 'memberpress-ai-assistant'); ?></h1>
+    <h1><?php esc_html_e('MemberPress Copilot Settings', 'memberpress-copilot'); ?></h1>
     
     <?php
     // Display settings updated message if needed
     if (isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true') {
         echo '<div class="notice notice-success is-dismissible"><p>' .
-            esc_html__('Settings saved successfully.', 'memberpress-ai-assistant') .
+            esc_html__('Settings saved successfully.', 'memberpress-copilot') .
             '</p></div>';
     }
     
@@ -121,7 +121,7 @@ $using_legacy_renderer = isset($renderer) && isset($provider);
             ?>
             <p class="submit">
                 <input type="submit" name="submit" id="submit" class="button button-primary" 
-                       value="<?php esc_attr_e('Save Changes', 'memberpress-ai-assistant'); ?>" />
+                       value="<?php esc_attr_e('Save Changes', 'memberpress-copilot'); ?>" />
             </p>
             <?php
         }
@@ -136,7 +136,7 @@ $using_legacy_renderer = isset($renderer) && isset($provider);
     $already_rendered = defined('MPAI_CHAT_INTERFACE_RENDERED');
     ?>
     
-    <!-- AI Assistant Container -->
+    <!-- MemberPress Copilot Container -->
     <div id="mpai-assistant-container">
         <?php if ($already_rendered): ?>
             <?php
@@ -158,7 +158,7 @@ $using_legacy_renderer = isset($renderer) && isset($provider);
                 echo '<!-- Chat Interface: Template not found at ' . esc_html($chat_template_path) . ' -->';
                 // Fallback message
                 echo '<div class="notice notice-info"><p>' .
-                     esc_html__('Chat interface template not found. Please check the plugin installation.', 'memberpress-ai-assistant') .
+                     esc_html__('Chat interface template not found. Please check the plugin installation.', 'memberpress-copilot') .
                      '</p></div>';
             }
             ?>

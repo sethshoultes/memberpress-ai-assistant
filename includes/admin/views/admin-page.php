@@ -1,8 +1,8 @@
 <?php
 /**
- * Admin page template for MemberPress AI Assistant settings
+ * Admin page template for MemberPress Copilot settings
  *
- * @package MemberpressAiAssistant
+ * @package MemberPressCopilot
  */
 
 // Prevent direct access
@@ -20,13 +20,13 @@ if (!isset($tabs[$current_tab])) {
 }
 ?>
 <div class="wrap">
-    <h1><?php esc_html_e('MemberPress AI Assistant Settings', 'memberpress-ai-assistant'); ?></h1>
+    <h1><?php esc_html_e('MemberPress Copilot Settings', 'memberpress-copilot'); ?></h1>
     
     <?php
     // Display settings updated message if needed
     if (isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true') {
         echo '<div class="notice notice-success is-dismissible"><p>' . 
-            esc_html__('Settings saved successfully.', 'memberpress-ai-assistant') . 
+            esc_html__('Settings saved successfully.', 'memberpress-copilot') . 
             '</p></div>';
     }
     ?>

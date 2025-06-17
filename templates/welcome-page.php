@@ -1,10 +1,10 @@
 <?php
 /**
- * MemberPress AI Assistant Welcome Page Template
+ * MemberPress Copilot Welcome Page Template
  *
  * This template displays a simple welcome message and directs users to the settings page.
  *
- * @package MemberpressAiAssistant
+ * @package MemberPressCopilot
  */
 
 // Prevent direct access
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 ?>
 
 <div class="mpai-welcome-container wrap">
-    <h1><?php _e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h1>
+    <h1><?php _e('MemberPress Copilot', 'memberpress-copilot'); ?></h1>
     
     <?php
     // Display any admin notices
@@ -23,12 +23,12 @@ if (!defined('ABSPATH')) {
     
     <div class="mpai-welcome-content">
         <div class="mpai-welcome-message">
-            <h2><?php _e('Welcome to MemberPress AI Assistant!', 'memberpress-ai-assistant'); ?></h2>
-            <p><?php _e('Your AI Assistant is ready to help you manage your MemberPress site. You can access the chat interface from the settings page.', 'memberpress-ai-assistant'); ?></p>
+            <h2><?php _e('Welcome to MemberPress Copilot!', 'memberpress-copilot'); ?></h2>
+            <p><?php _e('Your Copilot is ready to help you manage your MemberPress site. You can access the chat interface from the settings page.', 'memberpress-copilot'); ?></p>
             
             <div class="mpai-welcome-actions">
                 <a href="<?php echo esc_url(admin_url('admin.php?page=mpai-settings')); ?>" class="button button-primary button-large">
-                    <?php _e('Go to AI Assistant', 'memberpress-ai-assistant'); ?>
+                    <?php _e('Go to Copilot', 'memberpress-copilot'); ?>
                 </a>
             </div>
         </div>
