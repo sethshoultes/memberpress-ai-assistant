@@ -13,7 +13,7 @@ use MemberpressAiAssistant\Interfaces\SettingsModelInterface;
 use MemberpressAiAssistant\DI\ServiceLocator;
 
 /**
- * Service for handling MemberPress AI Assistant settings
+ * Service for handling MemberPress Copilot settings
  * 
  * This class combines storage and validation functionality for settings
  * with the service architecture required by the DI system.

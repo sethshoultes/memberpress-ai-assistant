@@ -1,6 +1,6 @@
 <?php
 /**
- * MemberPress AI Assistant Key Manager
+ * MemberPress Copilot Key Manager
  *
  * @package MemberpressAiAssistant
  */

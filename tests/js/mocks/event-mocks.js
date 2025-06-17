@@ -1,5 +1,5 @@
 /**
- * Mock event handling for MemberPress AI Assistant tests
+ * Mock event handling for MemberPress Copilot tests
  */
 
 /**

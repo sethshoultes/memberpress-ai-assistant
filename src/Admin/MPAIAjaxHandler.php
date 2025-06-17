@@ -1,6 +1,6 @@
 <?php
 /**
- * MemberPress AI Assistant AJAX Handler
+ * MemberPress Copilot AJAX Handler
  *
  * @package MemberpressAiAssistant
  */
@@ -81,14 +81,14 @@ class MPAIAjaxHandler extends AbstractService {
         // Check nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_ajax_nonce')) {
             $this->log('Chat interface request nonce verification failed', ['error' => true]);
-            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-copilot')]);
             return;
         }
         
         // Check if user is logged in
         if (!is_user_logged_in()) {
             $this->log('Chat interface request from non-logged-in user', ['error' => true]);
-            wp_send_json_error(['message' => __('You must be logged in to access the chat interface.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('You must be logged in to access the chat interface.', 'memberpress-copilot')]);
             return;
         }
         
@@ -154,12 +154,12 @@ class MPAIAjaxHandler extends AbstractService {
                     'html' => $html,
                     'assets' => $assets,
                     'config' => $chat_config,
-                    'message' => __('Chat interface loaded successfully.', 'memberpress-ai-assistant')
+                    'message' => __('Chat interface loaded successfully.', 'memberpress-copilot')
                 ]);
             } else {
                 ob_end_clean();
                 $this->log('Chat interface template not found: ' . $chat_template_path, ['error' => true]);
-                wp_send_json_error(['message' => __('Chat interface template not found.', 'memberpress-ai-assistant')]);
+                wp_send_json_error(['message' => __('Chat interface template not found.', 'memberpress-copilot')]);
             }
         } catch (\Exception $e) {
             // Clean up output buffer in case of error
@@ -168,7 +168,7 @@ class MPAIAjaxHandler extends AbstractService {
             }
             
             $this->log('Exception while generating chat interface HTML: ' . $e->getMessage(), ['error' => true]);
-            wp_send_json_error(['message' => __('An error occurred while loading the chat interface.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('An error occurred while loading the chat interface.', 'memberpress-copilot')]);
         }
     }
     
@@ -220,12 +220,12 @@ class MPAIAjaxHandler extends AbstractService {
     public function handle_process_chat(): void {
         // Check nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_chat_nonce')) {
-            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-copilot')]);
         }
         
         // Check if user is logged in
         if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('You must be logged in to use the chat.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('You must be logged in to use the chat.', 'memberpress-copilot')]);
         }
         
         
@@ -233,13 +233,13 @@ class MPAIAjaxHandler extends AbstractService {
         $message = isset($_POST['message']) ? sanitize_text_field($_POST['message']) : '';
         
         if (empty($message)) {
-            wp_send_json_error(['message' => __('Message cannot be empty.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Message cannot be empty.', 'memberpress-copilot')]);
         }
         
         // Process the message (delegate to ChatInterface)
         global $mpai_service_locator;
         if (!isset($mpai_service_locator) || !$mpai_service_locator->has('chat_interface')) {
-            wp_send_json_error(['message' => __('Chat interface not available.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Chat interface not available.', 'memberpress-copilot')]);
         }
         
         $chat_interface = $mpai_service_locator->get('chat_interface');
@@ -275,14 +275,14 @@ class MPAIAjaxHandler extends AbstractService {
         // Check nonce if available
         if (isset($_POST['nonce']) && !wp_verify_nonce($_POST['nonce'], 'mpai_ajax_nonce')) {
             $this->log('Chat request nonce verification failed', ['error' => true]);
-            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-copilot')]);
             return;
         }
         
         // Check if user is logged in
         if (!is_user_logged_in()) {
             $this->log('Chat request from non-logged-in user', ['error' => true]);
-            wp_send_json_error(['message' => __('You must be logged in to use the chat.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('You must be logged in to use the chat.', 'memberpress-copilot')]);
             return;
         }
         
@@ -294,7 +294,7 @@ class MPAIAjaxHandler extends AbstractService {
         $data = json_decode($data_json, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             $this->log('Invalid JSON data in chat request', ['error' => true]);
-            wp_send_json_error(['message' => __('Invalid request data.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Invalid request data.', 'memberpress-copilot')]);
             return;
         }
         
@@ -303,7 +303,7 @@ class MPAIAjaxHandler extends AbstractService {
         
         if (empty($message)) {
             $this->log('Empty message in chat request', ['error' => true]);
-            wp_send_json_error(['message' => __('Message cannot be empty.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Message cannot be empty.', 'memberpress-copilot')]);
             return;
         }
         
@@ -313,7 +313,7 @@ class MPAIAjaxHandler extends AbstractService {
         global $mpai_service_locator;
         if (!isset($mpai_service_locator) || !$mpai_service_locator->has('chat_interface')) {
             $this->log('Chat interface service not available', ['error' => true]);
-            wp_send_json_error(['message' => __('Chat interface not available.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Chat interface not available.', 'memberpress-copilot')]);
             return;
         }
         
@@ -339,7 +339,7 @@ class MPAIAjaxHandler extends AbstractService {
             }
         } catch (\Exception $e) {
             $this->log('Exception in chat processing: ' . $e->getMessage(), ['error' => true]);
-            wp_send_json_error(['message' => __('An error occurred while processing your message.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('An error occurred while processing your message.', 'memberpress-copilot')]);
         }
     }
     
@@ -351,12 +351,12 @@ class MPAIAjaxHandler extends AbstractService {
     public function handle_test_api_connection(): void {
         // Check nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mpai_settings_nonce')) {
-            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'memberpress-copilot')]);
         }
         
         // Check permissions
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('You do not have permission to perform this action.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('You do not have permission to perform this action.', 'memberpress-copilot')]);
         }
         
         // Get provider and API key
@@ -364,13 +364,13 @@ class MPAIAjaxHandler extends AbstractService {
         $api_key = isset($_POST['api_key']) ? sanitize_text_field($_POST['api_key']) : '';
         
         if (empty($provider) || empty($api_key)) {
-            wp_send_json_error(['message' => __('Provider or API key is missing.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Provider or API key is missing.', 'memberpress-copilot')]);
         }
         
         // Get key manager from service locator
         global $mpai_service_locator;
         if (!isset($mpai_service_locator) || !$mpai_service_locator->has('key_manager')) {
-            wp_send_json_error(['message' => __('Key manager not available.', 'memberpress-ai-assistant')]);
+            wp_send_json_error(['message' => __('Key manager not available.', 'memberpress-copilot')]);
         }
         
         $key_manager = $mpai_service_locator->get('key_manager');

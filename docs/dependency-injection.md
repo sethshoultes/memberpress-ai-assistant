@@ -1,10 +1,10 @@
-# Dependency Injection System in MemberPress AI Assistant
+# Dependency Injection System in MemberPress Copilot
 
-This document provides a comprehensive overview of the dependency injection (DI) system implemented in the MemberPress AI Assistant plugin, including its components, usage patterns, and benefits.
+This document provides a comprehensive overview of the dependency injection (DI) system implemented in the MemberPress Copilot plugin, including its components, usage patterns, and benefits.
 
 ## Overview
 
-The MemberPress AI Assistant implements a robust dependency injection system that facilitates loose coupling, testability, and maintainability of the codebase. The DI system consists of two main components:
+The MemberPress Copilot implements a robust dependency injection system that facilitates loose coupling, testability, and maintainability of the codebase. The DI system consists of two main components:
 
 1. A full-featured Container with automatic dependency resolution
 2. A simpler ServiceLocator with lazy loading and singleton support
@@ -127,7 +127,7 @@ $database = $serviceLocator->get('database');
 
 ## Usage in the System
 
-The dependency injection system is used extensively throughout the MemberPress AI Assistant:
+The dependency injection system is used extensively throughout the MemberPress Copilot:
 
 ### Service Registration
 
@@ -202,7 +202,7 @@ class AgentFactory {
 
 ## Benefits of the DI System
 
-The dependency injection system provides several benefits to the MemberPress AI Assistant:
+The dependency injection system provides several benefits to the MemberPress Copilot:
 
 1. **Loose Coupling**:
    - Components depend on abstractions rather than concrete implementations
@@ -226,7 +226,7 @@ The dependency injection system provides several benefits to the MemberPress AI 
 
 ## Best Practices
 
-When working with the dependency injection system in MemberPress AI Assistant, follow these best practices:
+When working with the dependency injection system in MemberPress Copilot, follow these best practices:
 
 1. **Depend on Abstractions**:
    - Use interfaces or abstract classes as type hints
@@ -250,6 +250,6 @@ When working with the dependency injection system in MemberPress AI Assistant, f
 
 ## Conclusion
 
-The dependency injection system in MemberPress AI Assistant provides a robust foundation for managing dependencies and promoting good software design principles. By using this system consistently throughout the codebase, the plugin achieves a high degree of modularity, testability, and maintainability.
+The dependency injection system in MemberPress Copilot provides a robust foundation for managing dependencies and promoting good software design principles. By using this system consistently throughout the codebase, the plugin achieves a high degree of modularity, testability, and maintainability.
 
 The combination of a full-featured Container with automatic dependency resolution and a simpler ServiceLocator with lazy loading provides flexibility in how dependencies are managed, allowing developers to choose the approach that best fits their needs.

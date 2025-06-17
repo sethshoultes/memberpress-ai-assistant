@@ -1,5 +1,5 @@
 /**
- * Integration tests for MemberPress AI Assistant UI components
+ * Integration tests for MemberPress Copilot UI components
  * 
  * These tests verify that the different UI components work together correctly.
  */

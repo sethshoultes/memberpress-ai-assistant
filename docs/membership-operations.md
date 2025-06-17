@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Membership Operations functionality in the MemberPress AI Assistant provides a comprehensive system for managing MemberPress memberships programmatically. This module enables the creation, reading, updating, and deletion of memberships, as well as managing pricing options and access rules through a structured API.
+The Membership Operations functionality in the MemberPress Copilot provides a comprehensive system for managing MemberPress memberships programmatically. This module enables the creation, reading, updating, and deletion of memberships, as well as managing pricing options and access rules through a structured API.
 
 The implementation follows a layered architecture pattern:
 
@@ -462,7 +462,7 @@ The MemberPressAgent registers the following capabilities:
 
 ### Integration Workflow
 
-When a user interacts with the AI assistant:
+When a user interacts with the Copilot:
 
 1. The request is routed to the `AgentOrchestrator`
 2. The orchestrator calculates relevance scores for each agent

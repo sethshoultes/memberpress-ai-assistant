@@ -221,16 +221,16 @@ class MPAIAdminMenu extends AbstractService {
      */
     protected function render_fallback_settings_page(): void {
         echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('MemberPress AI Assistant Settings', 'memberpress-ai-assistant') . '</h1>';
+        echo '<h1>' . esc_html__('MemberPress Copilot Settings', 'memberpress-copilot') . '</h1>';
         
         echo '<div class="notice notice-error">';
-        echo '<p><strong>' . esc_html__('Settings System Error', 'memberpress-ai-assistant') . '</strong></p>';
-        echo '<p>' . esc_html__('The MemberPress AI Assistant settings system could not be initialized properly.', 'memberpress-ai-assistant') . '</p>';
-        echo '<p>' . esc_html__('Please try the following:', 'memberpress-ai-assistant') . '</p>';
+        echo '<p><strong>' . esc_html__('Settings System Error', 'memberpress-copilot') . '</strong></p>';
+        echo '<p>' . esc_html__('The MemberPress Copilot settings system could not be initialized properly.', 'memberpress-copilot') . '</p>';
+        echo '<p>' . esc_html__('Please try the following:', 'memberpress-copilot') . '</p>';
         echo '<ul style="list-style-type: disc; margin-left: 20px;">';
-        echo '<li>' . esc_html__('Refresh this page', 'memberpress-ai-assistant') . '</li>';
-        echo '<li>' . esc_html__('Deactivate and reactivate the plugin', 'memberpress-ai-assistant') . '</li>';
-        echo '<li>' . esc_html__('Contact MemberPress support if the issue persists', 'memberpress-ai-assistant') . '</li>';
+        echo '<li>' . esc_html__('Refresh this page', 'memberpress-copilot') . '</li>';
+        echo '<li>' . esc_html__('Deactivate and reactivate the plugin', 'memberpress-copilot') . '</li>';
+        echo '<li>' . esc_html__('Contact MemberPress support if the issue persists', 'memberpress-copilot') . '</li>';
         echo '</ul>';
         echo '</div>';
         

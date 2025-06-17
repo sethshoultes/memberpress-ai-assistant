@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Admin Interface of the MemberPress AI Assistant provides a comprehensive set of screens and controls for configuring and managing the plugin. This document covers the architecture, features, and usage of the admin interface components.
+The Admin Interface of the MemberPress Copilot provides a comprehensive set of screens and controls for configuring and managing the plugin. This document covers the architecture, features, and usage of the admin interface components.
 
 ## Architecture
 
@@ -43,9 +43,9 @@ templates/
 
 ## Admin Menu Structure
 
-The MemberPress AI Assistant adds the following items to the WordPress admin menu:
+The MemberPress Copilot adds the following items to the WordPress admin menu:
 
-1. **AI Assistant**: Main menu item
+1. **Copilot**: Main menu item
    - **Dashboard**: Overview of the plugin features and status
    - **Chat**: Access to the AI chat interface
    - **Settings**: Configuration options for the plugin
@@ -58,8 +58,8 @@ The admin menu is registered in `MPAIAdminMenu.php`:
 ```php
 public function registerAdminMenu(): void {
     add_menu_page(
-        'MemberPress AI Assistant',
-        'AI Assistant',
+        'MemberPress Copilot',
+        'Copilot',
         'manage_options',
         'memberpress-ai-assistant',
         [$this, 'renderDashboardPage'],
@@ -120,7 +120,7 @@ The Dashboard page provides an overview of the plugin's features and status.
    - Recent transactions
    - User activity
 
-3. **Recent Activity**: Shows recent interactions with the AI assistant
+3. **Recent Activity**: Shows recent interactions with the Copilot
    - Recent queries
    - Commands executed
    - Content generated
@@ -352,7 +352,7 @@ For developers, the Admin Interface includes debugging tools:
 
 ## Conclusion
 
-The Admin Interface provides a comprehensive set of tools for configuring and managing the MemberPress AI Assistant plugin. By following the MVC pattern and implementing best practices for security and usability, it offers a robust and user-friendly experience for administrators.
+The Admin Interface provides a comprehensive set of tools for configuring and managing the MemberPress Copilot plugin. By following the MVC pattern and implementing best practices for security and usability, it offers a robust and user-friendly experience for administrators.
 
 For more information on specific components, refer to the following documentation:
 - [Installation and Configuration](installation-configuration.md)

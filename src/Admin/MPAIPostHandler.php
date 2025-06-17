@@ -1,6 +1,6 @@
 <?php
 /**
- * MemberPress AI Assistant Post Handler
+ * MemberPress Copilot Post Handler
  *
  * Handles AJAX requests for creating posts from the chat interface
  *

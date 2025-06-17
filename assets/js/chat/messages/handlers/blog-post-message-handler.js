@@ -455,7 +455,7 @@ class BlogPostMessageHandler extends BaseMessageHandler {
             html = `<p>${xmlBlocks}</p>`;
         }
 
-        return html || '<p>Content created with MemberPress AI Assistant</p>';
+        return html || '<p>Content created with MemberPress Copilot</p>';
     }
 }
 

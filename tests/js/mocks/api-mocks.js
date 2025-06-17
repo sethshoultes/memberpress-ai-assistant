@@ -1,5 +1,5 @@
 /**
- * Mock API responses for MemberPress AI Assistant tests
+ * Mock API responses for MemberPress Copilot tests
  */
 
 /**

@@ -1,6 +1,6 @@
-# MemberPress AI Assistant Frontend Tests
+# MemberPress Copilot Frontend Tests
 
-This directory contains the frontend test suite for the MemberPress AI Assistant. The tests are written using Jest and focus on ensuring the JavaScript components work correctly.
+This directory contains the frontend test suite for the MemberPress Copilot. The tests are written using Jest and focus on ensuring the JavaScript components work correctly.
 
 ## Test Structure
 
