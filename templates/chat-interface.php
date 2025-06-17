@@ -54,7 +54,7 @@ if (!defined('ABSPATH')) {
         </div>
         <div class="mpai-chat-footer">
             <span class="mpai-chat-powered-by">
-                <?php esc_html_e('Powered by MemberPress AI', 'memberpress-copilot'); ?>
+                <?php esc_html_e('Powered by MemberPress Copilot', 'memberpress-copilot'); ?>
             </span>
             <div class="mpai-chat-footer-actions">
                 <a href="#" id="mpai-clear-conversation" class="mpai-clear-conversation">

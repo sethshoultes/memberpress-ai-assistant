@@ -131,8 +131,8 @@ class MPAIAdminMenu extends AbstractService {
         // Add the main settings page
         add_submenu_page(
             $this->parent_menu_slug,
-            __('AI Assistant', 'memberpress-ai-assistant'),
-            __('AI Assistant', 'memberpress-ai-assistant'),
+            __('Copilot', 'memberpress-copilot'),
+            __('Copilot', 'memberpress-copilot'),
             'manage_options',
             $this->menu_slug,
             [$this, 'render_settings_page']
@@ -141,8 +141,8 @@ class MPAIAdminMenu extends AbstractService {
         // Add the welcome page (hidden from menu)
         add_submenu_page(
             null, // Hidden from menu
-            __('AI Assistant Welcome', 'memberpress-ai-assistant'),
-            __('AI Assistant Welcome', 'memberpress-ai-assistant'),
+            __('Copilot Welcome', 'memberpress-copilot'),
+            __('Copilot Welcome', 'memberpress-copilot'),
             'manage_options',
             'mpai-welcome',
             [$this, 'render_welcome_page']
@@ -158,8 +158,8 @@ class MPAIAdminMenu extends AbstractService {
      */
     protected function register_top_level_menu(): void {
         add_menu_page(
-            __('MemberPress AI', 'memberpress-ai-assistant'),
-            __('MemberPress AI', 'memberpress-ai-assistant'),
+            __('MemberPress Copilot', 'memberpress-copilot'),
+            __('MemberPress Copilot', 'memberpress-copilot'),
             'manage_options',
             $this->menu_slug,
             [$this, 'render_settings_page'],
@@ -170,8 +170,8 @@ class MPAIAdminMenu extends AbstractService {
         // Add the welcome page (hidden from menu)
         add_submenu_page(
             null, // Hidden from menu
-            __('AI Assistant Welcome', 'memberpress-ai-assistant'),
-            __('AI Assistant Welcome', 'memberpress-ai-assistant'),
+            __('Copilot Welcome', 'memberpress-copilot'),
+            __('Copilot Welcome', 'memberpress-copilot'),
             'manage_options',
             'mpai-welcome',
             [$this, 'render_welcome_page']
