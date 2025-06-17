@@ -1,6 +1,6 @@
 <?php
 /**
- * Base TestCase class for MemberPress AI Assistant tests
+ * Base TestCase class for MemberPress Copilot tests
  *
  * @package MemberpressAiAssistant\Tests
  */

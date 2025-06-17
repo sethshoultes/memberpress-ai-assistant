@@ -1,5 +1,5 @@
 /**
- * Mock DOM elements for MemberPress AI Assistant tests
+ * Mock DOM elements for MemberPress Copilot tests
  */
 
 /**
@@ -19,7 +19,7 @@ export function createMockChatInterface() {
   
   const title = document.createElement('h3');
   title.className = 'mpai-chat-title';
-  title.textContent = 'MemberPress AI Assistant';
+  title.textContent = 'MemberPress Copilot';
   
   const closeButton = document.createElement('button');
   closeButton.id = 'mpai-chat-close';

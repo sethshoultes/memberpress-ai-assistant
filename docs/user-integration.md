@@ -2,7 +2,7 @@
 
 ## Overview
 
-The User Integration functionality in the MemberPress AI Assistant provides a comprehensive system for managing the relationship between WordPress users and MemberPress memberships. This module enables associating and disassociating users with memberships, managing user roles and permissions, and retrieving user membership data through a structured API.
+The User Integration functionality in the MemberPress Copilot provides a comprehensive system for managing the relationship between WordPress users and MemberPress memberships. This module enables associating and disassociating users with memberships, managing user roles and permissions, and retrieving user membership data through a structured API.
 
 The implementation follows the same layered architecture pattern as the Membership Operations:
 

@@ -1,10 +1,10 @@
-# Available Tools in the MemberPress AI Assistant
+# Available Tools in the MemberPress Copilot
 
-This document provides a comprehensive overview of the tools available in the MemberPress AI Assistant plugin, including their capabilities, operations, and architectural design.
+This document provides a comprehensive overview of the tools available in the MemberPress Copilot plugin, including their capabilities, operations, and architectural design.
 
 ## Tool Architecture Overview
 
-The MemberPress AI Assistant implements a sophisticated tool system with these key components:
+The MemberPress Copilot implements a sophisticated tool system with these key components:
 
 ### Core Architecture
 
@@ -264,4 +264,4 @@ The `CachedToolWrapper` provides:
 
 ## Conclusion
 
-The tool-based architecture of the MemberPress AI Assistant provides a modular, extensible approach to implementing functionality. By leveraging this architecture, developers can easily add new capabilities to the system while maintaining consistency in parameter validation, error handling, and performance optimization.
+The tool-based architecture of the MemberPress Copilot provides a modular, extensible approach to implementing functionality. By leveraging this architecture, developers can easily add new capabilities to the system while maintaining consistency in parameter validation, error handling, and performance optimization.

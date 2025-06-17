@@ -657,7 +657,7 @@ class UIManager {
       welcomeMessage.innerHTML = `
         <div class="mpai-chat-message mpai-chat-message-assistant">
           <div class="mpai-chat-message-content">
-            Hello! I'm your MemberPress AI Assistant. How can I help you today?
+            Hello! I'm your MemberPress Copilot. How can I help you today?
           </div>
         </div>
       `;
@@ -1056,7 +1056,7 @@ class UIManager {
     }
     
     // Create conversation text
-    let conversationText = 'MemberPress AI Assistant Conversation\n';
+    let conversationText = 'MemberPress Copilot Conversation\n';
     conversationText += '=====================================\n\n';
     
     messagesArray.forEach((message, index) => {
@@ -1090,7 +1090,7 @@ class UIManager {
     // Debug message removed - was appearing in admin interface
     
     const domMessages = document.querySelectorAll('.mpai-chat-message');
-    let conversationText = 'MemberPress AI Assistant Conversation\n';
+    let conversationText = 'MemberPress Copilot Conversation\n';
     conversationText += '=====================================\n\n';
     
     let validMessageCount = 0;

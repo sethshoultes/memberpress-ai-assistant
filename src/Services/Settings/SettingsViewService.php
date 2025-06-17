@@ -100,7 +100,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
         try {
             // Check for required variables
             if (empty($tabs)) {
-                $this->render_error(__('Error: Required template variables are missing.', 'memberpress-ai-assistant'));
+                $this->render_error(__('Error: Required template variables are missing.', 'memberpress-copilot'));
                 return;
             }
             
@@ -111,12 +111,12 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
             
             // Start output
             echo '<div class="wrap">';
-            echo '<h1>' . esc_html__('MemberPress AI Assistant Settings', 'memberpress-ai-assistant') . '</h1>';
+            echo '<h1>' . esc_html__('MemberPress Copilot Settings', 'memberpress-copilot') . '</h1>';
             
             // Display settings updated message if needed
             if (isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true') {
                 echo '<div class="notice notice-success is-dismissible"><p>' .
-                    esc_html__('Settings saved successfully.', 'memberpress-ai-assistant') .
+                    esc_html__('Settings saved successfully.', 'memberpress-copilot') .
                     '</p></div>';
             }
             
@@ -129,7 +129,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
             echo '</div>';
         } catch (\Exception $e) {
             $this->log_error('Error rendering settings page: ' . $e->getMessage());
-            $this->render_error(__('An error occurred while rendering the settings page. Please try again later or contact support.', 'memberpress-ai-assistant'));
+            $this->render_error(__('An error occurred while rendering the settings page. Please try again later or contact support.', 'memberpress-copilot'));
         }
     }
     
@@ -257,7 +257,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
     public function render_submit_button() {
         echo '<p class="submit">';
         echo '<input type="submit" name="submit" id="submit" class="button button-primary" value="' . 
-            esc_attr__('Save Changes', 'memberpress-ai-assistant') . '" />';
+            esc_attr__('Save Changes', 'memberpress-copilot') . '" />';
         echo '</p>';
     }
     
@@ -269,7 +269,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
      */
     public function render_error(string $message): void {
         echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('MemberPress AI Assistant Settings', 'memberpress-ai-assistant') . '</h1>';
+        echo '<h1>' . esc_html__('MemberPress Copilot Settings', 'memberpress-copilot') . '</h1>';
         echo '<div class="notice notice-error"><p>' . esc_html($message) . '</p></div>';
         echo '</div>';
     }
@@ -280,7 +280,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
      * @return void
      */
     public function render_general_section(): void {
-        echo '<p>' . esc_html__('Configure general settings for the MemberPress AI Assistant.', 'memberpress-ai-assistant') . '</p>';
+        echo '<p>' . esc_html__('Configure general settings for the MemberPress Copilot.', 'memberpress-copilot') . '</p>';
     }
     
     /**
@@ -289,7 +289,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
      * @return void
      */
     public function render_chat_section(): void {
-        echo '<p>' . esc_html__('Configure how the chat interface appears and behaves.', 'memberpress-ai-assistant') . '</p>';
+        echo '<p>' . esc_html__('Configure how the chat interface appears and behaves.', 'memberpress-copilot') . '</p>';
     }
     
     /**
@@ -298,7 +298,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
      * @return void
      */
     public function render_access_section(): void {
-        echo '<p>' . esc_html__('Control which user roles can access the AI Assistant chat interface.', 'memberpress-ai-assistant') . '</p>';
+        echo '<p>' . esc_html__('Control which user roles can access the AI Assistant chat interface.', 'memberpress-copilot') . '</p>';
     }
     
     
@@ -312,10 +312,10 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
         ?>
         <label for="mpai_chat_enabled">
             <input type="checkbox" id="mpai_chat_enabled" name="mpai_settings[chat_enabled]" value="1" <?php checked($value, true); ?> />
-            <?php esc_html_e('Enable the AI Assistant chat interface', 'memberpress-ai-assistant'); ?>
+            <?php esc_html_e('Enable the AI Assistant chat interface', 'memberpress-copilot'); ?>
         </label>
         <p class="description">
-            <?php esc_html_e('When enabled, the chat interface will be available based on the location settings below.', 'memberpress-ai-assistant'); ?>
+            <?php esc_html_e('When enabled, the chat interface will be available based on the location settings below.', 'memberpress-copilot'); ?>
         </p>
         <?php
     }
@@ -328,13 +328,13 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
      */
     public function render_log_level_field(string $value): void {
         $log_levels = [
-            'none' => __('None (Disable All Logging)', 'memberpress-ai-assistant'),
-            'error' => __('Error (Minimal)', 'memberpress-ai-assistant'),
-            'warning' => __('Warning', 'memberpress-ai-assistant'),
-            'info' => __('Info (Recommended)', 'memberpress-ai-assistant'),
-            'debug' => __('Debug', 'memberpress-ai-assistant'),
-            'trace' => __('Trace (Verbose)', 'memberpress-ai-assistant'),
-            'minimal' => __('Minimal', 'memberpress-ai-assistant'),
+            'none' => __('None (Disable All Logging)', 'memberpress-copilot'),
+            'error' => __('Error (Minimal)', 'memberpress-copilot'),
+            'warning' => __('Warning', 'memberpress-copilot'),
+            'info' => __('Info (Recommended)', 'memberpress-copilot'),
+            'debug' => __('Debug', 'memberpress-copilot'),
+            'trace' => __('Trace (Verbose)', 'memberpress-copilot'),
+            'minimal' => __('Minimal', 'memberpress-copilot'),
         ];
         ?>
         <select id="mpai_log_level" name="mpai_settings[log_level]">
@@ -345,15 +345,15 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
             <?php endforeach; ?>
         </select>
         <p class="description">
-            <?php esc_html_e('Select the logging level. Higher levels include more detailed logs but may impact performance.', 'memberpress-ai-assistant'); ?>
+            <?php esc_html_e('Select the logging level. Higher levels include more detailed logs but may impact performance.', 'memberpress-copilot'); ?>
             <ul>
-                <li><?php esc_html_e('None: Completely disable all logging', 'memberpress-ai-assistant'); ?></li>
-                <li><?php esc_html_e('Error: Only critical errors', 'memberpress-ai-assistant'); ?></li>
-                <li><?php esc_html_e('Warning: Errors and warnings', 'memberpress-ai-assistant'); ?></li>
-                <li><?php esc_html_e('Info: Normal operational information', 'memberpress-ai-assistant'); ?></li>
-                <li><?php esc_html_e('Debug: Detailed information for troubleshooting', 'memberpress-ai-assistant'); ?></li>
-                <li><?php esc_html_e('Trace: Very verbose debugging information', 'memberpress-ai-assistant'); ?></li>
-                <li><?php esc_html_e('Minimal: Basic logging information', 'memberpress-ai-assistant'); ?></li>
+                <li><?php esc_html_e('None: Completely disable all logging', 'memberpress-copilot'); ?></li>
+                <li><?php esc_html_e('Error: Only critical errors', 'memberpress-copilot'); ?></li>
+                <li><?php esc_html_e('Warning: Errors and warnings', 'memberpress-copilot'); ?></li>
+                <li><?php esc_html_e('Info: Normal operational information', 'memberpress-copilot'); ?></li>
+                <li><?php esc_html_e('Debug: Detailed information for troubleshooting', 'memberpress-copilot'); ?></li>
+                <li><?php esc_html_e('Trace: Very verbose debugging information', 'memberpress-copilot'); ?></li>
+                <li><?php esc_html_e('Minimal: Basic logging information', 'memberpress-copilot'); ?></li>
             </ul>
         </p>
         <?php
@@ -369,17 +369,17 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
         ?>
         <select id="mpai_chat_location" name="mpai_settings[chat_location]">
             <option value="admin_only" <?php selected($value, 'admin_only'); ?>>
-                <?php esc_html_e('Admin Area Only', 'memberpress-ai-assistant'); ?>
+                <?php esc_html_e('Admin Area Only', 'memberpress-copilot'); ?>
             </option>
             <option value="frontend" <?php selected($value, 'frontend'); ?>>
-                <?php esc_html_e('Frontend Only', 'memberpress-ai-assistant'); ?>
+                <?php esc_html_e('Frontend Only', 'memberpress-copilot'); ?>
             </option>
             <option value="both" <?php selected($value, 'both'); ?>>
-                <?php esc_html_e('Both Admin and Frontend', 'memberpress-ai-assistant'); ?>
+                <?php esc_html_e('Both Admin and Frontend', 'memberpress-copilot'); ?>
             </option>
         </select>
         <p class="description">
-            <?php esc_html_e('Choose where the chat interface should be available.', 'memberpress-ai-assistant'); ?>
+            <?php esc_html_e('Choose where the chat interface should be available.', 'memberpress-copilot'); ?>
         </p>
         <?php
     }
@@ -394,20 +394,20 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
         ?>
         <select id="mpai_chat_position" name="mpai_settings[chat_position]">
             <option value="bottom_right" <?php selected($value, 'bottom_right'); ?>>
-                <?php esc_html_e('Bottom Right', 'memberpress-ai-assistant'); ?>
+                <?php esc_html_e('Bottom Right', 'memberpress-copilot'); ?>
             </option>
             <option value="bottom_left" <?php selected($value, 'bottom_left'); ?>>
-                <?php esc_html_e('Bottom Left', 'memberpress-ai-assistant'); ?>
+                <?php esc_html_e('Bottom Left', 'memberpress-copilot'); ?>
             </option>
             <option value="top_right" <?php selected($value, 'top_right'); ?>>
-                <?php esc_html_e('Top Right', 'memberpress-ai-assistant'); ?>
+                <?php esc_html_e('Top Right', 'memberpress-copilot'); ?>
             </option>
             <option value="top_left" <?php selected($value, 'top_left'); ?>>
-                <?php esc_html_e('Top Left', 'memberpress-ai-assistant'); ?>
+                <?php esc_html_e('Top Left', 'memberpress-copilot'); ?>
             </option>
         </select>
         <p class="description">
-            <?php esc_html_e('Choose the position of the chat interface on the screen.', 'memberpress-ai-assistant'); ?>
+            <?php esc_html_e('Choose the position of the chat interface on the screen.', 'memberpress-copilot'); ?>
         </p>
         <?php
     }
@@ -424,7 +424,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
         ?>
         <fieldset>
             <legend class="screen-reader-text">
-                <?php esc_html_e('User Roles with Access', 'memberpress-ai-assistant'); ?>
+                <?php esc_html_e('User Roles with Access', 'memberpress-copilot'); ?>
             </legend>
             <?php foreach ($roles as $role_slug => $role_name) : ?>
                 <label for="mpai_user_role_<?php echo esc_attr($role_slug); ?>">
@@ -438,7 +438,7 @@ class SettingsViewService extends AbstractService implements ServiceInterface, S
             <?php endforeach; ?>
         </fieldset>
         <p class="description">
-            <?php esc_html_e('Select which user roles can access the AI Assistant chat interface.', 'memberpress-ai-assistant'); ?>
+            <?php esc_html_e('Select which user roles can access the AI Assistant chat interface.', 'memberpress-copilot'); ?>
         </p>
         <?php
     }

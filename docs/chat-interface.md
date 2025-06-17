@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Chat Interface is the primary user interaction point for the MemberPress AI Assistant. It provides a conversational interface where users can ask questions, request information, and perform operations related to MemberPress through natural language. This document covers the architecture, features, and usage of the chat interface.
+The Chat Interface is the primary user interaction point for the MemberPress Copilot. It provides a conversational interface where users can ask questions, request information, and perform operations related to MemberPress through natural language. This document covers the architecture, features, and usage of the chat interface.
 
 ## Architecture
 
@@ -259,7 +259,7 @@ If you need to perform bulk operations, please consider using the WordPress admi
 
 The Chat Interface can be customized through the settings:
 
-1. Navigate to AI Assistant > Settings > Chat Interface
+1. Navigate to Copilot > Settings > Chat Interface
 2. Configure the following options:
    - Theme: Light, Dark, or System
    - Message Display: Compact or Expanded
@@ -304,14 +304,14 @@ The Chat Interface implements several security measures:
 
 For developers, the Chat Interface includes debugging tools:
 
-1. Enable debug mode in AI Assistant > Settings > Advanced
+1. Enable debug mode in Copilot > Settings > Advanced
 2. Open your browser's developer console
 3. Interact with the chat interface
 4. Debug information will be logged to the console
 
 ## Conclusion
 
-The Chat Interface provides a powerful, intuitive way for users to interact with the MemberPress AI Assistant. By combining natural language processing with specialized agents and tools, it enables users to perform a wide range of operations through simple conversation.
+The Chat Interface provides a powerful, intuitive way for users to interact with the MemberPress Copilot. By combining natural language processing with specialized agents and tools, it enables users to perform a wide range of operations through simple conversation.
 
 For more information on specific operations, refer to the following documentation:
 - [Membership Operations](membership-operations.md)

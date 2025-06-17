@@ -1,10 +1,10 @@
-# Agent Architecture in the MemberPress AI Assistant
+# Agent Architecture in the MemberPress Copilot
 
-This document provides a comprehensive overview of the agent-based architecture in the MemberPress AI Assistant plugin, including the agent system design, orchestration mechanisms, and integration with the tool system.
+This document provides a comprehensive overview of the agent-based architecture in the MemberPress Copilot plugin, including the agent system design, orchestration mechanisms, and integration with the tool system.
 
 ## Agent Architecture Overview
 
-The MemberPress AI Assistant implements a sophisticated agent-based architecture where specialized agents handle different types of requests:
+The MemberPress Copilot implements a sophisticated agent-based architecture where specialized agents handle different types of requests:
 
 ### Core Components
 
@@ -208,6 +208,6 @@ class MembershipAgent extends AbstractAgent {
 
 ## Conclusion
 
-The agent-based architecture of the MemberPress AI Assistant provides a sophisticated system for handling user requests. By using specialized agents with different capabilities, the system can route requests to the most appropriate handler, improving response quality and efficiency.
+The agent-based architecture of the MemberPress Copilot provides a sophisticated system for handling user requests. By using specialized agents with different capabilities, the system can route requests to the most appropriate handler, improving response quality and efficiency.
 
 The integration with the tool system creates a separation of concerns where agents handle high-level decision making, request routing, and specialization, while tools provide the specific operations and functionality needed to fulfill requests. This creates a flexible and maintainable system that can be easily extended with new capabilities.

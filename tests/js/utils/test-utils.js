@@ -1,5 +1,5 @@
 /**
- * Test utilities for MemberPress AI Assistant frontend tests
+ * Test utilities for MemberPress Copilot frontend tests
  */
 
 // Helper function to create a mock DOM element

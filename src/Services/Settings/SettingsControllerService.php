@@ -13,11 +13,11 @@ use MemberpressAiAssistant\Interfaces\SettingsControllerInterface;
 use MemberpressAiAssistant\DI\ServiceLocator;
 
 /**
- * Service for handling MemberPress AI Assistant settings page and tabs
+ * Service for handling MemberPress Copilot settings page and tabs
  * 
  * This class coordinates between the Model and View components,
  * handles WordPress hooks and user interactions, and contains
- * business logic for the MemberPress AI Assistant settings.
+ * business logic for the MemberPress Copilot settings.
  * 
  * It adapts the original MPAISettingsController to work with the DI system.
  */
