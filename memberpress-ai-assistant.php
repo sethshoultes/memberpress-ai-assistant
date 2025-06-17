@@ -1,17 +1,17 @@
 <?php
 /**
- * Plugin Name: MemberPress AI Assistant
+ * Plugin Name: MemberPress Copilot
  * Plugin URI: https://memberpress.com/
- * Description: AI-powered assistant for MemberPress that helps manage memberships through natural language.
+ * Description: AI-powered copilot for MemberPress that helps manage memberships through natural language.
  * Version: 1.0.0
  * Author: MemberPress
  * Author URI: https://memberpress.com/
- * Text Domain: memberpress-ai-assistant
+ * Text Domain: memberpress-copilot
  * Domain Path: /languages
  * Requires at least: 5.0
  * Requires PHP: 7.4
  *
- * @package MemberpressAiAssistant
+ * @package MemberPressCopilot
  *
  * === CONSENT SYSTEM REMOVAL - PHASE 6A COMPLETION ===
  *
@@ -272,7 +272,7 @@ class MemberpressAiAssistant {
         $this->init_remaining_services();
 
         // Load text domain
-        load_plugin_textdomain('memberpress-ai-assistant', false, dirname(plugin_basename(MPAI_PLUGIN_FILE)) . '/languages');
+        load_plugin_textdomain('memberpress-copilot', false, dirname(plugin_basename(MPAI_PLUGIN_FILE)) . '/languages');
         
         // Mark as initialized
         $initialized = true;
@@ -434,8 +434,8 @@ class MemberpressAiAssistant {
             }
             
             echo '<div class="notice notice-warning">';
-            echo '<p><strong>' . esc_html__('MemberPress AI Assistant Debug Mode', 'memberpress-ai-assistant') . '</strong></p>';
-            echo '<p>' . esc_html__('Debug mode is enabled. Detailed logs are being written to the WordPress debug log.', 'memberpress-ai-assistant') . '</p>';
+            echo '<p><strong>' . esc_html__('MemberPress Copilot Debug Mode', 'memberpress-copilot') . '</strong></p>';
+            echo '<p>' . esc_html__('Debug mode is enabled. Detailed logs are being written to the WordPress debug log.', 'memberpress-copilot') . '</p>';
             echo '</div>';
         });
     }
@@ -459,7 +459,7 @@ class MemberpressAiAssistant {
             add_action('admin_notices', function() {
                 echo '<div class="error"><p>';
                 echo sprintf(
-                    __('MemberPress AI Assistant requires MemberPress to be installed and activated. <a href="%s">Install MemberPress</a>', 'memberpress-ai-assistant'),
+                    __('MemberPress Copilot requires MemberPress to be installed and activated. <a href="%s">Install MemberPress</a>', 'memberpress-copilot'),
                     admin_url('plugin-install.php?tab=plugin-information&plugin=memberpress')
                 );
                 echo '</p></div>';
@@ -619,8 +619,8 @@ class MemberpressAiAssistant {
     public function register_welcome_page() {
         add_submenu_page(
             null, // No parent menu - hidden page
-            __('Welcome to MemberPress AI Assistant', 'memberpress-ai-assistant'),
-            __('Welcome', 'memberpress-ai-assistant'),
+            __('Welcome to MemberPress Copilot', 'memberpress-copilot'),
+            __('Welcome', 'memberpress-copilot'),
             'manage_options',
             'mpai-welcome',
             [$this, 'render_welcome_page']

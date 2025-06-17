@@ -2,9 +2,9 @@
 /**
  * Chat Interface Template
  *
- * Renders the MemberPress AI Assistant chat interface.
+ * Renders the MemberPress Copilot chat interface.
  *
- * @package MemberpressAiAssistant
+ * @package MemberPressCopilot
  */
 
 // Exit if accessed directly
@@ -15,11 +15,11 @@ if (!defined('ABSPATH')) {
 
 <div class="mpai-chat-container" id="mpai-chat-container">
     <div class="mpai-chat-header">
-            <h3><?php esc_html_e('MemberPress AI Assistant', 'memberpress-ai-assistant'); ?></h3>
-            <button class="mpai-chat-expand" id="mpai-chat-expand" aria-label="<?php esc_attr_e('Expand chat', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Expand chat', 'memberpress-ai-assistant'); ?>">
+            <h3><?php esc_html_e('MemberPress Copilot', 'memberpress-copilot'); ?></h3>
+            <button class="mpai-chat-expand" id="mpai-chat-expand" aria-label="<?php esc_attr_e('Expand chat', 'memberpress-copilot'); ?>" title="<?php esc_attr_e('Expand chat', 'memberpress-copilot'); ?>">
                 <span class="dashicons dashicons-editor-expand"></span>
             </button>
-            <button class="mpai-chat-close" id="mpai-chat-close" aria-label="<?php esc_attr_e('Close chat', 'memberpress-ai-assistant'); ?>">
+            <button class="mpai-chat-close" id="mpai-chat-close" aria-label="<?php esc_attr_e('Close chat', 'memberpress-copilot'); ?>">
             <span class="dashicons dashicons-no-alt"></span>
         </button>
     </div>
@@ -28,7 +28,7 @@ if (!defined('ABSPATH')) {
         <div class="mpai-chat-welcome">
             <div class="mpai-chat-message mpai-chat-message-assistant">
                 <div class="mpai-chat-message-content">
-                    <?php esc_html_e('Hello! I\'m your MemberPress AI Assistant. How can I help you today?', 'memberpress-ai-assistant'); ?>
+                    <?php esc_html_e('Hello! I\'m your MemberPress Copilot. How can I help you today?', 'memberpress-copilot'); ?>
                 </div>
             </div>
         </div>
@@ -40,30 +40,30 @@ if (!defined('ABSPATH')) {
             <textarea 
                 id="mpai-chat-input" 
                 class="mpai-chat-input" 
-                placeholder="<?php esc_attr_e('Type your message here...', 'memberpress-ai-assistant'); ?>"
+                placeholder="<?php esc_attr_e('Type your message here...', 'memberpress-copilot'); ?>"
                 rows="1"
-                aria-label="<?php esc_attr_e('Message input', 'memberpress-ai-assistant'); ?>"
+                aria-label="<?php esc_attr_e('Message input', 'memberpress-copilot'); ?>"
             ></textarea>
             <button 
                 id="mpai-chat-submit" 
                 class="mpai-chat-submit" 
-                aria-label="<?php esc_attr_e('Send message', 'memberpress-ai-assistant'); ?>"
+                aria-label="<?php esc_attr_e('Send message', 'memberpress-copilot'); ?>"
             >
                 <span class="dashicons dashicons-arrow-right-alt2"></span>
             </button>
         </div>
         <div class="mpai-chat-footer">
             <span class="mpai-chat-powered-by">
-                <?php esc_html_e('Powered by MemberPress AI', 'memberpress-ai-assistant'); ?>
+                <?php esc_html_e('Powered by MemberPress AI', 'memberpress-copilot'); ?>
             </span>
             <div class="mpai-chat-footer-actions">
                 <a href="#" id="mpai-clear-conversation" class="mpai-clear-conversation">
-                    <?php esc_html_e('Clear Conversation', 'memberpress-ai-assistant'); ?>
+                    <?php esc_html_e('Clear Conversation', 'memberpress-copilot'); ?>
                 </a>
-                <button id="mpai-download-conversation" class="mpai-download-conversation" aria-label="<?php esc_attr_e('Download conversation', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Download conversation', 'memberpress-ai-assistant'); ?>">
+                <button id="mpai-download-conversation" class="mpai-download-conversation" aria-label="<?php esc_attr_e('Download conversation', 'memberpress-copilot'); ?>" title="<?php esc_attr_e('Download conversation', 'memberpress-copilot'); ?>">
                     <span class="dashicons dashicons-download"></span>
                 </button>
-                <button id="mpai-run-command" class="mpai-run-command" aria-label="<?php esc_attr_e('Show common commands', 'memberpress-ai-assistant'); ?>" title="<?php esc_attr_e('Show common commands', 'memberpress-ai-assistant'); ?>">
+                <button id="mpai-run-command" class="mpai-run-command" aria-label="<?php esc_attr_e('Show common commands', 'memberpress-copilot'); ?>" title="<?php esc_attr_e('Show common commands', 'memberpress-copilot'); ?>">
                     <span class="dashicons dashicons-admin-tools"></span>
                 </button>
             </div>
@@ -71,10 +71,10 @@ if (!defined('ABSPATH')) {
         
         <!-- Add this after the chat-footer div -->
         <div id="mpai-export-format-menu" class="mpai-export-format-menu" style="display: none;">
-            <div class="mpai-export-format-title"><?php esc_html_e('Export Format', 'memberpress-ai-assistant'); ?></div>
+            <div class="mpai-export-format-title"><?php esc_html_e('Export Format', 'memberpress-copilot'); ?></div>
             <div class="mpai-export-format-options">
-                <button class="mpai-export-format-btn" data-format="html"><?php esc_html_e('HTML', 'memberpress-ai-assistant'); ?></button>
-                <button class="mpai-export-format-btn" data-format="markdown"><?php esc_html_e('Markdown', 'memberpress-ai-assistant'); ?></button>
+                <button class="mpai-export-format-btn" data-format="html"><?php esc_html_e('HTML', 'memberpress-copilot'); ?></button>
+                <button class="mpai-export-format-btn" data-format="markdown"><?php esc_html_e('Markdown', 'memberpress-copilot'); ?></button>
             </div>
         </div>
     </div>
@@ -82,14 +82,14 @@ if (!defined('ABSPATH')) {
     <!-- Command runner panel (initially hidden) -->
     <div id="mpai-command-runner" class="mpai-command-runner" style="display: none;">
         <div class="mpai-command-header">
-            <h4><?php esc_html_e('Common Commands', 'memberpress-ai-assistant'); ?></h4>
-            <button id="mpai-command-close" class="mpai-command-close" aria-label="<?php esc_attr_e('Close command panel', 'memberpress-ai-assistant'); ?>">
+            <h4><?php esc_html_e('Common Commands', 'memberpress-copilot'); ?></h4>
+            <button id="mpai-command-close" class="mpai-command-close" aria-label="<?php esc_attr_e('Close command panel', 'memberpress-copilot'); ?>">
                 <span class="dashicons dashicons-no-alt"></span>
             </button>
         </div>
         <div class="mpai-command-body">
             <div class="mpai-command-list">
-                <h5><?php esc_html_e('MemberPress', 'memberpress-ai-assistant'); ?></h5>
+                <h5><?php esc_html_e('MemberPress', 'memberpress-copilot'); ?></h5>
                 <ul>
                     <li><a href="#" class="mpai-command-item" data-command="List all active memberships">List all active memberships</a></li>
                     <li><a href="#" class="mpai-command-item" data-command="Show recent transactions">Show recent transactions</a></li>
@@ -97,7 +97,7 @@ if (!defined('ABSPATH')) {
                 </ul>
             </div>
             <div class="mpai-command-list">
-                <h5><?php esc_html_e('WordPress', 'memberpress-ai-assistant'); ?></h5>
+                <h5><?php esc_html_e('WordPress', 'memberpress-copilot'); ?></h5>
                 <ul>
                     <li><a href="#" class="mpai-command-item" data-command="wp plugin list">wp plugin list</a></li>
                     <li><a href="#" class="mpai-command-item" data-command="wp user list">wp user list</a></li>
@@ -105,7 +105,7 @@ if (!defined('ABSPATH')) {
                 </ul>
             </div>
             <div class="mpai-command-list">
-                <h5><?php esc_html_e('Content Creation', 'memberpress-ai-assistant'); ?></h5>
+                <h5><?php esc_html_e('Content Creation', 'memberpress-copilot'); ?></h5>
                 <ul>
                     <li><a href="#" class="mpai-command-item" data-command="Create a blog post about">Create a blog post</a></li>
                     <li><a href="#" class="mpai-command-item" data-command="Create a page about">Create a page</a></li>
@@ -116,7 +116,7 @@ if (!defined('ABSPATH')) {
 </div>
 
 <!-- Chat toggle button (fixed position) -->
-<button id="mpai-chat-toggle" class="mpai-chat-toggle" aria-label="<?php esc_attr_e('Toggle chat', 'memberpress-ai-assistant'); ?>">
+<button id="mpai-chat-toggle" class="mpai-chat-toggle" aria-label="<?php esc_attr_e('Toggle chat', 'memberpress-copilot'); ?>">
     <span class="dashicons dashicons-format-chat"></span>
 </button>
 
