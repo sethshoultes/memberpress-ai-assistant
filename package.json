@@ -1,7 +1,7 @@
 {
-  "name": "memberpress-ai-assistant",
+  "name": "memberpress-copilot",
   "version": "1.0.0",
-  "description": "MemberPress AI Assistant",
+  "description": "MemberPress Copilot",
   "main": "index.js",
   "scripts": {
     "test": "jest",

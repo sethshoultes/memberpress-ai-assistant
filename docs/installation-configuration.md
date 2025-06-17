@@ -2,11 +2,11 @@
 
 ## Overview
 
-This guide provides detailed instructions for installing, configuring, and getting started with the MemberPress AI Assistant plugin. The plugin integrates powerful AI language models with your MemberPress WordPress plugin, providing intelligent insights, content analysis, and assistance with membership management.
+This guide provides detailed instructions for installing, configuring, and getting started with the MemberPress Copilot plugin. The plugin integrates powerful AI language models with your MemberPress WordPress plugin, providing intelligent insights, content analysis, and assistance with membership management.
 
 ## Requirements
 
-Before installing the MemberPress AI Assistant, ensure your system meets the following requirements:
+Before installing the MemberPress Copilot, ensure your system meets the following requirements:
 
 - WordPress 5.8 or higher
 - PHP 7.4 or higher (8.0+ recommended)
@@ -19,7 +19,7 @@ Before installing the MemberPress AI Assistant, ensure your system meets the fol
 
 ### Standard Installation
 
-1. Download the MemberPress AI Assistant plugin from the official source
+1. Download the MemberPress Copilot plugin from the official source
 2. Log in to your WordPress admin dashboard
 3. Navigate to Plugins > Add New
 4. Click the "Upload Plugin" button at the top of the page
@@ -29,19 +29,19 @@ Before installing the MemberPress AI Assistant, ensure your system meets the fol
 
 ### Manual Installation
 
-1. Download the MemberPress AI Assistant plugin from the official source
+1. Download the MemberPress Copilot plugin from the official source
 2. Extract the plugin zip file
-3. Upload the `memberpress-ai-assistant` folder to the `/wp-content/plugins/` directory on your server
+3. Upload the `memberpress-copilot` folder to the `/wp-content/plugins/` directory on your server
 4. Log in to your WordPress admin dashboard
 5. Navigate to Plugins
-6. Find "MemberPress AI Assistant" in the list and click "Activate"
+6. Find "MemberPress Copilot" in the list and click "Activate"
 
 ### WP-CLI Installation
 
 If you have WP-CLI installed, you can install the plugin with the following command:
 
 ```bash
-wp plugin install memberpress-ai-assistant.zip --activate
+wp plugin install memberpress-copilot.zip --activate
 ```
 
 ## Configuration
@@ -50,7 +50,7 @@ After activating the plugin, you can configure various settings to customize you
 
 ### Feature Configuration
 
-1. Navigate to AI Assistant > Settings in your WordPress admin dashboard
+1. Navigate to Copilot > Settings in your WordPress admin dashboard
 2. In the "Feature Settings" tab, enable or disable specific features:
    - Chat Interface: Enable the AI chat interface
    - Content Generation: Enable AI-assisted content creation
@@ -76,7 +76,7 @@ After activating the plugin, you can configure various settings to customize you
 
 ### Privacy & Data Management
 
-The MemberPress AI Assistant is designed with privacy-first principles:
+The MemberPress Copilot is designed with privacy-first principles:
 
 - No consent requirements needed - the plugin operates transparently
 - Minimal data processing with user control over data sharing
@@ -87,10 +87,10 @@ The MemberPress AI Assistant is designed with privacy-first principles:
 
 After installation and configuration, verify that the plugin is working correctly:
 
-1. Navigate to AI Assistant in the WordPress admin menu
+1. Navigate to Copilot in the WordPress admin menu
 2. You should see the chat interface
 3. Type a test message like "Hello" or "What can you help me with?"
-4. You should receive a response from the AI assistant
+4. You should receive a response from the Copilot
 
 If you encounter any issues:
 - Check that your API keys are entered correctly
@@ -121,7 +121,7 @@ If you encounter any issues:
 
 The plugin includes built-in diagnostic tools to help troubleshoot issues:
 
-1. Navigate to AI Assistant > Settings > Diagnostics
+1. Navigate to Copilot > Settings > Diagnostics
 2. Click "Run Diagnostics"
 3. The system will check:
    - API connectivity
@@ -142,7 +142,7 @@ wp mpai diagnostics
 
 1. When an update is available, you'll see a notification in your WordPress admin dashboard
 2. Navigate to Plugins
-3. Find "MemberPress AI Assistant" and click "Update Now"
+3. Find "MemberPress Copilot" and click "Update Now"
 4. The plugin will be updated automatically
 
 ### Manual Update
@@ -154,7 +154,7 @@ wp mpai diagnostics
 ### WP-CLI Update
 
 ```bash
-wp plugin update memberpress-ai-assistant
+wp plugin update memberpress-copilot
 ```
 
 ## Uninstallation
@@ -162,7 +162,7 @@ wp plugin update memberpress-ai-assistant
 If you need to uninstall the plugin:
 
 1. Navigate to Plugins in your WordPress admin dashboard
-2. Find "MemberPress AI Assistant" and click "Deactivate"
+2. Find "MemberPress Copilot" and click "Deactivate"
 3. Click "Delete"
 4. Confirm the deletion
 
@@ -170,17 +170,17 @@ Note that uninstalling the plugin will remove all plugin data, including setting
 
 ## Next Steps
 
-After installation, you're ready to start using the MemberPress AI Assistant. Here are some recommended next steps:
+After installation, you're ready to start using the MemberPress Copilot. Here are some recommended next steps:
 
-1. Explore the [Chat Interface](chat-interface.md) documentation to learn how to interact with the AI assistant
-2. Check out the [Membership Operations](membership-operations.md) guide to learn how to manage memberships with the assistant
+1. Explore the [Chat Interface](chat-interface.md) documentation to learn how to interact with the Copilot
+2. Check out the [Membership Operations](membership-operations.md) guide to learn how to manage memberships with the Copilot
 3. Review the [User Integration](user-integration.md) documentation to understand how to manage user-membership relationships
 4. Explore the [Agent Architecture](agent-architecture.md) to understand how the AI system works
-5. Learn about the [Available Tools](available-tools.md) that the assistant can use
+5. Learn about the [Available Tools](available-tools.md) that the Copilot can use
 
 ## Support
 
-If you encounter any issues or have questions about the MemberPress AI Assistant:
+If you encounter any issues or have questions about the MemberPress Copilot:
 
 1. Check the [Troubleshooting](#troubleshooting) section above
 2. Review the full documentation in the docs directory

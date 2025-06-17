@@ -2,11 +2,11 @@
 
 ## Introduction
 
-The MemberPress AI Assistant is built on a modular, extensible architecture that combines several architectural patterns to create a robust, maintainable system. This document provides a high-level overview of the system architecture, explaining how the various components work together.
+The MemberPress Copilot is built on a modular, extensible architecture that combines several architectural patterns to create a robust, maintainable system. This document provides a high-level overview of the system architecture, explaining how the various components work together.
 
 ## Architectural Patterns
 
-The MemberPress AI Assistant implements several architectural patterns:
+The MemberPress Copilot implements several architectural patterns:
 
 1. **Layered Architecture**: The system is organized into layers with clear responsibilities
 2. **Dependency Injection**: Components receive their dependencies rather than creating them
@@ -186,7 +186,7 @@ The AI integration module connects to AI providers:
 The system is organized into the following directory structure:
 
 ```
-memberpress-ai-assistant/
+memberpress-copilot/
 ├── assets/                  # Frontend assets
 │   ├── css/                 # CSS files
 │   └── js/                  # JavaScript files
@@ -276,7 +276,7 @@ The system is designed for testability:
 
 ## Conclusion
 
-The MemberPress AI Assistant architecture combines several patterns to create a modular, extensible system. By separating concerns and using dependency injection, the system achieves high maintainability and testability while providing powerful functionality.
+The MemberPress Copilot architecture combines several patterns to create a modular, extensible system. By separating concerns and using dependency injection, the system achieves high maintainability and testability while providing powerful functionality.
 
 For more detailed information on specific components, refer to the following documentation:
 - [Agent Architecture](agent-architecture.md)

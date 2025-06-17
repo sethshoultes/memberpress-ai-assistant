@@ -1,17 +1,17 @@
-# MemberPress AI Assistant
+# MemberPress Copilot
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/memberpress/memberpress-ai-assistant)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/memberpress/memberpress-copilot)
 [![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-blue.svg)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)](https://php.net/)
 [![MemberPress](https://img.shields.io/badge/MemberPress-1.9.0%2B-green.svg)](https://memberpress.com/)
 [![License](https://img.shields.io/badge/license-GPL%20v2%2B-red.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![Tests](https://img.shields.io/badge/tests-PHPUnit%20%2B%20Jest-success.svg)](#testing)
 
-> 🤖 **Intelligent AI-powered assistant that seamlessly integrates with MemberPress to provide natural language membership management, content generation, and comprehensive site administration.**
+> 🤖 **Intelligent AI-powered copilot that seamlessly integrates with MemberPress to provide natural language membership management, content generation, and comprehensive site administration.**
 
 ## 🌟 Overview
 
-MemberPress AI Assistant revolutionizes membership site management by combining powerful AI capabilities with deep MemberPress integration. Built on a sophisticated agent-based architecture, it enables administrators to manage memberships, generate content, and analyze data through natural language conversations.
+MemberPress Copilot revolutionizes membership site management by combining powerful AI capabilities with deep MemberPress integration. Built on a sophisticated agent-based architecture, it enables administrators to manage memberships, generate content, and analyze data through natural language conversations.
 
 ### ✨ Key Features
 
@@ -31,12 +31,12 @@ MemberPress AI Assistant revolutionizes membership site management by combining 
 1. **Activate the Plugin**
    ```bash
    # Navigate to your WordPress admin
-   Plugins → Installed Plugins → Activate "MemberPress AI Assistant"
+   Plugins → Installed Plugins → Activate "MemberPress Copilot"
    ```
 
-2. **Start Using AI Assistant**
+2. **Start Using Copilot**
    ```
-   WordPress Admin → AI Assistant → Chat
+   WordPress Admin → Copilot → Chat
    ```
 
 3. **Try These Examples**
@@ -52,7 +52,7 @@ MemberPress AI Assistant revolutionizes membership site management by combining 
 1. **Clone & Install**
    ```bash
    git clone [repository-url]
-   cd memberpress-ai-assistant
+   cd memberpress-copilot
    composer install
    npm install
    ```
@@ -126,7 +126,7 @@ MemberPress AI Assistant revolutionizes membership site management by combining 
 
 1. Upload the plugin folder to `/wp-content/plugins/`
 2. Activate through WordPress admin
-3. Navigate to **AI Assistant** in admin menu
+3. Navigate to **Copilot** in admin menu
 4. Start using the chat interface immediately
 
 ### Manual Installation
@@ -134,23 +134,23 @@ MemberPress AI Assistant revolutionizes membership site management by combining 
 ```bash
 # Download and extract
 wget [plugin-download-url]
-unzip memberpress-ai-assistant.zip
-mv memberpress-ai-assistant /path/to/wordpress/wp-content/plugins/
+unzip memberpress-copilot.zip
+mv memberpress-copilot /path/to/wordpress/wp-content/plugins/
 
 # Set permissions
-chmod 755 memberpress-ai-assistant
-chown -R www-data:www-data memberpress-ai-assistant
+chmod 755 memberpress-copilot
+chown -R www-data:www-data memberpress-copilot
 
 # Activate via WP-CLI
-wp plugin activate memberpress-ai-assistant
+wp plugin activate memberpress-copilot
 ```
 
 ### Development Installation
 
 ```bash
 # Clone repository
-git clone [repository-url] memberpress-ai-assistant
-cd memberpress-ai-assistant
+git clone [repository-url] memberpress-copilot
+cd memberpress-copilot
 
 # Install dependencies
 composer install          # PHP dependencies
@@ -335,7 +335,7 @@ class CustomTool extends AbstractTool {
 ### Project Structure
 
 ```
-memberpress-ai-assistant/
+memberpress-copilot/
 ├── src/                       # PHP source code
 │   ├── Abstracts/            # Abstract base classes
 │   ├── Agents/               # AI agent implementations
@@ -480,7 +480,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 This plugin is licensed under the [GPL v2 or later](https://www.gnu.org/licenses/gpl-2.0.html).
 
 ```
-MemberPress AI Assistant
+MemberPress Copilot
 Copyright (C) 2024 MemberPress
 
 This program is free software; you can redistribute it and/or modify
@@ -491,7 +491,7 @@ the Free Software Foundation; either version 2 of the License, or
 
 ## 🏢 About MemberPress
 
-**MemberPress AI Assistant** is developed by [MemberPress](https://memberpress.com/), the leading WordPress membership plugin trusted by thousands of businesses worldwide.
+**MemberPress Copilot** is developed by [MemberPress](https://memberpress.com/), the leading WordPress membership plugin trusted by thousands of businesses worldwide.
 
 ### Connect With Us
 
@@ -505,7 +505,7 @@ the Free Software Foundation; either version 2 of the License, or
 
 <div align="center">
 
-**🚀 Transform your membership site with AI-powered assistance**
+**🚀 Transform your membership site with AI-powered copilot assistance**
 
 [Get Started](docs/getting-started.md) • [Documentation](docs/) • [Support](mailto:support@memberpress.com) • [Enterprise](https://memberpress.com/enterprise/)
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The MemberPress AI Assistant provides both traditional WordPress AJAX endpoints and modern REST API endpoints for integrating with the chat interface and accessing system functionality.
+The MemberPress Copilot provides both traditional WordPress AJAX endpoints and modern REST API endpoints for integrating with the chat interface and accessing system functionality.
 
 ## Authentication & Security
 
@@ -746,4 +746,4 @@ describe('Chat API', () => {
 3. **Documentation**: Keep API documentation up to date
 4. **Testing**: Implement comprehensive API testing
 
-This REST API provides a robust foundation for integrating with the MemberPress AI Assistant system from various platforms and applications.
+This REST API provides a robust foundation for integrating with the MemberPress Copilot system from various platforms and applications.

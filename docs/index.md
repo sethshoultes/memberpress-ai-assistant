@@ -1,6 +1,6 @@
-# MemberPress AI Assistant Documentation
+# MemberPress Copilot Documentation
 
-Welcome to the MemberPress AI Assistant documentation. This index provides an overview of all available documentation for the plugin.
+Welcome to the MemberPress Copilot documentation. This index provides an overview of all available documentation for the plugin.
 
 ## Getting Started
 
@@ -9,7 +9,7 @@ Welcome to the MemberPress AI Assistant documentation. This index provides an ov
 
 ## User Guides
 
-- [Chat Interface](chat-interface.md) - Guide to using the AI chat interface
+- [Chat Interface](chat-interface.md) - Guide to using the Copilot chat interface
 - [Admin Interface](admin-interface.md) - Guide to the admin interface and settings
 
 ## Technical Documentation
@@ -31,7 +31,7 @@ Welcome to the MemberPress AI Assistant documentation. This index provides an ov
 
 ## Support
 
-If you need assistance with the MemberPress AI Assistant plugin:
+If you need assistance with the MemberPress Copilot plugin:
 
 1. Check the documentation in this directory
 2. Visit the [MemberPress Support Forum](https://memberpress.com/support/)
@@ -90,4 +90,4 @@ This documentation is maintained alongside the plugin code. If you find any disc
 
 ## Version Information
 
-This documentation applies to MemberPress AI Assistant version 1.0.0 and later. Some features may not be available in earlier versions.
+This documentation applies to MemberPress Copilot version 1.0.0 and later. Some features may not be available in earlier versions.
