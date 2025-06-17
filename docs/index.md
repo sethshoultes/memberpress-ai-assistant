@@ -26,9 +26,8 @@ Welcome to the MemberPress AI Assistant documentation. This index provides an ov
 
 ## Developer Resources
 
-- [API Key Management](api-key-management.md) - Documentation of the API key management system
-- [Contributing Guidelines](../CONTRIBUTING.md) - Guidelines for contributing to the project
-- [Coding Standards](../CODING_STANDARDS.md) - Coding standards for the project
+- [API Reference](api/) - Comprehensive API documentation
+- [Extension Guidelines](extension-guidelines.md) - Guide for extending the plugin
 
 ## Support
 
@@ -71,9 +70,9 @@ Documentation of specific features and functionality:
 
 Resources for developers extending or contributing to the plugin:
 
-- API Documentation
-- Contributing Guidelines
-- Coding Standards
+- API Reference Documentation
+- Extension Guidelines
+- Development Setup Guide
 
 ## Documentation Conventions
 

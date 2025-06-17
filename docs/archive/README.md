@@ -1,49 +1,107 @@
 # Historical Documents Archive
 
 **Archive Created:** December 15, 2024  
-**Archive Purpose:** Phase 6B Documentation Cleanup  
+**Archive Updated:** June 16, 2025  
+**Archive Purpose:** Comprehensive Documentation Cleanup  
 **Archive Status:** Active  
 
 ## Overview
 
-This archive contains historical planning and implementation documents that were created during the consent system removal project (Phase 6). These documents served their purpose during the development process but are now obsolete as the consent system has been completely removed from the MemberPress AI Assistant plugin.
+This archive contains historical planning, implementation, and maintenance documents that served their purpose during the development process but are now obsolete. Documents are organized by category to preserve project history while maintaining a clean active documentation structure.
 
 ## Archive Organization
 
 ### Consent System Removal (`consent-system-removal/`)
 
-Contains all historical documents related to the consent system removal project:
+Contains all historical documents related to the consent system removal project (Phase 6):
 
 - **Planning Documents:** Original removal plans and strategies
 - **Implementation Summaries:** Documentation of completed work phases
 - **Fix Documentation:** Records of specific issues resolved during the process
 
+### Implementation Plans (`implementation-plans/`)
+
+Contains completed implementation plans and technical specifications:
+
+- **Interface Fixes:** Chat interface improvements and bug fixes
+- **Migration Plans:** Database and settings migration strategies
+- **Optimization Plans:** Performance and architecture optimization initiatives
+- **Consolidation Plans:** Settings and code consolidation projects
+
+### Maintenance (`maintenance/`)
+
+Contains documentation from maintenance and cleanup activities:
+
+- **Code Review Plans:** Systematic code cleanup and review processes
+- **Documentation Cleanup:** Records of documentation organization efforts
+- **Project Summaries:** Completion summaries from various project phases
+
 ## Archived Documents
 
-### Phase 6A - Development Tools Archival
+### Consent System Removal Category
+
+#### Phase 6A - Development Tools Archival
 - **File:** [`phase-6a-archival-summary.md`](consent-system-removal/phase-6a-archival-summary.md)
-- **References:** 6 cross-references in project documentation
 - **Purpose:** Documents the archival of 35 development tool files containing 77+ MPAIConsentManager references
 - **Status:** Historical record of Phase 6A completion
 
-### Consent System Removal Planning
+#### Consent System Removal Planning
 - **File:** [`consent-system-removal-plan.md`](consent-system-removal/consent-system-removal-plan.md)
-- **References:** 7 cross-references in project documentation
 - **Purpose:** Original comprehensive plan for removing the consent system across all plugin layers
 - **Status:** Planning document - implementation completed
 
-### Consent Form Duplication Fix
+#### Consent Form Duplication Fix
 - **File:** [`consent-form-duplication-fix-summary.md`](consent-system-removal/consent-form-duplication-fix-summary.md)
-- **References:** 4 cross-references in project documentation
 - **Purpose:** Documentation of fix for duplicate consent forms appearing on welcome page
 - **Status:** Historical fix record - consent system now completely removed
 
+#### Consent Form Duplication Elimination Plan
+- **File:** [`consent-form-duplication-elimination-plan.md`](consent-system-removal/consent-form-duplication-elimination-plan.md)
+- **Purpose:** Technical plan for eliminating duplicate consent forms from the welcome page
+- **Status:** Implementation plan - completed and system removed
+
+### Implementation Plans Category
+
+#### Chat Interface Fix Plan
+- **File:** [`chat-interface-fix-comprehensive-plan.md`](implementation-plans/chat-interface-fix-comprehensive-plan.md)
+- **Purpose:** Comprehensive plan for fixing chat interface issues and improving user experience
+- **Status:** Implementation plan - completed
+
+#### Phase 2 Migration Plan
+- **File:** [`phase-2-migration-implementation-plan.md`](implementation-plans/phase-2-migration-implementation-plan.md)
+- **Purpose:** Detailed settings migration and architecture improvement plan
+- **Status:** Implementation plan - completed
+
+#### Phase 4 Optimization Plan
+- **File:** [`phase-4-optimization-implementation-plan.md`](implementation-plans/phase-4-optimization-implementation-plan.md)
+- **Purpose:** Services and settings architecture optimization initiatives
+- **Status:** Implementation plan - completed
+
+#### Phase 4 Settings Consolidation Plan
+- **File:** [`phase-4-settings-duplication-consolidation-plan.md`](implementation-plans/phase-4-settings-duplication-consolidation-plan.md)
+- **Purpose:** Plan for consolidating duplicate settings and improving settings architecture
+- **Status:** Implementation plan - completed
+
+### Maintenance Category
+
+#### Code Review Cleanup Plan
+- **File:** [`code-review-cleanup-plan.md`](maintenance/code-review-cleanup-plan.md)
+- **Purpose:** Systematic approach to code cleanup and review processes
+- **Status:** Maintenance plan - completed
+
+#### Phase 6B Documentation Cleanup Summary
+- **File:** [`phase-6b-documentation-cleanup-summary.md`](maintenance/phase-6b-documentation-cleanup-summary.md)
+- **Purpose:** Summary of documentation cleanup activities and results
+- **Status:** Maintenance summary - completed
+
 ## Why These Documents Are Archived
 
-1. **Obsolete Functionality:** All documents relate to the consent system, which has been completely removed from the plugin
-2. **Historical Value:** These documents provide valuable context about the development process and decisions made
-3. **Reference Material:** Future developers can understand what was removed and why
-4. **Project Documentation:** Complete record of Phase 6 consent system removal project
+1. **Completed Projects:** All implementation plans have been executed and their objectives achieved
+2. **Obsolete Functionality:** Some documents relate to the consent system, which has been completely removed from the plugin
+3. **Historical Value:** These documents provide valuable context about the development process and decisions made
+4. **Reference Material:** Future developers can understand past architectural decisions and implementation approaches
+5. **Project Documentation:** Complete record of major development phases and maintenance activities
+6. **Clean Documentation:** Archival maintains focus on current, actionable documentation in the main docs directory
 
 ## Document Status
 

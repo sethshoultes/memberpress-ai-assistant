@@ -69,31 +69,19 @@ After activating the plugin, you can configure various settings to customize you
 ### Security Configuration
 
 1. In the "Security Settings" tab, configure security options:
-   - User Consent: Enable/disable user consent requirements
    - Data Retention: Configure how long chat history is retained
+   - Access Controls: Configure user role permissions
    - Command Whitelist: If using CLI features, specify allowed commands
 2. Click "Save Changes"
 
-## User Consent Management
+### Privacy & Data Management
 
-The MemberPress AI Assistant includes a consent management system to ensure compliance with privacy regulations.
+The MemberPress AI Assistant is designed with privacy-first principles:
 
-### Configuring Consent Settings
-
-1. Navigate to AI Assistant > Settings > Security
-2. In the "User Consent" section:
-   - Enable/disable the consent requirement
-   - Customize the consent message
-   - Configure whether consent is required once or for each session
-3. Click "Save Changes"
-
-### User Experience
-
-When consent is enabled:
-1. Users will see a consent dialog when first accessing the AI Assistant
-2. They must explicitly consent before using the features
-3. Their consent status is recorded in the system
-4. They can revoke consent at any time from their profile
+- No consent requirements needed - the plugin operates transparently
+- Minimal data processing with user control over data sharing
+- Automatic data cleanup and retention policies
+- Full GDPR compliance with data protection measures
 
 ## Verification
 
