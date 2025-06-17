@@ -755,6 +755,7 @@ class ChatInterface {
                 ]);
             }
             
+            
             // For logged-in users, try to get their conversation ID from user metadata
             if ($user_id > 0 && empty($conversation_id)) {
                 $saved_conversation_id = $this->getUserConversationId($user_id);

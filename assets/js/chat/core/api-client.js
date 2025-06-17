@@ -181,8 +181,11 @@ class APIClient {
       this._abortControllers.set(requestId, abortController);
       
       // Prepare the request data for clearing conversation
+      // Send the parameters that the server expects: clear_history=true and a dummy message
       const data = {
-        action: 'clear_conversation'
+        message: 'clear_conversation', // Dummy message to satisfy REST endpoint validation
+        clear_history: true,
+        conversation_id: null // Will be set by the server logic if needed
       };
       
       // Make the API request to clear conversation
