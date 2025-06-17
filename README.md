@@ -8,6 +8,7 @@
 [![Tests](https://img.shields.io/badge/tests-PHPUnit%20%2B%20Jest-success.svg)](#testing)
 
 > 🤖 **Intelligent AI-powered copilot that seamlessly integrates with MemberPress to provide natural language membership management, content generation, and comprehensive site administration.**
+![memberpress-copilot](https://github.com/user-attachments/assets/e04e1bf6-5e1c-4488-9716-cba458be6cfd)
 
 ## 🌟 Overview
 
