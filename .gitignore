@@ -7,3 +7,4 @@ CLEANUP.md
 
 # Local Claude documentation
 **/CLAUDE.local.md
+.claude/settings.local.json
