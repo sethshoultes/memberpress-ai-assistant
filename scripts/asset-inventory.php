@@ -466,11 +466,11 @@ function main($argv) {
     $css_files = [];
     $css_dir = $assets_dir . '/css';
     if (is_dir($css_dir)) {
-        $css_files = scan_assets_directory($css_dir, $plugin_dir);
+        $css_files = scan_assets_directory($css_dir, $css_dir);
         // Prefix paths with assets/css/
         foreach ($css_files as &$file) {
             $file['path'] = 'assets/css/' . $file['path'];
-            $file['directory'] = 'css' . ($file['directory'] !== '.' ? '/' . $file['directory'] : '');
+            $file['directory'] = 'css/' . $file['directory'];
         }
     }
     
@@ -478,11 +478,11 @@ function main($argv) {
     $js_files = [];
     $js_dir = $assets_dir . '/js';
     if (is_dir($js_dir)) {
-        $js_files = scan_assets_directory($js_dir, $plugin_dir);
+        $js_files = scan_assets_directory($js_dir, $js_dir);
         // Prefix paths with assets/js/
         foreach ($js_files as &$file) {
             $file['path'] = 'assets/js/' . $file['path'];
-            $file['directory'] = 'js' . ($file['directory'] !== '.' ? '/' . $file['directory'] : '');
+            $file['directory'] = 'js/' . $file['directory'];
         }
     }
     

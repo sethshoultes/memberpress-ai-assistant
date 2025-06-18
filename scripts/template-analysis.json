@@ -2,20 +2,21 @@
     "analysis_info": {
         "script": "Template Analyzer",
         "version": "1.0.0",
-        "timestamp": "2025-06-17 18:21:04",
+        "timestamp": "2025-06-17 21:29:06",
         "plugin_dir": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant"
     },
     "summary": {
         "total_templates": 5,
-        "used_templates": 0,
-        "unused_templates": 5,
-        "usage_percentage": 0,
+        "used_templates": 1,
+        "unused_templates": 4,
+        "usage_percentage": 20,
         "total_size_bytes": 39968,
-        "unused_size_bytes": 39968,
-        "potential_savings": "39.03 KB",
-        "php_files_scanned": 8,
+        "unused_size_bytes": 37817,
+        "potential_savings": "36.93 KB",
+        "php_files_scanned": 11,
         "risk_levels": {
-            "high": 5
+            "high": 4,
+            "low": 1
         }
     },
     "templates": {
@@ -101,22 +102,26 @@
             "size": 2151,
             "modified": 1750130634,
             "extension": "php",
-            "used": false,
+            "used": true,
             "usage_patterns": [
+                {
+                    "type": "direct_include",
+                    "file": "memberpress-ai-assistant.php",
+                    "pattern": "plugin_dir_path.*templates\\/([^'\"\\s)]+)",
+                    "line": 650
+                },
                 {
                     "type": "name_reference",
                     "file": "memberpress-ai-assistant.php",
                     "template_name": "welcome-page"
                 }
             ],
-            "included_by": [],
-            "risk_factors": [
-                "No usage patterns found",
-                "No direct include statements found",
-                "Only found as name references"
+            "included_by": [
+                "memberpress-ai-assistant.php"
             ],
-            "risk_score": 100,
-            "risk_level": "high"
+            "risk_factors": [],
+            "risk_score": 0,
+            "risk_level": "low"
         },
         "templates/dashboard-tab.php": {
             "path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/templates/dashboard-tab.php",
@@ -137,6 +142,26 @@
         }
     },
     "template_usage": {
+        "scripts/cross-reference-validator.php": {
+            "path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/scripts/cross-reference-validator.php",
+            "relative_path": "scripts/cross-reference-validator.php",
+            "template_references": [],
+            "dynamic_patterns": [
+                {
+                    "pattern": "sprintf.*template",
+                    "match": "sprintf(\"Loaded %d assets, %d classes, %d template",
+                    "offset": 6046,
+                    "line": 168
+                },
+                {
+                    "pattern": "sprintf.*template",
+                    "match": "sprintf(\"Template",
+                    "offset": 38673,
+                    "line": 1061
+                }
+            ],
+            "template_includes": []
+        },
         "scripts/template-analyzer.php": {
             "path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/scripts/template-analyzer.php",
             "relative_path": "scripts/template-analyzer.php",
@@ -145,83 +170,104 @@
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf.*template",
-                    "offset": 3218,
+                    "offset": 3220,
                     "line": 85
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"Total Templates Found: %d\\n\", $stats['total_template",
-                    "offset": 17850,
+                    "offset": 17853,
                     "line": 496
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"Used Templates: %d (%.1f%%)\\n\", $stats['used_template",
-                    "offset": 17934,
+                    "offset": 17937,
                     "line": 497
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"Unused Templates: %d\\n\", $stats['unused_template",
-                    "offset": 18047,
+                    "offset": 18050,
                     "line": 498
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"  High Risk: %d template",
-                    "offset": 18426,
+                    "offset": 18429,
                     "line": 503
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"  Medium Risk: %d template",
-                    "offset": 18519,
+                    "offset": 18522,
                     "line": 504
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"  Low Risk: %d template",
-                    "offset": 18616,
+                    "offset": 18619,
                     "line": 505
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"\ud83d\udcc4 %s\\n\", $template",
-                    "offset": 19689,
+                    "offset": 19692,
                     "line": 531
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"     \u2022 %s (line %d)\\n\", $include['template",
-                    "offset": 21162,
+                    "offset": 21165,
                     "line": 568
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"%s %s (Score: %d)\\n\", $icon, $template['name'], $template",
-                    "offset": 22650,
+                    "offset": 22653,
                     "line": 605
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"   \u2022 %s (%s)\\n\", $template['name'], $this->formatBytes($template",
-                    "offset": 23546,
+                    "offset": 23549,
                     "line": 627
                 },
                 {
                     "pattern": "sprintf.*template",
                     "match": "sprintf(\"   \u2022 %s (%s)\\n\", $template['name'], $this->formatBytes($template",
-                    "offset": 23929,
+                    "offset": 23932,
                     "line": 636
                 },
                 {
                     "pattern": "str_replace.*template",
                     "match": "str_replace.*template",
-                    "offset": 3247,
+                    "offset": 3249,
                     "line": 86
+                },
+                {
+                    "pattern": "templates\\/.*\\$",
+                    "match": "templates/' . $",
+                    "offset": 11080,
+                    "line": 298
                 }
             ],
             "template_includes": []
+        },
+        "memberpress-ai-assistant.php": {
+            "path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/memberpress-ai-assistant.php",
+            "relative_path": "memberpress-ai-assistant.php",
+            "template_references": [],
+            "dynamic_patterns": [],
+            "template_includes": [
+                {
+                    "pattern": "plugin_dir_path.*templates\\/([^'\"\\s)]+)",
+                    "template": "welcome-page.php",
+                    "normalized": "templates/welcome-page.php",
+                    "offset": 25730,
+                    "line": 650
+                }
+            ]
         },
         "vendor/wp-coding-standards/wpcs/WordPress/Sniffs/Utils/I18nTextDomainFixerSniff.php": {
             "path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/vendor/wp-coding-standards/wpcs/WordPress/Sniffs/Utils/I18nTextDomainFixerSniff.php",
@@ -253,6 +299,20 @@
                     "match": "sprintf(self::$generatedFileTemplate",
                     "offset": 5253,
                     "line": 196
+                }
+            ],
+            "template_includes": []
+        },
+        "vendor/phpunit/phpunit/src/Framework/MockObject/Generator/TemplateLoader.php": {
+            "path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/vendor/phpunit/phpunit/src/Framework/MockObject/Generator/TemplateLoader.php",
+            "relative_path": "vendor/phpunit/phpunit/src/Framework/MockObject/Generator/TemplateLoader.php",
+            "template_references": [],
+            "dynamic_patterns": [
+                {
+                    "pattern": "templates\\/.*\\$",
+                    "match": "templates/' . $",
+                    "offset": 768,
+                    "line": 28
                 }
             ],
             "template_includes": []
@@ -434,30 +494,6 @@
             "risk_score": 100,
             "risk_level": "high"
         },
-        "templates/welcome-page.php": {
-            "path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/templates/welcome-page.php",
-            "relative_path": "templates/welcome-page.php",
-            "name": "welcome-page",
-            "size": 2151,
-            "modified": 1750130634,
-            "extension": "php",
-            "used": false,
-            "usage_patterns": [
-                {
-                    "type": "name_reference",
-                    "file": "memberpress-ai-assistant.php",
-                    "template_name": "welcome-page"
-                }
-            ],
-            "included_by": [],
-            "risk_factors": [
-                "No usage patterns found",
-                "No direct include statements found",
-                "Only found as name references"
-            ],
-            "risk_score": 100,
-            "risk_level": "high"
-        },
         "templates/dashboard-tab.php": {
             "path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/templates/dashboard-tab.php",
             "relative_path": "templates/dashboard-tab.php",
@@ -510,17 +546,6 @@
                 "size": 9224,
                 "used": false
             },
-            "templates/welcome-page.php": {
-                "name": "welcome-page",
-                "score": 100,
-                "factors": [
-                    "No usage patterns found",
-                    "No direct include statements found",
-                    "Only found as name references"
-                ],
-                "size": 2151,
-                "used": false
-            },
             "templates/dashboard-tab.php": {
                 "name": "dashboard-tab",
                 "score": 80,
@@ -533,6 +558,14 @@
             }
         },
         "medium_risk": [],
-        "low_risk": []
+        "low_risk": {
+            "templates/welcome-page.php": {
+                "name": "welcome-page",
+                "score": 0,
+                "factors": [],
+                "size": 2151,
+                "used": true
+            }
+        }
     }
 }

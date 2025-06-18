@@ -282,19 +282,45 @@ function extract_asset_mappings($patterns) {
     foreach ($patterns as $pattern) {
         if ($pattern['type'] === 'wordpress_registration') {
             $code = $pattern['code'];
+            $handle = '';
+            $path = '';
             
-            // Extract handle and path from registration calls
-            if (preg_match('/wp_(?:enqueue|register)_(?:style|script)\s*\(\s*["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']+)["\'])?/', $code, $matches)) {
+            // Try multiple extraction patterns for different registration styles
+            
+            // Pattern 1: Extract handle from any wp function call
+            if (preg_match('/wp_(?:enqueue|register)_(?:style|script)\s*\(\s*["\']([^"\']+)["\']/', $code, $matches)) {
                 $handle = $matches[1];
-                $path = isset($matches[2]) ? $matches[2] : '';
                 
-                // Clean up path - remove plugin constants
-                $clean_path = str_replace(['MPAI_PLUGIN_URL . \'', 'MPAI_PLUGIN_URL . "', '\' . MPAI_VERSION', '" . MPAI_VERSION'], '', $path);
-                $clean_path = trim($clean_path, '\'"');
+                // Pattern 2: Look for path in multiline calls with MPAI_PLUGIN_URL concatenation
+                if (preg_match('/MPAI_PLUGIN_URL\s*\.\s*["\']([^"\']+)["\']/', $code, $path_matches)) {
+                    $path = $path_matches[1];
+                }
+                // Pattern 3: Look for simple string path (single line calls)
+                elseif (preg_match('/wp_(?:enqueue|register)_(?:style|script)\s*\(\s*["\'][^"\']+["\']\s*,\s*["\']([^"\']+)["\']/', $code, $path_matches)) {
+                    $path = $path_matches[1];
+                }
+                // Pattern 4: For enqueue calls, path will be empty (filled by cross-referencing)
+                else {
+                    $path = '';
+                }
+            }
+            
+            // Clean up path - remove any remaining constants and normalize
+            if (!empty($path)) {
+                $path = str_replace(['MPAI_PLUGIN_URL . \'', 'MPAI_PLUGIN_URL . "', 'MPAI_PLUGIN_URL.\'', 'MPAI_PLUGIN_URL."'], '', $path);
+                $path = str_replace(['\' . MPAI_VERSION', '" . MPAI_VERSION', '\'.MPAI_VERSION', '".MPAI_VERSION'], '', $path);
+                $path = trim($path, '\'" ');
                 
+                // Ensure path starts with assets/ for consistency
+                if (!empty($path) && strpos($path, 'assets/') !== 0) {
+                    $path = 'assets/' . ltrim($path, '/');
+                }
+            }
+            
+            if (!empty($handle)) {
                 $mappings[] = [
                     'handle' => $handle,
-                    'path' => $clean_path,
+                    'path' => $path,
                     'function' => $pattern['function'],
                     'file' => $pattern['file'],
                     'line' => $pattern['line'],
@@ -304,7 +330,37 @@ function extract_asset_mappings($patterns) {
         }
     }
     
+    // Post-process to match enqueue calls with their registration paths
+    $mappings = cross_reference_enqueue_calls($mappings);
+    
     return $mappings;
+}
+
+/**
+ * Cross-reference enqueue calls with their registration paths
+ */
+function cross_reference_enqueue_calls($mappings) {
+    $handle_paths = [];
+    $updated_mappings = [];
+    
+    // First pass: collect all paths from registration calls
+    foreach ($mappings as $mapping) {
+        if (in_array($mapping['function'], ['wp_register_style', 'wp_register_script']) && !empty($mapping['path'])) {
+            $handle_paths[$mapping['handle']] = $mapping['path'];
+        }
+    }
+    
+    // Second pass: update enqueue calls with paths from registrations
+    foreach ($mappings as $mapping) {
+        if (in_array($mapping['function'], ['wp_enqueue_style', 'wp_enqueue_script']) && empty($mapping['path'])) {
+            if (isset($handle_paths[$mapping['handle']])) {
+                $mapping['path'] = $handle_paths[$mapping['handle']];
+            }
+        }
+        $updated_mappings[] = $mapping;
+    }
+    
+    return $updated_mappings;
 }
 
 /**

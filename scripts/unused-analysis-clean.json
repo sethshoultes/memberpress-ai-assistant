@@ -1,0 +1,1085 @@
+{
+    "scan_info": {
+        "timestamp": "2025-06-18 16:13:05",
+        "script_version": "1.0.0",
+        "plugin": "MemberPress AI Assistant"
+    },
+    "statistics": {
+        "total_assets": 31,
+        "used_assets": 10,
+        "unused_assets": 21,
+        "usage_percentage": 32.26,
+        "risk_breakdown": {
+            "low": 15,
+            "medium": 6,
+            "high": 0
+        },
+        "evidence_types": {
+            "wordpress_registration": 10
+        },
+        "es6_modules": {
+            "total": 6,
+            "entry_points": 5,
+            "unused": 6
+        },
+        "size_analysis": {
+            "used_size": 97708,
+            "unused_size": 299018,
+            "potential_savings": 299018
+        }
+    },
+    "analysis": {
+        "used_assets": [
+            {
+                "asset": {
+                    "path": "assets/css/blog-post.css",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/css/blog-post.css",
+                    "size_bytes": 5028,
+                    "size_human": "4.91 KB",
+                    "modified": "2025-06-17 13:27:40",
+                    "modified_timestamp": 1750166860,
+                    "extension": "css",
+                    "type": "CSS",
+                    "directory": "css/.",
+                    "filename": "blog-post.css",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [
+                    {
+                        "type": "wordpress_registration",
+                        "details": {
+                            "handle": "mpai-blog-post-admin",
+                            "path": "assets/css/blog-post.css",
+                            "function": "wp_register_style",
+                            "file": "ChatInterface.php",
+                            "line": 251,
+                            "conditional": []
+                        }
+                    }
+                ],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": -15,
+                    "reasons": [
+                        "recently_modified"
+                    ]
+                },
+                "is_used": true
+            },
+            {
+                "asset": {
+                    "path": "assets/css/chat.css",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/css/chat.css",
+                    "size_bytes": 17005,
+                    "size_human": "16.61 KB",
+                    "modified": "2025-06-17 13:27:40",
+                    "modified_timestamp": 1750166860,
+                    "extension": "css",
+                    "type": "CSS",
+                    "directory": "css/.",
+                    "filename": "chat.css",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [
+                    {
+                        "type": "wordpress_registration",
+                        "details": {
+                            "handle": "mpai-chat-admin",
+                            "path": "assets/css/chat.css",
+                            "function": "wp_register_style",
+                            "file": "ChatInterface.php",
+                            "line": 242,
+                            "conditional": []
+                        }
+                    }
+                ],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": -15,
+                    "reasons": [
+                        "recently_modified"
+                    ]
+                },
+                "is_used": true
+            },
+            {
+                "asset": {
+                    "path": "assets/css/mpai-table-styles.css",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/css/mpai-table-styles.css",
+                    "size_bytes": 2035,
+                    "size_human": "1.99 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "css",
+                    "type": "CSS",
+                    "directory": "css/.",
+                    "filename": "mpai-table-styles.css",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [
+                    {
+                        "type": "wordpress_registration",
+                        "details": {
+                            "handle": "mpai-table-styles-admin",
+                            "path": "assets/css/mpai-table-styles.css",
+                            "function": "wp_register_style",
+                            "file": "ChatInterface.php",
+                            "line": 259,
+                            "conditional": []
+                        }
+                    }
+                ],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": -15,
+                    "reasons": [
+                        "recently_modified"
+                    ]
+                },
+                "is_used": true
+            },
+            {
+                "asset": {
+                    "path": "assets/css/settings.css",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/css/settings.css",
+                    "size_bytes": 1861,
+                    "size_human": "1.82 KB",
+                    "modified": "2025-06-17 13:27:40",
+                    "modified_timestamp": 1750166860,
+                    "extension": "css",
+                    "type": "CSS",
+                    "directory": "css/.",
+                    "filename": "settings.css",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [
+                    {
+                        "type": "wordpress_registration",
+                        "details": {
+                            "handle": "mpai-settings",
+                            "path": "assets/css/settings.css",
+                            "function": "wp_enqueue_style",
+                            "file": "Services/Settings/SettingsControllerService.php",
+                            "line": 423,
+                            "conditional": []
+                        }
+                    }
+                ],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": -15,
+                    "reasons": [
+                        "recently_modified"
+                    ]
+                },
+                "is_used": true
+            },
+            {
+                "asset": {
+                    "path": "assets/js/blog-formatter.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/blog-formatter.js",
+                    "size_bytes": 19103,
+                    "size_human": "18.66 KB",
+                    "modified": "2025-06-15 23:56:27",
+                    "modified_timestamp": 1750031787,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/.",
+                    "filename": "blog-formatter.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [
+                    {
+                        "type": "wordpress_registration",
+                        "details": {
+                            "handle": "mpai-blog-formatter-admin",
+                            "path": "assets/js/blog-formatter.js",
+                            "function": "wp_register_script",
+                            "file": "ChatInterface.php",
+                            "line": 296,
+                            "conditional": []
+                        }
+                    }
+                ],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": -15,
+                    "reasons": [
+                        "recently_modified"
+                    ]
+                },
+                "is_used": true
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat.js",
+                    "size_bytes": 9924,
+                    "size_human": "9.69 KB",
+                    "modified": "2025-06-16 21:40:27",
+                    "modified_timestamp": 1750110027,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/.",
+                    "filename": "chat.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [
+                    {
+                        "type": "wordpress_registration",
+                        "details": {
+                            "handle": "mpai-chat-admin",
+                            "path": "assets/js/chat.js",
+                            "function": "wp_register_script",
+                            "file": "ChatInterface.php",
+                            "line": 305,
+                            "conditional": []
+                        }
+                    }
+                ],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": -15,
+                    "reasons": [
+                        "recently_modified"
+                    ]
+                },
+                "is_used": true
+            },
+            {
+                "asset": {
+                    "path": "assets/js/data-handler-minimal.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/data-handler-minimal.js",
+                    "size_bytes": 4073,
+                    "size_human": "3.98 KB",
+                    "modified": "2025-06-15 23:56:27",
+                    "modified_timestamp": 1750031787,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/.",
+                    "filename": "data-handler-minimal.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [
+                    {
+                        "type": "wordpress_registration",
+                        "details": {
+                            "handle": "mpai-data-handler-admin",
+                            "path": "assets/js/data-handler-minimal.js",
+                            "function": "wp_register_script",
+                            "file": "ChatInterface.php",
+                            "line": 276,
+                            "conditional": []
+                        }
+                    }
+                ],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": -15,
+                    "reasons": [
+                        "recently_modified"
+                    ]
+                },
+                "is_used": true
+            },
+            {
+                "asset": {
+                    "path": "assets/js/settings.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/settings.js",
+                    "size_bytes": 1565,
+                    "size_human": "1.53 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/.",
+                    "filename": "settings.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [
+                    {
+                        "type": "wordpress_registration",
+                        "details": {
+                            "handle": "mpai-settings",
+                            "path": "assets/js/settings.js",
+                            "function": "wp_enqueue_script",
+                            "file": "Services/Settings/SettingsControllerService.php",
+                            "line": 431,
+                            "conditional": []
+                        }
+                    }
+                ],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": -15,
+                    "reasons": [
+                        "recently_modified"
+                    ]
+                },
+                "is_used": true
+            },
+            {
+                "asset": {
+                    "path": "assets/js/text-formatter.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/text-formatter.js",
+                    "size_bytes": 15096,
+                    "size_human": "14.74 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/.",
+                    "filename": "text-formatter.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [
+                    {
+                        "type": "wordpress_registration",
+                        "details": {
+                            "handle": "mpai-text-formatter-admin",
+                            "path": "assets/js/text-formatter.js",
+                            "function": "wp_register_script",
+                            "file": "ChatInterface.php",
+                            "line": 284,
+                            "conditional": []
+                        }
+                    }
+                ],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": -15,
+                    "reasons": [
+                        "recently_modified"
+                    ]
+                },
+                "is_used": true
+            },
+            {
+                "asset": {
+                    "path": "assets/js/xml-processor.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/xml-processor.js",
+                    "size_bytes": 22018,
+                    "size_human": "21.50 KB",
+                    "modified": "2025-06-15 23:56:27",
+                    "modified_timestamp": 1750031787,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/.",
+                    "filename": "xml-processor.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [
+                    {
+                        "type": "wordpress_registration",
+                        "details": {
+                            "handle": "mpai-xml-processor-admin",
+                            "path": "assets/js/xml-processor.js",
+                            "function": "wp_register_script",
+                            "file": "ChatInterface.php",
+                            "line": 268,
+                            "conditional": []
+                        }
+                    }
+                ],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": -15,
+                    "reasons": [
+                        "recently_modified"
+                    ]
+                },
+                "is_used": true
+            }
+        ],
+        "unused_assets": [
+            {
+                "asset": {
+                    "path": "assets/css/dashboard.css",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/css/dashboard.css",
+                    "size_bytes": 3958,
+                    "size_human": "3.87 KB",
+                    "modified": "2025-06-17 13:27:40",
+                    "modified_timestamp": 1750166860,
+                    "extension": "css",
+                    "type": "CSS",
+                    "directory": "css/.",
+                    "filename": "dashboard.css",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 35,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/button-renderer.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/button-renderer.js",
+                    "size_bytes": 13139,
+                    "size_human": "12.83 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/.",
+                    "filename": "button-renderer.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 35,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/core/api-client.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/core/api-client.js",
+                    "size_bytes": 9851,
+                    "size_human": "9.62 KB",
+                    "modified": "2025-06-17 18:07:07",
+                    "modified_timestamp": 1750183627,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/core",
+                    "filename": "api-client.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 30,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/core/chat-core.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/core/chat-core.js",
+                    "size_bytes": 15472,
+                    "size_human": "15.11 KB",
+                    "modified": "2025-06-16 21:34:52",
+                    "modified_timestamp": 1750109692,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/core",
+                    "filename": "chat-core.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 30,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/core/event-bus.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/core/event-bus.js",
+                    "size_bytes": 8769,
+                    "size_human": "8.56 KB",
+                    "modified": "2025-06-16 00:08:44",
+                    "modified_timestamp": 1750032524,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/core",
+                    "filename": "event-bus.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 30,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/core/state-manager.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/core/state-manager.js",
+                    "size_bytes": 14635,
+                    "size_human": "14.29 KB",
+                    "modified": "2025-06-16 21:34:52",
+                    "modified_timestamp": 1750109692,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/core",
+                    "filename": "state-manager.js",
+                    "is_es6_module": true
+                },
+                "usage_evidence": [],
+                "risk_factors": [
+                    "es6_module_unused"
+                ],
+                "risk_assessment": {
+                    "level": "medium",
+                    "score": 55,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "es6_module_with_no_dependencies",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/core/ui-manager.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/core/ui-manager.js",
+                    "size_bytes": 47933,
+                    "size_human": "46.81 KB",
+                    "modified": "2025-06-17 13:27:40",
+                    "modified_timestamp": 1750166860,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/core",
+                    "filename": "ui-manager.js",
+                    "is_es6_module": true
+                },
+                "usage_evidence": [],
+                "risk_factors": [
+                    "es6_module_unused"
+                ],
+                "risk_assessment": {
+                    "level": "medium",
+                    "score": 55,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "es6_module_with_no_dependencies",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/messages/handlers/base-message-handler.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/messages/handlers/base-message-handler.js",
+                    "size_bytes": 3158,
+                    "size_human": "3.08 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/messages/handlers",
+                    "filename": "base-message-handler.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 30,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/messages/handlers/blog-post-message-handler.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/messages/handlers/blog-post-message-handler.js",
+                    "size_bytes": 17590,
+                    "size_human": "17.18 KB",
+                    "modified": "2025-06-17 13:27:40",
+                    "modified_timestamp": 1750166860,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/messages/handlers",
+                    "filename": "blog-post-message-handler.js",
+                    "is_es6_module": true
+                },
+                "usage_evidence": [],
+                "risk_factors": [
+                    "es6_module_unused"
+                ],
+                "risk_assessment": {
+                    "level": "medium",
+                    "score": 55,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "es6_module_with_no_dependencies",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/messages/handlers/interactive-message-handler.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/messages/handlers/interactive-message-handler.js",
+                    "size_bytes": 3796,
+                    "size_human": "3.71 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/messages/handlers",
+                    "filename": "interactive-message-handler.js",
+                    "is_es6_module": true
+                },
+                "usage_evidence": [],
+                "risk_factors": [
+                    "es6_module_unused"
+                ],
+                "risk_assessment": {
+                    "level": "medium",
+                    "score": 55,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "es6_module_with_no_dependencies",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/messages/handlers/system-message-handler.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/messages/handlers/system-message-handler.js",
+                    "size_bytes": 3318,
+                    "size_human": "3.24 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/messages/handlers",
+                    "filename": "system-message-handler.js",
+                    "is_es6_module": true
+                },
+                "usage_evidence": [],
+                "risk_factors": [
+                    "es6_module_unused"
+                ],
+                "risk_assessment": {
+                    "level": "medium",
+                    "score": 55,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "es6_module_with_no_dependencies",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/messages/handlers/text-message-handler.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/messages/handlers/text-message-handler.js",
+                    "size_bytes": 2882,
+                    "size_human": "2.81 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/messages/handlers",
+                    "filename": "text-message-handler.js",
+                    "is_es6_module": true
+                },
+                "usage_evidence": [],
+                "risk_factors": [
+                    "es6_module_unused"
+                ],
+                "risk_assessment": {
+                    "level": "medium",
+                    "score": 55,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "es6_module_with_no_dependencies",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/messages/message-factory.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/messages/message-factory.js",
+                    "size_bytes": 7528,
+                    "size_human": "7.35 KB",
+                    "modified": "2025-06-16 21:34:52",
+                    "modified_timestamp": 1750109692,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/messages",
+                    "filename": "message-factory.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 30,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/messages/message-renderer.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/messages/message-renderer.js",
+                    "size_bytes": 10894,
+                    "size_human": "10.64 KB",
+                    "modified": "2025-06-16 21:34:52",
+                    "modified_timestamp": 1750109692,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/messages",
+                    "filename": "message-renderer.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 30,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/ui/input-handler.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/ui/input-handler.js",
+                    "size_bytes": 3665,
+                    "size_human": "3.58 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/ui",
+                    "filename": "input-handler.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 30,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/ui/ui-controls.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/ui/ui-controls.js",
+                    "size_bytes": 4530,
+                    "size_human": "4.42 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/ui",
+                    "filename": "ui-controls.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 30,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/utils/logger.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/utils/logger.js",
+                    "size_bytes": 3424,
+                    "size_human": "3.34 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/utils",
+                    "filename": "logger.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 30,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/chat/utils/storage-manager.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/chat/utils/storage-manager.js",
+                    "size_bytes": 11807,
+                    "size_human": "11.53 KB",
+                    "modified": "2025-06-15 23:56:27",
+                    "modified_timestamp": 1750031787,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/chat/utils",
+                    "filename": "storage-manager.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 30,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified",
+                        "part_of_chat_system"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/content-preview.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/content-preview.js",
+                    "size_bytes": 38915,
+                    "size_human": "38.00 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/.",
+                    "filename": "content-preview.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 35,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/data-handler.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/data-handler.js",
+                    "size_bytes": 42767,
+                    "size_human": "41.76 KB",
+                    "modified": "2025-06-15 23:56:27",
+                    "modified_timestamp": 1750031787,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/.",
+                    "filename": "data-handler.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 35,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified"
+                    ]
+                },
+                "is_used": false
+            },
+            {
+                "asset": {
+                    "path": "assets/js/form-generator.js",
+                    "full_path": "/Users/sethshoultes/Local Sites/memberpress-testing/app/public/wp-content/plugins/memberpress-ai-assistant/assets/js/form-generator.js",
+                    "size_bytes": 30987,
+                    "size_human": "30.26 KB",
+                    "modified": "2025-06-02 16:48:52",
+                    "modified_timestamp": 1748882932,
+                    "extension": "js",
+                    "type": "JavaScript",
+                    "directory": "js/.",
+                    "filename": "form-generator.js",
+                    "is_es6_module": false
+                },
+                "usage_evidence": [],
+                "risk_factors": [],
+                "risk_assessment": {
+                    "level": "low",
+                    "score": 35,
+                    "reasons": [
+                        "no_registration_patterns_found",
+                        "recently_modified"
+                    ]
+                },
+                "is_used": false
+            }
+        ],
+        "es6_analysis": {
+            "graph": {
+                "js/chat/messages/handlers/blog-post-message-handler.js": {
+                    "imports": [
+                        "js/chat/messages/handlers/base-message-handler.js"
+                    ],
+                    "exports": [],
+                    "imported_by": [],
+                    "is_entry_point": true
+                },
+                "js/chat/messages/handlers/system-message-handler.js": {
+                    "imports": [
+                        "js/chat/messages/handlers/base-message-handler.js"
+                    ],
+                    "exports": [],
+                    "imported_by": [],
+                    "is_entry_point": true
+                },
+                "js/chat/messages/handlers/interactive-message-handler.js": {
+                    "imports": [
+                        "js/chat/messages/handlers/base-message-handler.js"
+                    ],
+                    "exports": [],
+                    "imported_by": [],
+                    "is_entry_point": true
+                },
+                "js/chat/messages/handlers/text-message-handler.js": {
+                    "imports": [
+                        "js/chat/messages/handlers/base-message-handler.js"
+                    ],
+                    "exports": [],
+                    "imported_by": [],
+                    "is_entry_point": true
+                },
+                "js/chat/core/state-manager.js": {
+                    "imports": [
+                        "js/chat/utils/storage-manager.js"
+                    ],
+                    "exports": [],
+                    "imported_by": [
+                        "js/chat.js"
+                    ],
+                    "is_entry_point": false
+                },
+                "js/chat/core/ui-manager.js": {
+                    "imports": [
+                        "js/chat/messages/message-factory.js",
+                        "js/chat/messages/message-renderer.js"
+                    ],
+                    "exports": [],
+                    "imported_by": [
+                        "js/chat.js"
+                    ],
+                    "is_entry_point": false
+                },
+                "js/chat.js": {
+                    "imports": [
+                        "js/chat/core/chat-core.js",
+                        "js/chat/core/state-manager.js",
+                        "js/chat/core/ui-manager.js",
+                        "js/chat/core/api-client.js",
+                        "js/chat/core/event-bus.js",
+                        "js/chat/utils/logger.js",
+                        "js/chat/utils/storage-manager.js"
+                    ],
+                    "exports": [],
+                    "imported_by": [],
+                    "is_entry_point": true
+                }
+            },
+            "entry_points": [
+                "js/chat/messages/handlers/blog-post-message-handler.js",
+                "js/chat/messages/handlers/system-message-handler.js",
+                "js/chat/messages/handlers/interactive-message-handler.js",
+                "js/chat/messages/handlers/text-message-handler.js",
+                "js/chat.js"
+            ]
+        }
+    },
+    "recommendations": [
+        {
+            "priority": "medium",
+            "action": "es6_module_cleanup",
+            "description": "Review 6 unused ES6 modules in chat system",
+            "impact": "Improve module loading performance"
+        },
+        {
+            "priority": "medium",
+            "action": "size_optimization",
+            "description": "Potential size savings of 292.01 KB from unused asset removal",
+            "impact": "Reduce plugin size and improve load times"
+        },
+        {
+            "priority": "low",
+            "action": "conditional_review",
+            "description": "Review 6 medium-risk assets for conditional usage patterns",
+            "impact": "Verify dynamic loading before removal"
+        }
+    ]
+}

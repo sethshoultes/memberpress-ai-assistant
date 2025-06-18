@@ -368,13 +368,26 @@ function cross_reference_assets($inventory_data, $registration_data) {
  * Normalize asset path for comparison
  */
 function normalize_asset_path($path) {
-    // Remove common prefixes and normalize
-    $path = str_replace(['assets/', './assets/', '../assets/'], '', $path);
-    $path = ltrim($path, '/');
+    // Handle doubled assets directory (from old inventory data)
+    $path = preg_replace('#assets/[^/]+/assets/#', 'assets/', $path);
+    
+    // Remove leading slashes and dots
+    $path = ltrim($path, './');
     
     // Remove query parameters and fragments
     $path = strtok($path, '?');
     $path = strtok($path, '#');
+    
+    // Ensure consistent format: assets/css/file.css or assets/js/file.js
+    if (!preg_match('#^assets/#', $path)) {
+        // If path doesn't start with assets/, try to infer the correct prefix
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+        if ($extension === 'css') {
+            $path = 'assets/css/' . $path;
+        } elseif ($extension === 'js') {
+            $path = 'assets/js/' . $path;
+        }
+    }
     
     return $path;
 }
