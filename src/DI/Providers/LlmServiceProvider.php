@@ -103,8 +103,8 @@ class LlmServiceProvider extends ServiceProvider {
         // Register OpenAI configuration
         $openaiConfig = new LlmProviderConfig(
             'openai',
-            'gpt-4o',
-            ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+            'gpt-3.5-turbo',
+            ['gpt-3.5-turbo'],
             0.7,
             4096
         );
@@ -113,14 +113,9 @@ class LlmServiceProvider extends ServiceProvider {
         // Register Anthropic configuration
         $anthropicConfig = new LlmProviderConfig(
             'anthropic',
-            'claude-3-opus-20240229',
+            'claude-3-5-sonnet-20241022',
             [
-                'claude-3-opus-20240229',
-                'claude-3-sonnet-20240229',
-                'claude-3-haiku-20240307',
-                'claude-2.1',
-                'claude-2.0',
-                'claude-instant-1.2'
+                'claude-3-5-sonnet-20241022'
             ],
             0.7,
             4096
