@@ -1,0 +1,861 @@
+{
+    "scan_info": {
+        "timestamp": "2025-06-18 14:16:27",
+        "script_version": "1.0.0",
+        "plugin": "MemberPress AI Assistant"
+    },
+    "statistics": {
+        "total_patterns": 46,
+        "total_inclusions": 0,
+        "total_modules": 7,
+        "total_mappings": 38,
+        "by_function": {
+            "wp_enqueue_style": 8,
+            "wp_enqueue_script": 16,
+            "wp_register_style": 6,
+            "wp_register_script": 12,
+            "wp_script_add_data": 4
+        },
+        "by_file_type": [],
+        "conditional_loading": [],
+        "es6_dependencies": 14,
+        "unique_handles": {
+            "0": "mpai-chat",
+            "1": "mpai-blog-post",
+            "2": "mpai-table-styles",
+            "3": "dashicons",
+            "4": "mpai-chat-admin",
+            "5": "mpai-blog-post-admin",
+            "6": "mpai-table-styles-admin",
+            "7": "jquery",
+            "8": "mpai-xml-processor",
+            "9": "mpai-data-handler",
+            "10": "mpai-text-formatter",
+            "11": "mpai-blog-formatter",
+            "14": "mpai-xml-processor-admin",
+            "15": "mpai-data-handler-admin",
+            "16": "mpai-text-formatter-admin",
+            "17": "mpai-blog-formatter-admin",
+            "35": "mpai-settings"
+        },
+        "unique_files": {
+            "0": "assets/js/chat.js",
+            "1": "assets/css/blog-post.css",
+            "2": "assets/css/mpai-table-styles.css",
+            "6": "assets/js/xml-processor.js",
+            "7": "assets/js/data-handler-minimal.js",
+            "8": "assets/js/text-formatter.js",
+            "9": "assets/js/blog-formatter.js",
+            "16": "assets/css/chat.css",
+            "32": "assets/css/settings.css",
+            "33": "assets/js/settings.js"
+        },
+        "unique_handles_count": 17,
+        "unique_files_count": 10
+    },
+    "wordpress_patterns": [
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 204,
+            "code": "wp_enqueue_style('mpai-chat');",
+            "context": "202: \n203: // Enqueue assets\n204: wp_enqueue_style('mpai-chat');\n205: wp_enqueue_style('mpai-blog-post');\n206: wp_enqueue_style('mpai-table-styles');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 205,
+            "code": "wp_enqueue_style('mpai-blog-post');",
+            "context": "203: // Enqueue assets\n204: wp_enqueue_style('mpai-chat');\n205: wp_enqueue_style('mpai-blog-post');\n206: wp_enqueue_style('mpai-table-styles');\n207: wp_enqueue_script('mpai-xml-processor');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 206,
+            "code": "wp_enqueue_style('mpai-table-styles');",
+            "context": "204: wp_enqueue_style('mpai-chat');\n205: wp_enqueue_style('mpai-blog-post');\n206: wp_enqueue_style('mpai-table-styles');\n207: wp_enqueue_script('mpai-xml-processor');\n208: wp_enqueue_script('mpai-data-handler');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 214,
+            "code": "wp_enqueue_style('dashicons');",
+            "context": "212: \n213: // Add WordPress dashicons for icons\n214: wp_enqueue_style('dashicons');\n215: \n216: // Localize script with configuration"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 339,
+            "code": "wp_enqueue_style('mpai-chat-admin');",
+            "context": "337: \n338: // Enqueue assets\n339: wp_enqueue_style('mpai-chat-admin');\n340: wp_enqueue_style('mpai-blog-post-admin');\n341: wp_enqueue_style('mpai-table-styles-admin');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 340,
+            "code": "wp_enqueue_style('mpai-blog-post-admin');",
+            "context": "338: // Enqueue assets\n339: wp_enqueue_style('mpai-chat-admin');\n340: wp_enqueue_style('mpai-blog-post-admin');\n341: wp_enqueue_style('mpai-table-styles-admin');\n342: wp_enqueue_script('mpai-xml-processor-admin');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 341,
+            "code": "wp_enqueue_style('mpai-table-styles-admin');",
+            "context": "339: wp_enqueue_style('mpai-chat-admin');\n340: wp_enqueue_style('mpai-blog-post-admin');\n341: wp_enqueue_style('mpai-table-styles-admin');\n342: wp_enqueue_script('mpai-xml-processor-admin');\n343: wp_enqueue_script('mpai-data-handler-admin');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 158,
+            "code": "wp_enqueue_script('jquery');",
+            "context": "156: \n157: // Explicitly enqueue jQuery\n158: wp_enqueue_script('jquery');\n159: \n160: // Register blog formatter module"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 200,
+            "code": "wp_enqueue_script($handle);",
+            "context": "198: );\n199: wp_script_add_data($handle, 'type', 'module');\n200: wp_enqueue_script($handle); // Enqueue each module script\n201: }\n202: "
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 207,
+            "code": "wp_enqueue_script('mpai-xml-processor');",
+            "context": "205: wp_enqueue_style('mpai-blog-post');\n206: wp_enqueue_style('mpai-table-styles');\n207: wp_enqueue_script('mpai-xml-processor');\n208: wp_enqueue_script('mpai-data-handler');\n209: wp_enqueue_script('mpai-text-formatter');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 208,
+            "code": "wp_enqueue_script('mpai-data-handler');",
+            "context": "206: wp_enqueue_style('mpai-table-styles');\n207: wp_enqueue_script('mpai-xml-processor');\n208: wp_enqueue_script('mpai-data-handler');\n209: wp_enqueue_script('mpai-text-formatter');\n210: wp_enqueue_script('mpai-blog-formatter');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 209,
+            "code": "wp_enqueue_script('mpai-text-formatter');",
+            "context": "207: wp_enqueue_script('mpai-xml-processor');\n208: wp_enqueue_script('mpai-data-handler');\n209: wp_enqueue_script('mpai-text-formatter');\n210: wp_enqueue_script('mpai-blog-formatter');\n211: wp_enqueue_script('mpai-chat');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 210,
+            "code": "wp_enqueue_script('mpai-blog-formatter');",
+            "context": "208: wp_enqueue_script('mpai-data-handler');\n209: wp_enqueue_script('mpai-text-formatter');\n210: wp_enqueue_script('mpai-blog-formatter');\n211: wp_enqueue_script('mpai-chat');\n212: "
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 211,
+            "code": "wp_enqueue_script('mpai-chat');",
+            "context": "209: wp_enqueue_script('mpai-text-formatter');\n210: wp_enqueue_script('mpai-blog-formatter');\n211: wp_enqueue_script('mpai-chat');\n212: \n213: // Add WordPress dashicons for icons"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 293,
+            "code": "wp_enqueue_script('jquery');",
+            "context": "291: \n292: // Explicitly enqueue jQuery\n293: wp_enqueue_script('jquery');\n294: \n295: // Register blog formatter module"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 335,
+            "code": "wp_enqueue_script($handle);",
+            "context": "333: );\n334: wp_script_add_data($handle, 'type', 'module');\n335: wp_enqueue_script($handle); // Enqueue each module script\n336: }\n337: "
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 342,
+            "code": "wp_enqueue_script('mpai-xml-processor-admin');",
+            "context": "340: wp_enqueue_style('mpai-blog-post-admin');\n341: wp_enqueue_style('mpai-table-styles-admin');\n342: wp_enqueue_script('mpai-xml-processor-admin');\n343: wp_enqueue_script('mpai-data-handler-admin');\n344: wp_enqueue_script('mpai-text-formatter-admin');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 343,
+            "code": "wp_enqueue_script('mpai-data-handler-admin');",
+            "context": "341: wp_enqueue_style('mpai-table-styles-admin');\n342: wp_enqueue_script('mpai-xml-processor-admin');\n343: wp_enqueue_script('mpai-data-handler-admin');\n344: wp_enqueue_script('mpai-text-formatter-admin');\n345: wp_enqueue_script('mpai-blog-formatter-admin');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 344,
+            "code": "wp_enqueue_script('mpai-text-formatter-admin');",
+            "context": "342: wp_enqueue_script('mpai-xml-processor-admin');\n343: wp_enqueue_script('mpai-data-handler-admin');\n344: wp_enqueue_script('mpai-text-formatter-admin');\n345: wp_enqueue_script('mpai-blog-formatter-admin');\n346: wp_enqueue_script('mpai-chat-admin');"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 345,
+            "code": "wp_enqueue_script('mpai-blog-formatter-admin');",
+            "context": "343: wp_enqueue_script('mpai-data-handler-admin');\n344: wp_enqueue_script('mpai-text-formatter-admin');\n345: wp_enqueue_script('mpai-blog-formatter-admin');\n346: wp_enqueue_script('mpai-chat-admin');\n347: "
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 346,
+            "code": "wp_enqueue_script('mpai-chat-admin');",
+            "context": "344: wp_enqueue_script('mpai-text-formatter-admin');\n345: wp_enqueue_script('mpai-blog-formatter-admin');\n346: wp_enqueue_script('mpai-chat-admin');\n347: \n348: // Localize script with configuration"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 107,
+            "code": "wp_register_style(\n            'mpai-chat',\n            MPAI_PLUGIN_URL . 'assets/css/chat.css',\n            [],\n            MPAI_VERSION\n        );",
+            "context": "105: \n106: // Register styles\n107: wp_register_style(\n108: 'mpai-chat',\n109: MPAI_PLUGIN_URL . 'assets/css/chat.css',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 116,
+            "code": "wp_register_style(\n            'mpai-blog-post',\n            MPAI_PLUGIN_URL . 'assets/css/blog-post.css',\n            [],\n            MPAI_VERSION\n        );",
+            "context": "114: \n115: // Register blog post styles\n116: wp_register_style(\n117: 'mpai-blog-post',\n118: MPAI_PLUGIN_URL . 'assets/css/blog-post.css',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 124,
+            "code": "wp_register_style(\n            'mpai-table-styles',\n            MPAI_PLUGIN_URL . 'assets/css/mpai-table-styles.css',\n            ['mpai-chat'],\n            MPAI_VERSION\n        );",
+            "context": "122: \n123: // Register table styles for WordPress tool outputs\n124: wp_register_style(\n125: 'mpai-table-styles',\n126: MPAI_PLUGIN_URL . 'assets/css/mpai-table-styles.css',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 242,
+            "code": "wp_register_style(\n            'mpai-chat-admin',\n            MPAI_PLUGIN_URL . 'assets/css/chat.css',\n            [],\n            MPAI_VERSION\n        );",
+            "context": "240: \n241: // Register styles\n242: wp_register_style(\n243: 'mpai-chat-admin',\n244: MPAI_PLUGIN_URL . 'assets/css/chat.css',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 251,
+            "code": "wp_register_style(\n            'mpai-blog-post-admin',\n            MPAI_PLUGIN_URL . 'assets/css/blog-post.css',\n            [],\n            MPAI_VERSION\n        );",
+            "context": "249: \n250: // Register blog post styles\n251: wp_register_style(\n252: 'mpai-blog-post-admin',\n253: MPAI_PLUGIN_URL . 'assets/css/blog-post.css',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 259,
+            "code": "wp_register_style(\n            'mpai-table-styles-admin',\n            MPAI_PLUGIN_URL . 'assets/css/mpai-table-styles.css',\n            ['mpai-chat-admin'],\n            MPAI_VERSION\n        );",
+            "context": "257: \n258: // Register table styles for WordPress tool outputs\n259: wp_register_style(\n260: 'mpai-table-styles-admin',\n261: MPAI_PLUGIN_URL . 'assets/css/mpai-table-styles.css',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 133,
+            "code": "wp_register_script(\n            'mpai-xml-processor',\n            MPAI_PLUGIN_URL . 'assets/js/xml-processor.js',\n            [],\n            MPAI_VERSION,\n            true\n        );",
+            "context": "131: // Register scripts\n132: // Register response formatting modules first\n133: wp_register_script(\n134: 'mpai-xml-processor',\n135: MPAI_PLUGIN_URL . 'assets/js/xml-processor.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 141,
+            "code": "wp_register_script(\n            'mpai-data-handler',\n            MPAI_PLUGIN_URL . 'assets/js/data-handler-minimal.js',\n            [],\n            MPAI_VERSION,\n            true\n        );",
+            "context": "139: );\n140: \n141: wp_register_script(\n142: 'mpai-data-handler',\n143: MPAI_PLUGIN_URL . 'assets/js/data-handler-minimal.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 149,
+            "code": "wp_register_script(\n            'mpai-text-formatter',\n            MPAI_PLUGIN_URL . 'assets/js/text-formatter.js',\n            [],\n            MPAI_VERSION,\n            true\n        );",
+            "context": "147: );\n148: \n149: wp_register_script(\n150: 'mpai-text-formatter',\n151: MPAI_PLUGIN_URL . 'assets/js/text-formatter.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 161,
+            "code": "wp_register_script(\n            'mpai-blog-formatter',\n            MPAI_PLUGIN_URL . 'assets/js/blog-formatter.js',\n            ['jquery'],\n            MPAI_VERSION,\n            true\n        );",
+            "context": "159: \n160: // Register blog formatter module\n161: wp_register_script(\n162: 'mpai-blog-formatter',\n163: MPAI_PLUGIN_URL . 'assets/js/blog-formatter.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 170,
+            "code": "wp_register_script(\n            'mpai-chat',\n            MPAI_PLUGIN_URL . 'assets/js/chat.js',\n            ['jquery'], // Add jQuery as dependency\n            MPAI_VERSION,\n            true\n        );",
+            "context": "168: \n169: // Register main chat script as a module\n170: wp_register_script(\n171: 'mpai-chat',\n172: MPAI_PLUGIN_URL . 'assets/js/chat.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 192,
+            "code": "wp_register_script(\n                $handle,\n                MPAI_PLUGIN_URL . $path,\n                [],\n                MPAI_VERSION,\n                true\n            );",
+            "context": "190: \n191: foreach ($module_scripts as $handle => $path) {\n192: wp_register_script(\n193: $handle,\n194: MPAI_PLUGIN_URL . $path,"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 268,
+            "code": "wp_register_script(\n            'mpai-xml-processor-admin',\n            MPAI_PLUGIN_URL . 'assets/js/xml-processor.js',\n            [],\n            MPAI_VERSION,\n            true\n        );",
+            "context": "266: // Register scripts\n267: // Register response formatting modules first\n268: wp_register_script(\n269: 'mpai-xml-processor-admin',\n270: MPAI_PLUGIN_URL . 'assets/js/xml-processor.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 276,
+            "code": "wp_register_script(\n            'mpai-data-handler-admin',\n            MPAI_PLUGIN_URL . 'assets/js/data-handler-minimal.js',\n            [],\n            MPAI_VERSION,\n            true\n        );",
+            "context": "274: );\n275: \n276: wp_register_script(\n277: 'mpai-data-handler-admin',\n278: MPAI_PLUGIN_URL . 'assets/js/data-handler-minimal.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 284,
+            "code": "wp_register_script(\n            'mpai-text-formatter-admin',\n            MPAI_PLUGIN_URL . 'assets/js/text-formatter.js',\n            [],\n            MPAI_VERSION,\n            true\n        );",
+            "context": "282: );\n283: \n284: wp_register_script(\n285: 'mpai-text-formatter-admin',\n286: MPAI_PLUGIN_URL . 'assets/js/text-formatter.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 296,
+            "code": "wp_register_script(\n            'mpai-blog-formatter-admin',\n            MPAI_PLUGIN_URL . 'assets/js/blog-formatter.js',\n            ['jquery'],\n            MPAI_VERSION,\n            true\n        );",
+            "context": "294: \n295: // Register blog formatter module\n296: wp_register_script(\n297: 'mpai-blog-formatter-admin',\n298: MPAI_PLUGIN_URL . 'assets/js/blog-formatter.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 305,
+            "code": "wp_register_script(\n            'mpai-chat-admin',\n            MPAI_PLUGIN_URL . 'assets/js/chat.js',\n            ['jquery'], // Add jQuery as dependency\n            MPAI_VERSION,\n            true\n        );",
+            "context": "303: \n304: // Register main chat script as a module for admin\n305: wp_register_script(\n306: 'mpai-chat-admin',\n307: MPAI_PLUGIN_URL . 'assets/js/chat.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 327,
+            "code": "wp_register_script(\n                $handle,\n                MPAI_PLUGIN_URL . $path,\n                [],\n                MPAI_VERSION,\n                true\n            );",
+            "context": "325: \n326: foreach ($module_scripts as $handle => $path) {\n327: wp_register_script(\n328: $handle,\n329: MPAI_PLUGIN_URL . $path,"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_script_add_data",
+            "file": "ChatInterface.php",
+            "line": 178,
+            "code": "wp_script_add_data('mpai-chat', 'type', 'module');",
+            "context": "176: );\n177: // Add the module type\n178: wp_script_add_data('mpai-chat', 'type', 'module');\n179: \n180: // Register module scripts"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_script_add_data",
+            "file": "ChatInterface.php",
+            "line": 199,
+            "code": "wp_script_add_data($handle, 'type', 'module');",
+            "context": "197: true\n198: );\n199: wp_script_add_data($handle, 'type', 'module');\n200: wp_enqueue_script($handle); // Enqueue each module script\n201: }"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_script_add_data",
+            "file": "ChatInterface.php",
+            "line": 313,
+            "code": "wp_script_add_data('mpai-chat-admin', 'type', 'module');",
+            "context": "311: );\n312: // Add the module type\n313: wp_script_add_data('mpai-chat-admin', 'type', 'module');\n314: \n315: // Register module scripts for admin"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_script_add_data",
+            "file": "ChatInterface.php",
+            "line": 334,
+            "code": "wp_script_add_data($handle, 'type', 'module');",
+            "context": "332: true\n333: );\n334: wp_script_add_data($handle, 'type', 'module');\n335: wp_enqueue_script($handle); // Enqueue each module script\n336: }"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_style",
+            "file": "Services/Settings/SettingsControllerService.php",
+            "line": 423,
+            "code": "wp_enqueue_style(\n            'mpai-settings',\n            MPAI_PLUGIN_URL . 'assets/css/settings.css',\n            [],\n            MPAI_VERSION\n        );",
+            "context": "421: \n422: // Enqueue settings CSS\n423: wp_enqueue_style(\n424: 'mpai-settings',\n425: MPAI_PLUGIN_URL . 'assets/css/settings.css',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "Services/Settings/SettingsControllerService.php",
+            "line": 431,
+            "code": "wp_enqueue_script(\n            'mpai-settings',\n            MPAI_PLUGIN_URL . 'assets/js/settings.js',\n            ['jquery'],\n            MPAI_VERSION,\n            true\n        );",
+            "context": "429: \n430: // Enqueue settings JS\n431: wp_enqueue_script(\n432: 'mpai-settings',\n433: MPAI_PLUGIN_URL . 'assets/js/settings.js',"
+        },
+        {
+            "type": "wordpress_registration",
+            "function": "wp_enqueue_script",
+            "file": "settings-page.php",
+            "line": 133,
+            "code": "wp_enqueue_script('jquery');",
+            "context": "131: <?php\n132: // Ensure jQuery is available for the chat interface\n133: wp_enqueue_script('jquery');\n134: \n135: // Always render the chat interface (consent system removed)"
+        }
+    ],
+    "direct_inclusions": [],
+    "es6_modules": [
+        {
+            "type": "es6_module",
+            "file": "js/chat/messages/handlers/blog-post-message-handler.js",
+            "imports": [
+                {
+                    "line": 10,
+                    "path": "./base-message-handler.js",
+                    "code": "import BaseMessageHandler from './base-message-handler.js';"
+                }
+            ],
+            "exports": [],
+            "is_module": true
+        },
+        {
+            "type": "es6_module",
+            "file": "js/chat/messages/handlers/system-message-handler.js",
+            "imports": [
+                {
+                    "line": 10,
+                    "path": "./base-message-handler.js",
+                    "code": "import BaseMessageHandler from './base-message-handler.js';"
+                }
+            ],
+            "exports": [],
+            "is_module": true
+        },
+        {
+            "type": "es6_module",
+            "file": "js/chat/messages/handlers/interactive-message-handler.js",
+            "imports": [
+                {
+                    "line": 10,
+                    "path": "./base-message-handler.js",
+                    "code": "import BaseMessageHandler from './base-message-handler.js';"
+                }
+            ],
+            "exports": [],
+            "is_module": true
+        },
+        {
+            "type": "es6_module",
+            "file": "js/chat/messages/handlers/text-message-handler.js",
+            "imports": [
+                {
+                    "line": 10,
+                    "path": "./base-message-handler.js",
+                    "code": "import BaseMessageHandler from './base-message-handler.js';"
+                }
+            ],
+            "exports": [],
+            "is_module": true
+        },
+        {
+            "type": "es6_module",
+            "file": "js/chat/core/state-manager.js",
+            "imports": [
+                {
+                    "line": 14,
+                    "path": "../utils/storage-manager.js",
+                    "code": "import StorageManager from '../utils/storage-manager.js';"
+                }
+            ],
+            "exports": [],
+            "is_module": true
+        },
+        {
+            "type": "es6_module",
+            "file": "js/chat/core/ui-manager.js",
+            "imports": [
+                {
+                    "line": 14,
+                    "path": "../messages/message-factory.js",
+                    "code": "import MessageFactory from '../messages/message-factory.js';"
+                },
+                {
+                    "line": 15,
+                    "path": "../messages/message-renderer.js",
+                    "code": "import MessageRenderer from '../messages/message-renderer.js';"
+                }
+            ],
+            "exports": [],
+            "is_module": true
+        },
+        {
+            "type": "es6_module",
+            "file": "js/chat.js",
+            "imports": [
+                {
+                    "line": 34,
+                    "path": "./chat/core/chat-core.js",
+                    "code": "import ChatCore from './chat/core/chat-core.js';"
+                },
+                {
+                    "line": 35,
+                    "path": "./chat/core/state-manager.js",
+                    "code": "import StateManager from './chat/core/state-manager.js';"
+                },
+                {
+                    "line": 36,
+                    "path": "./chat/core/ui-manager.js",
+                    "code": "import UIManager from './chat/core/ui-manager.js';"
+                },
+                {
+                    "line": 37,
+                    "path": "./chat/core/api-client.js",
+                    "code": "import APIClient from './chat/core/api-client.js';"
+                },
+                {
+                    "line": 38,
+                    "path": "./chat/core/event-bus.js",
+                    "code": "import EventBus from './chat/core/event-bus.js';"
+                },
+                {
+                    "line": 41,
+                    "path": "./chat/utils/logger.js",
+                    "code": "import { Logger, LogLevel } from './chat/utils/logger.js';"
+                },
+                {
+                    "line": 42,
+                    "path": "./chat/utils/storage-manager.js",
+                    "code": "import StorageManager from './chat/utils/storage-manager.js';"
+                }
+            ],
+            "exports": [],
+            "is_module": true
+        }
+    ],
+    "asset_mappings": [
+        {
+            "handle": "mpai-chat",
+            "path": "assets/js/chat.js",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 204,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-blog-post",
+            "path": "assets/css/blog-post.css",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 205,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-table-styles",
+            "path": "assets/css/mpai-table-styles.css",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 206,
+            "conditional": []
+        },
+        {
+            "handle": "dashicons",
+            "path": "",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 214,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-chat-admin",
+            "path": "assets/js/chat.js",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 339,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-blog-post-admin",
+            "path": "assets/css/blog-post.css",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 340,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-table-styles-admin",
+            "path": "assets/css/mpai-table-styles.css",
+            "function": "wp_enqueue_style",
+            "file": "ChatInterface.php",
+            "line": 341,
+            "conditional": []
+        },
+        {
+            "handle": "jquery",
+            "path": "",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 158,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-xml-processor",
+            "path": "assets/js/xml-processor.js",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 207,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-data-handler",
+            "path": "assets/js/data-handler-minimal.js",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 208,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-text-formatter",
+            "path": "assets/js/text-formatter.js",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 209,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-blog-formatter",
+            "path": "assets/js/blog-formatter.js",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 210,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-chat",
+            "path": "assets/js/chat.js",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 211,
+            "conditional": []
+        },
+        {
+            "handle": "jquery",
+            "path": "",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 293,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-xml-processor-admin",
+            "path": "assets/js/xml-processor.js",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 342,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-data-handler-admin",
+            "path": "assets/js/data-handler-minimal.js",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 343,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-text-formatter-admin",
+            "path": "assets/js/text-formatter.js",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 344,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-blog-formatter-admin",
+            "path": "assets/js/blog-formatter.js",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 345,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-chat-admin",
+            "path": "assets/js/chat.js",
+            "function": "wp_enqueue_script",
+            "file": "ChatInterface.php",
+            "line": 346,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-chat",
+            "path": "assets/css/chat.css",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 107,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-blog-post",
+            "path": "assets/css/blog-post.css",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 116,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-table-styles",
+            "path": "assets/css/mpai-table-styles.css",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 124,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-chat-admin",
+            "path": "assets/css/chat.css",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 242,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-blog-post-admin",
+            "path": "assets/css/blog-post.css",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 251,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-table-styles-admin",
+            "path": "assets/css/mpai-table-styles.css",
+            "function": "wp_register_style",
+            "file": "ChatInterface.php",
+            "line": 259,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-xml-processor",
+            "path": "assets/js/xml-processor.js",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 133,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-data-handler",
+            "path": "assets/js/data-handler-minimal.js",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 141,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-text-formatter",
+            "path": "assets/js/text-formatter.js",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 149,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-blog-formatter",
+            "path": "assets/js/blog-formatter.js",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 161,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-chat",
+            "path": "assets/js/chat.js",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 170,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-xml-processor-admin",
+            "path": "assets/js/xml-processor.js",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 268,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-data-handler-admin",
+            "path": "assets/js/data-handler-minimal.js",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 276,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-text-formatter-admin",
+            "path": "assets/js/text-formatter.js",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 284,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-blog-formatter-admin",
+            "path": "assets/js/blog-formatter.js",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 296,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-chat-admin",
+            "path": "assets/js/chat.js",
+            "function": "wp_register_script",
+            "file": "ChatInterface.php",
+            "line": 305,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-settings",
+            "path": "assets/css/settings.css",
+            "function": "wp_enqueue_style",
+            "file": "Services/Settings/SettingsControllerService.php",
+            "line": 423,
+            "conditional": []
+        },
+        {
+            "handle": "mpai-settings",
+            "path": "assets/js/settings.js",
+            "function": "wp_enqueue_script",
+            "file": "Services/Settings/SettingsControllerService.php",
+            "line": 431,
+            "conditional": []
+        },
+        {
+            "handle": "jquery",
+            "path": "",
+            "function": "wp_enqueue_script",
+            "file": "settings-page.php",
+            "line": 133,
+            "conditional": []
+        }
+    ]
+}
