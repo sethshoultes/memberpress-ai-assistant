@@ -62,24 +62,18 @@ class ChatInterface {
      * @return string The modified script tag
      */
     public function addModuleTypeToScripts($tag, $handle, $src) {
-        // List of script handles that should be loaded as modules
+        // List of script handles that should be loaded as modules (optimized bundle version)
         $module_scripts = [
-            'mpai-chat',
-            'mpai-chat-admin',
-            'mpai-chat-core',
-            'mpai-state-manager',
-            'mpai-ui-manager',
-            'mpai-api-client',
-            'mpai-event-bus',
-            'mpai-logger',
-            'mpai-storage-manager',
-            'mpai-chat-core-admin',
-            'mpai-state-manager-admin',
-            'mpai-ui-manager-admin',
-            'mpai-api-client-admin',
-            'mpai-event-bus-admin',
-            'mpai-logger-admin',
-            'mpai-storage-manager-admin'
+            'mpai-chat-optimized',
+            'mpai-chat-optimized-admin',
+            'mpai-core-bundle',
+            'mpai-messaging-bundle',
+            'mpai-message-handlers-bundle',
+            'mpai-ui-bundle',
+            'mpai-core-bundle-admin',
+            'mpai-messaging-bundle-admin',
+            'mpai-message-handlers-bundle-admin',
+            'mpai-ui-bundle-admin'
         ];
         
         // Check if this script should be loaded as a module
@@ -166,39 +160,38 @@ class ChatInterface {
             true
         );
         
-        // Register main chat script as a module
+        // Register optimized chat script using bundles
         wp_register_script(
-            'mpai-chat',
-            MPAI_PLUGIN_URL . 'assets/js/chat.js',
+            'mpai-chat-optimized',
+            MPAI_PLUGIN_URL . 'assets/js/chat-optimized.js',
             ['jquery'], // Add jQuery as dependency
             MPAI_VERSION,
             true
         );
-        // Add the module type
-        wp_script_add_data('mpai-chat', 'type', 'module');
+        wp_script_add_data('mpai-chat-optimized', 'type', 'module');
         
-        // Register module scripts
-        $module_scripts = [
-            'mpai-chat-core' => 'assets/js/chat/core/chat-core.js',
-            'mpai-state-manager' => 'assets/js/chat/core/state-manager.js',
-            'mpai-ui-manager' => 'assets/js/chat/core/ui-manager.js',
-            'mpai-api-client' => 'assets/js/chat/core/api-client.js',
-            'mpai-event-bus' => 'assets/js/chat/core/event-bus.js',
-            'mpai-logger' => 'assets/js/chat/utils/logger.js',
-            'mpai-storage-manager' => 'assets/js/chat/utils/storage-manager.js'
+        // Register bundle scripts (ES6 module bundles)
+        $bundle_scripts = [
+            'mpai-core-bundle' => 'assets/js/bundles/core-bundle.js',
+            'mpai-messaging-bundle' => 'assets/js/bundles/messaging-bundle.js',
+            'mpai-message-handlers-bundle' => 'assets/js/bundles/message-handlers-bundle.js',
+            'mpai-ui-bundle' => 'assets/js/bundles/ui-bundle.js',
         ];
 
-        foreach ($module_scripts as $handle => $path) {
+        foreach ($bundle_scripts as $handle => $path) {
             wp_register_script(
                 $handle,
                 MPAI_PLUGIN_URL . $path,
-                [],
+                [], // Dependencies handled by ES6 imports
                 MPAI_VERSION,
                 true
             );
             wp_script_add_data($handle, 'type', 'module');
-            wp_enqueue_script($handle); // Enqueue each module script
         }
+        
+        // Enqueue essential bundles (UI bundle is lazy-loaded by chat-optimized.js)
+        wp_enqueue_script('mpai-core-bundle');
+        wp_enqueue_script('mpai-messaging-bundle');
 
         // Enqueue assets
         wp_enqueue_style('mpai-chat');
@@ -208,19 +201,19 @@ class ChatInterface {
         wp_enqueue_script('mpai-data-handler');
         wp_enqueue_script('mpai-text-formatter');
         wp_enqueue_script('mpai-blog-formatter');
-        wp_enqueue_script('mpai-chat');
+        wp_enqueue_script('mpai-chat-optimized');
         
         // Add WordPress dashicons for icons
         wp_enqueue_style('dashicons');
 
-        // Localize script with configuration
-        wp_localize_script('mpai-chat', 'mpai_chat_config', $this->getChatConfig());
+        // Localize script with configuration (optimized script)
+        wp_localize_script('mpai-chat-optimized', 'mpai_chat_config', $this->getChatConfig());
         
         // Add REST API nonce
-        wp_localize_script('mpai-chat', 'mpai_nonce', wp_create_nonce('wp_rest'));
+        wp_localize_script('mpai-chat-optimized', 'mpai_nonce', wp_create_nonce('wp_rest'));
         
         // Add AJAX nonce for the new modular system
-        wp_localize_script('mpai-chat', 'mpai_ajax', [
+        wp_localize_script('mpai-chat-optimized', 'mpai_ajax', [
             'nonce' => wp_create_nonce('mpai_ajax_nonce'),
             'url' => admin_url('admin-ajax.php')
         ]);
@@ -301,39 +294,38 @@ class ChatInterface {
             true
         );
         
-        // Register main chat script as a module for admin
+        // Register optimized chat script using bundles for admin
         wp_register_script(
-            'mpai-chat-admin',
-            MPAI_PLUGIN_URL . 'assets/js/chat.js',
+            'mpai-chat-optimized-admin',
+            MPAI_PLUGIN_URL . 'assets/js/chat-optimized.js',
             ['jquery'], // Add jQuery as dependency
             MPAI_VERSION,
             true
         );
-        // Add the module type
-        wp_script_add_data('mpai-chat-admin', 'type', 'module');
+        wp_script_add_data('mpai-chat-optimized-admin', 'type', 'module');
         
-        // Register module scripts for admin
-        $module_scripts = [
-            'mpai-chat-core-admin' => 'assets/js/chat/core/chat-core.js',
-            'mpai-state-manager-admin' => 'assets/js/chat/core/state-manager.js',
-            'mpai-ui-manager-admin' => 'assets/js/chat/core/ui-manager.js',
-            'mpai-api-client-admin' => 'assets/js/chat/core/api-client.js',
-            'mpai-event-bus-admin' => 'assets/js/chat/core/event-bus.js',
-            'mpai-logger-admin' => 'assets/js/chat/utils/logger.js',
-            'mpai-storage-manager-admin' => 'assets/js/chat/utils/storage-manager.js'
+        // Register bundle scripts for admin (ES6 module bundles)
+        $bundle_scripts = [
+            'mpai-core-bundle-admin' => 'assets/js/bundles/core-bundle.js',
+            'mpai-messaging-bundle-admin' => 'assets/js/bundles/messaging-bundle.js',
+            'mpai-message-handlers-bundle-admin' => 'assets/js/bundles/message-handlers-bundle.js',
+            'mpai-ui-bundle-admin' => 'assets/js/bundles/ui-bundle.js',
         ];
 
-        foreach ($module_scripts as $handle => $path) {
+        foreach ($bundle_scripts as $handle => $path) {
             wp_register_script(
                 $handle,
                 MPAI_PLUGIN_URL . $path,
-                [],
+                [], // Dependencies handled by ES6 imports
                 MPAI_VERSION,
                 true
             );
             wp_script_add_data($handle, 'type', 'module');
-            wp_enqueue_script($handle); // Enqueue each module script
         }
+        
+        // Enqueue essential bundles for admin (UI bundle is lazy-loaded)
+        wp_enqueue_script('mpai-core-bundle-admin');
+        wp_enqueue_script('mpai-messaging-bundle-admin');
 
         // Enqueue assets
         wp_enqueue_style('mpai-chat-admin');
@@ -343,16 +335,16 @@ class ChatInterface {
         wp_enqueue_script('mpai-data-handler-admin');
         wp_enqueue_script('mpai-text-formatter-admin');
         wp_enqueue_script('mpai-blog-formatter-admin');
-        wp_enqueue_script('mpai-chat-admin');
+        wp_enqueue_script('mpai-chat-optimized-admin');
 
-        // Localize script with configuration
-        wp_localize_script('mpai-chat-admin', 'mpai_chat_config', $this->getChatConfig(true));
+        // Localize script with configuration (optimized admin script)
+        wp_localize_script('mpai-chat-optimized-admin', 'mpai_chat_config', $this->getChatConfig(true));
         
         // Add REST API nonce
-        wp_localize_script('mpai-chat-admin', 'mpai_nonce', wp_create_nonce('wp_rest'));
+        wp_localize_script('mpai-chat-optimized-admin', 'mpai_nonce', wp_create_nonce('wp_rest'));
         
         // Add AJAX nonce for the new modular system
-        wp_localize_script('mpai-chat-admin', 'mpai_ajax', [
+        wp_localize_script('mpai-chat-optimized-admin', 'mpai_ajax', [
             'nonce' => wp_create_nonce('mpai_ajax_nonce'),
             'url' => admin_url('admin-ajax.php')
         ]);

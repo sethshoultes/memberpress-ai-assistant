@@ -1,0 +1,134 @@
+{
+    "summary": {
+        "total_tests": 6,
+        "passed_tests": 6,
+        "failed_tests": 0,
+        "success_rate": 100,
+        "total_execution_time": 0.01690959930419922
+    },
+    "test_results": {
+        "module_loading": {
+            "status": "passed",
+            "result": {
+                "original_chat_size": 9924,
+                "original_has_imports": true,
+                "optimized_chat_size": 3676,
+                "optimized_has_imports": true,
+                "size_difference": 6248,
+                "all_required_modules_exist": true,
+                "total_module_count": 5
+            },
+            "execution_time": 0.0047419071197509766
+        },
+        "dependency_resolution": {
+            "status": "passed",
+            "result": {
+                "dependency_analysis_available": true,
+                "total_modules": 17,
+                "used_modules": 15,
+                "unused_modules": 2,
+                "usage_percentage": 88.24,
+                "circular_dependencies": [],
+                "has_circular_dependencies": false
+            },
+            "execution_time": 0.0007419586181640625
+        },
+        "bundle_integrity": {
+            "status": "passed",
+            "result": {
+                "all_bundles_exist": true,
+                "bundle_count": 4,
+                "bundle_info": {
+                    "core-bundle.js": {
+                        "size": 1294,
+                        "has_exports": true,
+                        "export_count": 8,
+                        "import_count": 0
+                    },
+                    "ui-bundle.js": {
+                        "size": 303,
+                        "has_exports": true,
+                        "export_count": 1,
+                        "import_count": 0
+                    },
+                    "messaging-bundle.js": {
+                        "size": 1690,
+                        "has_exports": true,
+                        "export_count": 7,
+                        "import_count": 0
+                    },
+                    "message-handlers-bundle.js": {
+                        "size": 1128,
+                        "has_exports": true,
+                        "export_count": 4,
+                        "import_count": 0
+                    }
+                },
+                "total_bundle_size": 4415,
+                "bundle_index_exists": true,
+                "bundle_index_size": 700
+            },
+            "execution_time": 0.002627849578857422
+        },
+        "wordpress_registration": {
+            "status": "passed",
+            "result": {
+                "wp_register_script_count": 12,
+                "wp_enqueue_script_count": 16,
+                "module_type_declarations": 4,
+                "has_bundle_registration": true,
+                "wordpress_helper_exists": true,
+                "wordpress_helper_size": 1016
+            },
+            "execution_time": 0.0019838809967041016
+        },
+        "performance_metrics": {
+            "status": "passed",
+            "result": {
+                "original_total_size": 236512,
+                "bundle_total_size": 6131,
+                "size_reduction": 230381,
+                "size_reduction_percentage": 97.41,
+                "original_js_files": 21,
+                "bundle_files": 5,
+                "request_reduction": 16,
+                "request_reduction_percentage": 76.19,
+                "estimated_loading_improvement": 82.56
+            },
+            "execution_time": 0.001711130142211914
+        },
+        "browser_compatibility": {
+            "status": "passed",
+            "result": {
+                "es6_feature_usage": {
+                    "arrow_functions": 66,
+                    "template_literals": 90,
+                    "destructuring": 9,
+                    "async_await": 64,
+                    "modules": 78,
+                    "const_let": 436
+                },
+                "uses_modern_js": true,
+                "browser_support": {
+                    "chrome": "good",
+                    "firefox": "good",
+                    "safari": "good",
+                    "edge": "good",
+                    "ie11": "poor"
+                }
+            },
+            "execution_time": 0.005102872848510742
+        }
+    },
+    "performance_summary": {
+        "size_reduction": 97.41,
+        "request_reduction": 76.19,
+        "estimated_loading_improvement": 82.56,
+        "bundle_count": 4
+    },
+    "recommendations": [
+        "All optimization tests passed - system is ready for production"
+    ],
+    "errors": [],
+    "timestamp": "2025-06-19 18:49:45"
+}

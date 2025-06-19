@@ -1,0 +1,355 @@
+{
+    "summary": {
+        "total_modules": 17,
+        "used_modules": 15,
+        "unused_modules": 2,
+        "usage_percentage": 88.24,
+        "entry_points": 1
+    },
+    "entry_points": [
+        "js\/chat.js"
+    ],
+    "dependency_graph": {
+        "js\/chat\/core\/event-bus.js": [],
+        "js\/chat\/utils\/storage-manager.js": [],
+        "js\/chat\/core\/state-manager.js": [
+            "js\/chat\/utils\/storage-manager.js"
+        ],
+        "js\/chat\/core\/api-client.js": [],
+        "js\/chat\/messages\/handlers\/base-message-handler.js": [],
+        "js\/chat\/messages\/handlers\/blog-post-message-handler.js": [
+            "js\/chat\/messages\/handlers\/base-message-handler.js"
+        ],
+        "js\/chat\/messages\/handlers\/text-message-handler.js": [
+            "js\/chat\/messages\/handlers\/base-message-handler.js"
+        ],
+        "js\/chat\/messages\/handlers\/system-message-handler.js": [
+            "js\/chat\/messages\/handlers\/base-message-handler.js"
+        ],
+        "js\/chat\/messages\/handlers\/interactive-message-handler.js": [
+            "js\/chat\/messages\/handlers\/base-message-handler.js"
+        ],
+        "js\/chat\/messages\/message-factory.js": [
+            "js\/chat\/messages\/handlers\/blog-post-message-handler.js",
+            "js\/chat\/messages\/handlers\/text-message-handler.js",
+            "js\/chat\/messages\/handlers\/system-message-handler.js",
+            "js\/chat\/messages\/handlers\/interactive-message-handler.js"
+        ],
+        "js\/chat\/messages\/message-renderer.js": [],
+        "js\/chat\/core\/ui-manager.js": [
+            "js\/chat\/messages\/message-factory.js",
+            "js\/chat\/messages\/message-renderer.js"
+        ],
+        "js\/chat\/core\/chat-core.js": [
+            "js\/chat\/core\/event-bus.js",
+            "js\/chat\/core\/state-manager.js",
+            "js\/chat\/core\/api-client.js",
+            "js\/chat\/core\/ui-manager.js"
+        ],
+        "js\/chat\/utils\/logger.js": [],
+        "js\/chat.js": [
+            "js\/chat\/core\/chat-core.js",
+            "js\/chat\/core\/state-manager.js",
+            "js\/chat\/core\/ui-manager.js",
+            "js\/chat\/core\/api-client.js",
+            "js\/chat\/core\/event-bus.js",
+            "js\/chat\/utils\/storage-manager.js",
+            "js\/chat\/utils\/logger.js"
+        ]
+    },
+    "module_imports": {
+        "js\/chat\/messages\/message-factory.js": [
+            {
+                "path": "js\/chat\/messages\/handlers\/blog-post-message-handler.js",
+                "original_path": ".\/handlers\/blog-post-message-handler.js",
+                "type": "dynamic",
+                "imported": ".\/handlers\/blog-post-message-handler.js"
+            },
+            {
+                "path": "js\/chat\/messages\/handlers\/text-message-handler.js",
+                "original_path": ".\/handlers\/text-message-handler.js",
+                "type": "dynamic",
+                "imported": ".\/handlers\/text-message-handler.js"
+            },
+            {
+                "path": "js\/chat\/messages\/handlers\/system-message-handler.js",
+                "original_path": ".\/handlers\/system-message-handler.js",
+                "type": "dynamic",
+                "imported": ".\/handlers\/system-message-handler.js"
+            },
+            {
+                "path": "js\/chat\/messages\/handlers\/interactive-message-handler.js",
+                "original_path": ".\/handlers\/interactive-message-handler.js",
+                "type": "dynamic",
+                "imported": ".\/handlers\/interactive-message-handler.js"
+            }
+        ],
+        "js\/chat\/messages\/handlers\/blog-post-message-handler.js": [
+            {
+                "path": "js\/chat\/messages\/handlers\/base-message-handler.js",
+                "original_path": ".\/base-message-handler.js",
+                "type": "default",
+                "imported": "BaseMessageHandler"
+            }
+        ],
+        "js\/chat\/messages\/handlers\/system-message-handler.js": [
+            {
+                "path": "js\/chat\/messages\/handlers\/base-message-handler.js",
+                "original_path": ".\/base-message-handler.js",
+                "type": "default",
+                "imported": "BaseMessageHandler"
+            }
+        ],
+        "js\/chat\/messages\/handlers\/interactive-message-handler.js": [
+            {
+                "path": "js\/chat\/messages\/handlers\/base-message-handler.js",
+                "original_path": ".\/base-message-handler.js",
+                "type": "default",
+                "imported": "BaseMessageHandler"
+            }
+        ],
+        "js\/chat\/messages\/handlers\/text-message-handler.js": [
+            {
+                "path": "js\/chat\/messages\/handlers\/base-message-handler.js",
+                "original_path": ".\/base-message-handler.js",
+                "type": "default",
+                "imported": "BaseMessageHandler"
+            }
+        ],
+        "js\/chat\/core\/state-manager.js": [
+            {
+                "path": "js\/chat\/utils\/storage-manager.js",
+                "original_path": "..\/utils\/storage-manager.js",
+                "type": "default",
+                "imported": "StorageManager"
+            }
+        ],
+        "js\/chat\/core\/ui-manager.js": [
+            {
+                "path": "js\/chat\/messages\/message-factory.js",
+                "original_path": "..\/messages\/message-factory.js",
+                "type": "default",
+                "imported": "MessageFactory"
+            },
+            {
+                "path": "js\/chat\/messages\/message-renderer.js",
+                "original_path": "..\/messages\/message-renderer.js",
+                "type": "default",
+                "imported": "MessageRenderer"
+            }
+        ],
+        "js\/chat\/core\/chat-core.js": [
+            {
+                "path": "js\/chat\/core\/event-bus.js",
+                "original_path": "..\/core\/event-bus.js",
+                "type": "dynamic",
+                "imported": "..\/core\/event-bus.js"
+            },
+            {
+                "path": "js\/chat\/core\/state-manager.js",
+                "original_path": "..\/core\/state-manager.js",
+                "type": "dynamic",
+                "imported": "..\/core\/state-manager.js"
+            },
+            {
+                "path": "js\/chat\/core\/api-client.js",
+                "original_path": "..\/core\/api-client.js",
+                "type": "dynamic",
+                "imported": "..\/core\/api-client.js"
+            },
+            {
+                "path": "js\/chat\/core\/ui-manager.js",
+                "original_path": "..\/core\/ui-manager.js",
+                "type": "dynamic",
+                "imported": "..\/core\/ui-manager.js"
+            }
+        ],
+        "js\/chat.js": [
+            {
+                "path": "js\/chat\/core\/chat-core.js",
+                "original_path": ".\/chat\/core\/chat-core.js",
+                "type": "default",
+                "imported": "ChatCore"
+            },
+            {
+                "path": "js\/chat\/core\/state-manager.js",
+                "original_path": ".\/chat\/core\/state-manager.js",
+                "type": "default",
+                "imported": "StateManager"
+            },
+            {
+                "path": "js\/chat\/core\/ui-manager.js",
+                "original_path": ".\/chat\/core\/ui-manager.js",
+                "type": "default",
+                "imported": "UIManager"
+            },
+            {
+                "path": "js\/chat\/core\/api-client.js",
+                "original_path": ".\/chat\/core\/api-client.js",
+                "type": "default",
+                "imported": "APIClient"
+            },
+            {
+                "path": "js\/chat\/core\/event-bus.js",
+                "original_path": ".\/chat\/core\/event-bus.js",
+                "type": "default",
+                "imported": "EventBus"
+            },
+            {
+                "path": "js\/chat\/utils\/storage-manager.js",
+                "original_path": ".\/chat\/utils\/storage-manager.js",
+                "type": "default",
+                "imported": "StorageManager"
+            },
+            {
+                "path": "js\/chat\/utils\/logger.js",
+                "original_path": ".\/chat\/utils\/logger.js",
+                "type": "named",
+                "imported": "Logger, LogLevel"
+            }
+        ]
+    },
+    "module_exports": {
+        "js\/chat\/ui\/input-handler.js": [
+            {
+                "name": "InputHandler",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/ui\/ui-controls.js": [
+            {
+                "name": "UIControls",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/messages\/message-factory.js": [
+            {
+                "name": "MessageFactory",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/messages\/message-renderer.js": [
+            {
+                "name": "MessageRenderer",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/messages\/handlers\/blog-post-message-handler.js": [
+            {
+                "name": "BlogPostMessageHandler",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/messages\/handlers\/base-message-handler.js": [
+            {
+                "name": "BaseMessageHandler",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/messages\/handlers\/system-message-handler.js": [
+            {
+                "name": "SystemMessageHandler",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/messages\/handlers\/interactive-message-handler.js": [
+            {
+                "name": "InteractiveMessageHandler",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/messages\/handlers\/text-message-handler.js": [
+            {
+                "name": "TextMessageHandler",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/core\/state-manager.js": [
+            {
+                "name": "StateManager",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/core\/event-bus.js": [
+            {
+                "name": "EventBus",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/core\/ui-manager.js": [
+            {
+                "name": "UIManager",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/core\/api-client.js": [
+            {
+                "name": "APIClient",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/core\/chat-core.js": [
+            {
+                "name": "ChatCore",
+                "type": "default"
+            }
+        ],
+        "js\/chat\/utils\/logger.js": [
+            {
+                "name": "Logger",
+                "type": "default"
+            },
+            {
+                "name": "Logger, LogLevel",
+                "type": "named"
+            }
+        ],
+        "js\/chat\/utils\/storage-manager.js": [
+            {
+                "name": "StorageManager",
+                "type": "default"
+            }
+        ],
+        "js\/chat.js": [
+            {
+                "name": "createChat",
+                "type": "default"
+            },
+            {
+                "name": "ChatCore",
+                "type": "named"
+            }
+        ]
+    },
+    "unused_modules": {
+        "9": "js\/chat\/ui\/input-handler.js",
+        "10": "js\/chat\/ui\/ui-controls.js"
+    },
+    "bundle_recommendations": {
+        "core": [
+            "js\/chat\/core\/event-bus.js",
+            "js\/chat\/core\/state-manager.js",
+            "js\/chat\/core\/api-client.js",
+            "js\/chat\/core\/ui-manager.js",
+            "js\/chat\/core\/chat-core.js"
+        ],
+        "messaging": [
+            "js\/chat\/messages\/handlers\/base-message-handler.js",
+            "js\/chat\/messages\/handlers\/blog-post-message-handler.js",
+            "js\/chat\/messages\/handlers\/text-message-handler.js",
+            "js\/chat\/messages\/handlers\/system-message-handler.js",
+            "js\/chat\/messages\/handlers\/interactive-message-handler.js",
+            "js\/chat\/messages\/message-factory.js",
+            "js\/chat\/messages\/message-renderer.js"
+        ],
+        "utils": [
+            "js\/chat\/utils\/storage-manager.js",
+            "js\/chat\/utils\/logger.js"
+        ]
+    },
+    "analysis_metadata": {
+        "timestamp": "2025-06-19 18:29:23",
+        "assets_directory": "\/Users\/sethshoultes\/Local Sites\/memberpress-testing\/app\/public\/wp-content\/plugins\/memberpress-ai-assistant\/scripts\/..\/assets\/js",
+        "total_files_scanned": 22
+    }
+}
